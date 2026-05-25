@@ -4,6 +4,7 @@
 !.gitea
 !.mockery.yaml
 !.goreleaser.yaml
+!.hadolint.yml
 cover*.out
 
 /bin
