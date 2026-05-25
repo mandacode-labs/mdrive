@@ -1,0 +1,9 @@
+failure-threshold: error
+
+ignored:
+  # DL3018: Pin versions in apk add
+  # Alpine distributes security patches via revision bumps (e.g. 8.17.0-r1 -> 8.17.0-r2).
+  # Pinning exact versions causes build failures when old revisions are removed from
+  # the repository, and prevents receiving security updates automatically.
+  # Base images remain pinned by digest for reproducibility.
+  - DL3018
