@@ -62,6 +62,7 @@ type ValkeyConfig struct {
 	Addr     string `mapstructure:"addr" yaml:"addr"`
 	DB       int    `mapstructure:"db" yaml:"db"`
 	PoolSize int    `mapstructure:"poolSize" yaml:"poolSize"`
+	Username string `mapstructure:"username" yaml:"username"`
 	Password string `mapstructure:"password" yaml:"password"`
 }
 

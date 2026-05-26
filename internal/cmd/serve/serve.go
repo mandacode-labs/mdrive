@@ -397,6 +397,9 @@ func newValkeyClient(cfg *config.ValkeyConfig) (valkey.Client, error) {
 	opts := valkey.ClientOption{
 		InitAddress: []string{cfg.Addr},
 	}
+	if cfg.Username != "" {
+		opts.Username = cfg.Username
+	}
 	if cfg.Password != "" {
 		opts.Password = cfg.Password
 	}
