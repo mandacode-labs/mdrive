@@ -148,7 +148,16 @@ func (s *service) createHomeDirectory(ctx context.Context, systemID string, root
 	if err := s.dentrySvc.Link(ctx, rootDirID, dentry.DirEntry{
 		Name:     "home",
 		InodeID:  homeDir.ID(),
-		FileType: uint8(inode.ModeDirectory >> 8),
+		FileType: uint8(inode.ModeDirectory >> 12),
+	}); err != nil {
+		return nil, err
+	}
+
+	// Add ".." entry to home directory
+	if err := s.dentrySvc.Link(ctx, homeDir.ID(), dentry.DirEntry{
+		Name:     "..",
+		InodeID:  rootDirID,
+		FileType: uint8(inode.ModeDirectory >> 12),
 	}); err != nil {
 		return nil, err
 	}
@@ -171,7 +180,16 @@ func (s *service) createTrashDirectory(ctx context.Context, systemID string, hom
 	if err := s.dentrySvc.Link(ctx, homeDirID, dentry.DirEntry{
 		Name:     ".trash",
 		InodeID:  trashDir.ID(),
-		FileType: uint8(inode.ModeDirectory >> 8),
+		FileType: uint8(inode.ModeDirectory >> 12),
+	}); err != nil {
+		return nil, err
+	}
+
+	// Add ".." entry to trash directory
+	if err := s.dentrySvc.Link(ctx, trashDir.ID(), dentry.DirEntry{
+		Name:     "..",
+		InodeID:  homeDirID,
+		FileType: uint8(inode.ModeDirectory >> 12),
 	}); err != nil {
 		return nil, err
 	}

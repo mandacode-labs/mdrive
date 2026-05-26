@@ -138,6 +138,7 @@ func TestCreateDirectory_Success(t *testing.T) {
 
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeDirectory|0755, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
+	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(nil)
 
 	svc := NewService(inodeSvc, nil, nil, nil)
 
@@ -158,6 +159,7 @@ func TestCreateDirectory_DefaultMode(t *testing.T) {
 
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeDirectory|inode.PermOwnerRWX|inode.PermGroupRX|inode.PermOtherR, 0, 0, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
+	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(nil)
 
 	svc := NewService(inodeSvc, nil, nil, nil)
 
@@ -174,10 +176,18 @@ func TestCreateDirectory_DirContentJSON(t *testing.T) {
 	inodeSvc := inodeMocks.NewInodeServiceMock(t)
 	now := time.Now()
 
-	var capturedCmd *inode.CreateCommand
-	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, cmd *inode.CreateCommand) (*inode.Inode, error) {
-		capturedCmd = cmd
-		return inode.NewInode("new-id", "sys", cmd.Mode, cmd.UID, cmd.GID, 0, 1, 0, now, now, now, cmd.Content, now, now), nil
+	createdInode := inode.NewInode("new-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, 0, now, now, now, nil, now, now)
+	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
+	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, cmd *inode.UpdateCommand) error {
+		assert.Equal(t, "new-id", cmd.ID)
+		assert.NotNil(t, cmd.Content)
+		var dirContent content.DirContent
+		err := json.Unmarshal(*cmd.Content, &dirContent)
+		assert.NoError(t, err)
+		assert.Len(t, dirContent.Entries, 1)
+		assert.Equal(t, ".", dirContent.Entries[0].Name)
+		assert.Equal(t, "new-id", dirContent.Entries[0].InodeID)
+		return nil
 	})
 
 	svc := NewService(inodeSvc, nil, nil, nil)
@@ -188,13 +198,6 @@ func TestCreateDirectory_DirContentJSON(t *testing.T) {
 	})
 
 	assert.NoError(t, err)
-	assert.NotNil(t, capturedCmd)
-	assert.NotNil(t, capturedCmd.Content)
-
-	var dirContent content.DirContent
-	err = json.Unmarshal(capturedCmd.Content, &dirContent)
-	assert.NoError(t, err)
-	assert.Empty(t, dirContent.Entries)
 }
 
 // --- CreateSymlink ---

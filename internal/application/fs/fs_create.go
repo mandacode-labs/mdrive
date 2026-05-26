@@ -49,21 +49,39 @@ func (s *service) CreateDirectory(ctx context.Context, cmd *CreateDirectoryComma
 	if mode == 0 {
 		mode = inode.ModeDirectory | inode.PermOwnerRWX | inode.PermGroupRX | inode.PermOtherR
 	}
+	// Ensure directory bit is always set
+	mode = mode | inode.ModeDirectory
 
-	dirContent := content.DirContent{Entries: []content.DirEntry{}}
-	raw, err := json.Marshal(dirContent)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.inodeSvc.Create(ctx, &inode.CreateCommand{
+	dirInode, err := s.inodeSvc.Create(ctx, &inode.CreateCommand{
 		SystemID: cmd.SystemID,
 		Mode:     mode,
 		UID:      uid,
 		GID:      gid,
 		Flags:    cmd.Flags,
-		Content:  raw,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Add "." entry to the new directory
+	dotEntry := content.DirEntry{
+		Name:     ".",
+		InodeID:  dirInode.ID(),
+		FileType: uint8(inode.ModeDirectory >> 12),
+	}
+	dirContent := content.DirContent{Entries: []content.DirEntry{dotEntry}}
+	raw, err := json.Marshal(dirContent)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.inodeSvc.Update(ctx, &inode.UpdateCommand{
+		ID:      dirInode.ID(),
+		Content: &raw,
+	}); err != nil {
+		return nil, err
+	}
+
+	return dirInode, nil
 }
 
 func (s *service) CreateSymlink(ctx context.Context, cmd *CreateSymlinkCommand) (*inode.Inode, error) {
