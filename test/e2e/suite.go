@@ -308,6 +308,7 @@ func (s *Suite) Start(ctx context.Context) error {
 				Addr:     s.ValkeyAddr,
 				DB:       0,
 				PoolSize: 10,
+				Username: "",
 			},
 		},
 		Storage: config.StorageConfig{
