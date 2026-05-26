@@ -147,15 +147,15 @@ config:
       baseURL: ""
       realm: retrowin
       clientID: retrowin-app
-      redirectURI: https://retrowin-api.starfrag.co/auth/callback
+      redirectURI: https://retrowin-api.mandacode.com/auth/callback
     session:
       ttl: 86400        # 24 hours in seconds
       secure: true
       stateTTL: 300     # 5 minutes
       redisKey: retrowin
       cookieName: session_id
-      frontendURL: https://retrowin.starfrag.co
-      domain: ".starfrag.co"   # Share cookie across all subdomains
+      frontendURL: https://retrowin.mandacode.com
+      domain: ".mandacode.com"   # Share cookie across all subdomains
       sameSite: "lax"          # lax, strict, or none (use "none" with secure:true for cross-origin)
 
   # CORS settings

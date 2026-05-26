@@ -109,7 +109,7 @@ type SessionConfig struct {
 	RedisKey    string `mapstructure:"redisKey" yaml:"redisKey"`       // Redis key prefix
 	CookieName  string `mapstructure:"cookieName" yaml:"cookieName"`   // Session cookie name
 	FrontendURL string `mapstructure:"frontendURL" yaml:"frontendURL"` // Frontend URL for redirect after login
-	Domain      string `mapstructure:"domain" yaml:"domain"`           // Cookie domain (e.g., ".starfrag.co" for cross-subdomain)
+	Domain      string `mapstructure:"domain" yaml:"domain"`           // Cookie domain (e.g., ".mandacode.com" for cross-subdomain)
 	SameSite    string `mapstructure:"sameSite" yaml:"sameSite"`       // SameSite policy: "lax", "strict", "none"
 }
 
