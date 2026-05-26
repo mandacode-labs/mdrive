@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/starfrag-lab/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
 )
 
 // Providers holds the initialized OTel providers and a shutdown function.

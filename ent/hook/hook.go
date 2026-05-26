@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
+	"github.com/mandacode-labs/retrowin-go/ent"
 )
 
 // The InodeFunc type is an adapter to allow the use of ordinary

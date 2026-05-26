@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	entuser "github.com/starfrag-lab/retrowin-go/ent/user"
-	domain "github.com/starfrag-lab/retrowin-go/internal/user"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	entuser "github.com/mandacode-labs/retrowin-go/ent/user"
+	domain "github.com/mandacode-labs/retrowin-go/internal/user"
 )
 
 // EntRepository implements domain.UserRepository using Ent.

@@ -5,10 +5,10 @@ import (
 
 	"github.com/ogen-go/ogen/ogenerrors"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	"github.com/starfrag-lab/retrowin-go/internal/session"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/retrowin-go/internal/session"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // SecurityHandler implements the ogen SecurityHandler interface.

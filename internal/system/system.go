@@ -6,10 +6,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/core/object"
-	coreuser "github.com/starfrag-lab/retrowin-go/internal/core/user"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // Status represents system status.

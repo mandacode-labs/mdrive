@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/starfrag-lab/retrowin-go/ent/predicate"
-	"github.com/starfrag-lab/retrowin-go/ent/systemgroup"
+	"github.com/mandacode-labs/retrowin-go/ent/predicate"
+	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
 )
 
 // SystemGroupDelete is the builder for deleting a SystemGroup entity.

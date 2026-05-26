@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/serve"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 )
 
 func TestSuite_Start(t *testing.T) {

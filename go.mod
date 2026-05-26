@@ -1,4 +1,4 @@
-module github.com/starfrag-lab/retrowin-go
+module github.com/mandacode-labs/retrowin-go
 
 go 1.26.1
 

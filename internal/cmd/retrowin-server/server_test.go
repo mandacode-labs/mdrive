@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/serve"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 )
 
 // TestServerOptions verifies that the fx options are properly constructed.

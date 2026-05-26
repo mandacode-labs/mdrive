@@ -8,8 +8,8 @@ import (
 
 	"github.com/ogen-go/ogen/ogenerrors"
 
-	domainerrors "github.com/starfrag-lab/retrowin-go/internal/errors"
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	domainerrors "github.com/mandacode-labs/retrowin-go/internal/errors"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 )
 
 // NewError creates error response for ogen convenient errors.

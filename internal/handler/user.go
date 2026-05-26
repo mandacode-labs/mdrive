@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/middleware"
-	extuser "github.com/starfrag-lab/retrowin-go/internal/user"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/middleware"
+	extuser "github.com/mandacode-labs/retrowin-go/internal/user"
 )
 
 // GetUser implements GET /user.

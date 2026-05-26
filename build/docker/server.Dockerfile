@@ -56,7 +56,7 @@ ARG VERSION
 LABEL org.opencontainers.image.title="Retrowin Server" \
       org.opencontainers.image.description="Retrowin API Server" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/starfrag-lab/retrowin-go"
+      org.opencontainers.image.source="https://github.com/mandacode-labs/retrowin-go"
 
 # Install runtime dependencies
 RUN apk add --no-cache \

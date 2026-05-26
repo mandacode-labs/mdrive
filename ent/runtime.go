@@ -5,13 +5,13 @@ package ent
 import (
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/ent/inode"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/schema"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/systemgroup"
-	"github.com/starfrag-lab/retrowin-go/ent/user"
-	"github.com/starfrag-lab/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/retrowin-go/ent/inode"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/schema"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
+	"github.com/mandacode-labs/retrowin-go/ent/user"
+	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
 )
 
 // The init function reads all schema descriptors with runtime code

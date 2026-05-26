@@ -4,8 +4,8 @@ import (
 	"context"
 	"path"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/dentry"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // UnlinkPath removes a path (file, symlink, or empty directory).

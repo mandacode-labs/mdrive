@@ -5,7 +5,7 @@ import (
 
 	_ "github.com/lib/pq" // postgres driver
 
-	retrowinserver "github.com/starfrag-lab/retrowin-go/internal/cmd/retrowin-server"
+	retrowinserver "github.com/mandacode-labs/retrowin-go/internal/cmd/retrowin-server"
 )
 
 var version = "dev"

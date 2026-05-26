@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode/content"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // Mode constants following Linux inode conventions.
@@ -251,8 +251,8 @@ func (i *Inode) ReadDir() ([]content.DirEntry, error) {
 	return dirContent.Entries, nil
 }
 
-// IsEmptyDir checks if a directory inode has no entries.
-// Returns true for nil or unparsable content.
+// IsEmptyDir checks if a directory inode has no user-visible entries.
+// Ignores "." and ".." entries. Returns true for nil or unparsable content.
 func (i *Inode) IsEmptyDir() bool {
 	if !i.IsDir() {
 		return false
@@ -264,7 +264,12 @@ func (i *Inode) IsEmptyDir() bool {
 	if err := json.Unmarshal(i.content, &dirContent); err != nil {
 		return true
 	}
-	return len(dirContent.Entries) == 0
+	for _, e := range dirContent.Entries {
+		if e.Name != "." && e.Name != ".." {
+			return false
+		}
+	}
+	return true
 }
 
 // SymlinkTarget returns the target path of a symlink inode.

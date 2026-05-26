@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/url"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	"github.com/starfrag-lab/retrowin-go/internal/auth"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/middleware"
+	"github.com/mandacode-labs/retrowin-go/internal/auth"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/middleware"
 )
 
 // InitiateLogin implements GET /auth/login.

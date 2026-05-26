@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 )
 
 // GetHealth implements GET /health.

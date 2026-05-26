@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // GetRootDirectory returns the root directory for a system.

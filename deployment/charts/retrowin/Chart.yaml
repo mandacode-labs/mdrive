@@ -16,8 +16,8 @@ keywords:
 
 maintainers:
   - name: sauce
-    email: sauce@starfrag-lab.com
+    email: sauce@mandacode-labs.com
 
-home: https://github.com/starfrag-lab/retrowin-go
+home: https://github.com/mandacode-labs/retrowin-go
 sources:
-  - https://github.com/starfrag-lab/retrowin-go
+  - https://github.com/mandacode-labs/retrowin-go

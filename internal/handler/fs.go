@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 )
 
 // GetRootDirectory implements GET /fs/{systemId}/root.

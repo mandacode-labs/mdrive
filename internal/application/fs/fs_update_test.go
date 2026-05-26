@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	inodeMocks "github.com/starfrag-lab/retrowin-go/internal/core/inode/mocks"
-	userMocks "github.com/starfrag-lab/retrowin-go/internal/core/user/mocks"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	inodeMocks "github.com/mandacode-labs/retrowin-go/internal/core/inode/mocks"
+	userMocks "github.com/mandacode-labs/retrowin-go/internal/core/user/mocks"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 func TestUpdateContent_Success(t *testing.T) {

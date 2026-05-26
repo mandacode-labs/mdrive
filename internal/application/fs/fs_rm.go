@@ -4,9 +4,9 @@ import (
 	"context"
 	"path"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/dentry"
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // Rm removes multiple paths, like Unix rm.

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/migrate"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/migrate"
 )
 
 func TestMigration_AutoMode(t *testing.T) {

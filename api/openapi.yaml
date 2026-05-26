@@ -4,7 +4,7 @@ info:
   description: Retrowin File Management System API
   version: 0.2.0
   contact:
-    name: StarFrag Lab
+    name: Mandacode
 
 servers:
   - url: http://localhost:8080

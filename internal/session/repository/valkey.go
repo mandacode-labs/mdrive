@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	domain "github.com/starfrag-lab/retrowin-go/internal/session"
+	domain "github.com/mandacode-labs/retrowin-go/internal/session"
 	"github.com/valkey-io/valkey-go"
 )
 

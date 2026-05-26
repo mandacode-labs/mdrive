@@ -27,9 +27,9 @@ import (
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v3"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/serve"
-	"github.com/starfrag-lab/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
 )
 
 // Shared containers — started once in TestMain, reused by all tests.

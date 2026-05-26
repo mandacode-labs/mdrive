@@ -3,12 +3,12 @@ package sysinit
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/application/fs"
-	"github.com/starfrag-lab/retrowin-go/internal/core/dentry"
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/core/user"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/system"
+	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/system"
 )
 
 type InitService interface {
@@ -148,7 +148,16 @@ func (s *service) createHomeDirectory(ctx context.Context, systemID string, root
 	if err := s.dentrySvc.Link(ctx, rootDirID, dentry.DirEntry{
 		Name:     "home",
 		InodeID:  homeDir.ID(),
-		FileType: uint8(inode.ModeDirectory >> 8),
+		FileType: uint8(inode.ModeDirectory >> 12),
+	}); err != nil {
+		return nil, err
+	}
+
+	// Add ".." entry to home directory
+	if err := s.dentrySvc.Link(ctx, homeDir.ID(), dentry.DirEntry{
+		Name:     "..",
+		InodeID:  rootDirID,
+		FileType: uint8(inode.ModeDirectory >> 12),
 	}); err != nil {
 		return nil, err
 	}
@@ -171,7 +180,16 @@ func (s *service) createTrashDirectory(ctx context.Context, systemID string, hom
 	if err := s.dentrySvc.Link(ctx, homeDirID, dentry.DirEntry{
 		Name:     ".trash",
 		InodeID:  trashDir.ID(),
-		FileType: uint8(inode.ModeDirectory >> 8),
+		FileType: uint8(inode.ModeDirectory >> 12),
+	}); err != nil {
+		return nil, err
+	}
+
+	// Add ".." entry to trash directory
+	if err := s.dentrySvc.Link(ctx, trashDir.ID(), dentry.DirEntry{
+		Name:     "..",
+		InodeID:  homeDirID,
+		FileType: uint8(inode.ModeDirectory >> 12),
 	}); err != nil {
 		return nil, err
 	}

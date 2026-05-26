@@ -3,7 +3,7 @@ package fs
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 )
 
 func (s *service) UpdateContent(ctx context.Context, cmd *UpdateContentCommand) (*inode.Inode, error) {

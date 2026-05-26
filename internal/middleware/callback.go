@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/starfrag-lab/retrowin-go/internal/config"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 type CallbackConfig struct {

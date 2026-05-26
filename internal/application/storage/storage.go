@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/internal/application/fs"
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode/content"
-	"github.com/starfrag-lab/retrowin-go/internal/core/object"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
+	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // StorageService defines the interface for file storage operations.

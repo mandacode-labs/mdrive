@@ -3,9 +3,9 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/session"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/session"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 const (

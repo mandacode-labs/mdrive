@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // GetUserID extracts user ID from context.

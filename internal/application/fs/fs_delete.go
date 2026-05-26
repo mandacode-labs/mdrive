@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // Delete removes an inode by ID.

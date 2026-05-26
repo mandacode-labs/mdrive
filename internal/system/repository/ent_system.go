@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	entsystem "github.com/starfrag-lab/retrowin-go/ent/system"
-	domain "github.com/starfrag-lab/retrowin-go/internal/system"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	entsystem "github.com/mandacode-labs/retrowin-go/ent/system"
+	domain "github.com/mandacode-labs/retrowin-go/internal/system"
 )
 
 // EntRepository implements domain.SystemRepository using Ent.

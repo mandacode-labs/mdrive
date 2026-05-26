@@ -245,6 +245,61 @@ func TestFs_Mkdir(t *testing.T) {
 		assert.Equal(t, http.StatusConflict, resp2.StatusCode,
 			"Expected 409 Conflict for duplicate, got %d", resp2.StatusCode)
 	})
+
+	t.Run("rejects dot and dotdot names", func(t *testing.T) {
+		for _, name := range []string{".", ".."} {
+			req := map[string]any{
+				"path": "/home/" + name,
+			}
+			resp, err := suite.Post("/syscall/"+systemID+"/mkdir", req)
+			require.NoError(t, err)
+			_ = resp.Body.Close()
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode,
+				"Expected 400 for name %q, got %d", name, resp.StatusCode)
+		}
+	})
+
+	t.Run("creates directory without directory bit in mode", func(t *testing.T) {
+		// Sending mode without S_IFDIR should still create a directory
+		req := map[string]any{
+			"path": "/home/nodirbit",
+			"mode": 0755, // no S_IFDIR bit
+		}
+
+		resp, err := suite.Post("/syscall/"+systemID+"/mkdir", req)
+		require.NoError(t, err, "Failed to create directory")
+		defer func() { _ = resp.Body.Close() }()
+
+		require.Equal(t, http.StatusCreated, resp.StatusCode,
+			"Expected 201 Created, got %d: %s", resp.StatusCode, suite.ReadBody(resp))
+
+		// Verify it is actually a directory by listing it
+		lsResp, err := suite.Get("/syscall/" + systemID + "/ls?path=" + url.QueryEscape("/home/nodirbit"))
+		require.NoError(t, err)
+		defer func() { _ = lsResp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, lsResp.StatusCode,
+			"Expected 200 OK for ls, got %d", lsResp.StatusCode)
+	})
+
+	t.Run("creates directory with plus in name", func(t *testing.T) {
+		req := map[string]any{
+			"path": "/home/New+Folder",
+		}
+
+		resp, err := suite.Post("/syscall/"+systemID+"/mkdir", req)
+		require.NoError(t, err, "Failed to create directory")
+		defer func() { _ = resp.Body.Close() }()
+
+		require.Equal(t, http.StatusCreated, resp.StatusCode,
+			"Expected 201 Created, got %d: %s", resp.StatusCode, suite.ReadBody(resp))
+
+		// Verify directory exists and is listable
+		lsResp, err := suite.Get("/syscall/" + systemID + "/ls?path=" + url.QueryEscape("/home/New+Folder"))
+		require.NoError(t, err)
+		defer func() { _ = lsResp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, lsResp.StatusCode,
+			"Expected 200 OK for ls, got %d", lsResp.StatusCode)
+	})
 }
 
 // TestFs_Delete tests inode deletion
