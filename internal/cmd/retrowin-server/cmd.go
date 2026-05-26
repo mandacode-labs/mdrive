@@ -4,9 +4,9 @@ package retrowinserver
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/gc"
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/migrate"
-	"github.com/starfrag-lab/retrowin-go/internal/cmd/serve"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/gc"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/migrate"
+	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 )
 
 // NewCmd creates a new cobra command for retrowin-server

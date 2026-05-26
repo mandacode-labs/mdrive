@@ -4,7 +4,7 @@ package migrate
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/starfrag-lab/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
 )
 
 // NewCmd creates a new cobra command for the migrate command

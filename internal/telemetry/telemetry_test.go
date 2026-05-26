@@ -13,7 +13,7 @@ import (
 	collectormetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 
-	"github.com/starfrag-lab/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
 )
 
 // mockTraceCollector implements TraceServiceServer.

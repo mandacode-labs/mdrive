@@ -7,7 +7,7 @@ package sessionMocks
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/session"
+	"github.com/mandacode-labs/retrowin-go/internal/session"
 	mock "github.com/stretchr/testify/mock"
 )
 

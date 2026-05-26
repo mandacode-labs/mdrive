@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/schema"
 
 	"ariga.io/atlas/atlasexec"
-	"github.com/starfrag-lab/retrowin-go/ent"
-	"github.com/starfrag-lab/retrowin-go/ent/migrate/migrations"
-	"github.com/starfrag-lab/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	"github.com/mandacode-labs/retrowin-go/ent/migrate/migrations"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
 )
 
 // MigrateOptions holds options for migration apply.

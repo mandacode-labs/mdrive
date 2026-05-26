@@ -10,8 +10,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
 )
 
 // ObjectCreate is the builder for creating a Object entity.

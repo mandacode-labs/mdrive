@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	entsystemgroup "github.com/starfrag-lab/retrowin-go/ent/systemgroup"
-	entusersystem "github.com/starfrag-lab/retrowin-go/ent/usersystem"
-	"github.com/starfrag-lab/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	entsystemgroup "github.com/mandacode-labs/retrowin-go/ent/systemgroup"
+	entusersystem "github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/retrowin-go/internal/core/user"
 )
 
 // EntSystemUserRepository implements user.SystemUserRepository using Ent.

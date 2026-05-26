@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	gcapp "github.com/starfrag-lab/retrowin-go/internal/application/gc"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	gcapp "github.com/mandacode-labs/retrowin-go/internal/application/gc"
 
-	"github.com/starfrag-lab/retrowin-go/internal/config"
-	"github.com/starfrag-lab/retrowin-go/internal/core/object"
-	objectrepo "github.com/starfrag-lab/retrowin-go/internal/core/object/repository"
-	s3storage "github.com/starfrag-lab/retrowin-go/internal/core/object/s3"
+	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
+	s3storage "github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
 )
 
 // runGC bootstraps dependencies and runs garbage collection.

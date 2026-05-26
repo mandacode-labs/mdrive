@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/internal/session"
-	sessionMocks "github.com/starfrag-lab/retrowin-go/internal/session/mocks"
+	"github.com/mandacode-labs/retrowin-go/internal/session"
+	sessionMocks "github.com/mandacode-labs/retrowin-go/internal/session/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

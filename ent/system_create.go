@@ -10,10 +10,10 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/starfrag-lab/retrowin-go/ent/inode"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/user"
+	"github.com/mandacode-labs/retrowin-go/ent/inode"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/user"
 )
 
 // SystemCreate is the builder for creating a System entity.

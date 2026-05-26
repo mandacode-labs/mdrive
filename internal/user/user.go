@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // Provider types

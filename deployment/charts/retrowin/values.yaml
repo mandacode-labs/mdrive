@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/starfrag-lab/retrowin-server
+  repository: ghcr.io/mandacode-labs/retrowin-server
   pullPolicy: IfNotPresent
   tag: ""
 

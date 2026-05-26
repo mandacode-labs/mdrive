@@ -8,9 +8,9 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/user"
-	"github.com/starfrag-lab/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/user"
+	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
 )
 
 // UserSystem is the model entity for the UserSystem schema.

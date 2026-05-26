@@ -9,8 +9,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
 )
 
 // Object is the model entity for the Object schema.

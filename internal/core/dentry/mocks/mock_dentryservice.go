@@ -7,7 +7,7 @@ package dentryMocks
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -3,8 +3,8 @@ package fs
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // ChmodPath changes permissions of a path.

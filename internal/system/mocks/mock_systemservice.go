@@ -7,7 +7,7 @@ package systemMocks
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/system"
+	"github.com/mandacode-labs/retrowin-go/internal/system"
 	mock "github.com/stretchr/testify/mock"
 )
 

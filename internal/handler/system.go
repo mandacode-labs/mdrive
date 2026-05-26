@@ -3,13 +3,13 @@ package handler
 import (
 	"context"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	coreuser "github.com/starfrag-lab/retrowin-go/internal/core/user"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/service/sysinit"
-	"github.com/starfrag-lab/retrowin-go/internal/system"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
+	"github.com/mandacode-labs/retrowin-go/internal/system"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // CreateSystem implements POST /systems.

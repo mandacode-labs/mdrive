@@ -3,12 +3,12 @@ package sysinit
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/application/fs"
-	"github.com/starfrag-lab/retrowin-go/internal/core/dentry"
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
-	"github.com/starfrag-lab/retrowin-go/internal/core/user"
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
-	"github.com/starfrag-lab/retrowin-go/internal/system"
+	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/system"
 )
 
 type InitService interface {

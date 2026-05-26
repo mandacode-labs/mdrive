@@ -3,7 +3,7 @@ package dentry
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode/content"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
 )
 
 // DirEntry is a type alias for content.DirEntry.

@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
 // SessionID is the type for session identifiers.

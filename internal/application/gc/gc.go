@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/retrowin-go/internal/core/object"
 )
 
 const (

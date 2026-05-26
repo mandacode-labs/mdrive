@@ -8,8 +8,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/systemgroup"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
 )
 
 // SystemGroup is the model entity for the SystemGroup schema.

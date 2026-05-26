@@ -3,9 +3,9 @@ package handler
 import (
 	"context"
 
-	api "github.com/starfrag-lab/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	coreuser "github.com/starfrag-lab/retrowin-go/internal/core/user"
+	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
 )
 
 // CreateSystemUser implements POST /systems/{systemId}/users.

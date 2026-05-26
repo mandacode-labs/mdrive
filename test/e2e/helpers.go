@@ -14,11 +14,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/starfrag-lab/retrowin-go/ent"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	domainsession "github.com/starfrag-lab/retrowin-go/internal/session"
-	"github.com/starfrag-lab/retrowin-go/internal/session/repository"
+	"github.com/mandacode-labs/retrowin-go/ent"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	domainsession "github.com/mandacode-labs/retrowin-go/internal/session"
+	"github.com/mandacode-labs/retrowin-go/internal/session/repository"
 )
 
 // HTTP Methods

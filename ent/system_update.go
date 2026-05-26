@@ -11,11 +11,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/starfrag-lab/retrowin-go/ent/inode"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/predicate"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/user"
+	"github.com/mandacode-labs/retrowin-go/ent/inode"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/predicate"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/user"
 )
 
 // SystemUpdate is the builder for updating System entities.

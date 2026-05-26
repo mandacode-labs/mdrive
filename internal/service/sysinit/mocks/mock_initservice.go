@@ -7,7 +7,7 @@ package sysinitMocks
 import (
 	"context"
 
-	"github.com/starfrag-lab/retrowin-go/internal/service/sysinit"
+	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -1,7 +1,7 @@
 package dentry
 
 import (
-	"github.com/starfrag-lab/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 )
 
 type service struct {

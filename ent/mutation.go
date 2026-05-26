@@ -11,14 +11,14 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/starfrag-lab/retrowin-go/ent/inode"
-	"github.com/starfrag-lab/retrowin-go/ent/object"
-	"github.com/starfrag-lab/retrowin-go/ent/predicate"
-	"github.com/starfrag-lab/retrowin-go/ent/system"
-	"github.com/starfrag-lab/retrowin-go/ent/systemgroup"
-	"github.com/starfrag-lab/retrowin-go/ent/user"
-	"github.com/starfrag-lab/retrowin-go/ent/usergroup"
-	"github.com/starfrag-lab/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/retrowin-go/ent/inode"
+	"github.com/mandacode-labs/retrowin-go/ent/object"
+	"github.com/mandacode-labs/retrowin-go/ent/predicate"
+	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
+	"github.com/mandacode-labs/retrowin-go/ent/user"
+	"github.com/mandacode-labs/retrowin-go/ent/usergroup"
+	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
 )
 
 const (

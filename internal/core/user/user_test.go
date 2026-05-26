@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/starfrag-lab/retrowin-go/internal/core/user"
-	userMocks "github.com/starfrag-lab/retrowin-go/internal/core/user/mocks"
-	"github.com/starfrag-lab/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	userMocks "github.com/mandacode-labs/retrowin-go/internal/core/user/mocks"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 func TestSystemUser_Struct(t *testing.T) {
