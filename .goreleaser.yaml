@@ -21,10 +21,11 @@ builds:
 
 archives:
   - id: retrowin-server
-    builds:
+    ids:
       - retrowin-server
     name_template: "retrowin-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format: tar.gz
+    formats:
+      - tar.gz
     files:
       - none*
 
