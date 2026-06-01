@@ -24,7 +24,7 @@ func TestGetRootDirectory_Success(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.GetRootDirectory(context.Background(), "sys")
 
@@ -37,7 +37,7 @@ func TestGetRootDirectory_NotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.GetRootDirectory(context.Background(), "sys")
 
@@ -50,7 +50,7 @@ func TestGetRootDirectory_FindFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return(nil, errors.Internal("find failed"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.GetRootDirectory(context.Background(), "sys")
 
@@ -64,7 +64,7 @@ func TestGetRootDirectory_NotDirectory(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeRegular|0644, 0, 0, 0, 1, inode.FlagRoot, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.GetRootDirectory(context.Background(), "sys")
 
@@ -81,7 +81,7 @@ func TestResolvePath_Root(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.ResolvePath(context.Background(), "sys", "/")
 
@@ -103,7 +103,7 @@ func TestResolvePath_SingleLevel(t *testing.T) {
 	fileInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "file-id").Return(fileInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.ResolvePath(context.Background(), "sys", "/file")
 
@@ -139,7 +139,7 @@ func TestResolvePath_MultiLevel(t *testing.T) {
 	cInode := inode.NewInode("c-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "c-id").Return(cInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.ResolvePath(context.Background(), "sys", "/a/b/c")
 
@@ -148,7 +148,7 @@ func TestResolvePath_MultiLevel(t *testing.T) {
 }
 
 func TestResolvePath_RelativePath(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.ResolvePath(context.Background(), "sys", "relative/path")
 
@@ -157,7 +157,7 @@ func TestResolvePath_RelativePath(t *testing.T) {
 }
 
 func TestResolvePath_EmptyPath(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.ResolvePath(context.Background(), "sys", "")
 
@@ -174,7 +174,7 @@ func TestResolvePath_ComponentNotFound(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.ResolvePath(context.Background(), "sys", "/nonexistent")
 
@@ -196,7 +196,7 @@ func TestResolvePath_NotADirectory(t *testing.T) {
 	fileInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "file-id").Return(fileInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.ResolvePath(context.Background(), "sys", "/file/subpath")
 
@@ -220,7 +220,7 @@ func TestResolvePath_Symlink(t *testing.T) {
 	linkInode := inode.NewInode("link-id", "sys", inode.ModeSymlink|0777, 0, 0, 0, 1, 0, now, now, now, symRaw, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "link-id").Return(linkInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.ResolvePath(context.Background(), "sys", "/link")
 
@@ -242,7 +242,7 @@ func TestResolvePath_SymlinkParseError(t *testing.T) {
 	linkInode := inode.NewInode("link-id", "sys", inode.ModeSymlink|0777, 0, 0, 0, 1, 0, now, now, now, []byte("invalid"), now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "link-id").Return(linkInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.ResolvePath(context.Background(), "sys", "/link")
 

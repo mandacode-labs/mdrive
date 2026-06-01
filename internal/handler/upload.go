@@ -7,8 +7,8 @@ import (
 
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
+	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
@@ -70,39 +70,20 @@ func (h *Handler) CompleteUpload(ctx context.Context, req *api.CompleteUploadReq
 		mode = inode.ModeObject | int(req.Mode.Value)
 	}
 
-	result, err := h.storageSvc.CompleteUpload(ctx, &storage.CompleteUploadCommand{
+	// Atomic upload: object activation, inode creation, and dentry update in a single transaction
+	inodeResult, err := h.fsSvc.AtomicUpload(ctx, &fs.AtomicUploadCommand{
 		ObjectID: req.ObjectId,
 		SystemID: params.SystemId,
+		DirPath:  dirPath,
+		FileName: fileName,
 		Mode:     mode,
 	})
 	if err != nil {
 		return nil, h.domainError(err)
 	}
 
-	// Resolve parent directory
-	parentDir, err := h.fsSvc.ResolvePath(ctx, params.SystemId, dirPath)
-	if err != nil {
-		return nil, h.domainError(err)
-	}
-
-	// Atomically replace or add the directory entry (reduces race window)
-	entry := dentry.DirEntry{
-		Name:     fileName,
-		InodeID:  result.Inode.ID(),
-		FileType: uint8(inode.ModeObject >> 12),
-	}
-	prevInodeID, err := h.dentrySvc.RenameAt(ctx, parentDir.ID(), entry)
-	if err != nil {
-		return nil, h.domainError(err)
-	}
-
-	// Clean up previous inode if replaced (best-effort)
-	if prevInodeID != "" {
-		_ = h.fsSvc.Delete(ctx, prevInodeID)
-	}
-
 	return &api.InodeResponse{
-		Inode: *h.toInode(result.Inode),
+		Inode: *h.toInode(inodeResult),
 	}, nil
 }
 

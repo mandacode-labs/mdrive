@@ -966,6 +966,15 @@ func (s *MvUnauthorized) SetFake() {
 }
 
 // SetFake set fake values.
+func (s *OptBool) SetFake() {
+	var elem bool
+	{
+		elem = true
+	}
+	s.SetTo(elem)
+}
+
+// SetFake set fake values.
 func (s *OptInt32) SetFake() {
 	var elem int32
 	{
@@ -1110,6 +1119,11 @@ func (s *RmRequest) SetFake() {
 				}
 				s.Paths = append(s.Paths, elem)
 			}
+		}
+	}
+	{
+		{
+			s.Recursive.SetFake()
 		}
 	}
 }

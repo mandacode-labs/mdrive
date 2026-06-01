@@ -106,11 +106,14 @@ func (s *S3Storage) GetPresignedDownloadURL(ctx context.Context, bucket string, 
 }
 
 // GetPresignedUploadURL generates a presigned URL for direct client upload.
+// ContentLength is enforced to prevent size mismatches between declared and actual upload.
 func (s *S3Storage) GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration) (string, error) {
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.resolveBucket(bucket)),
 		Key:    aws.String(key),
-		// Note: ContentLength is not included to allow flexible upload sizes
+	}
+	if size > 0 {
+		input.ContentLength = aws.Int64(size)
 	}
 	if contentType != "" {
 		input.ContentType = aws.String(contentType)

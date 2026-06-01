@@ -54,7 +54,7 @@ func TestUnlinkPath_Success(t *testing.T) {
 	// Mock Delete
 	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	err := svc.UnlinkPath(context.Background(), "sys", "/file")
 	assert.NoError(t, err)
@@ -76,7 +76,7 @@ func TestUnlinkPath_NotFound(t *testing.T) {
 	// Mock ReadDir
 	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	err := svc.UnlinkPath(context.Background(), "sys", "/nonexistent")
 	assert.Error(t, err)

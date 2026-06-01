@@ -18,7 +18,7 @@ import (
 )
 
 func TestMkdir_RootPath(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Mkdir(context.Background(), "sys", "/", 0755)
 	assert.Error(t, err)
@@ -26,7 +26,7 @@ func TestMkdir_RootPath(t *testing.T) {
 }
 
 func TestMkdir_DotNameRejected(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Mkdir(context.Background(), "sys", "/home/.", 0755)
 	assert.Error(t, err)
@@ -34,7 +34,7 @@ func TestMkdir_DotNameRejected(t *testing.T) {
 }
 
 func TestMkdir_DotDotNameRejected(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Mkdir(context.Background(), "sys", "/home/..", 0755)
 	assert.Error(t, err)
@@ -63,7 +63,7 @@ func TestMkdir_LinkFailureRollback(t *testing.T) {
 	// Rollback: delete the orphaned inode
 	inodeSvc.EXPECT().Delete(mock.Anything, "new-dir-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	_, err := svc.Mkdir(context.Background(), "sys", "/testdir", 0755)
 	assert.Error(t, err)
@@ -98,7 +98,7 @@ func TestMkdir_DotDotLinkFailureRollback(t *testing.T) {
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "testdir").Return(nil)
 	inodeSvc.EXPECT().Delete(mock.Anything, "new-dir-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	_, err := svc.Mkdir(context.Background(), "sys", "/testdir", 0755)
 	assert.Error(t, err)
@@ -130,7 +130,7 @@ func TestMkdir_Success(t *testing.T) {
 		return e.Name == ".." && e.InodeID == "root-id"
 	})).Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mkdir(context.Background(), "sys", "/testdir", 0755)
 	assert.NoError(t, err)

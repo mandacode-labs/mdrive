@@ -5107,6 +5107,41 @@ func (s *MvUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes bool as json.
+func (o OptBool) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Bool(bool(o.Value))
+}
+
+// Decode decodes bool from json.
+func (o *OptBool) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptBool to nil")
+	}
+	o.Set = true
+	v, err := d.Bool()
+	if err != nil {
+		return err
+	}
+	o.Value = bool(v)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptBool) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptBool) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes int32 as json.
 func (o OptInt32) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -5773,10 +5808,17 @@ func (s *RmRequest) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		if s.Recursive.Set {
+			e.FieldStart("recursive")
+			s.Recursive.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfRmRequest = [1]string{
+var jsonFieldsNameOfRmRequest = [2]string{
 	0: "paths",
+	1: "recursive",
 }
 
 // Decode decodes RmRequest from json.
@@ -5785,6 +5827,7 @@ func (s *RmRequest) Decode(d *jx.Decoder) error {
 		return errors.New("invalid: unable to decode RmRequest to nil")
 	}
 	var requiredBitSet [1]uint8
+	s.setDefaults()
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -5807,6 +5850,16 @@ func (s *RmRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"paths\"")
+			}
+		case "recursive":
+			if err := func() error {
+				s.Recursive.Reset()
+				if err := s.Recursive.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"recursive\"")
 			}
 		default:
 			return d.Skip()

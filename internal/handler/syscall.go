@@ -142,9 +142,15 @@ func (h *Handler) Rm(ctx context.Context, req *api.RmRequest, params api.RmParam
 		return nil, h.domainError(err)
 	}
 
+	recursive := false
+	if req.Recursive.Set {
+		recursive = req.Recursive.Value
+	}
+
 	result, err := h.fsSvc.Rm(ctx, &fs.RmCommand{
-		SystemID: params.SystemId,
-		Paths:    req.Paths,
+		SystemID:  params.SystemId,
+		Paths:     req.Paths,
+		Recursive: recursive,
 	})
 	if err != nil {
 		return nil, h.domainError(err)

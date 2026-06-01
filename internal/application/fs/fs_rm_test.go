@@ -19,7 +19,7 @@ import (
 )
 
 func TestRm_EmptyPaths(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -54,7 +54,7 @@ func TestRm_SuccessSinglePath(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -102,7 +102,7 @@ func TestRm_SuccessMultiplePaths(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "file2-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -138,7 +138,7 @@ func TestRm_MixedSuccessFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "file1-id").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -174,7 +174,7 @@ func TestRm_NonEmptyDirectory(t *testing.T) {
 
 	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "dir", InodeID: "dir-id", FileType: uint8(inode.ModeDirectory >> 12)}}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -205,7 +205,7 @@ func TestRm_UnlinkFailure(t *testing.T) {
 
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file").Return(errors.Internal("unlink failed"))
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -242,7 +242,7 @@ func TestRm_DeleteFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(errors.Internal("delete failed"))
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -269,9 +269,9 @@ func TestRmOne_NotFound(t *testing.T) {
 
 	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc).(*service)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil).(*service)
 
-	err := svc.rmOne(context.Background(), "sys", "/nonexistent")
+	err := svc.rmOne(context.Background(), "sys", "/nonexistent", false)
 
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))

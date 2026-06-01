@@ -11,6 +11,7 @@ import (
 
 // Rm removes multiple paths, like Unix rm.
 // For each path: resolve → lookup entry → unlinkat → delete inode.
+// If Recursive is true, directories and their contents are deleted recursively.
 func (s *service) Rm(ctx context.Context, cmd *RmCommand) (*RmResult, error) {
 	if len(cmd.Paths) == 0 {
 		return nil, errors.BadRequest("no paths provided")
@@ -19,7 +20,7 @@ func (s *service) Rm(ctx context.Context, cmd *RmCommand) (*RmResult, error) {
 	result := &RmResult{}
 
 	for _, p := range cmd.Paths {
-		if err := s.rmOne(ctx, cmd.SystemID, p); err != nil {
+		if err := s.rmOne(ctx, cmd.SystemID, p, cmd.Recursive); err != nil {
 			result.Errors = append(result.Errors, RmError{Path: p, Error: err})
 			continue
 		}
@@ -29,7 +30,7 @@ func (s *service) Rm(ctx context.Context, cmd *RmCommand) (*RmResult, error) {
 	return result, nil
 }
 
-func (s *service) rmOne(ctx context.Context, systemID string, filePath string) error {
+func (s *service) rmOne(ctx context.Context, systemID string, filePath string, recursive bool) error {
 	dirPath := path.Dir(filePath)
 	entryName := path.Base(filePath)
 
@@ -54,7 +55,12 @@ func (s *service) rmOne(ctx context.Context, systemID string, filePath string) e
 		return errors.NotFound("path not found: " + filePath)
 	}
 
+	// Handle recursive directory deletion
 	if targetEntry.FileType == uint8(inode.ModeDirectory>>12) {
+		if recursive {
+			return s.DeleteRecursive(ctx, systemID, filePath)
+		}
+
 		targetInode, err := s.inodeSvc.GetByID(ctx, targetEntry.InodeID)
 		if err != nil {
 			return err

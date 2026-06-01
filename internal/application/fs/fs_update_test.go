@@ -31,7 +31,7 @@ func TestUpdateContent_Success(t *testing.T) {
 		return nil
 	})
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	result, err := svc.UpdateContent(context.Background(), &UpdateContentCommand{
 		ID:      "id-1",
@@ -51,7 +51,7 @@ func TestUpdateContent_NotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().GetByID(mock.Anything, "id-1").Return(nil, errors.NotFound("inode not found"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.UpdateContent(context.Background(), &UpdateContentCommand{
 		ID:      "id-1",
@@ -72,7 +72,7 @@ func TestUpdateContent_PermissionDenied(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(2000, []int{2000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	_, err := svc.UpdateContent(context.Background(), &UpdateContentCommand{
 		ID:      "id-1",
@@ -95,7 +95,7 @@ func TestUpdateContent_UpdateFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(errors.Internal("update failed"))
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	_, err := svc.UpdateContent(context.Background(), &UpdateContentCommand{
 		ID:      "id-1",
@@ -123,7 +123,7 @@ func TestUpdateMode_Success(t *testing.T) {
 		return nil
 	})
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.UpdateMode(context.Background(), &UpdateModeCommand{
 		ID:   "id-1",
@@ -142,7 +142,7 @@ func TestUpdateMode_NotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().GetByID(mock.Anything, "id-1").Return(nil, errors.NotFound("inode not found"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	err := svc.UpdateMode(context.Background(), &UpdateModeCommand{
 		ID:   "id-1",
@@ -163,7 +163,7 @@ func TestUpdateMode_PermissionDenied(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(2000, []int{2000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.UpdateMode(context.Background(), &UpdateModeCommand{
 		ID:   "id-1",
@@ -186,7 +186,7 @@ func TestUpdateMode_UpdateFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(errors.Internal("update failed"))
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.UpdateMode(context.Background(), &UpdateModeCommand{
 		ID:   "id-1",

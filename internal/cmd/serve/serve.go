@@ -3,6 +3,7 @@ package serve
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -76,14 +77,14 @@ func ProvideLogger() *zap.Logger {
 	return logger
 }
 
-// NewEntClient creates a new Ent client.
-func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent.Client, error) {
+// NewEntClient creates a new Ent client and returns the underlying *sql.DB for raw queries.
+func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent.Client, *sql.DB, error) {
 	// Open database connection with OTel instrumentation
 	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
 		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// Configure connection pool
@@ -125,7 +126,7 @@ func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent
 		},
 	})
 
-	return client, nil
+	return client, db, nil
 }
 
 // ProvideValkeyClient provides the Valkey client.
@@ -367,6 +368,7 @@ func FxOptions(cfgFile string, port int, openAPIPath string) []fx.Option {
 			sysinit.NewService,       // system initialization
 			// Application services
 			dentry.NewService,
+			dentry.NewLocker,
 			corefs.NewService,
 			storage.NewService,
 			// Storage

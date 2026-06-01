@@ -1171,6 +1171,52 @@ type MvUnauthorized Error
 
 func (*MvUnauthorized) mvRes() {}
 
+// NewOptBool returns new OptBool with value set to v.
+func NewOptBool(v bool) OptBool {
+	return OptBool{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBool is optional bool.
+type OptBool struct {
+	Value bool
+	Set   bool
+}
+
+// IsSet returns true if OptBool was set.
+func (o OptBool) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBool) Reset() {
+	var v bool
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBool) SetTo(v bool) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBool) Get() (v bool, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBool) Or(d bool) bool {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt32 returns new OptInt32 with value set to v.
 func NewOptInt32(v int32) OptInt32 {
 	return OptInt32{
@@ -1488,6 +1534,9 @@ func (*RmForbidden) rmRes() {}
 type RmRequest struct {
 	// List of paths to remove.
 	Paths []string `json:"paths"`
+	// If true, recursively delete directories and their contents.
+	// If false (default), only empty directories can be removed.
+	Recursive OptBool `json:"recursive"`
 }
 
 // GetPaths returns the value of Paths.
@@ -1495,9 +1544,19 @@ func (s *RmRequest) GetPaths() []string {
 	return s.Paths
 }
 
+// GetRecursive returns the value of Recursive.
+func (s *RmRequest) GetRecursive() OptBool {
+	return s.Recursive
+}
+
 // SetPaths sets the value of Paths.
 func (s *RmRequest) SetPaths(val []string) {
 	s.Paths = val
+}
+
+// SetRecursive sets the value of Recursive.
+func (s *RmRequest) SetRecursive(val OptBool) {
+	s.Recursive = val
 }
 
 // Ref: #/components/schemas/RmResult

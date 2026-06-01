@@ -19,7 +19,7 @@ import (
 )
 
 func TestRename_EmptyNewName(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -32,7 +32,7 @@ func TestRename_EmptyNewName(t *testing.T) {
 }
 
 func TestRename_NewNameWithPathSeparator(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -70,7 +70,7 @@ func TestRename_Success(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
 
 	result, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -91,7 +91,7 @@ func TestRename_SourceNotFound(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -124,7 +124,7 @@ func TestRename_TargetExists(t *testing.T) {
 		{Name: "newfile", InodeID: "newfile-id", FileType: uint8(inode.ModeRegular >> 12)},
 	}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -155,7 +155,7 @@ func TestRename_LinkFailure(t *testing.T) {
 
 	dentrySvc.EXPECT().Link(mock.Anything, "root-id", mock.Anything).Return(errors.Internal("link failed"))
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
@@ -187,7 +187,7 @@ func TestRename_UnlinkFailure(t *testing.T) {
 
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file").Return(errors.Internal("unlink failed"))
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	_, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",
