@@ -18,15 +18,15 @@ permissions:
   contents: read
 
 jobs:
+  # Lightweight checks — GitHub-hosted runners
   fmt-check:
     name: Format Check
-    runs-on: dawn-cluster
-    container:
-      image: golang:1.26.3
-    env:
-      GOFLAGS: "-buildvcs=false"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-go@v6.4.0
+        with:
+          go-version: "1.26.3"
       - name: Check formatting
         run: |
           if [ -n "$(gofmt -l .)" ]; then
@@ -37,13 +37,12 @@ jobs:
 
   vet:
     name: Go Vet
-    runs-on: dawn-cluster
-    container:
-      image: golang:1.26.3
-    env:
-      GOFLAGS: "-buildvcs=false"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-go@v6.4.0
+        with:
+          go-version: "1.26.3"
       - name: Download dependencies
         run: go mod download
       - name: Run go vet
@@ -51,11 +50,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: dawn-cluster
-    container:
-      image: golang:1.26.3
-    env:
-      GOFLAGS: "-buildvcs=false"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: actions/setup-go@v6.4.0
@@ -69,11 +64,12 @@ jobs:
 
   openapi-validate:
     name: OpenAPI Validate
-    runs-on: dawn-cluster
-    container:
-      image: node:24
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "24"
       - name: Bundle OpenAPI spec
         run: npx @apidevtools/swagger-cli bundle api/openapi.yaml --outfile api/openapi.bundled.json --type json
       - name: Validate OpenAPI spec
@@ -81,21 +77,43 @@ jobs:
 
   goreleaser-check:
     name: GoReleaser Check
-    runs-on: dawn-cluster
-    container:
-      image: golang:1.26.3
-    env:
-      GOFLAGS: "-buildvcs=false"
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
+      - uses: actions/setup-go@v6.4.0
+        with:
+          go-version: "1.26.3"
       - name: GoReleaser check
         uses: goreleaser/goreleaser-action@v7.2.2
         with:
           version: "~> v2"
           args: check
 
+  hadolint:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: build/docker/server.Dockerfile
+
+  helm-lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Lint Helm chart
+        run: helm lint deployment/charts/retrowin
+      - name: Helm Template
+        run: helm template retrowin ./deployment/charts/retrowin
+
+  # Heavy tests — ARC (self-hosted) runners
   unit-test:
     name: Unit Tests
     needs: [fmt-check, vet, lint, openapi-validate, goreleaser-check]
@@ -106,9 +124,6 @@ jobs:
       GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/setup-go@v6.4.0
-        with:
-          go-version: "1.26.3"
       - name: Download dependencies
         run: go mod download
       - name: Run unit tests
@@ -130,9 +145,6 @@ jobs:
       GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/setup-go@v6.4.0
-        with:
-          go-version: "1.26.3"
       - name: Download dependencies
         run: go mod download
       - name: Run integration tests
@@ -154,9 +166,6 @@ jobs:
       GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/setup-go@v6.4.0
-        with:
-          go-version: "1.26.3"
       - name: Install atlas
         run: curl -sSf https://atlasgo.sh | sh
       - name: Download dependencies
@@ -188,25 +197,3 @@ jobs:
           tags: retrowin-server:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  helm-lint:
-    name: Helm Lint
-    runs-on: dawn-cluster
-    container:
-      image: alpine/helm:3.17.0
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - name: Lint Helm chart
-        run: helm lint deployment/charts/retrowin
-      - name: Helm Template
-        run: helm template retrowin ./deployment/charts/retrowin
-
-  hadolint:
-    name: Dockerfile Lint
-    runs-on: dawn-cluster
-    container:
-      image: hadolint/hadolint:v2.12.0-alpine
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - name: Hadolint
-        run: hadolint build/docker/server.Dockerfile
