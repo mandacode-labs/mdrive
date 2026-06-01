@@ -338,12 +338,14 @@ func (s *Suite) BuildURLWithQuery(path string, query url.Values) string {
 // MinIO Helpers
 
 // UploadToPresignedURL uploads data to a presigned URL (for testing MinIO uploads).
+// Must set Content-Length to match the size signed in the presigned URL.
 func (s *Suite) UploadToPresignedURL(t *testing.T, presignedURL string, data []byte) {
 	t.Logf("Uploading to presigned URL: %s", presignedURL)
 
 	req, err := http.NewRequest("PUT", presignedURL, strings.NewReader(string(data)))
 	require.NoError(t, err, "Failed to create upload request")
 	req.Header.Set("Content-Type", "text/plain")
+	req.ContentLength = int64(len(data))
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
