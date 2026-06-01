@@ -1,0 +1,32 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[FEAT] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the change
+      description: What do you want to change and why?
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why is this change needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tests
+    attributes:
+      label: Testing
+      description: Which tests will you run?
+      options:
+        - label: Unit tests
+        - label: E2E tests
+        - label: Manual testing
+    validations:
+      required: true

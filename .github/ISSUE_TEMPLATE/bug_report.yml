@@ -1,0 +1,36 @@
+name: Bug Report
+description: Report a bug
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What happened? What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the bug?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tests
+    attributes:
+      label: Testing
+      description: Which tests have you run?
+      options:
+        - label: Unit tests
+        - label: E2E tests
+        - label: Manual testing
+    validations:
+      required: true

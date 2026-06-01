@@ -94,6 +94,10 @@ test: ## Run unit tests
 test-e2e: ## Run e2e tests
 	go test -v ./test/e2e/... -timeout 10m --coverprofile cover-e2e.out
 
+.PHONY: test-integration
+test-integration: ## Run integration tests
+	go test -v $$(go list ./... | grep -v -e /mocks -e /test/e2e) -tags integration -timeout 5m --coverprofile cover-integration.out
+
 # Migrations
 MIGRATION_DIR ?= ent/migrate/migrations
 
