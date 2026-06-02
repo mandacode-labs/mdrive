@@ -142,6 +142,22 @@ release-snapshot: goreleaser ## Release snapshot (for testing)
 .PHONY: all
 all: gen build ## Generate all code and build
 
+# Pre-commit hooks
+.PHONY: pre-commit-install
+pre-commit-install: ## Install pre-commit hooks
+	@which pre-commit > /dev/null || (echo "Installing pre-commit..." && pip install pre-commit)
+	pre-commit install
+	pre-commit install --hook-type pre-push
+	@echo "Pre-commit hooks installed. Run 'make pre-commit-run' to test."
+
+.PHONY: pre-commit-run
+pre-commit-run: ## Run pre-commit hooks on all files
+	pre-commit run --all-files
+
+.PHONY: pre-commit-update
+pre-commit-update: ## Update pre-commit hooks to latest versions
+	pre-commit autoupdate
+
 # Cleanup
 .PHONY: clean
 clean: ## Clean build artifacts
