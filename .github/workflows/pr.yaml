@@ -158,7 +158,7 @@ jobs:
 
   e2e-test:
     name: E2E Tests
-    needs: [unit-test]
+    needs: [integration-test]
     runs-on: dawn-cluster-dind
     container:
       image: golang:1.26.3
@@ -216,4 +216,4 @@ jobs:
       - name: Download dependencies
         run: go mod download
       - name: Run kind tests
-        run: make test-kind
+        run: go test -v ./test/kind/... -tags kind -timeout 15m
