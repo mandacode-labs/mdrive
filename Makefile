@@ -96,7 +96,11 @@ test-e2e: ## Run e2e tests
 
 .PHONY: test-integration
 test-integration: ## Run integration tests
-	go test -v $$(go list ./... | grep -v -e /mocks -e /test/e2e) -tags integration -timeout 5m --coverprofile cover-integration.out
+	go test -v ./test/integration/... -tags integration -timeout 5m --coverprofile cover-integration.out
+
+.PHONY: test-kind
+test-kind: ## Run kind tests (requires kind, kubectl, helm, docker)
+	go test -v ./test/kind/... -tags kind -timeout 15m
 
 # Migrations
 MIGRATION_DIR ?= ent/migrate/migrations
