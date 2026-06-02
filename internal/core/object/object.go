@@ -39,16 +39,16 @@ const (
 
 // Object represents a tracked object in external storage.
 type Object struct {
-	id            string
-	provider      Provider
-	bucket        string
-	systemID      string
-	storageKey    string
-	status        Status
-	checksum      *string
+	id             string
+	provider       Provider
+	bucket         string
+	systemID       string
+	storageKey     string
+	status         Status
+	checksum       *string
 	idempotencyKey *string
-	createdAt     time.Time
-	updatedAt     time.Time
+	createdAt      time.Time
+	updatedAt      time.Time
 }
 
 // NewObject creates a new Object.
@@ -79,16 +79,16 @@ func NewObject(
 }
 
 // Getters
-func (o *Object) ID() string            { return o.id }
-func (o *Object) Provider() Provider    { return o.provider }
-func (o *Object) Bucket() string        { return o.bucket }
-func (o *Object) SystemID() string      { return o.systemID }
-func (o *Object) StorageKey() string    { return o.storageKey }
-func (o *Object) Status() Status        { return o.status }
-func (o *Object) Checksum() *string     { return o.checksum }
+func (o *Object) ID() string              { return o.id }
+func (o *Object) Provider() Provider      { return o.provider }
+func (o *Object) Bucket() string          { return o.bucket }
+func (o *Object) SystemID() string        { return o.systemID }
+func (o *Object) StorageKey() string      { return o.storageKey }
+func (o *Object) Status() Status          { return o.status }
+func (o *Object) Checksum() *string       { return o.checksum }
 func (o *Object) IdempotencyKey() *string { return o.idempotencyKey }
-func (o *Object) CreatedAt() time.Time  { return o.createdAt }
-func (o *Object) UpdatedAt() time.Time  { return o.updatedAt }
+func (o *Object) CreatedAt() time.Time    { return o.createdAt }
+func (o *Object) UpdatedAt() time.Time    { return o.updatedAt }
 
 // UploadSession contains information for client direct upload.
 type UploadSession struct {
