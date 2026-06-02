@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   gosec:
@@ -23,11 +22,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
       - uses: securego/gosec@master
         with:
-          args: '-fmt sarif -out gosec.sarif ./...'
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: gosec.sarif
+          args: './...'
 
   trivy:
     name: Trivy Filesystem Scan
@@ -38,11 +33,3 @@ jobs:
         with:
           scan-type: 'fs'
           scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
-
-
