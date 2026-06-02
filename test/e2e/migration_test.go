@@ -65,11 +65,12 @@ func TestMigration_VersionedMode(t *testing.T) {
 	cfg := suite.GetConfig()
 
 	// suite.Start() already ran auto-migrations, so the database has tables.
-	// Use baseline to skip the init migration that would conflict.
+	// Use baseline to skip migrations that were already applied by auto-migration.
+	// The baseline must be the latest migration version that exists in the database.
 	t.Run("applies versioned migrations with baseline on existing database", func(t *testing.T) {
 		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{
 			Mode:     "versioned",
-			Baseline: "20260402012402",
+			Baseline: "20260602021721",
 		})
 		require.NoError(t, err, "Versioned migration with baseline should succeed")
 	})
