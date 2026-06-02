@@ -619,6 +619,16 @@ func (s *InitiateUploadRequest) SetFake() {
 			s.Size = int64(0)
 		}
 	}
+	{
+		{
+			s.Checksum.SetFake()
+		}
+	}
+	{
+		{
+			s.IdempotencyKey.SetFake()
+		}
+	}
 }
 
 // SetFake set fake values.

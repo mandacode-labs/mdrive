@@ -105,6 +105,46 @@ func (_u *ObjectUpdate) SetNillableStatus(v *object.Status) *ObjectUpdate {
 	return _u
 }
 
+// SetChecksum sets the "checksum" field.
+func (_u *ObjectUpdate) SetChecksum(v string) *ObjectUpdate {
+	_u.mutation.SetChecksum(v)
+	return _u
+}
+
+// SetNillableChecksum sets the "checksum" field if the given value is not nil.
+func (_u *ObjectUpdate) SetNillableChecksum(v *string) *ObjectUpdate {
+	if v != nil {
+		_u.SetChecksum(*v)
+	}
+	return _u
+}
+
+// ClearChecksum clears the value of the "checksum" field.
+func (_u *ObjectUpdate) ClearChecksum() *ObjectUpdate {
+	_u.mutation.ClearChecksum()
+	return _u
+}
+
+// SetIdempotencyKey sets the "idempotency_key" field.
+func (_u *ObjectUpdate) SetIdempotencyKey(v string) *ObjectUpdate {
+	_u.mutation.SetIdempotencyKey(v)
+	return _u
+}
+
+// SetNillableIdempotencyKey sets the "idempotency_key" field if the given value is not nil.
+func (_u *ObjectUpdate) SetNillableIdempotencyKey(v *string) *ObjectUpdate {
+	if v != nil {
+		_u.SetIdempotencyKey(*v)
+	}
+	return _u
+}
+
+// ClearIdempotencyKey clears the value of the "idempotency_key" field.
+func (_u *ObjectUpdate) ClearIdempotencyKey() *ObjectUpdate {
+	_u.mutation.ClearIdempotencyKey()
+	return _u
+}
+
 // SetSystem sets the "system" edge to the System entity.
 func (_u *ObjectUpdate) SetSystem(v *System) *ObjectUpdate {
 	return _u.SetSystemID(v.ID)
@@ -201,6 +241,18 @@ func (_u *ObjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(object.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Checksum(); ok {
+		_spec.SetField(object.FieldChecksum, field.TypeString, value)
+	}
+	if _u.mutation.ChecksumCleared() {
+		_spec.ClearField(object.FieldChecksum, field.TypeString)
+	}
+	if value, ok := _u.mutation.IdempotencyKey(); ok {
+		_spec.SetField(object.FieldIdempotencyKey, field.TypeString, value)
+	}
+	if _u.mutation.IdempotencyKeyCleared() {
+		_spec.ClearField(object.FieldIdempotencyKey, field.TypeString)
 	}
 	if _u.mutation.SystemCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -324,6 +376,46 @@ func (_u *ObjectUpdateOne) SetNillableStatus(v *object.Status) *ObjectUpdateOne 
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetChecksum sets the "checksum" field.
+func (_u *ObjectUpdateOne) SetChecksum(v string) *ObjectUpdateOne {
+	_u.mutation.SetChecksum(v)
+	return _u
+}
+
+// SetNillableChecksum sets the "checksum" field if the given value is not nil.
+func (_u *ObjectUpdateOne) SetNillableChecksum(v *string) *ObjectUpdateOne {
+	if v != nil {
+		_u.SetChecksum(*v)
+	}
+	return _u
+}
+
+// ClearChecksum clears the value of the "checksum" field.
+func (_u *ObjectUpdateOne) ClearChecksum() *ObjectUpdateOne {
+	_u.mutation.ClearChecksum()
+	return _u
+}
+
+// SetIdempotencyKey sets the "idempotency_key" field.
+func (_u *ObjectUpdateOne) SetIdempotencyKey(v string) *ObjectUpdateOne {
+	_u.mutation.SetIdempotencyKey(v)
+	return _u
+}
+
+// SetNillableIdempotencyKey sets the "idempotency_key" field if the given value is not nil.
+func (_u *ObjectUpdateOne) SetNillableIdempotencyKey(v *string) *ObjectUpdateOne {
+	if v != nil {
+		_u.SetIdempotencyKey(*v)
+	}
+	return _u
+}
+
+// ClearIdempotencyKey clears the value of the "idempotency_key" field.
+func (_u *ObjectUpdateOne) ClearIdempotencyKey() *ObjectUpdateOne {
+	_u.mutation.ClearIdempotencyKey()
 	return _u
 }
 
@@ -453,6 +545,18 @@ func (_u *ObjectUpdateOne) sqlSave(ctx context.Context) (_node *Object, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(object.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Checksum(); ok {
+		_spec.SetField(object.FieldChecksum, field.TypeString, value)
+	}
+	if _u.mutation.ChecksumCleared() {
+		_spec.ClearField(object.FieldChecksum, field.TypeString)
+	}
+	if value, ok := _u.mutation.IdempotencyKey(); ok {
+		_spec.SetField(object.FieldIdempotencyKey, field.TypeString, value)
+	}
+	if _u.mutation.IdempotencyKeyCleared() {
+		_spec.ClearField(object.FieldIdempotencyKey, field.TypeString)
 	}
 	if _u.mutation.SystemCleared() {
 		edge := &sqlgraph.EdgeSpec{

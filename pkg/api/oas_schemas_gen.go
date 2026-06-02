@@ -709,6 +709,12 @@ type InitiateUploadRequest struct {
 	ContentType OptString `json:"contentType"`
 	// File size in bytes.
 	Size int64 `json:"size"`
+	// Base64-encoded MD5 checksum of the file content. Required for integrity verification during upload
+	// completion.
+	Checksum OptString `json:"checksum"`
+	// Client-generated idempotency key (UUID) to ensure duplicate initiation requests return the same
+	// upload session.
+	IdempotencyKey OptString `json:"idempotencyKey"`
 }
 
 // GetPath returns the value of Path.
@@ -726,6 +732,16 @@ func (s *InitiateUploadRequest) GetSize() int64 {
 	return s.Size
 }
 
+// GetChecksum returns the value of Checksum.
+func (s *InitiateUploadRequest) GetChecksum() OptString {
+	return s.Checksum
+}
+
+// GetIdempotencyKey returns the value of IdempotencyKey.
+func (s *InitiateUploadRequest) GetIdempotencyKey() OptString {
+	return s.IdempotencyKey
+}
+
 // SetPath sets the value of Path.
 func (s *InitiateUploadRequest) SetPath(val string) {
 	s.Path = val
@@ -739,6 +755,16 @@ func (s *InitiateUploadRequest) SetContentType(val OptString) {
 // SetSize sets the value of Size.
 func (s *InitiateUploadRequest) SetSize(val int64) {
 	s.Size = val
+}
+
+// SetChecksum sets the value of Checksum.
+func (s *InitiateUploadRequest) SetChecksum(val OptString) {
+	s.Checksum = val
+}
+
+// SetIdempotencyKey sets the value of IdempotencyKey.
+func (s *InitiateUploadRequest) SetIdempotencyKey(val OptString) {
+	s.IdempotencyKey = val
 }
 
 type InitiateUploadUnauthorized Error

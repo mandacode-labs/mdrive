@@ -95,6 +95,34 @@ func (_c *ObjectCreate) SetNillableStatus(v *object.Status) *ObjectCreate {
 	return _c
 }
 
+// SetChecksum sets the "checksum" field.
+func (_c *ObjectCreate) SetChecksum(v string) *ObjectCreate {
+	_c.mutation.SetChecksum(v)
+	return _c
+}
+
+// SetNillableChecksum sets the "checksum" field if the given value is not nil.
+func (_c *ObjectCreate) SetNillableChecksum(v *string) *ObjectCreate {
+	if v != nil {
+		_c.SetChecksum(*v)
+	}
+	return _c
+}
+
+// SetIdempotencyKey sets the "idempotency_key" field.
+func (_c *ObjectCreate) SetIdempotencyKey(v string) *ObjectCreate {
+	_c.mutation.SetIdempotencyKey(v)
+	return _c
+}
+
+// SetNillableIdempotencyKey sets the "idempotency_key" field if the given value is not nil.
+func (_c *ObjectCreate) SetNillableIdempotencyKey(v *string) *ObjectCreate {
+	if v != nil {
+		_c.SetIdempotencyKey(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ObjectCreate) SetID(v string) *ObjectCreate {
 	_c.mutation.SetID(v)
@@ -253,6 +281,14 @@ func (_c *ObjectCreate) createSpec() (*Object, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(object.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Checksum(); ok {
+		_spec.SetField(object.FieldChecksum, field.TypeString, value)
+		_node.Checksum = &value
+	}
+	if value, ok := _c.mutation.IdempotencyKey(); ok {
+		_spec.SetField(object.FieldIdempotencyKey, field.TypeString, value)
+		_node.IdempotencyKey = &value
 	}
 	if nodes := _c.mutation.SystemIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

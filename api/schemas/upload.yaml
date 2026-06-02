@@ -15,6 +15,12 @@ InitiateUploadRequest:
       format: int64
       minimum: 0
       description: File size in bytes
+    checksum:
+      type: string
+      description: Base64-encoded MD5 checksum of the file content. Required for integrity verification during upload completion.
+    idempotencyKey:
+      type: string
+      description: Client-generated idempotency key (UUID) to ensure duplicate initiation requests return the same upload session.
 
 UploadSession:
   type: object

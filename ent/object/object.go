@@ -29,6 +29,10 @@ const (
 	FieldStorageKey = "storage_key"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldChecksum holds the string denoting the checksum field in the database.
+	FieldChecksum = "checksum"
+	// FieldIdempotencyKey holds the string denoting the idempotency_key field in the database.
+	FieldIdempotencyKey = "idempotency_key"
 	// EdgeSystem holds the string denoting the system edge name in mutations.
 	EdgeSystem = "system"
 	// Table holds the table name of the object in the database.
@@ -52,6 +56,8 @@ var Columns = []string{
 	FieldSystemID,
 	FieldStorageKey,
 	FieldStatus,
+	FieldChecksum,
+	FieldIdempotencyKey,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -165,6 +171,16 @@ func ByStorageKey(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByChecksum orders the results by the checksum field.
+func ByChecksum(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChecksum, opts...).ToFunc()
+}
+
+// ByIdempotencyKey orders the results by the idempotency_key field.
+func ByIdempotencyKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIdempotencyKey, opts...).ToFunc()
 }
 
 // BySystemField orders the results by system field.

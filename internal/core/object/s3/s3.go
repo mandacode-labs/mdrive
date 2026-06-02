@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -106,14 +107,15 @@ func (s *S3Storage) GetPresignedDownloadURL(ctx context.Context, bucket string, 
 }
 
 // GetPresignedUploadURL generates a presigned URL for direct client upload.
-// ContentLength is enforced to prevent size mismatches between declared and actual upload.
-func (s *S3Storage) GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration) (string, error) {
+// Content-Length and Content-MD5 are intentionally excluded from the presigned URL
+// signature to avoid SignatureDoesNotMatch errors caused by Go's net/http
+// canonicalizing header names (e.g., "content-md5" in AWS signature vs "Content-MD5"
+// in standard HTTP). Integrity verification is performed server-side during upload
+// completion by comparing S3 ETag with the declared checksum.
+func (s *S3Storage) GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration) (string, error) {
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.resolveBucket(bucket)),
 		Key:    aws.String(key),
-	}
-	if size > 0 {
-		input.ContentLength = aws.Int64(size)
 	}
 	if contentType != "" {
 		input.ContentType = aws.String(contentType)
@@ -171,4 +173,27 @@ func (s *S3Storage) GetObjectSize(ctx context.Context, bucket string, key string
 		return 0, nil
 	}
 	return *resp.ContentLength, nil
+}
+
+// GetObjectChecksum returns the ETag (MD5 checksum) of an object.
+// For single-part uploads, the ETag is the MD5 of the object content.
+func (s *S3Storage) GetObjectChecksum(ctx context.Context, bucket string, key string) (string, error) {
+	resp, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.resolveBucket(bucket)),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var notFound *types.NotFound
+		if errors.As(err, &notFound) {
+			return "", apperrors.NotFound("object not found")
+		}
+		return "", fmt.Errorf("failed to get object checksum: %w", err)
+	}
+	if resp.ETag == nil {
+		return "", nil
+	}
+	// ETag is returned with quotes, strip them
+	etag := *resp.ETag
+	etag = strings.Trim(etag, `"`)
+	return etag, nil
 }

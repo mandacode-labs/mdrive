@@ -31,10 +31,22 @@ func (h *Handler) InitiateUpload(ctx context.Context, req *api.InitiateUploadReq
 		contentType = req.ContentType.Value
 	}
 
+	var checksum *string
+	if req.Checksum.Set {
+		checksum = &req.Checksum.Value
+	}
+
+	var idempotencyKey *string
+	if req.IdempotencyKey.Set {
+		idempotencyKey = &req.IdempotencyKey.Value
+	}
+
 	session, err := h.storageSvc.InitiateUpload(ctx, &storage.InitiateUploadCommand{
-		SystemID:    params.SystemId,
-		ContentType: contentType,
-		Size:        req.Size,
+		SystemID:       params.SystemId,
+		ContentType:    contentType,
+		Size:           req.Size,
+		Checksum:       checksum,
+		IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		return nil, h.domainError(err)

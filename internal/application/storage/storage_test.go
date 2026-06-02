@@ -19,7 +19,7 @@ import (
 )
 
 func newTestObject(id string) *object.Object {
-	return object.NewObject(id, object.ProviderS3, "bucket", "system-1", "key-"+id, object.StatusActive, time.Now(), time.Now())
+	return object.NewObject(id, object.ProviderS3, "bucket", "system-1", "key-"+id, object.StatusActive, nil, nil, time.Now(), time.Now())
 }
 
 func TestCompleteUpload_PassSizeAndModeToInode(t *testing.T) {

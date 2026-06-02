@@ -2,6 +2,9 @@ package object
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"log/slog"
 	"time"
@@ -9,6 +12,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
+
+// base64ToHex converts a base64-encoded string to hex-encoded string.
+func base64ToHex(b64 string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(decoded), nil
+}
 
 // Provider represents the storage provider type.
 type Provider string
@@ -27,14 +39,16 @@ const (
 
 // Object represents a tracked object in external storage.
 type Object struct {
-	id         string
-	provider   Provider
-	bucket     string
-	systemID   string
-	storageKey string
-	status     Status
-	createdAt  time.Time
-	updatedAt  time.Time
+	id            string
+	provider      Provider
+	bucket        string
+	systemID      string
+	storageKey    string
+	status        Status
+	checksum      *string
+	idempotencyKey *string
+	createdAt     time.Time
+	updatedAt     time.Time
 }
 
 // NewObject creates a new Object.
@@ -45,30 +59,36 @@ func NewObject(
 	systemID string,
 	storageKey string,
 	status Status,
+	checksum *string,
+	idempotencyKey *string,
 	createdAt time.Time,
 	updatedAt time.Time,
 ) *Object {
 	return &Object{
-		id:         id,
-		provider:   provider,
-		bucket:     bucket,
-		systemID:   systemID,
-		storageKey: storageKey,
-		status:     status,
-		createdAt:  createdAt,
-		updatedAt:  updatedAt,
+		id:             id,
+		provider:       provider,
+		bucket:         bucket,
+		systemID:       systemID,
+		storageKey:     storageKey,
+		status:         status,
+		checksum:       checksum,
+		idempotencyKey: idempotencyKey,
+		createdAt:      createdAt,
+		updatedAt:      updatedAt,
 	}
 }
 
 // Getters
-func (o *Object) ID() string           { return o.id }
-func (o *Object) Provider() Provider   { return o.provider }
-func (o *Object) Bucket() string       { return o.bucket }
-func (o *Object) SystemID() string     { return o.systemID }
-func (o *Object) StorageKey() string   { return o.storageKey }
-func (o *Object) Status() Status       { return o.status }
-func (o *Object) CreatedAt() time.Time { return o.createdAt }
-func (o *Object) UpdatedAt() time.Time { return o.updatedAt }
+func (o *Object) ID() string            { return o.id }
+func (o *Object) Provider() Provider    { return o.provider }
+func (o *Object) Bucket() string        { return o.bucket }
+func (o *Object) SystemID() string      { return o.systemID }
+func (o *Object) StorageKey() string    { return o.storageKey }
+func (o *Object) Status() Status        { return o.status }
+func (o *Object) Checksum() *string     { return o.checksum }
+func (o *Object) IdempotencyKey() *string { return o.idempotencyKey }
+func (o *Object) CreatedAt() time.Time  { return o.createdAt }
+func (o *Object) UpdatedAt() time.Time  { return o.updatedAt }
 
 // UploadSession contains information for client direct upload.
 type UploadSession struct {
@@ -131,9 +151,11 @@ type CreateCommand struct {
 
 // InitiateUploadCommand for starting a presigned upload.
 type InitiateUploadCommand struct {
-	SystemID    string
-	ContentType string
-	Size        int64
+	SystemID       string
+	ContentType    string
+	Size           int64
+	Checksum       *string // Base64-encoded MD5
+	IdempotencyKey *string
 }
 
 // Filter for querying objects (service layer).
@@ -208,9 +230,36 @@ func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*Object, erro
 }
 
 // InitiateUpload creates a pending object and returns presigned upload URL.
+// If idempotencyKey is provided and a pending object already exists with the same key,
+// the existing upload session is returned instead of creating a new one.
 func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand) (*UploadSession, error) {
 	if cmd.SystemID == "" {
 		return nil, errors.BadRequest("system_id is required")
+	}
+
+	// Check idempotency: if a pending object exists with the same key, return it
+	if cmd.IdempotencyKey != nil && *cmd.IdempotencyKey != "" {
+		existing, err := s.repo.GetByIdempotencyKey(ctx, cmd.SystemID, *cmd.IdempotencyKey)
+		if err != nil {
+			return nil, errors.WrapInternal(err, "failed to check idempotency")
+		}
+		if existing != nil && existing.Status() == StatusPending {
+			// Regenerate presigned URL (may have expired)
+			expiry := ExpiryForSize(cmd.Size)
+			checksum := ""
+			if existing.Checksum() != nil {
+				checksum = *existing.Checksum()
+			}
+			uploadURL, err := s.storage.GetPresignedUploadURL(ctx, existing.Bucket(), existing.StorageKey(), cmd.ContentType, cmd.Size, checksum, expiry)
+			if err != nil {
+				return nil, errors.WrapInternal(err, "failed to regenerate upload URL")
+			}
+			return &UploadSession{
+				ObjectID:  existing.ID(),
+				UploadURL: uploadURL,
+				ExpiresAt: time.Now().Add(expiry),
+			}, nil
+		}
 	}
 
 	// Generate object ID and storage key
@@ -220,14 +269,22 @@ func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand
 	// Resolve actual bucket name so it's stored explicitly in DB
 	bucket := s.storage.DefaultBucket()
 
+	// Build checksum string for storage
+	var checksumStr *string
+	if cmd.Checksum != nil && *cmd.Checksum != "" {
+		checksumStr = cmd.Checksum
+	}
+
 	// Create pending object in DB
 	params := &CreateParams{
-		ID:         objectID,
-		Provider:   ProviderS3,
-		Bucket:     bucket,
-		SystemID:   cmd.SystemID,
-		StorageKey: storageKey,
-		Status:     StatusPending,
+		ID:             objectID,
+		Provider:       ProviderS3,
+		Bucket:         bucket,
+		SystemID:       cmd.SystemID,
+		StorageKey:     storageKey,
+		Status:         StatusPending,
+		Checksum:       checksumStr,
+		IdempotencyKey: cmd.IdempotencyKey,
 	}
 	if _, err := s.repo.Create(ctx, params); err != nil {
 		return nil, errors.WrapInternal(err, "failed to create pending object")
@@ -235,7 +292,11 @@ func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand
 
 	// Generate presigned upload URL with size-based expiry
 	expiry := ExpiryForSize(cmd.Size)
-	uploadURL, err := s.storage.GetPresignedUploadURL(ctx, bucket, storageKey, cmd.ContentType, cmd.Size, expiry)
+	checksum := ""
+	if checksumStr != nil {
+		checksum = *checksumStr
+	}
+	uploadURL, err := s.storage.GetPresignedUploadURL(ctx, bucket, storageKey, cmd.ContentType, cmd.Size, checksum, expiry)
 	if err != nil {
 		// Cleanup on failure
 		_ = s.repo.Delete(ctx, objectID)
@@ -250,6 +311,7 @@ func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand
 }
 
 // CompleteUpload marks object as active after client confirms upload.
+// Verifies the uploaded content matches the declared checksum (if provided).
 func (s *service) CompleteUpload(ctx context.Context, objectID string) (*Object, error) {
 	obj, err := s.repo.GetByID(ctx, objectID)
 	if err != nil {
@@ -259,6 +321,10 @@ func (s *service) CompleteUpload(ctx context.Context, objectID string) (*Object,
 		return nil, errors.NotFound("object not found")
 	}
 	if obj.Status() != StatusPending {
+		// Idempotent: if already active, return the existing object
+		if obj.Status() == StatusActive {
+			return obj, nil
+		}
 		return nil, errors.BadRequest("object is not in pending state")
 	}
 
@@ -269,6 +335,23 @@ func (s *service) CompleteUpload(ctx context.Context, objectID string) (*Object,
 	}
 	if !exists {
 		return nil, errors.BadRequest("object not found in storage")
+	}
+
+	// Verify checksum if provided
+	if obj.Checksum() != nil && *obj.Checksum() != "" {
+		actualChecksum, err := s.storage.GetObjectChecksum(ctx, obj.Bucket(), obj.StorageKey())
+		if err != nil {
+			return nil, errors.WrapInternal(err, "failed to verify object checksum")
+		}
+		// S3 ETag is hex-encoded MD5; stored checksum is base64-encoded MD5.
+		// Convert base64 checksum to hex for comparison.
+		expectedHex, err := base64ToHex(*obj.Checksum())
+		if err != nil {
+			return nil, errors.BadRequest(fmt.Sprintf("invalid checksum format: %v", err))
+		}
+		if actualChecksum != expectedHex {
+			return nil, errors.BadRequest(fmt.Sprintf("checksum mismatch: expected %s, got %s", expectedHex, actualChecksum))
+		}
 	}
 
 	// Update status to active

@@ -3236,12 +3236,26 @@ func (s *InitiateUploadRequest) encodeFields(e *jx.Encoder) {
 		e.FieldStart("size")
 		e.Int64(s.Size)
 	}
+	{
+		if s.Checksum.Set {
+			e.FieldStart("checksum")
+			s.Checksum.Encode(e)
+		}
+	}
+	{
+		if s.IdempotencyKey.Set {
+			e.FieldStart("idempotencyKey")
+			s.IdempotencyKey.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfInitiateUploadRequest = [3]string{
+var jsonFieldsNameOfInitiateUploadRequest = [5]string{
 	0: "path",
 	1: "contentType",
 	2: "size",
+	3: "checksum",
+	4: "idempotencyKey",
 }
 
 // Decode decodes InitiateUploadRequest from json.
@@ -3286,6 +3300,26 @@ func (s *InitiateUploadRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"size\"")
+			}
+		case "checksum":
+			if err := func() error {
+				s.Checksum.Reset()
+				if err := s.Checksum.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"checksum\"")
+			}
+		case "idempotencyKey":
+			if err := func() error {
+				s.IdempotencyKey.Reset()
+				if err := s.IdempotencyKey.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"idempotencyKey\"")
 			}
 		default:
 			return d.Skip()

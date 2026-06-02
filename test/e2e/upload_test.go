@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/url"
@@ -119,10 +121,15 @@ func TestUpload_Complete(t *testing.T) {
 
 	// Helper to initiate upload and upload to MinIO, returning object ID
 	initiateUpload := func(t *testing.T, path string) string {
+		data := []byte("test content")
+		hash := md5.Sum(data)
+		checksum := base64.StdEncoding.EncodeToString(hash[:])
+
 		req := map[string]any{
 			"path":        path,
 			"contentType": "text/plain",
-			"size":        int64(100),
+			"size":        int64(len(data)),
+			"checksum":    checksum,
 		}
 		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
 		require.NoError(t, err, "Failed to initiate upload")
@@ -138,7 +145,7 @@ func TestUpload_Complete(t *testing.T) {
 		require.True(t, ok, "Response should contain uploadSession")
 
 		uploadURL := session["uploadUrl"].(string)
-		suite.UploadToPresignedURL(t, uploadURL, []byte("test content"))
+		suite.UploadToPresignedURL(t, uploadURL, data)
 
 		return session["objectId"].(string)
 	}
@@ -259,10 +266,15 @@ func TestUpload_FullFlow(t *testing.T) {
 
 	// Helper to initiate upload and upload to MinIO, returning session info
 	initiateUpload := func(t *testing.T, path string) (objectID, uploadURL string) {
+		data := []byte("test content")
+		hash := md5.Sum(data)
+		checksum := base64.StdEncoding.EncodeToString(hash[:])
+
 		req := map[string]any{
 			"path":        path,
 			"contentType": "text/plain",
-			"size":        int64(100),
+			"size":        int64(len(data)),
+			"checksum":    checksum,
 		}
 		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
 		require.NoError(t, err, "Failed to initiate upload")
@@ -281,7 +293,7 @@ func TestUpload_FullFlow(t *testing.T) {
 		uploadURL = session["uploadUrl"].(string)
 
 		// Upload actual content to MinIO via presigned URL
-		suite.UploadToPresignedURL(t, uploadURL, []byte("test content"))
+		suite.UploadToPresignedURL(t, uploadURL, data)
 
 		return objectID, uploadURL
 	}
@@ -348,4 +360,146 @@ func TestUpload_FullFlow(t *testing.T) {
 			t.Fatalf("Expected 201, got %d: %s", completeResp2.StatusCode, string(body))
 		}
 	})
+}
+
+// TestUpload_ChecksumMismatch verifies that upload completion is rejected when content does not match declared checksum.
+func TestUpload_ChecksumMismatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping e2e test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	suite := NewSuite(t)
+	err := suite.Start(ctx)
+	require.NoError(t, err, "Failed to start test suite")
+	t.Cleanup(func() { _ = suite.Stop(ctx) })
+
+	err = suite.StartServer(ctx)
+	require.NoError(t, err, "Failed to start server")
+
+	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	require.NoError(t, err, "Failed to setup full environment")
+	systemID := systemData["system"].(map[string]any)["id"].(string)
+
+	// Initiate with checksum for "wrong content"
+	wrongData := []byte("wrong content")
+	wrongHash := md5.Sum(wrongData)
+	wrongChecksum := base64.StdEncoding.EncodeToString(wrongHash[:])
+
+	req := map[string]any{
+		"path":        "/home/mismatch.txt",
+		"contentType": "text/plain",
+		"size":        int64(len(wrongData)),
+		"checksum":    wrongChecksum,
+	}
+	resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload")
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
+
+	var result map[string]any
+	err = suite.ReadJSON(resp, &result)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session := result["uploadSession"].(map[string]any)
+	objectID := session["objectId"].(string)
+	uploadURL := session["uploadUrl"].(string)
+
+	// Upload DIFFERENT content (correct data, not wrongData)
+	correctData := []byte("correct content")
+	suite.UploadToPresignedURL(t, uploadURL, correctData)
+
+	// Complete should fail with checksum mismatch
+	completeReq := map[string]any{
+		"objectId": objectID,
+		"path":     "/home/mismatch.txt",
+		"mode":     0644,
+	}
+	completeResp, err := suite.Post("/fs/"+systemID+"/upload/complete", completeReq)
+	require.NoError(t, err, "Failed to complete upload")
+	defer func() { _ = completeResp.Body.Close() }()
+
+	assert.Equal(t, http.StatusBadRequest, completeResp.StatusCode,
+		"Expected 400 Bad Request for checksum mismatch, got %d", completeResp.StatusCode)
+}
+
+// TestUpload_Idempotency verifies that duplicate initiation requests with the same idempotency key return the same session.
+func TestUpload_Idempotency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping e2e test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	suite := NewSuite(t)
+	err := suite.Start(ctx)
+	require.NoError(t, err, "Failed to start test suite")
+	t.Cleanup(func() { _ = suite.Stop(ctx) })
+
+	err = suite.StartServer(ctx)
+	require.NoError(t, err, "Failed to start server")
+
+	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	require.NoError(t, err, "Failed to setup full environment")
+	systemID := systemData["system"].(map[string]any)["id"].(string)
+
+	idempotencyKey := "test-idempotency-key-123"
+	data := []byte("idempotency test content")
+	hash := md5.Sum(data)
+	checksum := base64.StdEncoding.EncodeToString(hash[:])
+
+	req := map[string]any{
+		"path":           "/home/idempotent.txt",
+		"contentType":    "text/plain",
+		"size":           int64(len(data)),
+		"checksum":       checksum,
+		"idempotencyKey": idempotencyKey,
+	}
+
+	// First request
+	resp1, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload (1st)")
+	defer func() { _ = resp1.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp1.StatusCode, "First initiate should succeed")
+
+	var result1 map[string]any
+	err = suite.ReadJSON(resp1, &result1)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session1 := result1["uploadSession"].(map[string]any)
+	objectID1 := session1["objectId"].(string)
+
+	// Second request with same idempotency key
+	resp2, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload (2nd)")
+	defer func() { _ = resp2.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp2.StatusCode, "Second initiate should succeed")
+
+	var result2 map[string]any
+	err = suite.ReadJSON(resp2, &result2)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session2 := result2["uploadSession"].(map[string]any)
+	objectID2 := session2["objectId"].(string)
+
+	// Should return the same object ID
+	assert.Equal(t, objectID1, objectID2,
+		"Idempotent requests should return the same objectId")
+
+	// Upload and complete
+	uploadURL := session2["uploadUrl"].(string)
+	suite.UploadToPresignedURL(t, uploadURL, data)
+
+	completeReq := map[string]any{
+		"objectId": objectID2,
+		"path":     "/home/idempotent.txt",
+		"mode":     0644,
+	}
+	completeResp, err := suite.Post("/fs/"+systemID+"/upload/complete", completeReq)
+	require.NoError(t, err, "Failed to complete upload")
+	defer func() { _ = completeResp.Body.Close() }()
+	require.Equal(t, http.StatusCreated, completeResp.StatusCode, "Complete should succeed")
 }

@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -338,14 +339,13 @@ func (s *Suite) BuildURLWithQuery(path string, query url.Values) string {
 // MinIO Helpers
 
 // UploadToPresignedURL uploads data to a presigned URL (for testing MinIO uploads).
-// Must set Content-Length to match the size signed in the presigned URL.
+// Go's http.NewRequest automatically sets Content-Length when using bytes.NewReader.
 func (s *Suite) UploadToPresignedURL(t *testing.T, presignedURL string, data []byte) {
 	t.Logf("Uploading to presigned URL: %s", presignedURL)
 
-	req, err := http.NewRequest("PUT", presignedURL, strings.NewReader(string(data)))
+	req, err := http.NewRequest("PUT", presignedURL, bytes.NewReader(data))
 	require.NoError(t, err, "Failed to create upload request")
 	req.Header.Set("Content-Type", "text/plain")
-	req.ContentLength = int64(len(data))
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

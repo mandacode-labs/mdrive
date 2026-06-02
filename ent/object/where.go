@@ -90,6 +90,16 @@ func StorageKey(v string) predicate.Object {
 	return predicate.Object(sql.FieldEQ(FieldStorageKey, v))
 }
 
+// Checksum applies equality check predicate on the "checksum" field. It's identical to ChecksumEQ.
+func Checksum(v string) predicate.Object {
+	return predicate.Object(sql.FieldEQ(FieldChecksum, v))
+}
+
+// IdempotencyKey applies equality check predicate on the "idempotency_key" field. It's identical to IdempotencyKeyEQ.
+func IdempotencyKey(v string) predicate.Object {
+	return predicate.Object(sql.FieldEQ(FieldIdempotencyKey, v))
+}
+
 // CreateTimeEQ applies the EQ predicate on the "create_time" field.
 func CreateTimeEQ(v time.Time) predicate.Object {
 	return predicate.Object(sql.FieldEQ(FieldCreateTime, v))
@@ -403,6 +413,156 @@ func StatusIn(vs ...Status) predicate.Object {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Object {
 	return predicate.Object(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// ChecksumEQ applies the EQ predicate on the "checksum" field.
+func ChecksumEQ(v string) predicate.Object {
+	return predicate.Object(sql.FieldEQ(FieldChecksum, v))
+}
+
+// ChecksumNEQ applies the NEQ predicate on the "checksum" field.
+func ChecksumNEQ(v string) predicate.Object {
+	return predicate.Object(sql.FieldNEQ(FieldChecksum, v))
+}
+
+// ChecksumIn applies the In predicate on the "checksum" field.
+func ChecksumIn(vs ...string) predicate.Object {
+	return predicate.Object(sql.FieldIn(FieldChecksum, vs...))
+}
+
+// ChecksumNotIn applies the NotIn predicate on the "checksum" field.
+func ChecksumNotIn(vs ...string) predicate.Object {
+	return predicate.Object(sql.FieldNotIn(FieldChecksum, vs...))
+}
+
+// ChecksumGT applies the GT predicate on the "checksum" field.
+func ChecksumGT(v string) predicate.Object {
+	return predicate.Object(sql.FieldGT(FieldChecksum, v))
+}
+
+// ChecksumGTE applies the GTE predicate on the "checksum" field.
+func ChecksumGTE(v string) predicate.Object {
+	return predicate.Object(sql.FieldGTE(FieldChecksum, v))
+}
+
+// ChecksumLT applies the LT predicate on the "checksum" field.
+func ChecksumLT(v string) predicate.Object {
+	return predicate.Object(sql.FieldLT(FieldChecksum, v))
+}
+
+// ChecksumLTE applies the LTE predicate on the "checksum" field.
+func ChecksumLTE(v string) predicate.Object {
+	return predicate.Object(sql.FieldLTE(FieldChecksum, v))
+}
+
+// ChecksumContains applies the Contains predicate on the "checksum" field.
+func ChecksumContains(v string) predicate.Object {
+	return predicate.Object(sql.FieldContains(FieldChecksum, v))
+}
+
+// ChecksumHasPrefix applies the HasPrefix predicate on the "checksum" field.
+func ChecksumHasPrefix(v string) predicate.Object {
+	return predicate.Object(sql.FieldHasPrefix(FieldChecksum, v))
+}
+
+// ChecksumHasSuffix applies the HasSuffix predicate on the "checksum" field.
+func ChecksumHasSuffix(v string) predicate.Object {
+	return predicate.Object(sql.FieldHasSuffix(FieldChecksum, v))
+}
+
+// ChecksumIsNil applies the IsNil predicate on the "checksum" field.
+func ChecksumIsNil() predicate.Object {
+	return predicate.Object(sql.FieldIsNull(FieldChecksum))
+}
+
+// ChecksumNotNil applies the NotNil predicate on the "checksum" field.
+func ChecksumNotNil() predicate.Object {
+	return predicate.Object(sql.FieldNotNull(FieldChecksum))
+}
+
+// ChecksumEqualFold applies the EqualFold predicate on the "checksum" field.
+func ChecksumEqualFold(v string) predicate.Object {
+	return predicate.Object(sql.FieldEqualFold(FieldChecksum, v))
+}
+
+// ChecksumContainsFold applies the ContainsFold predicate on the "checksum" field.
+func ChecksumContainsFold(v string) predicate.Object {
+	return predicate.Object(sql.FieldContainsFold(FieldChecksum, v))
+}
+
+// IdempotencyKeyEQ applies the EQ predicate on the "idempotency_key" field.
+func IdempotencyKeyEQ(v string) predicate.Object {
+	return predicate.Object(sql.FieldEQ(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyNEQ applies the NEQ predicate on the "idempotency_key" field.
+func IdempotencyKeyNEQ(v string) predicate.Object {
+	return predicate.Object(sql.FieldNEQ(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyIn applies the In predicate on the "idempotency_key" field.
+func IdempotencyKeyIn(vs ...string) predicate.Object {
+	return predicate.Object(sql.FieldIn(FieldIdempotencyKey, vs...))
+}
+
+// IdempotencyKeyNotIn applies the NotIn predicate on the "idempotency_key" field.
+func IdempotencyKeyNotIn(vs ...string) predicate.Object {
+	return predicate.Object(sql.FieldNotIn(FieldIdempotencyKey, vs...))
+}
+
+// IdempotencyKeyGT applies the GT predicate on the "idempotency_key" field.
+func IdempotencyKeyGT(v string) predicate.Object {
+	return predicate.Object(sql.FieldGT(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyGTE applies the GTE predicate on the "idempotency_key" field.
+func IdempotencyKeyGTE(v string) predicate.Object {
+	return predicate.Object(sql.FieldGTE(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyLT applies the LT predicate on the "idempotency_key" field.
+func IdempotencyKeyLT(v string) predicate.Object {
+	return predicate.Object(sql.FieldLT(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyLTE applies the LTE predicate on the "idempotency_key" field.
+func IdempotencyKeyLTE(v string) predicate.Object {
+	return predicate.Object(sql.FieldLTE(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyContains applies the Contains predicate on the "idempotency_key" field.
+func IdempotencyKeyContains(v string) predicate.Object {
+	return predicate.Object(sql.FieldContains(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyHasPrefix applies the HasPrefix predicate on the "idempotency_key" field.
+func IdempotencyKeyHasPrefix(v string) predicate.Object {
+	return predicate.Object(sql.FieldHasPrefix(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyHasSuffix applies the HasSuffix predicate on the "idempotency_key" field.
+func IdempotencyKeyHasSuffix(v string) predicate.Object {
+	return predicate.Object(sql.FieldHasSuffix(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyIsNil applies the IsNil predicate on the "idempotency_key" field.
+func IdempotencyKeyIsNil() predicate.Object {
+	return predicate.Object(sql.FieldIsNull(FieldIdempotencyKey))
+}
+
+// IdempotencyKeyNotNil applies the NotNil predicate on the "idempotency_key" field.
+func IdempotencyKeyNotNil() predicate.Object {
+	return predicate.Object(sql.FieldNotNull(FieldIdempotencyKey))
+}
+
+// IdempotencyKeyEqualFold applies the EqualFold predicate on the "idempotency_key" field.
+func IdempotencyKeyEqualFold(v string) predicate.Object {
+	return predicate.Object(sql.FieldEqualFold(FieldIdempotencyKey, v))
+}
+
+// IdempotencyKeyContainsFold applies the ContainsFold predicate on the "idempotency_key" field.
+func IdempotencyKeyContainsFold(v string) predicate.Object {
+	return predicate.Object(sql.FieldContainsFold(FieldIdempotencyKey, v))
 }
 
 // HasSystem applies the HasEdge predicate on the "system" edge.

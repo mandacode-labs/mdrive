@@ -56,6 +56,8 @@ var (
 		{Name: "bucket", Type: field.TypeString},
 		{Name: "storage_key", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "active"}, Default: "active"},
+		{Name: "checksum", Type: field.TypeString, Nullable: true},
+		{Name: "idempotency_key", Type: field.TypeString, Nullable: true},
 		{Name: "system_id", Type: field.TypeString},
 	}
 	// ObjectsTable holds the schema information for the "objects" table.
@@ -66,7 +68,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "objects_systems_objects",
-				Columns:    []*schema.Column{ObjectsColumns[7]},
+				Columns:    []*schema.Column{ObjectsColumns[9]},
 				RefColumns: []*schema.Column{SystemsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -75,12 +77,12 @@ var (
 			{
 				Name:    "object_system_id_provider_bucket_storage_key",
 				Unique:  true,
-				Columns: []*schema.Column{ObjectsColumns[7], ObjectsColumns[3], ObjectsColumns[4], ObjectsColumns[5]},
+				Columns: []*schema.Column{ObjectsColumns[9], ObjectsColumns[3], ObjectsColumns[4], ObjectsColumns[5]},
 			},
 			{
 				Name:    "object_system_id",
 				Unique:  false,
-				Columns: []*schema.Column{ObjectsColumns[7]},
+				Columns: []*schema.Column{ObjectsColumns[9]},
 			},
 			{
 				Name:    "object_provider_bucket",
@@ -91,6 +93,11 @@ var (
 				Name:    "object_status_update_time",
 				Unique:  false,
 				Columns: []*schema.Column{ObjectsColumns[6], ObjectsColumns[2]},
+			},
+			{
+				Name:    "object_system_id_idempotency_key",
+				Unique:  true,
+				Columns: []*schema.Column{ObjectsColumns[9], ObjectsColumns[8]},
 			},
 		},
 	}
@@ -161,7 +168,7 @@ var (
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "username", Type: field.TypeString, Unique: true, Size: 32},

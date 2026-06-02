@@ -31,6 +31,12 @@ func (r *EntRepository) Create(ctx context.Context, params *domain.CreateParams)
 	if params.Status != "" {
 		builder = builder.SetStatus(entobject.Status(string(params.Status)))
 	}
+	if params.Checksum != nil {
+		builder = builder.SetChecksum(*params.Checksum)
+	}
+	if params.IdempotencyKey != nil {
+		builder = builder.SetIdempotencyKey(*params.IdempotencyKey)
+	}
 
 	entObject, err := builder.Save(ctx)
 	if err != nil {
@@ -67,6 +73,22 @@ func (r *EntRepository) GetByStorageKey(ctx context.Context, systemID string, pr
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get object by storage key: %w", err)
+	}
+	return fromEnt(entObject), nil
+}
+
+func (r *EntRepository) GetByIdempotencyKey(ctx context.Context, systemID string, idempotencyKey string) (*domain.Object, error) {
+	entObject, err := r.client.Object.Query().
+		Where(
+			entobject.SystemIDEQ(systemID),
+			entobject.IdempotencyKeyEQ(idempotencyKey),
+		).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get object by idempotency key: %w", err)
 	}
 	return fromEnt(entObject), nil
 }
@@ -158,6 +180,9 @@ func applyFilter(query *ent.ObjectQuery, filter *domain.QueryFilter) *ent.Object
 	if filter.Status != nil {
 		query = query.Where(entobject.StatusEQ(entobject.Status(*filter.Status)))
 	}
+	if filter.IdempotencyKey != nil {
+		query = query.Where(entobject.IdempotencyKeyEQ(*filter.IdempotencyKey))
+	}
 	return query
 }
 
@@ -169,6 +194,8 @@ func fromEnt(e *ent.Object) *domain.Object {
 		e.SystemID,
 		e.StorageKey,
 		domain.Status(string(e.Status)),
+		e.Checksum,
+		e.IdempotencyKey,
 		e.CreateTime,
 		e.UpdateTime,
 	)
