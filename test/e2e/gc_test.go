@@ -32,9 +32,9 @@ func TestGC_PendingCleanup(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Initiate upload but don't actually upload to S3 — leaves object in pending state
 	resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", map[string]any{
@@ -98,9 +98,9 @@ func TestGC_OrphanCleanup(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser2")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser2")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Upload a file via the full flow (initiate + upload to S3 + complete)
 	resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", map[string]any{
@@ -184,9 +184,9 @@ func TestGC_NoOrphans(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser3")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "gcuser3")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Upload a file via the full flow — this should NOT be cleaned by GC
 	resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", map[string]any{

@@ -93,9 +93,9 @@ func TestUpload_ExpiryBasedOnSize(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "expiryuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "expiryuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("small file gets ~15min expiry", func(t *testing.T) {
 		before := time.Now()
@@ -155,9 +155,9 @@ func TestUpload_DownloadExpiryBasedOnSize(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "dluser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "dluser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// uploadAndDownload uploads a file and returns the download URL expiry
 	uploadAndDownload := func(t *testing.T, filePath string, size int64) time.Time {

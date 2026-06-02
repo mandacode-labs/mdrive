@@ -3,6 +3,8 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -288,14 +290,19 @@ func (s *Suite) SetupFullEnvironment(ctx context.Context, username string) (*ent
 	return u, sys, su, nil
 }
 
+// TestEnvironment holds the result of setting up a full test environment.
+type TestEnvironment struct {
+	User     *ent.User
+	SystemID string
+}
+
 // SetupFullEnvironmentAPI creates a system via the API (which initializes filesystem)
-// and returns the created system. This is the preferred method for e2e tests that need
-// a properly initialized filesystem.
-func (s *Suite) SetupFullEnvironmentAPI(ctx context.Context, username string) (*ent.User, map[string]any, error) {
+// and returns the created environment. This is the preferred method for e2e tests.
+func (s *Suite) SetupFullEnvironmentAPI(ctx context.Context, username string) (*TestEnvironment, error) {
 	// Setup authenticated user
 	u, err := s.SetupAuthenticatedUser(ctx, username)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup authenticated user: %w", err)
+		return nil, fmt.Errorf("failed to setup authenticated user: %w", err)
 	}
 
 	// Create system via API (this initializes filesystem with root directory, /home, etc.)
@@ -306,21 +313,103 @@ func (s *Suite) SetupFullEnvironmentAPI(ctx context.Context, username string) (*
 
 	resp, err := s.Post("/systems", req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create system: %w", err)
+		return nil, fmt.Errorf("failed to create system: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		body := s.ReadBody(resp)
-		return nil, nil, fmt.Errorf("failed to create system: status=%d body=%s", resp.StatusCode, body)
+		return nil, fmt.Errorf("failed to create system: status=%d body=%s", resp.StatusCode, body)
 	}
 
 	var result map[string]any
 	if err := s.ReadJSON(resp, &result); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse system response: %w", err)
+		return nil, fmt.Errorf("failed to parse system response: %w", err)
 	}
 
-	return u, result, nil
+	systemData, ok := result["system"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid system response format")
+	}
+
+	systemID, ok := systemData["id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid system id format")
+	}
+
+	return &TestEnvironment{
+		User:     u,
+		SystemID: systemID,
+	}, nil
+}
+
+// Upload Helpers
+
+// InitiateUpload initiates an upload, uploads test content to the presigned URL,
+// and returns the object ID. Uses "test content" as default data with calculated checksum.
+func (s *Suite) InitiateUpload(t *testing.T, systemID, path string) string {
+	t.Helper()
+	data := []byte("test content")
+	hash := md5.Sum(data)
+	checksum := base64.StdEncoding.EncodeToString(hash[:])
+
+	req := map[string]any{
+		"path":        path,
+		"contentType": "text/plain",
+		"size":        int64(len(data)),
+		"checksum":    checksum,
+	}
+	resp, err := s.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload")
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
+
+	var result map[string]any
+	require.NoError(t, s.ReadJSON(resp, &result), "Failed to read response JSON")
+
+	session, ok := result["uploadSession"].(map[string]any)
+	require.True(t, ok, "Response should contain uploadSession")
+
+	uploadURL := session["uploadUrl"].(string)
+	s.UploadToPresignedURL(t, uploadURL, data)
+
+	return session["objectId"].(string)
+}
+
+// InitiateUploadWithURL initiates an upload, uploads test content to the presigned URL,
+// and returns both the object ID and upload URL.
+func (s *Suite) InitiateUploadWithURL(t *testing.T, systemID, path string) (objectID, uploadURL string) {
+	t.Helper()
+	data := []byte("test content")
+	hash := md5.Sum(data)
+	checksum := base64.StdEncoding.EncodeToString(hash[:])
+
+	req := map[string]any{
+		"path":        path,
+		"contentType": "text/plain",
+		"size":        int64(len(data)),
+		"checksum":    checksum,
+	}
+	resp, err := s.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload")
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
+
+	var result map[string]any
+	require.NoError(t, s.ReadJSON(resp, &result), "Failed to read response JSON")
+
+	session, ok := result["uploadSession"].(map[string]any)
+	require.True(t, ok, "Response should contain uploadSession")
+
+	objectID = session["objectId"].(string)
+	uploadURL = session["uploadUrl"].(string)
+
+	// Upload actual content to MinIO via presigned URL
+	s.UploadToPresignedURL(t, uploadURL, data)
+
+	return objectID, uploadURL
 }
 
 // URL Helpers

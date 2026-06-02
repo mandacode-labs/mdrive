@@ -32,9 +32,9 @@ func TestUpload_Initiate(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API (for proper filesystem initialization)
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("initiates upload for new file", func(t *testing.T) {
 		req := map[string]any{
@@ -115,43 +115,12 @@ func TestUpload_Complete(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
-
-	// Helper to initiate upload and upload to MinIO, returning object ID
-	initiateUpload := func(t *testing.T, path string) string {
-		data := []byte("test content")
-		hash := md5.Sum(data)
-		checksum := base64.StdEncoding.EncodeToString(hash[:])
-
-		req := map[string]any{
-			"path":        path,
-			"contentType": "text/plain",
-			"size":        int64(len(data)),
-			"checksum":    checksum,
-		}
-		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
-		require.NoError(t, err, "Failed to initiate upload")
-		defer func() { _ = resp.Body.Close() }()
-
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
-
-		var result map[string]any
-		err = suite.ReadJSON(resp, &result)
-		require.NoError(t, err, "Failed to read response JSON")
-
-		session, ok := result["uploadSession"].(map[string]any)
-		require.True(t, ok, "Response should contain uploadSession")
-
-		uploadURL := session["uploadUrl"].(string)
-		suite.UploadToPresignedURL(t, uploadURL, data)
-
-		return session["objectId"].(string)
-	}
+	systemID := env.SystemID
 
 	t.Run("completes upload and creates inode", func(t *testing.T) {
-		objectID := initiateUpload(t, "/home/completed.txt")
+		objectID := suite.InitiateUpload(t, systemID, "/home/completed.txt")
 
 		completeReq := map[string]any{
 			"objectId": objectID,
@@ -183,7 +152,7 @@ func TestUpload_Complete(t *testing.T) {
 	})
 
 	t.Run("applies custom permissions", func(t *testing.T) {
-		objectID := initiateUpload(t, "/home/custom-perms.txt")
+		objectID := suite.InitiateUpload(t, systemID, "/home/custom-perms.txt")
 
 		// Complete with custom permissions
 		completeReq := map[string]any{
@@ -219,9 +188,9 @@ func TestUpload_Download(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("returns 404 for non-existent file", func(t *testing.T) {
 		resp, err := suite.Get("/fs/" + systemID + "/download?path=" + url.QueryEscape("/home/nonexistent.txt"))
@@ -260,46 +229,12 @@ func TestUpload_FullFlow(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
-
-	// Helper to initiate upload and upload to MinIO, returning session info
-	initiateUpload := func(t *testing.T, path string) (objectID, uploadURL string) {
-		data := []byte("test content")
-		hash := md5.Sum(data)
-		checksum := base64.StdEncoding.EncodeToString(hash[:])
-
-		req := map[string]any{
-			"path":        path,
-			"contentType": "text/plain",
-			"size":        int64(len(data)),
-			"checksum":    checksum,
-		}
-		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
-		require.NoError(t, err, "Failed to initiate upload")
-		defer func() { _ = resp.Body.Close() }()
-
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
-
-		var result map[string]any
-		err = suite.ReadJSON(resp, &result)
-		require.NoError(t, err, "Failed to read response JSON")
-
-		session, ok := result["uploadSession"].(map[string]any)
-		require.True(t, ok, "Response should contain uploadSession")
-
-		objectID = session["objectId"].(string)
-		uploadURL = session["uploadUrl"].(string)
-
-		// Upload actual content to MinIO via presigned URL
-		suite.UploadToPresignedURL(t, uploadURL, data)
-
-		return objectID, uploadURL
-	}
+	systemID := env.SystemID
 
 	t.Run("upload and download cycle", func(t *testing.T) {
-		objectID, uploadURL := initiateUpload(t, "/home/cycle-test.txt")
+		objectID, uploadURL := suite.InitiateUploadWithURL(t, systemID, "/home/cycle-test.txt")
 
 		assert.NotEmpty(t, objectID, "Should have objectId")
 		assert.NotEmpty(t, uploadURL, "Should have uploadUrl")
@@ -327,7 +262,7 @@ func TestUpload_FullFlow(t *testing.T) {
 	})
 
 	t.Run("overwrite existing file", func(t *testing.T) {
-		objectID1, _ := initiateUpload(t, "/home/overwrite.txt")
+		objectID1, _ := suite.InitiateUploadWithURL(t, systemID, "/home/overwrite.txt")
 
 		completeReq1 := map[string]any{
 			"objectId": objectID1,
@@ -340,7 +275,7 @@ func TestUpload_FullFlow(t *testing.T) {
 		require.Equal(t, http.StatusCreated, completeResp1.StatusCode)
 
 		// Upload second version (same path)
-		objectID2, _ := initiateUpload(t, "/home/overwrite.txt")
+		objectID2, _ := suite.InitiateUploadWithURL(t, systemID, "/home/overwrite.txt")
 
 		// Second object should be different
 		assert.NotEqual(t, objectID1, objectID2,
@@ -379,9 +314,9 @@ func TestUpload_ChecksumMismatch(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Initiate with checksum for "wrong content"
 	wrongData := []byte("wrong content")
@@ -442,9 +377,9 @@ func TestUpload_Idempotency(t *testing.T) {
 	err = suite.StartServer(ctx)
 	require.NoError(t, err, "Failed to start server")
 
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	idempotencyKey := "test-idempotency-key-123"
 	data := []byte("idempotency test content")
