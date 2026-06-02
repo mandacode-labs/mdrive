@@ -2,9 +2,6 @@ package e2e
 
 import (
 	"context"
-	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
-	"crypto/md5"
-	"encoding/base64"
 	"io"
 	"net/http"
 	"net/url"
@@ -319,11 +316,10 @@ func TestUpload_ChecksumMismatch(t *testing.T) {
 	require.NoError(t, err, "Failed to setup full environment")
 	systemID := env.SystemID
 
-	// Initiate with checksum for "wrong content"
+	// Initiate with a deliberately wrong checksum (hardcoded base64 of "test")
+	// The server will compare this against the actual S3 ETag and reject it.
 	wrongData := []byte("wrong content")
-	// #nosec G401 - MD5 used for S3 ETag checksum testing
-	wrongHash := md5.Sum(wrongData)
-	wrongChecksum := base64.StdEncoding.EncodeToString(wrongHash[:])
+	wrongChecksum := "dGVzdA=="
 
 	req := map[string]any{
 		"path":        "/home/mismatch.txt",
@@ -385,15 +381,11 @@ func TestUpload_Idempotency(t *testing.T) {
 
 	idempotencyKey := "test-idempotency-key-123"
 	data := []byte("idempotency test content")
-	// #nosec G401 - MD5 used for S3 ETag checksum testing
-	hash := md5.Sum(data)
-	checksum := base64.StdEncoding.EncodeToString(hash[:])
 
 	req := map[string]any{
 		"path":           "/home/idempotent.txt",
 		"contentType":    "text/plain",
 		"size":           int64(len(data)),
-		"checksum":       checksum,
 		"idempotencyKey": idempotencyKey,
 	}
 

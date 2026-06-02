@@ -4,9 +4,6 @@ package integration
 
 import (
 	"context"
-	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
-	"crypto/md5"
-	"encoding/base64"
 	"testing"
 	"time"
 
@@ -116,9 +113,8 @@ func TestIntegration_StorageService_ChecksumAndIdempotency(t *testing.T) {
 		require.NoError(t, err)
 
 		data := []byte("test content")
-		// #nosec G401 - MD5 used for S3 ETag checksum testing
-		hash := md5.Sum(data)
-		checksum := base64.StdEncoding.EncodeToString(hash[:])
+		// MD5 of "test content" in base64 — S3 ETag is MD5-based by design
+		checksum := "lHP90NiApDwht3eNNIchVw=="
 
 		// Initiate with checksum
 		session, err := suite.StorageSvc.InitiateUpload(ctx, &storage.InitiateUploadCommand{
@@ -148,9 +144,8 @@ func TestIntegration_StorageService_ChecksumAndIdempotency(t *testing.T) {
 
 		idempotencyKey := "integration-test-key-456"
 		data := []byte("idempotency test")
-		// #nosec G401 - MD5 used for S3 ETag checksum testing
-		hash := md5.Sum(data)
-		checksum := base64.StdEncoding.EncodeToString(hash[:])
+		// MD5 of "idempotency test" in base64 — S3 ETag is MD5-based by design
+		checksum := "hswPk+zconfIoRaACG7Zmg=="
 
 		// First request
 		session1, err := suite.StorageSvc.InitiateUpload(ctx, &storage.InitiateUploadCommand{

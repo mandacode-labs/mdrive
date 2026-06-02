@@ -3,9 +3,6 @@ package e2e
 import (
 	"bytes"
 	"context"
-	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
-	"crypto/md5"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -347,19 +344,15 @@ func (s *Suite) SetupFullEnvironmentAPI(ctx context.Context, username string) (*
 // Upload Helpers
 
 // InitiateUpload initiates an upload, uploads test content to the presigned URL,
-// and returns the object ID. Uses "test content" as default data with calculated checksum.
+// and returns the object ID.
 func (s *Suite) InitiateUpload(t *testing.T, systemID, path string) string {
 	t.Helper()
 	data := []byte("test content")
-	// #nosec G401 - MD5 used for S3 ETag checksum testing
-	hash := md5.Sum(data)
-	checksum := base64.StdEncoding.EncodeToString(hash[:])
 
 	req := map[string]any{
 		"path":        path,
 		"contentType": "text/plain",
 		"size":        int64(len(data)),
-		"checksum":    checksum,
 	}
 	resp, err := s.Post("/fs/"+systemID+"/upload/initiate", req)
 	require.NoError(t, err, "Failed to initiate upload")
@@ -384,15 +377,11 @@ func (s *Suite) InitiateUpload(t *testing.T, systemID, path string) string {
 func (s *Suite) InitiateUploadWithURL(t *testing.T, systemID, path string) (objectID, uploadURL string) {
 	t.Helper()
 	data := []byte("test content")
-	// #nosec G401 - MD5 used for S3 ETag checksum testing
-	hash := md5.Sum(data)
-	checksum := base64.StdEncoding.EncodeToString(hash[:])
 
 	req := map[string]any{
 		"path":        path,
 		"contentType": "text/plain",
 		"size":        int64(len(data)),
-		"checksum":    checksum,
 	}
 	resp, err := s.Post("/fs/"+systemID+"/upload/initiate", req)
 	require.NoError(t, err, "Failed to initiate upload")

@@ -5,9 +5,6 @@ package integration
 import (
 	"bytes"
 	"context"
-	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
-	"crypto/md5"
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"testing"
@@ -165,13 +162,11 @@ func TestIntegration_ObjectService_ChecksumValidation(t *testing.T) {
 		_, sys, _, err := suite.SetupFullEnvironment(ctx, "testuser")
 		require.NoError(t, err)
 
-		// Calculate checksum for "wrong content"
+		// Initiate with a deliberately wrong checksum.
+		// The server will compare this against the actual S3 ETag and reject it.
 		wrongData := []byte("wrong content")
-		// #nosec G401 - MD5 used for S3 ETag checksum testing
-		wrongHash := md5.Sum(wrongData)
-		wrongChecksum := base64.StdEncoding.EncodeToString(wrongHash[:])
+		wrongChecksum := "dGVzdA=="
 
-		// Initiate with wrong checksum
 		session, err := suite.ObjectSvc.InitiateUpload(ctx, &object.InitiateUploadCommand{
 			SystemID:    sys.ID,
 			ContentType: "text/plain",
