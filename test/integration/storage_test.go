@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
 	"crypto/md5"
 	"encoding/base64"
 	"testing"
@@ -115,6 +116,7 @@ func TestIntegration_StorageService_ChecksumAndIdempotency(t *testing.T) {
 		require.NoError(t, err)
 
 		data := []byte("test content")
+		// #nosec G401 - MD5 used for S3 ETag checksum testing
 		hash := md5.Sum(data)
 		checksum := base64.StdEncoding.EncodeToString(hash[:])
 
@@ -146,6 +148,7 @@ func TestIntegration_StorageService_ChecksumAndIdempotency(t *testing.T) {
 
 		idempotencyKey := "integration-test-key-456"
 		data := []byte("idempotency test")
+		// #nosec G401 - MD5 used for S3 ETag checksum testing
 		hash := md5.Sum(data)
 		checksum := base64.StdEncoding.EncodeToString(hash[:])
 

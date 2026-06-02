@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	// #nosec G401 - MD5 is used for S3 ETag checksum testing, not security
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
@@ -166,6 +167,7 @@ func TestIntegration_ObjectService_ChecksumValidation(t *testing.T) {
 
 		// Calculate checksum for "wrong content"
 		wrongData := []byte("wrong content")
+		// #nosec G401 - MD5 used for S3 ETag checksum testing
 		wrongHash := md5.Sum(wrongData)
 		wrongChecksum := base64.StdEncoding.EncodeToString(wrongHash[:])
 
