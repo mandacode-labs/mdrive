@@ -52,7 +52,7 @@ repos:
         name: go test
         description: Run unit tests
         language: system
-        entry: make test
+        entry: make test-unit
         files: '\.go$'
         pass_filenames: false
         require_serial: true

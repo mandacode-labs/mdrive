@@ -59,8 +59,16 @@ sec: ## Run gosec security scanner
 # ---------------------------------------------------------------------------
 # Testing
 # ---------------------------------------------------------------------------
+# Unit test packages (exclude tests that require Docker or external infra)
+UNIT_TEST_FILTER := grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind
+UNIT_PKGS := $(shell go list ./... | $(UNIT_TEST_FILTER))
+
+.PHONY: test-unit
+test-unit: ## Run unit tests only
+	go test -v $(UNIT_PKGS) -coverprofile=cover-unit.out
+
 .PHONY: test
-test: ## Run all tests
+test: ## Run all tests (unit + e2e + integration + kind)
 	go test -v ./... -coverprofile=cover.out
 
 .PHONY: test-e2e
