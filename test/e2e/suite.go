@@ -372,7 +372,7 @@ func (s *Suite) StartServer(ctx context.Context) error {
 	}
 
 	// Start the actual fx app
-	s.app = serve.NewFXApp(s.cfgFile, s.Config.HTTP.Port, "../../api/openapi.yaml")
+	s.app = serve.NewFXApp(s.cfgFile, s.Config.HTTP.Port, "api/openapi.yaml")
 
 	go func() {
 		s.app.Run()
