@@ -2,6 +2,7 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"path"
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
@@ -42,10 +43,14 @@ func (s *service) Rename(ctx context.Context, cmd *RenameCommand) (*inode.Inode,
 		}
 	}
 
+	fileType, err := utils.SafeIntToUint8(sourceInode.Mode() >> 12)
+	if err != nil {
+		return nil, fmt.Errorf("invalid file type: %w", err)
+	}
 	newEntry := dentry.DirEntry{
 		Name:     cmd.NewName,
 		InodeID:  sourceInode.ID(),
-		FileType: utils.SafeIntToUint8(sourceInode.Mode() >> 12),
+		FileType: fileType,
 	}
 	if err := s.dentrySvc.Link(ctx, sourceParentDir.ID(), newEntry); err != nil {
 		return nil, err

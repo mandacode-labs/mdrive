@@ -12,10 +12,6 @@ APP_NAME    := retrowin-server
 BUILD_DIR   := bin
 MIGRATION_DIR = ent/migrate/migrations
 
-# Test packages to exclude from unit tests
-TEST_FILTER := grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind
-UNIT_PKGS   := $(shell go list ./... | $(TEST_FILTER))
-
 # ---------------------------------------------------------------------------
 # Code Generation
 # ---------------------------------------------------------------------------
@@ -64,8 +60,8 @@ sec: ## Run gosec security scanner
 # Testing
 # ---------------------------------------------------------------------------
 .PHONY: test
-test: ## Run unit tests only
-	go test -v $(UNIT_PKGS) -coverprofile=cover-unit.out
+test: ## Run all tests
+	go test -v ./... -coverprofile=cover.out
 
 .PHONY: test-e2e
 test-e2e: ## Run e2e tests (requires Docker)

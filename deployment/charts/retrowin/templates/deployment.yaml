@@ -40,8 +40,6 @@ spec:
             - serve
             - --config
             - /app/config/config.yaml
-            - --openapi
-            - /app/api/openapi.bundled.json
           env:
             # Database password override (from secret)
             {{- if or .Values.secrets.database.password .Values.secrets.database.existingSecret }}

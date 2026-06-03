@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
@@ -30,8 +31,12 @@ func (h *Handler) CreateSystemUser(ctx context.Context, req *api.CreateSystemUse
 		return nil, h.domainError(err)
 	}
 
+	userResp, err := h.toSystemUser(sysUser)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.SystemUserResponse{
-		User: *h.toSystemUser(sysUser),
+		User: *userResp,
 	}, nil
 }
 
@@ -50,7 +55,11 @@ func (h *Handler) ListSystemUsers(ctx context.Context, params api.ListSystemUser
 		Users: make([]api.SystemUser, len(users)),
 	}
 	for i, u := range users {
-		resp.Users[i] = *h.toSystemUser(u)
+		userResp, err := h.toSystemUser(u)
+		if err != nil {
+			return nil, h.domainError(err)
+		}
+		resp.Users[i] = *userResp
 	}
 
 	return resp, nil
@@ -76,8 +85,12 @@ func (h *Handler) GetSystemUser(ctx context.Context, params api.GetSystemUserPar
 		}, nil
 	}
 
+	userResp, err := h.toSystemUser(user)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.SystemUserResponse{
-		User: *h.toSystemUser(user),
+		User: *userResp,
 	}, nil
 }
 
@@ -109,13 +122,21 @@ func (h *Handler) DeleteSystemUser(ctx context.Context, params api.DeleteSystemU
 	return &api.DeleteSystemUserNoContent{}, nil
 }
 
-func (h *Handler) toSystemUser(u *coreuser.SystemUser) *api.SystemUser {
+func (h *Handler) toSystemUser(u *coreuser.SystemUser) (*api.SystemUser, error) {
+	uid, err := utils.SafeIntToInt32(u.UID())
+	if err != nil {
+		return nil, fmt.Errorf("invalid uid: %w", err)
+	}
+	gid, err := utils.SafeIntToInt32(u.GID())
+	if err != nil {
+		return nil, fmt.Errorf("invalid gid: %w", err)
+	}
 	return &api.SystemUser{
 		ID:       int64(u.ID()),
 		UserId:   u.UserID(),
 		SystemId: u.SystemID(),
 		Username: u.Username(),
-		UID:      utils.SafeIntToInt32(u.UID()),
-		Gid:      utils.SafeIntToInt32(u.GID()),
-	}
+		UID:      uid,
+		Gid:      gid,
+	}, nil
 }

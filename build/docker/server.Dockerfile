@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Bundle OpenAPI spec to JSON
+# Bundle OpenAPI spec to JSON (kept for backward compatibility with --openapi flag)
 RUN npx @apidevtools/swagger-cli bundle api/openapi.yaml --outfile api/openapi.bundled.json --type json
 
 # Accept build args from buildx for multi-platform builds
@@ -78,9 +78,6 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/retrowin-server /app/retrowin-server
 
-# Copy bundled openapi spec
-COPY --from=builder /build/api/openapi.bundled.json /app/api/openapi.bundled.json
-
 # Create config directory
 RUN mkdir -p /app/config && chown -R retrowin:retrowin /app
 
@@ -96,7 +93,6 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Set default environment
 ENV PORT=8080 \
-    HTTP_OPENAPI_PATH=/app/api/openapi.bundled.json \
     GIN_MODE=release
 
 # Run

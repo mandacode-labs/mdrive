@@ -94,8 +94,12 @@ func (h *Handler) CompleteUpload(ctx context.Context, req *api.CompleteUploadReq
 		return nil, h.domainError(err)
 	}
 
+	inodeResp, err := h.toInode(inodeResult)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.InodeResponse{
-		Inode: *h.toInode(inodeResult),
+		Inode: *inodeResp,
 	}, nil
 }
 

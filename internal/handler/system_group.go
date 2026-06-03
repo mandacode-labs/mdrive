@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
@@ -25,8 +26,12 @@ func (h *Handler) CreateSystemGroup(ctx context.Context, req *api.CreateSystemGr
 		return nil, h.domainError(err)
 	}
 
+	groupResp, err := h.toSystemGroup(group)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.SystemGroupResponse{
-		Group: *h.toSystemGroup(group),
+		Group: *groupResp,
 	}, nil
 }
 
@@ -41,7 +46,11 @@ func (h *Handler) ListSystemGroups(ctx context.Context, params api.ListSystemGro
 		Groups: make([]api.SystemGroup, len(groups)),
 	}
 	for i, g := range groups {
-		resp.Groups[i] = *h.toSystemGroup(g)
+		groupResp, err := h.toSystemGroup(g)
+		if err != nil {
+			return nil, h.domainError(err)
+		}
+		resp.Groups[i] = *groupResp
 	}
 
 	return resp, nil
@@ -54,8 +63,12 @@ func (h *Handler) GetSystemGroup(ctx context.Context, params api.GetSystemGroupP
 		return nil, h.domainError(err)
 	}
 
+	groupResp, err := h.toSystemGroup(group)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.SystemGroupResponse{
-		Group: *h.toSystemGroup(group),
+		Group: *groupResp,
 	}, nil
 }
 
@@ -116,11 +129,15 @@ func (h *Handler) RemoveGroupMember(ctx context.Context, params api.RemoveGroupM
 	return &api.RemoveGroupMemberNoContent{}, nil
 }
 
-func (h *Handler) toSystemGroup(g *coreuser.SystemGroup) *api.SystemGroup {
+func (h *Handler) toSystemGroup(g *coreuser.SystemGroup) (*api.SystemGroup, error) {
+	gid, err := utils.SafeIntToInt32(g.GID())
+	if err != nil {
+		return nil, fmt.Errorf("invalid gid: %w", err)
+	}
 	return &api.SystemGroup{
 		ID:       int64(g.ID()),
 		SystemId: g.SystemID(),
 		Name:     g.Name(),
-		Gid:      utils.SafeIntToInt32(g.GID()),
-	}
+		Gid:      gid,
+	}, nil
 }

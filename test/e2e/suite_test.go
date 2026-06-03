@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	openapispec "github.com/mandacode-labs/retrowin-go/api"
 	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 )
 
@@ -178,9 +179,9 @@ func TestSuite_FullServerStartup(t *testing.T) {
 	t.Logf("Using config file: %s", cfgFile)
 	t.Logf("Database: %s:%d", cfg.Database.Host, cfg.Database.Port)
 
-	// Start the actual fx app with test config
+	// Start the actual fx app with embedded OpenAPI spec
 	// This test verifies that the real server starts and responds to health checks
-	app := serve.NewFXApp(cfgFile, cfg.HTTP.Port, "../../api/openapi.yaml")
+	app := serve.NewFXApp(cfgFile, cfg.HTTP.Port, openapispec.Spec)
 
 	// Start app in background
 	appDone := make(chan struct{})

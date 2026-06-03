@@ -2,6 +2,7 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strings"
 
@@ -96,10 +97,14 @@ func (s *service) mvOne(ctx context.Context, systemID string, srcPath string, de
 		}
 	}
 
+	fileType, err := utils.SafeIntToUint8(sourceInode.Mode() >> 12)
+	if err != nil {
+		return fmt.Errorf("invalid file type: %w", err)
+	}
 	newEntry := dentry.DirEntry{
 		Name:     newEntryName,
 		InodeID:  sourceInode.ID(),
-		FileType: utils.SafeIntToUint8(sourceInode.Mode() >> 12),
+		FileType: fileType,
 	}
 	if err := s.dentrySvc.Link(ctx, destParentDir.ID(), newEntry); err != nil {
 		return err
