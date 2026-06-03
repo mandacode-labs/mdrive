@@ -7,6 +7,7 @@ import (
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // Mv moves multiple sources to a destination, like Unix mv.
@@ -98,7 +99,7 @@ func (s *service) mvOne(ctx context.Context, systemID string, srcPath string, de
 	newEntry := dentry.DirEntry{
 		Name:     newEntryName,
 		InodeID:  sourceInode.ID(),
-		FileType: uint8(sourceInode.Mode() >> 12),
+		FileType: utils.SafeIntToUint8(sourceInode.Mode() >> 12),
 	}
 	if err := s.dentrySvc.Link(ctx, destParentDir.ID(), newEntry); err != nil {
 		return err

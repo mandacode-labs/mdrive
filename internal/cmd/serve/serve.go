@@ -21,6 +21,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 	"github.com/mandacode-labs/retrowin-go/pkg/api"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/valkey-io/valkey-go"
@@ -198,7 +199,7 @@ func ProvideHTTPMux(
 	// Serve OpenAPI spec and Swagger UI (register before catch-all)
 	mux.HandleFunc("/openapi.json", func(w http.ResponseWriter, r *http.Request) {
 		// Use configured path from CLI flag
-		content, err := os.ReadFile(openAPIPath)
+		content, err := utils.SafeReadFile(openAPIPath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("OpenAPI spec not found: %s", openAPIPath), http.StatusNotFound)
 			return

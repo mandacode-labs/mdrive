@@ -6,6 +6,7 @@ import (
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
 	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // CreateSystemUser implements POST /systems/{systemId}/users.
@@ -114,7 +115,7 @@ func (h *Handler) toSystemUser(u *coreuser.SystemUser) *api.SystemUser {
 		UserId:   u.UserID(),
 		SystemId: u.SystemID(),
 		Username: u.Username(),
-		UID:      int32(u.UID()),
-		Gid:      int32(u.GID()),
+		UID:      utils.SafeIntToInt32(u.UID()),
+		Gid:      utils.SafeIntToInt32(u.GID()),
 	}
 }

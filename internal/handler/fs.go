@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 )
 
@@ -59,12 +60,12 @@ func (h *Handler) toInode(in *inode.Inode) *api.Inode {
 	return &api.Inode{
 		ID:        in.ID(),
 		SystemId:  in.SystemID(),
-		Mode:      int32(in.Mode()),
-		UID:       int32(in.UID()),
-		Gid:       int32(in.GID()),
+		Mode:      utils.SafeIntToInt32(in.Mode()),
+		UID:       utils.SafeIntToInt32(in.UID()),
+		Gid:       utils.SafeIntToInt32(in.GID()),
 		Size:      in.Size(),
-		LinkCount: int32(in.LinkCount()),
-		Flags:     int32(in.Flags()),
+		LinkCount: utils.SafeIntToInt32(in.LinkCount()),
+		Flags:     utils.SafeIntToInt32(in.Flags()),
 		Atime:     toOptTimestamp(in.Atime()),
 		Mtime:     toOptTimestamp(in.Mtime()),
 		Ctime:     toOptTimestamp(in.Ctime()),

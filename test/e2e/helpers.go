@@ -220,9 +220,14 @@ func (s *Suite) LoginAs(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
+	// #nosec G124 — test environment cookie, not production
 	sessionCookie := &http.Cookie{
-		Name:  "session_id",
-		Value: sessionID,
+		Name:     "session_id",
+		Value:    sessionID,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // test environment
+		SameSite: http.SameSiteLaxMode,
 	}
 	s.cookieJar = append(s.cookieJar, sessionCookie)
 	return nil

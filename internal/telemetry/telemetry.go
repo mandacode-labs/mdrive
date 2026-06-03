@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"sync"
 
 	"go.opentelemetry.io/otel"
@@ -20,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // Providers holds the initialized OTel providers and a shutdown function.
@@ -134,7 +134,7 @@ func buildTLSConfig(caCertPath string) (*tls.Config, error) {
 		return nil, nil
 	}
 
-	caPEM, err := os.ReadFile(caCertPath)
+	caPEM, err := utils.SafeReadFile(caCertPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert %s: %w", caCertPath, err)
 	}

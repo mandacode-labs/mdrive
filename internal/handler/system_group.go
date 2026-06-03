@@ -6,6 +6,7 @@ import (
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
 	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // CreateSystemGroup implements POST /systems/{systemId}/groups.
@@ -120,6 +121,6 @@ func (h *Handler) toSystemGroup(g *coreuser.SystemGroup) *api.SystemGroup {
 		ID:       int64(g.ID()),
 		SystemId: g.SystemID(),
 		Name:     g.Name(),
-		Gid:      int32(g.GID()),
+		Gid:      utils.SafeIntToInt32(g.GID()),
 	}
 }
