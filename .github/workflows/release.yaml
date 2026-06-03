@@ -50,7 +50,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}
+          images: ${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/server
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
