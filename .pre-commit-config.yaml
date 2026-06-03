@@ -12,6 +12,7 @@ repos:
       - id: end-of-file-fixer
         exclude: '^.idea/'
       - id: check-yaml
+        exclude: '^deployment/charts/retrowin/templates/'
       - id: check-added-large-files
         args: ['--maxkb=500']
       - id: check-merge-conflict
@@ -35,13 +36,14 @@ repos:
         entry: go vet
         files: '\.go$'
         pass_filenames: false
+        args: ['./...']
         require_serial: true
 
       - id: golangci-lint
         name: golangci-lint
         description: Run golangci-lint --fast
         language: system
-        entry: golangci-lint run --fast
+        entry: golangci-lint run --fast-only
         files: '\.go$'
         pass_filenames: false
         require_serial: true
