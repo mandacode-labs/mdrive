@@ -14,7 +14,7 @@ import (
 )
 
 func newTestObject(id, bucket, storageKey string, status object.Status) *object.Object {
-	return object.NewObject(id, object.ProviderS3, bucket, "system-1", storageKey, status, time.Now(), time.Now())
+	return object.NewObject(id, object.ProviderS3, bucket, "system-1", storageKey, status, nil, nil, time.Now(), time.Now())
 }
 
 func TestGC_DefaultExpiry(t *testing.T) {

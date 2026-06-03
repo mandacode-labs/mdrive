@@ -30,9 +30,11 @@ type StorageService interface {
 
 // InitiateUploadCommand for starting a presigned upload.
 type InitiateUploadCommand struct {
-	SystemID    string
-	ContentType string
-	Size        int64
+	SystemID       string
+	ContentType    string
+	Size           int64
+	Checksum       *string // Base64-encoded MD5
+	IdempotencyKey *string
 }
 
 // CompleteUploadCommand for finalizing upload after client confirms.
@@ -69,9 +71,11 @@ func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand
 	}
 
 	session, err := s.objectSvc.InitiateUpload(ctx, &object.InitiateUploadCommand{
-		SystemID:    cmd.SystemID,
-		ContentType: cmd.ContentType,
-		Size:        cmd.Size,
+		SystemID:       cmd.SystemID,
+		ContentType:    cmd.ContentType,
+		Size:           cmd.Size,
+		Checksum:       cmd.Checksum,
+		IdempotencyKey: cmd.IdempotencyKey,
 	})
 	if err != nil {
 		return nil, errors.WrapInternal(err, "failed to initiate upload")

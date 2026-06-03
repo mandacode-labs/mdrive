@@ -27,6 +27,7 @@ import (
 	"go.uber.org/fx"
 	"gopkg.in/yaml.v3"
 
+	openapispec "github.com/mandacode-labs/retrowin-go/api"
 	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 	"github.com/mandacode-labs/retrowin-go/internal/config"
@@ -366,13 +367,13 @@ func (s *Suite) StartServer(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	err = os.WriteFile(s.cfgFile, cfgData, 0644)
+	err = os.WriteFile(s.cfgFile, cfgData, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	// Start the actual fx app
-	s.app = serve.NewFXApp(s.cfgFile, s.Config.HTTP.Port, "../../api/openapi.yaml")
+	// Start the actual fx app with embedded OpenAPI spec
+	s.app = serve.NewFXApp(s.cfgFile, s.Config.HTTP.Port, openapispec.Spec)
 
 	go func() {
 		s.app.Run()

@@ -53,8 +53,12 @@ func (h *Handler) Mkdir(ctx context.Context, req *api.MkdirRequest, params api.M
 		return nil, h.domainError(err)
 	}
 
+	inodeResp, err := h.toInode(dirInode)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.InodeResponse{
-		Inode: *h.toInode(dirInode),
+		Inode: *inodeResp,
 	}, nil
 }
 
@@ -69,8 +73,12 @@ func (h *Handler) Ln(ctx context.Context, req *api.SymlinkRequest, params api.Ln
 		return nil, h.domainError(err)
 	}
 
+	inodeResp, err := h.toInode(symlinkInode)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.InodeResponse{
-		Inode: *h.toInode(symlinkInode),
+		Inode: *inodeResp,
 	}, nil
 }
 
@@ -102,8 +110,12 @@ func (h *Handler) Rename(ctx context.Context, req *api.RenameRequest, params api
 		return nil, h.domainError(err)
 	}
 
+	inodeResp, err := h.toInode(renamedInode)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
 	return &api.InodeResponse{
-		Inode: *h.toInode(renamedInode),
+		Inode: *inodeResp,
 	}, nil
 }
 
@@ -142,9 +154,15 @@ func (h *Handler) Rm(ctx context.Context, req *api.RmRequest, params api.RmParam
 		return nil, h.domainError(err)
 	}
 
+	recursive := false
+	if req.Recursive.Set {
+		recursive = req.Recursive.Value
+	}
+
 	result, err := h.fsSvc.Rm(ctx, &fs.RmCommand{
-		SystemID: params.SystemId,
-		Paths:    req.Paths,
+		SystemID:  params.SystemId,
+		Paths:     req.Paths,
+		Recursive: recursive,
 	})
 	if err != nil {
 		return nil, h.domainError(err)

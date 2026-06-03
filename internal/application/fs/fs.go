@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 
+	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
@@ -37,11 +38,19 @@ type FsService interface {
 	ChmodPath(ctx context.Context, systemID string, path string, mode int) (*inode.Inode, error)
 
 	// Rm removes multiple paths. Like Unix rm, calls unlinkat + inode delete per path.
+	// If Recursive is true, directories are deleted recursively.
 	Rm(ctx context.Context, cmd *RmCommand) (*RmResult, error)
 	// Mv moves multiple paths to a destination. Like Unix mv, uses renameat per source.
 	Mv(ctx context.Context, cmd *MvCommand) (*MvResult, error)
 	// Rename renames a single entry within the same directory. Uses renameat.
 	Rename(ctx context.Context, cmd *RenameCommand) (*inode.Inode, error)
+
+	// AtomicUpload completes an upload and links the file to the filesystem atomically.
+	// Uses a transaction to ensure object, inode, and dentry updates are all-or-nothing.
+	AtomicUpload(ctx context.Context, cmd *AtomicUploadCommand) (*inode.Inode, error)
+	// DeleteRecursive recursively deletes a directory and all its contents.
+	// S3 objects are deleted before their DB records to prevent orphan storage costs.
+	DeleteRecursive(ctx context.Context, systemID string, path string) error
 }
 
 // CreateFileCommand for creating a regular file.
@@ -94,8 +103,9 @@ type ListFilter struct {
 
 // RmCommand for bulk removal of paths.
 type RmCommand struct {
-	SystemID string
-	Paths    []string
+	SystemID  string
+	Paths     []string
+	Recursive bool
 }
 
 // RmResult contains the results of a bulk rm operation.
@@ -136,19 +146,35 @@ type RenameCommand struct {
 	NewName  string
 }
 
+// AtomicUploadCommand atomically completes an upload and links it to the filesystem.
+type AtomicUploadCommand struct {
+	ObjectID string
+	SystemID string
+	DirPath  string
+	FileName string
+	Mode     int
+	Flags    int
+}
+
 type service struct {
+	entClient *ent.Client
 	inodeSvc  inode.InodeService
 	objectSvc object.ObjectService
+	storage   object.Storage
 	userSvc   user.UserService
 	dentrySvc dentry.DentryService
+	dirLock   *dentry.Locker
 }
 
 // NewService creates a new filesystem service.
-func NewService(inodeSvc inode.InodeService, objectSvc object.ObjectService, userSvc user.UserService, dentrySvc dentry.DentryService) FsService {
+func NewService(entClient *ent.Client, inodeSvc inode.InodeService, objectSvc object.ObjectService, storage object.Storage, userSvc user.UserService, dentrySvc dentry.DentryService, dirLock *dentry.Locker) FsService {
 	return &service{
+		entClient: entClient,
 		inodeSvc:  inodeSvc,
 		objectSvc: objectSvc,
+		storage:   storage,
 		userSvc:   userSvc,
 		dentrySvc: dentrySvc,
+		dirLock:   dirLock,
 	}
 }

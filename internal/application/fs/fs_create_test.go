@@ -17,7 +17,7 @@ import (
 )
 
 func TestCreateFile_MissingSystemID(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "",
@@ -34,7 +34,7 @@ func TestCreateFile_SuccessWithExplicitUID(t *testing.T) {
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "sys",
@@ -57,7 +57,7 @@ func TestCreateFile_SuccessWithResolvedUID(t *testing.T) {
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	result, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "sys",
@@ -77,7 +77,7 @@ func TestCreateFile_DefaultMode(t *testing.T) {
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeRegular|inode.PermOwnerRW|inode.PermGroupRX|inode.PermOtherR, 0, 0, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "sys",
@@ -93,7 +93,7 @@ func TestCreateFile_ResolveIDsFailure(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(0, nil, errors.Internal("resolve failed"))
 
-	svc := NewService(nil, nil, userSvc, nil)
+	svc := NewService(nil, nil, nil, nil, userSvc, nil, nil)
 
 	_, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "sys",
@@ -108,7 +108,7 @@ func TestCreateFile_CreateFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, errors.Internal("create failed"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateFile(context.Background(), &CreateFileCommand{
 		SystemID: "sys",
@@ -122,7 +122,7 @@ func TestCreateFile_CreateFailure(t *testing.T) {
 // --- CreateDirectory ---
 
 func TestCreateDirectory_MissingSystemID(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateDirectory(context.Background(), &CreateDirectoryCommand{
 		SystemID: "",
@@ -140,7 +140,7 @@ func TestCreateDirectory_Success(t *testing.T) {
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.CreateDirectory(context.Background(), &CreateDirectoryCommand{
 		SystemID: "sys",
@@ -161,7 +161,7 @@ func TestCreateDirectory_DefaultMode(t *testing.T) {
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 	inodeSvc.EXPECT().Update(mock.Anything, mock.Anything).Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.CreateDirectory(context.Background(), &CreateDirectoryCommand{
 		SystemID: "sys",
@@ -190,7 +190,7 @@ func TestCreateDirectory_DirContentJSON(t *testing.T) {
 		return nil
 	})
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateDirectory(context.Background(), &CreateDirectoryCommand{
 		SystemID: "sys",
@@ -203,7 +203,7 @@ func TestCreateDirectory_DirContentJSON(t *testing.T) {
 // --- CreateSymlink ---
 
 func TestCreateSymlink_MissingSystemID(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateSymlink(context.Background(), &CreateSymlinkCommand{
 		SystemID: "",
@@ -215,7 +215,7 @@ func TestCreateSymlink_MissingSystemID(t *testing.T) {
 }
 
 func TestCreateSymlink_MissingTarget(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateSymlink(context.Background(), &CreateSymlinkCommand{
 		SystemID: "sys",
@@ -233,7 +233,7 @@ func TestCreateSymlink_Success(t *testing.T) {
 	createdInode := inode.NewInode("new-id", "sys", inode.ModeSymlink|0777, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().Create(mock.Anything, mock.Anything).Return(createdInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.CreateSymlink(context.Background(), &CreateSymlinkCommand{
 		SystemID: "sys",
@@ -257,7 +257,7 @@ func TestCreateSymlink_SymlinkContentJSON(t *testing.T) {
 		return inode.NewInode("new-id", "sys", cmd.Mode, cmd.UID, cmd.GID, 0, 1, 0, now, now, now, cmd.Content, now, now), nil
 	})
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.CreateSymlink(context.Background(), &CreateSymlinkCommand{
 		SystemID: "sys",
@@ -277,7 +277,7 @@ func TestCreateSymlink_SymlinkContentJSON(t *testing.T) {
 // --- resolveIDs ---
 
 func TestResolveIDs_ExplicitUID(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil).(*service)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil).(*service)
 
 	uid, gid, err := svc.resolveIDs(context.Background(), "sys", 1000, 1001)
 
@@ -291,7 +291,7 @@ func TestResolveIDs_AutoResolve(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000, 1001}, nil)
 
-	svc := NewService(nil, nil, userSvc, nil).(*service)
+	svc := NewService(nil, nil, nil, nil, userSvc, nil, nil).(*service)
 
 	uid, gid, err := svc.resolveIDs(context.Background(), "sys", -1, 0)
 
@@ -305,7 +305,7 @@ func TestResolveIDs_AutoResolveWithExplicitGID(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000, 1001}, nil)
 
-	svc := NewService(nil, nil, userSvc, nil).(*service)
+	svc := NewService(nil, nil, nil, nil, userSvc, nil, nil).(*service)
 
 	uid, gid, err := svc.resolveIDs(context.Background(), "sys", -1, 2000)
 
@@ -319,7 +319,7 @@ func TestResolveIDs_AutoResolveFailure(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(0, nil, errors.Internal("resolve failed"))
 
-	svc := NewService(nil, nil, userSvc, nil).(*service)
+	svc := NewService(nil, nil, nil, nil, userSvc, nil, nil).(*service)
 
 	_, _, err := svc.resolveIDs(context.Background(), "sys", -1, 0)
 

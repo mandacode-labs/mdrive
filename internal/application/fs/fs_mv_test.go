@@ -18,7 +18,7 @@ import (
 )
 
 func TestMv_EmptySources(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -31,7 +31,7 @@ func TestMv_EmptySources(t *testing.T) {
 }
 
 func TestMv_EmptyDestination(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -71,7 +71,7 @@ func TestMv_SuccessMoveToDirectory(t *testing.T) {
 
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "src").Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -106,7 +106,7 @@ func TestMv_SuccessMoveToNewName(t *testing.T) {
 
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "src").Return(nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -128,7 +128,7 @@ func TestMv_SourceNotFound(t *testing.T) {
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -161,7 +161,7 @@ func TestMv_DestinationIsFile(t *testing.T) {
 	destInode := inode.NewInode("dest-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "dest-id").Return(destInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -202,7 +202,7 @@ func TestMv_DestinationEntryExists(t *testing.T) {
 		{Name: "src", InodeID: "existing-id", FileType: uint8(inode.ModeRegular >> 12)},
 	}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -230,7 +230,7 @@ func TestMv_MoveDirIntoItself(t *testing.T) {
 	srcInode := inode.NewInode("src-id", "sys", inode.ModeDirectory|0755, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.On("GetByID", mock.Anything, "src-id").Return(srcInode, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -245,7 +245,7 @@ func TestMv_MoveDirIntoItself(t *testing.T) {
 }
 
 func TestMv_SameSourceAndDestination(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -278,7 +278,7 @@ func TestMv_LinkFailure(t *testing.T) {
 
 	dentrySvc.EXPECT().Link(mock.Anything, "root-id", mock.Anything).Return(errors.Internal("link failed"))
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",
@@ -312,7 +312,7 @@ func TestMv_UnlinkFailure(t *testing.T) {
 
 	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "src").Return(errors.Internal("unlink failed"))
 
-	svc := NewService(inodeSvc, nil, nil, dentrySvc)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil)
 
 	result, err := svc.Mv(context.Background(), &MvCommand{
 		SystemID:    "sys",

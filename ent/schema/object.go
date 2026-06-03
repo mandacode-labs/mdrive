@@ -45,6 +45,14 @@ func (Object) Fields() []ent.Field {
 		field.Enum("status").
 			Values("pending", "active").
 			Default("active"),
+		// Checksum for integrity verification (base64-encoded MD5)
+		field.String("checksum").
+			Optional().
+			Nillable(),
+		// Idempotency key to prevent duplicate uploads
+		field.String("idempotency_key").
+			Optional().
+			Nillable(),
 	}
 }
 
@@ -56,6 +64,8 @@ func (Object) Indexes() []ent.Index {
 		index.Fields("provider", "bucket"),
 		// For GC: find pending objects older than threshold
 		index.Fields("status", "update_time"),
+		// For idempotency lookups
+		index.Fields("system_id", "idempotency_key").Unique(),
 	}
 }
 

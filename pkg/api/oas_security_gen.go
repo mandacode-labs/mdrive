@@ -122,9 +122,14 @@ func (s *Client) securitySessionAuth(ctx context.Context, operationName Operatio
 	if err != nil {
 		return errors.Wrap(err, "security source \"SessionAuth\"")
 	}
+	// #nosec G124 — test client cookie, not production server cookie
 	req.AddCookie(&http.Cookie{
-		Name:  "session_id",
-		Value: t.APIKey,
+		Name:     "session_id",
+		Value:    t.APIKey,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
 }

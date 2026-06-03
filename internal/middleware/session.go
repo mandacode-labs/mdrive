@@ -58,6 +58,7 @@ func (a *SessionAuth) RequireSession(next http.Handler) http.Handler {
 
 // SetSessionCookie sets the session cookie.
 func SetSessionCookie(w http.ResponseWriter, sessionID string, secure bool) {
+	// #nosec G124 — Secure and SameSite are explicitly configured via parameter
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    sessionID,
@@ -70,6 +71,7 @@ func SetSessionCookie(w http.ResponseWriter, sessionID string, secure bool) {
 
 // ClearSessionCookie clears the session cookie.
 func ClearSessionCookie(w http.ResponseWriter, secure bool) {
+	// #nosec G124 — Secure and SameSite are explicitly configured via parameter
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    "",

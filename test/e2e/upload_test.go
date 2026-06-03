@@ -30,9 +30,9 @@ func TestUpload_Initiate(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API (for proper filesystem initialization)
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("initiates upload for new file", func(t *testing.T) {
 		req := map[string]any{
@@ -113,38 +113,12 @@ func TestUpload_Complete(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
-
-	// Helper to initiate upload and upload to MinIO, returning object ID
-	initiateUpload := func(t *testing.T, path string) string {
-		req := map[string]any{
-			"path":        path,
-			"contentType": "text/plain",
-			"size":        int64(100),
-		}
-		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
-		require.NoError(t, err, "Failed to initiate upload")
-		defer func() { _ = resp.Body.Close() }()
-
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
-
-		var result map[string]any
-		err = suite.ReadJSON(resp, &result)
-		require.NoError(t, err, "Failed to read response JSON")
-
-		session, ok := result["uploadSession"].(map[string]any)
-		require.True(t, ok, "Response should contain uploadSession")
-
-		uploadURL := session["uploadUrl"].(string)
-		suite.UploadToPresignedURL(t, uploadURL, []byte("test content"))
-
-		return session["objectId"].(string)
-	}
+	systemID := env.SystemID
 
 	t.Run("completes upload and creates inode", func(t *testing.T) {
-		objectID := initiateUpload(t, "/home/completed.txt")
+		objectID := suite.InitiateUpload(t, systemID, "/home/completed.txt")
 
 		completeReq := map[string]any{
 			"objectId": objectID,
@@ -176,7 +150,7 @@ func TestUpload_Complete(t *testing.T) {
 	})
 
 	t.Run("applies custom permissions", func(t *testing.T) {
-		objectID := initiateUpload(t, "/home/custom-perms.txt")
+		objectID := suite.InitiateUpload(t, systemID, "/home/custom-perms.txt")
 
 		// Complete with custom permissions
 		completeReq := map[string]any{
@@ -212,9 +186,9 @@ func TestUpload_Download(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("returns 404 for non-existent file", func(t *testing.T) {
 		resp, err := suite.Get("/fs/" + systemID + "/download?path=" + url.QueryEscape("/home/nonexistent.txt"))
@@ -253,41 +227,12 @@ func TestUpload_FullFlow(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
-
-	// Helper to initiate upload and upload to MinIO, returning session info
-	initiateUpload := func(t *testing.T, path string) (objectID, uploadURL string) {
-		req := map[string]any{
-			"path":        path,
-			"contentType": "text/plain",
-			"size":        int64(100),
-		}
-		resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
-		require.NoError(t, err, "Failed to initiate upload")
-		defer func() { _ = resp.Body.Close() }()
-
-		require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
-
-		var result map[string]any
-		err = suite.ReadJSON(resp, &result)
-		require.NoError(t, err, "Failed to read response JSON")
-
-		session, ok := result["uploadSession"].(map[string]any)
-		require.True(t, ok, "Response should contain uploadSession")
-
-		objectID = session["objectId"].(string)
-		uploadURL = session["uploadUrl"].(string)
-
-		// Upload actual content to MinIO via presigned URL
-		suite.UploadToPresignedURL(t, uploadURL, []byte("test content"))
-
-		return objectID, uploadURL
-	}
+	systemID := env.SystemID
 
 	t.Run("upload and download cycle", func(t *testing.T) {
-		objectID, uploadURL := initiateUpload(t, "/home/cycle-test.txt")
+		objectID, uploadURL := suite.InitiateUploadWithURL(t, systemID, "/home/cycle-test.txt")
 
 		assert.NotEmpty(t, objectID, "Should have objectId")
 		assert.NotEmpty(t, uploadURL, "Should have uploadUrl")
@@ -315,7 +260,7 @@ func TestUpload_FullFlow(t *testing.T) {
 	})
 
 	t.Run("overwrite existing file", func(t *testing.T) {
-		objectID1, _ := initiateUpload(t, "/home/overwrite.txt")
+		objectID1, _ := suite.InitiateUploadWithURL(t, systemID, "/home/overwrite.txt")
 
 		completeReq1 := map[string]any{
 			"objectId": objectID1,
@@ -328,7 +273,7 @@ func TestUpload_FullFlow(t *testing.T) {
 		require.Equal(t, http.StatusCreated, completeResp1.StatusCode)
 
 		// Upload second version (same path)
-		objectID2, _ := initiateUpload(t, "/home/overwrite.txt")
+		objectID2, _ := suite.InitiateUploadWithURL(t, systemID, "/home/overwrite.txt")
 
 		// Second object should be different
 		assert.NotEqual(t, objectID1, objectID2,
@@ -348,4 +293,143 @@ func TestUpload_FullFlow(t *testing.T) {
 			t.Fatalf("Expected 201, got %d: %s", completeResp2.StatusCode, string(body))
 		}
 	})
+}
+
+// TestUpload_ChecksumMismatch verifies that upload completion is rejected when content does not match declared checksum.
+func TestUpload_ChecksumMismatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping e2e test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	suite := NewSuite(t)
+	err := suite.Start(ctx)
+	require.NoError(t, err, "Failed to start test suite")
+	t.Cleanup(func() { _ = suite.Stop(ctx) })
+
+	err = suite.StartServer(ctx)
+	require.NoError(t, err, "Failed to start server")
+
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	require.NoError(t, err, "Failed to setup full environment")
+	systemID := env.SystemID
+
+	// Initiate with a deliberately wrong checksum (hardcoded base64 of "test")
+	// The server will compare this against the actual S3 ETag and reject it.
+	wrongData := []byte("wrong content")
+	wrongChecksum := "dGVzdA=="
+
+	req := map[string]any{
+		"path":        "/home/mismatch.txt",
+		"contentType": "text/plain",
+		"size":        int64(len(wrongData)),
+		"checksum":    wrongChecksum,
+	}
+	resp, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload")
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "Initiate should succeed")
+
+	var result map[string]any
+	err = suite.ReadJSON(resp, &result)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session := result["uploadSession"].(map[string]any)
+	objectID := session["objectId"].(string)
+	uploadURL := session["uploadUrl"].(string)
+
+	// Upload DIFFERENT content (correct data, not wrongData)
+	correctData := []byte("correct content")
+	suite.UploadToPresignedURL(t, uploadURL, correctData)
+
+	// Complete should fail with checksum mismatch
+	completeReq := map[string]any{
+		"objectId": objectID,
+		"path":     "/home/mismatch.txt",
+		"mode":     0644,
+	}
+	completeResp, err := suite.Post("/fs/"+systemID+"/upload/complete", completeReq)
+	require.NoError(t, err, "Failed to complete upload")
+	defer func() { _ = completeResp.Body.Close() }()
+
+	assert.Equal(t, http.StatusBadRequest, completeResp.StatusCode,
+		"Expected 400 Bad Request for checksum mismatch, got %d", completeResp.StatusCode)
+}
+
+// TestUpload_Idempotency verifies that duplicate initiation requests with the same idempotency key return the same session.
+func TestUpload_Idempotency(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping e2e test in short mode")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	suite := NewSuite(t)
+	err := suite.Start(ctx)
+	require.NoError(t, err, "Failed to start test suite")
+	t.Cleanup(func() { _ = suite.Stop(ctx) })
+
+	err = suite.StartServer(ctx)
+	require.NoError(t, err, "Failed to start server")
+
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	require.NoError(t, err, "Failed to setup full environment")
+	systemID := env.SystemID
+
+	idempotencyKey := "test-idempotency-key-123"
+	data := []byte("idempotency test content")
+
+	req := map[string]any{
+		"path":           "/home/idempotent.txt",
+		"contentType":    "text/plain",
+		"size":           int64(len(data)),
+		"idempotencyKey": idempotencyKey,
+	}
+
+	// First request
+	resp1, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload (1st)")
+	defer func() { _ = resp1.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp1.StatusCode, "First initiate should succeed")
+
+	var result1 map[string]any
+	err = suite.ReadJSON(resp1, &result1)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session1 := result1["uploadSession"].(map[string]any)
+	objectID1 := session1["objectId"].(string)
+
+	// Second request with same idempotency key
+	resp2, err := suite.Post("/fs/"+systemID+"/upload/initiate", req)
+	require.NoError(t, err, "Failed to initiate upload (2nd)")
+	defer func() { _ = resp2.Body.Close() }()
+	require.Equal(t, http.StatusCreated, resp2.StatusCode, "Second initiate should succeed")
+
+	var result2 map[string]any
+	err = suite.ReadJSON(resp2, &result2)
+	require.NoError(t, err, "Failed to read response JSON")
+
+	session2 := result2["uploadSession"].(map[string]any)
+	objectID2 := session2["objectId"].(string)
+
+	// Should return the same object ID
+	assert.Equal(t, objectID1, objectID2,
+		"Idempotent requests should return the same objectId")
+
+	// Upload and complete
+	uploadURL := session2["uploadUrl"].(string)
+	suite.UploadToPresignedURL(t, uploadURL, data)
+
+	completeReq := map[string]any{
+		"objectId": objectID2,
+		"path":     "/home/idempotent.txt",
+		"mode":     0644,
+	}
+	completeResp, err := suite.Post("/fs/"+systemID+"/upload/complete", completeReq)
+	require.NoError(t, err, "Failed to complete upload")
+	defer func() { _ = completeResp.Body.Close() }()
+	require.Equal(t, http.StatusCreated, completeResp.StatusCode, "Complete should succeed")
 }

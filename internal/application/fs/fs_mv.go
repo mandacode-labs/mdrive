@@ -2,11 +2,13 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strings"
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/utils"
 )
 
 // Mv moves multiple sources to a destination, like Unix mv.
@@ -95,10 +97,14 @@ func (s *service) mvOne(ctx context.Context, systemID string, srcPath string, de
 		}
 	}
 
+	fileType, err := utils.SafeIntToUint8(sourceInode.Mode() >> 12)
+	if err != nil {
+		return fmt.Errorf("invalid file type: %w", err)
+	}
 	newEntry := dentry.DirEntry{
 		Name:     newEntryName,
 		InodeID:  sourceInode.ID(),
-		FileType: uint8(sourceInode.Mode() >> 12),
+		FileType: fileType,
 	}
 	if err := s.dentrySvc.Link(ctx, destParentDir.ID(), newEntry); err != nil {
 		return err

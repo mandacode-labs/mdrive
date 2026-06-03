@@ -146,6 +146,78 @@ func (_c *StorageMock_DeleteObject_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// GetObjectChecksum provides a mock function for the type StorageMock
+func (_mock *StorageMock) GetObjectChecksum(ctx context.Context, bucket string, key string) (string, error) {
+	ret := _mock.Called(ctx, bucket, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetObjectChecksum")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return returnFunc(ctx, bucket, key)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = returnFunc(ctx, bucket, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, bucket, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// StorageMock_GetObjectChecksum_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObjectChecksum'
+type StorageMock_GetObjectChecksum_Call struct {
+	*mock.Call
+}
+
+// GetObjectChecksum is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bucket string
+//   - key string
+func (_e *StorageMock_Expecter) GetObjectChecksum(ctx interface{}, bucket interface{}, key interface{}) *StorageMock_GetObjectChecksum_Call {
+	return &StorageMock_GetObjectChecksum_Call{Call: _e.mock.On("GetObjectChecksum", ctx, bucket, key)}
+}
+
+func (_c *StorageMock_GetObjectChecksum_Call) Run(run func(ctx context.Context, bucket string, key string)) *StorageMock_GetObjectChecksum_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *StorageMock_GetObjectChecksum_Call) Return(s string, err error) *StorageMock_GetObjectChecksum_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *StorageMock_GetObjectChecksum_Call) RunAndReturn(run func(ctx context.Context, bucket string, key string) (string, error)) *StorageMock_GetObjectChecksum_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetObjectSize provides a mock function for the type StorageMock
 func (_mock *StorageMock) GetObjectSize(ctx context.Context, bucket string, key string) (int64, error) {
 	ret := _mock.Called(ctx, bucket, key)
@@ -297,8 +369,8 @@ func (_c *StorageMock_GetPresignedDownloadURL_Call) RunAndReturn(run func(ctx co
 }
 
 // GetPresignedUploadURL provides a mock function for the type StorageMock
-func (_mock *StorageMock) GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration) (string, error) {
-	ret := _mock.Called(ctx, bucket, key, contentType, size, expiry)
+func (_mock *StorageMock) GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration) (string, error) {
+	ret := _mock.Called(ctx, bucket, key, contentType, size, checksum, expiry)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPresignedUploadURL")
@@ -306,16 +378,16 @@ func (_mock *StorageMock) GetPresignedUploadURL(ctx context.Context, bucket stri
 
 	var r0 string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, time.Duration) (string, error)); ok {
-		return returnFunc(ctx, bucket, key, contentType, size, expiry)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, string, time.Duration) (string, error)); ok {
+		return returnFunc(ctx, bucket, key, contentType, size, checksum, expiry)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, time.Duration) string); ok {
-		r0 = returnFunc(ctx, bucket, key, contentType, size, expiry)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, string, time.Duration) string); ok {
+		r0 = returnFunc(ctx, bucket, key, contentType, size, checksum, expiry)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, int64, time.Duration) error); ok {
-		r1 = returnFunc(ctx, bucket, key, contentType, size, expiry)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, int64, string, time.Duration) error); ok {
+		r1 = returnFunc(ctx, bucket, key, contentType, size, checksum, expiry)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -333,12 +405,13 @@ type StorageMock_GetPresignedUploadURL_Call struct {
 //   - key string
 //   - contentType string
 //   - size int64
+//   - checksum string
 //   - expiry time.Duration
-func (_e *StorageMock_Expecter) GetPresignedUploadURL(ctx interface{}, bucket interface{}, key interface{}, contentType interface{}, size interface{}, expiry interface{}) *StorageMock_GetPresignedUploadURL_Call {
-	return &StorageMock_GetPresignedUploadURL_Call{Call: _e.mock.On("GetPresignedUploadURL", ctx, bucket, key, contentType, size, expiry)}
+func (_e *StorageMock_Expecter) GetPresignedUploadURL(ctx interface{}, bucket interface{}, key interface{}, contentType interface{}, size interface{}, checksum interface{}, expiry interface{}) *StorageMock_GetPresignedUploadURL_Call {
+	return &StorageMock_GetPresignedUploadURL_Call{Call: _e.mock.On("GetPresignedUploadURL", ctx, bucket, key, contentType, size, checksum, expiry)}
 }
 
-func (_c *StorageMock_GetPresignedUploadURL_Call) Run(run func(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration)) *StorageMock_GetPresignedUploadURL_Call {
+func (_c *StorageMock_GetPresignedUploadURL_Call) Run(run func(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration)) *StorageMock_GetPresignedUploadURL_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -360,9 +433,13 @@ func (_c *StorageMock_GetPresignedUploadURL_Call) Run(run func(ctx context.Conte
 		if args[4] != nil {
 			arg4 = args[4].(int64)
 		}
-		var arg5 time.Duration
+		var arg5 string
 		if args[5] != nil {
-			arg5 = args[5].(time.Duration)
+			arg5 = args[5].(string)
+		}
+		var arg6 time.Duration
+		if args[6] != nil {
+			arg6 = args[6].(time.Duration)
 		}
 		run(
 			arg0,
@@ -371,6 +448,7 @@ func (_c *StorageMock_GetPresignedUploadURL_Call) Run(run func(ctx context.Conte
 			arg3,
 			arg4,
 			arg5,
+			arg6,
 		)
 	})
 	return _c
@@ -381,7 +459,7 @@ func (_c *StorageMock_GetPresignedUploadURL_Call) Return(s string, err error) *S
 	return _c
 }
 
-func (_c *StorageMock_GetPresignedUploadURL_Call) RunAndReturn(run func(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration) (string, error)) *StorageMock_GetPresignedUploadURL_Call {
+func (_c *StorageMock_GetPresignedUploadURL_Call) RunAndReturn(run func(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration) (string, error)) *StorageMock_GetPresignedUploadURL_Call {
 	_c.Call.Return(run)
 	return _c
 }

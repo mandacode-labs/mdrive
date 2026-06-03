@@ -32,6 +32,10 @@ type Object struct {
 	StorageKey string `json:"storage_key,omitempty"`
 	// Status holds the value of the "status" field.
 	Status object.Status `json:"status,omitempty"`
+	// Checksum holds the value of the "checksum" field.
+	Checksum *string `json:"checksum,omitempty"`
+	// IdempotencyKey holds the value of the "idempotency_key" field.
+	IdempotencyKey *string `json:"idempotency_key,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ObjectQuery when eager-loading is set.
 	Edges        ObjectEdges `json:"edges"`
@@ -63,7 +67,7 @@ func (*Object) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case object.FieldID, object.FieldProvider, object.FieldBucket, object.FieldSystemID, object.FieldStorageKey, object.FieldStatus:
+		case object.FieldID, object.FieldProvider, object.FieldBucket, object.FieldSystemID, object.FieldStorageKey, object.FieldStatus, object.FieldChecksum, object.FieldIdempotencyKey:
 			values[i] = new(sql.NullString)
 		case object.FieldCreateTime, object.FieldUpdateTime:
 			values[i] = new(sql.NullTime)
@@ -130,6 +134,20 @@ func (_m *Object) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = object.Status(value.String)
 			}
+		case object.FieldChecksum:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field checksum", values[i])
+			} else if value.Valid {
+				_m.Checksum = new(string)
+				*_m.Checksum = value.String
+			}
+		case object.FieldIdempotencyKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field idempotency_key", values[i])
+			} else if value.Valid {
+				_m.IdempotencyKey = new(string)
+				*_m.IdempotencyKey = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -191,6 +209,16 @@ func (_m *Object) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	if v := _m.Checksum; v != nil {
+		builder.WriteString("checksum=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.IdempotencyKey; v != nil {
+		builder.WriteString("idempotency_key=")
+		builder.WriteString(*v)
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

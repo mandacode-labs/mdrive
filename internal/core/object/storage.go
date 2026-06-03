@@ -21,11 +21,14 @@ type Storage interface {
 	GetPresignedDownloadURL(ctx context.Context, bucket string, key string, expiry time.Duration) (string, error)
 
 	// GetPresignedUploadURL generates a presigned URL for direct client upload.
-	GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, expiry time.Duration) (string, error)
+	// If checksum is provided, it is included in the presigned URL signature so S3 validates it on upload.
+	GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration) (string, error)
 
 	DeleteObject(ctx context.Context, bucket string, key string) error
 	ObjectExists(ctx context.Context, bucket string, key string) (bool, error)
 	GetObjectSize(ctx context.Context, bucket string, key string) (int64, error)
+	// GetObjectChecksum returns the content checksum (e.g., S3 ETag) for verification.
+	GetObjectChecksum(ctx context.Context, bucket string, key string) (string, error)
 }
 
 const (

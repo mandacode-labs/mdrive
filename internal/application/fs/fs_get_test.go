@@ -24,7 +24,7 @@ func TestGet_Success(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	result, err := svc.Get(context.Background(), "id-1")
 
@@ -37,7 +37,7 @@ func TestGet_NotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().GetByID(mock.Anything, "id-1").Return(nil, errors.NotFound("inode not found"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.Get(context.Background(), "id-1")
 
@@ -55,7 +55,7 @@ func TestGet_PermissionDenied(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(2000, []int{2000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	_, err := svc.Get(context.Background(), "id-1")
 
@@ -73,7 +73,7 @@ func TestGet_RootBypass(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(0, []int{}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	result, err := svc.Get(context.Background(), "id-1")
 
@@ -93,7 +93,7 @@ func TestList_WithSystemID(t *testing.T) {
 	}
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return(inodes, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.List(context.Background(), &ListFilter{
 		SystemID: &sysID,
@@ -113,7 +113,7 @@ func TestList_WithUID(t *testing.T) {
 	}
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return(inodes, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.List(context.Background(), &ListFilter{
 		UID: &uid,
@@ -134,7 +134,7 @@ func TestList_WithBothFilters(t *testing.T) {
 	}
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return(inodes, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.List(context.Background(), &ListFilter{
 		SystemID: &sysID,
@@ -150,7 +150,7 @@ func TestList_EmptyFilter(t *testing.T) {
 
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	result, err := svc.List(context.Background(), &ListFilter{})
 
@@ -163,7 +163,7 @@ func TestList_FindFailure(t *testing.T) {
 
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return(nil, errors.Internal("find failed"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.List(context.Background(), &ListFilter{})
 

@@ -1,0 +1,70 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+# default_stages: [commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^.idea/'
+      - id: end-of-file-fixer
+        exclude: '^.idea/'
+      - id: check-yaml
+        exclude: '^deployment/charts/retrowin/templates/'
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-symlinks
+
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        description: Format Go source files
+        language: system
+        entry: bash -c 'if [ -n "$(gofmt -l "$@")" ]; then gofmt -l "$@"; exit 1; fi'
+        files: '\.go$'
+        pass_filenames: true
+        require_serial: true
+
+      - id: go-vet
+        name: go vet
+        description: Run go vet on Go source files
+        language: system
+        entry: go vet
+        files: '\.go$'
+        pass_filenames: false
+        args: ['./...']
+        require_serial: true
+
+      - id: golangci-lint
+        name: golangci-lint
+        description: Run golangci-lint --fast
+        language: system
+        entry: golangci-lint run --fast-only
+        files: '\.go$'
+        pass_filenames: false
+        require_serial: true
+
+      - id: go-test
+        name: go test
+        description: Run unit tests
+        language: system
+        entry: make test-unit
+        files: '\.go$'
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-push]
+
+      - id: gosec
+        name: gosec
+        description: Run gosec security scanner
+        language: system
+        entry: gosec
+        files: '\.go$'
+        pass_filenames: false
+        args: ['./...']
+        require_serial: true
+        stages: [pre-push]

@@ -10,6 +10,7 @@ type ObjectRepository interface {
 	Create(ctx context.Context, params *CreateParams) (*Object, error)
 	GetByID(ctx context.Context, id string) (*Object, error)
 	GetByStorageKey(ctx context.Context, systemID string, provider string, bucket string, storageKey string) (*Object, error)
+	GetByIdempotencyKey(ctx context.Context, systemID string, idempotencyKey string) (*Object, error)
 	UpdateStatus(ctx context.Context, id string, status Status) error
 	Delete(ctx context.Context, id string) error
 	DeleteBySystemID(ctx context.Context, systemID string) error
@@ -21,20 +22,23 @@ type ObjectRepository interface {
 
 // CreateParams for creating a new object (repository layer).
 type CreateParams struct {
-	ID         string
-	Provider   Provider
-	Bucket     string
-	SystemID   string
-	StorageKey string
-	Status     Status
+	ID             string
+	Provider       Provider
+	Bucket         string
+	SystemID       string
+	StorageKey     string
+	Status         Status
+	Checksum       *string
+	IdempotencyKey *string
 }
 
 // QueryFilter for querying objects (repository layer).
 type QueryFilter struct {
-	ID         *string
-	SystemID   *string
-	Provider   *string
-	Bucket     *string
-	StorageKey *string
-	Status     *string
+	ID             *string
+	SystemID       *string
+	Provider       *string
+	Bucket         *string
+	StorageKey     *string
+	Status         *string
+	IdempotencyKey *string
 }

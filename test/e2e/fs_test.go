@@ -31,9 +31,9 @@ func TestFs_Stat(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API (for proper filesystem initialization)
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("returns root directory info", func(t *testing.T) {
 		resp, err := suite.Get("/fs/" + systemID + "/root")
@@ -106,9 +106,9 @@ func TestFs_Ls(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("lists root directory", func(t *testing.T) {
 		resp, err := suite.Get("/syscall/" + systemID + "/ls?path=/")
@@ -177,9 +177,9 @@ func TestFs_Mkdir(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("creates directory with default permissions", func(t *testing.T) {
 		req := map[string]any{
@@ -320,9 +320,9 @@ func TestFs_Delete(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("deletes empty directory", func(t *testing.T) {
 		// Create directory first
@@ -404,9 +404,9 @@ func TestFs_Ln(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create a target directory first (symlink target needs to exist for useful test)
 	mkdirReq := map[string]any{
@@ -490,9 +490,9 @@ func TestFs_Chmod(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create a directory first
 	mkdirReq := map[string]any{
@@ -563,9 +563,9 @@ func TestFs_Permission(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create a directory with restricted permissions
 	mkdirReq := map[string]any{
@@ -610,9 +610,9 @@ func TestFs_Rename(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("renames directory within same parent", func(t *testing.T) {
 		// Create directory first
@@ -727,9 +727,9 @@ func TestFs_Mv(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create directories for testing
 	mkdirReq1 := map[string]any{"path": "/home/srcdir"}

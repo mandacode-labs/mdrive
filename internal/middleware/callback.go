@@ -30,6 +30,7 @@ func CallbackMiddleware(cfg *CallbackConfig) func(next http.Handler) http.Handle
 					r = r.WithContext(utils.ContextWithSession(r.Context(), c.Value))
 				}
 
+				// #nosec G124 — Secure and SameSite are explicitly configured via config
 				cookie := &http.Cookie{
 					Name:     cfg.CookieName,
 					Value:    "",
@@ -56,6 +57,7 @@ func CallbackMiddleware(cfg *CallbackConfig) func(next http.Handler) http.Handle
 						SessionID string `json:"sessionId"`
 					}
 					if err := json.Unmarshal(rec.body, &resp); err == nil && resp.SessionID != "" {
+						// #nosec G124 — Secure and SameSite are explicitly configured via config
 						cookie := &http.Cookie{
 							Name:     cfg.CookieName,
 							Value:    resp.SessionID,

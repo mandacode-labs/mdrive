@@ -83,9 +83,9 @@ func TestSystemUser_Create(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API (for proper filesystem initialization)
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("creates user with auto-assigned UID", func(t *testing.T) {
 		// Create a real user in the database first
@@ -225,9 +225,9 @@ func TestSystemUser_List(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create additional system users (with real users in database)
 	for i := 0; i < 3; i++ {
@@ -284,9 +284,9 @@ func TestSystemUser_Delete(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup user and system via API
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	// Create a real user in the database first
 	newUser, err := suite.CreateTestUser(ctx, "test-provider", "delete-user-provider-id", "delete-user")
@@ -354,9 +354,9 @@ func TestSystemGroup(t *testing.T) {
 	require.NoError(t, err, "Failed to start server")
 
 	// Setup system via API (user is already created as root when system is initialized)
-	_, systemData, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
+	env, err := suite.SetupFullEnvironmentAPI(ctx, "testuser")
 	require.NoError(t, err, "Failed to setup full environment")
-	systemID := systemData["system"].(map[string]any)["id"].(string)
+	systemID := env.SystemID
 
 	t.Run("creates group with auto-assigned GID", func(t *testing.T) {
 		req := map[string]any{

@@ -17,7 +17,7 @@ import (
 )
 
 func TestChmodPath_InvalidMode(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	t.Run("negative mode", func(t *testing.T) {
 		_, err := svc.ChmodPath(context.Background(), "sys", "/path", -1)
@@ -67,7 +67,7 @@ func TestChmodPath_Success(t *testing.T) {
 	updatedInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0755, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
 	inodeSvc.EXPECT().GetByID(mock.Anything, "file-id").Return(updatedInode, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	result, err := svc.ChmodPath(context.Background(), "sys", "/file", 0755)
 	assert.NoError(t, err)
@@ -86,7 +86,7 @@ func TestChmodPath_NotFound(t *testing.T) {
 	// Mock Find for GetRootDirectory
 	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	_, err := svc.ChmodPath(context.Background(), "sys", "/nonexistent", 0755)
 	assert.Error(t, err)

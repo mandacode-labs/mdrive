@@ -10,7 +10,7 @@ import (
 )
 
 func TestLn_EmptyTarget(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	_, err := svc.Ln(context.Background(), "sys", "/link", "")
 	assert.Error(t, err)
@@ -18,7 +18,7 @@ func TestLn_EmptyTarget(t *testing.T) {
 }
 
 func TestLn_TargetTooLong(t *testing.T) {
-	svc := NewService(nil, nil, nil, nil)
+	svc := NewService(nil, nil, nil, nil, nil, nil, nil)
 
 	target := make([]byte, 4097)
 	for i := range target {

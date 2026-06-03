@@ -210,6 +210,12 @@ RmRequest:
         type: string
       description: List of paths to remove
       minItems: 1
+    recursive:
+      type: boolean
+      default: false
+      description: |
+        If true, recursively delete directories and their contents.
+        If false (default), only empty directories can be removed.
 
 RmResult:
   type: object

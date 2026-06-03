@@ -3,6 +3,7 @@ package serve
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -76,14 +77,14 @@ func ProvideLogger() *zap.Logger {
 	return logger
 }
 
-// NewEntClient creates a new Ent client.
-func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent.Client, error) {
+// NewEntClient creates a new Ent client and returns the underlying *sql.DB for raw queries.
+func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent.Client, *sql.DB, error) {
 	// Open database connection with OTel instrumentation
 	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
 		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// Configure connection pool
@@ -125,7 +126,7 @@ func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent
 		},
 	})
 
-	return client, nil
+	return client, db, nil
 }
 
 // ProvideValkeyClient provides the Valkey client.
@@ -190,20 +191,14 @@ func ProvideTelemetry(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (
 func ProvideHTTPMux(
 	ogenServer *api.Server,
 	cfg *config.Config,
-	openAPIPath string,
+	openAPISpec []byte,
 ) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Serve OpenAPI spec and Swagger UI (register before catch-all)
 	mux.HandleFunc("/openapi.json", func(w http.ResponseWriter, r *http.Request) {
-		// Use configured path from CLI flag
-		content, err := os.ReadFile(openAPIPath)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("OpenAPI spec not found: %s", openAPIPath), http.StatusNotFound)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(content)
+		_, _ = w.Write(openAPISpec)
 	})
 	mux.HandleFunc("/swagger", httpSwagger.Handler(
 		httpSwagger.URL("/openapi.json"),
@@ -328,12 +323,12 @@ func ProvideOgenServer(
 }
 
 // FxOptions returns the fx options for the application.
-func FxOptions(cfgFile string, port int, openAPIPath string) []fx.Option {
+func FxOptions(cfgFile string, port int, openAPISpec []byte) []fx.Option {
 	return []fx.Option{
 		// Supply CLI args
 		fx.Supply(fx.Annotate(cfgFile, fx.ResultTags(`name:"cfgFile"`))),
 		fx.Supply(fx.Annotate(port, fx.ResultTags(`name:"port"`))),
-		fx.Supply(fx.Annotate(openAPIPath, fx.ResultTags(`name:"openAPIPath"`))),
+		fx.Supply(fx.Annotate(openAPISpec, fx.ResultTags(`name:"openAPISpec"`))),
 
 		// All providers - single fx.Provide call like serengeti
 		fx.Provide(
@@ -367,6 +362,7 @@ func FxOptions(cfgFile string, port int, openAPIPath string) []fx.Option {
 			sysinit.NewService,       // system initialization
 			// Application services
 			dentry.NewService,
+			dentry.NewLocker,
 			corefs.NewService,
 			storage.NewService,
 			// Storage
@@ -375,7 +371,7 @@ func FxOptions(cfgFile string, port int, openAPIPath string) []fx.Option {
 			handler.NewHandler,
 			ProvideOgenServer,
 			middleware.ProvideCallbackConfig,
-			fx.Annotate(ProvideHTTPMux, fx.ParamTags(``, ``, `name:"openAPIPath"`)),
+			fx.Annotate(ProvideHTTPMux, fx.ParamTags(``, ``, `name:"openAPISpec"`)),
 			ProvideHTTPHandler,
 			ProvideHTTPServer,
 		),
@@ -388,8 +384,8 @@ func FxOptions(cfgFile string, port int, openAPIPath string) []fx.Option {
 }
 
 // NewFXApp creates a new fx application.
-func NewFXApp(cfgFile string, port int, openAPIPath string) *fx.App {
-	return fx.New(FxOptions(cfgFile, port, openAPIPath)...)
+func NewFXApp(cfgFile string, port int, openAPISpec []byte) *fx.App {
+	return fx.New(FxOptions(cfgFile, port, openAPISpec)...)
 }
 
 // newValkeyClient creates a Valkey client based on ValkeyConfig.

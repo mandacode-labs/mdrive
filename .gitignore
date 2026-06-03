@@ -5,6 +5,7 @@
 !.mockery.yaml
 !.goreleaser.yaml
 !.hadolint.yml
+!.pre-commit-config.yaml
 cover*.out
 
 /bin

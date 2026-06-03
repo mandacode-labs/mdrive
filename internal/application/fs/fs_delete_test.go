@@ -29,7 +29,7 @@ func TestDelete_SuccessRegularFile(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -50,7 +50,7 @@ func TestDelete_SuccessEmptyDirectory(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -74,7 +74,7 @@ func TestDelete_SuccessObjectInode(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, objectSvc, userSvc, nil)
+	svc := NewService(nil, inodeSvc, objectSvc, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -98,7 +98,7 @@ func TestDelete_ObjectNotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, objectSvc, userSvc, nil)
+	svc := NewService(nil, inodeSvc, objectSvc, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -122,7 +122,7 @@ func TestDelete_ObjectDeleteError(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, objectSvc, userSvc, nil)
+	svc := NewService(nil, inodeSvc, objectSvc, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -143,7 +143,7 @@ func TestDelete_NonEmptyDirectory(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -163,7 +163,7 @@ func TestDelete_DirNilContent(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -182,7 +182,7 @@ func TestDelete_DirUnparsableContent(t *testing.T) {
 
 	inodeSvc.EXPECT().Delete(mock.Anything, "id-1").Return(nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -194,7 +194,7 @@ func TestDelete_NotFound(t *testing.T) {
 
 	inodeSvc.EXPECT().GetByID(mock.Anything, "id-1").Return(nil, errors.NotFound("inode not found"))
 
-	svc := NewService(inodeSvc, nil, nil, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, nil, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -212,7 +212,7 @@ func TestDelete_PermissionDenied(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(2000, []int{2000}, nil)
 
-	svc := NewService(inodeSvc, nil, userSvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, nil, nil)
 
 	err := svc.Delete(context.Background(), "id-1")
 
@@ -227,7 +227,7 @@ func TestDeleteObjectRef_Success(t *testing.T) {
 
 	objectSvc.EXPECT().Delete(mock.Anything, "obj-1").Return(nil)
 
-	svc := NewService(nil, objectSvc, nil, nil).(*service)
+	svc := NewService(nil, nil, objectSvc, nil, nil, nil, nil).(*service)
 
 	now := time.Now()
 	objContent := content.ObjectContent{ObjectID: "obj-1"}
@@ -244,7 +244,7 @@ func TestDeleteObjectRef_NotFound(t *testing.T) {
 
 	objectSvc.EXPECT().Delete(mock.Anything, "obj-1").Return(errors.NotFound("object not found"))
 
-	svc := NewService(nil, objectSvc, nil, nil).(*service)
+	svc := NewService(nil, nil, objectSvc, nil, nil, nil, nil).(*service)
 
 	now := time.Now()
 	objContent := content.ObjectContent{ObjectID: "obj-1"}
@@ -261,7 +261,7 @@ func TestDeleteObjectRef_OtherError(t *testing.T) {
 
 	objectSvc.EXPECT().Delete(mock.Anything, "obj-1").Return(errors.Internal("delete failed"))
 
-	svc := NewService(nil, objectSvc, nil, nil).(*service)
+	svc := NewService(nil, nil, objectSvc, nil, nil, nil, nil).(*service)
 
 	now := time.Now()
 	objContent := content.ObjectContent{ObjectID: "obj-1"}

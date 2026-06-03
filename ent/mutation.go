@@ -1299,21 +1299,23 @@ func (m *InodeMutation) ResetEdge(name string) error {
 // ObjectMutation represents an operation that mutates the Object nodes in the graph.
 type ObjectMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *string
-	create_time   *time.Time
-	update_time   *time.Time
-	provider      *object.Provider
-	bucket        *string
-	storage_key   *string
-	status        *object.Status
-	clearedFields map[string]struct{}
-	system        *string
-	clearedsystem bool
-	done          bool
-	oldValue      func(context.Context) (*Object, error)
-	predicates    []predicate.Object
+	op              Op
+	typ             string
+	id              *string
+	create_time     *time.Time
+	update_time     *time.Time
+	provider        *object.Provider
+	bucket          *string
+	storage_key     *string
+	status          *object.Status
+	checksum        *string
+	idempotency_key *string
+	clearedFields   map[string]struct{}
+	system          *string
+	clearedsystem   bool
+	done            bool
+	oldValue        func(context.Context) (*Object, error)
+	predicates      []predicate.Object
 }
 
 var _ ent.Mutation = (*ObjectMutation)(nil)
@@ -1672,6 +1674,104 @@ func (m *ObjectMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetChecksum sets the "checksum" field.
+func (m *ObjectMutation) SetChecksum(s string) {
+	m.checksum = &s
+}
+
+// Checksum returns the value of the "checksum" field in the mutation.
+func (m *ObjectMutation) Checksum() (r string, exists bool) {
+	v := m.checksum
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChecksum returns the old "checksum" field's value of the Object entity.
+// If the Object object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ObjectMutation) OldChecksum(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChecksum is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChecksum requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChecksum: %w", err)
+	}
+	return oldValue.Checksum, nil
+}
+
+// ClearChecksum clears the value of the "checksum" field.
+func (m *ObjectMutation) ClearChecksum() {
+	m.checksum = nil
+	m.clearedFields[object.FieldChecksum] = struct{}{}
+}
+
+// ChecksumCleared returns if the "checksum" field was cleared in this mutation.
+func (m *ObjectMutation) ChecksumCleared() bool {
+	_, ok := m.clearedFields[object.FieldChecksum]
+	return ok
+}
+
+// ResetChecksum resets all changes to the "checksum" field.
+func (m *ObjectMutation) ResetChecksum() {
+	m.checksum = nil
+	delete(m.clearedFields, object.FieldChecksum)
+}
+
+// SetIdempotencyKey sets the "idempotency_key" field.
+func (m *ObjectMutation) SetIdempotencyKey(s string) {
+	m.idempotency_key = &s
+}
+
+// IdempotencyKey returns the value of the "idempotency_key" field in the mutation.
+func (m *ObjectMutation) IdempotencyKey() (r string, exists bool) {
+	v := m.idempotency_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIdempotencyKey returns the old "idempotency_key" field's value of the Object entity.
+// If the Object object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ObjectMutation) OldIdempotencyKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIdempotencyKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIdempotencyKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIdempotencyKey: %w", err)
+	}
+	return oldValue.IdempotencyKey, nil
+}
+
+// ClearIdempotencyKey clears the value of the "idempotency_key" field.
+func (m *ObjectMutation) ClearIdempotencyKey() {
+	m.idempotency_key = nil
+	m.clearedFields[object.FieldIdempotencyKey] = struct{}{}
+}
+
+// IdempotencyKeyCleared returns if the "idempotency_key" field was cleared in this mutation.
+func (m *ObjectMutation) IdempotencyKeyCleared() bool {
+	_, ok := m.clearedFields[object.FieldIdempotencyKey]
+	return ok
+}
+
+// ResetIdempotencyKey resets all changes to the "idempotency_key" field.
+func (m *ObjectMutation) ResetIdempotencyKey() {
+	m.idempotency_key = nil
+	delete(m.clearedFields, object.FieldIdempotencyKey)
+}
+
 // ClearSystem clears the "system" edge to the System entity.
 func (m *ObjectMutation) ClearSystem() {
 	m.clearedsystem = true
@@ -1733,7 +1833,7 @@ func (m *ObjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ObjectMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.create_time != nil {
 		fields = append(fields, object.FieldCreateTime)
 	}
@@ -1754,6 +1854,12 @@ func (m *ObjectMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, object.FieldStatus)
+	}
+	if m.checksum != nil {
+		fields = append(fields, object.FieldChecksum)
+	}
+	if m.idempotency_key != nil {
+		fields = append(fields, object.FieldIdempotencyKey)
 	}
 	return fields
 }
@@ -1777,6 +1883,10 @@ func (m *ObjectMutation) Field(name string) (ent.Value, bool) {
 		return m.StorageKey()
 	case object.FieldStatus:
 		return m.Status()
+	case object.FieldChecksum:
+		return m.Checksum()
+	case object.FieldIdempotencyKey:
+		return m.IdempotencyKey()
 	}
 	return nil, false
 }
@@ -1800,6 +1910,10 @@ func (m *ObjectMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldStorageKey(ctx)
 	case object.FieldStatus:
 		return m.OldStatus(ctx)
+	case object.FieldChecksum:
+		return m.OldChecksum(ctx)
+	case object.FieldIdempotencyKey:
+		return m.OldIdempotencyKey(ctx)
 	}
 	return nil, fmt.Errorf("unknown Object field %s", name)
 }
@@ -1858,6 +1972,20 @@ func (m *ObjectMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
+	case object.FieldChecksum:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChecksum(v)
+		return nil
+	case object.FieldIdempotencyKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIdempotencyKey(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Object field %s", name)
 }
@@ -1887,7 +2015,14 @@ func (m *ObjectMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ObjectMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(object.FieldChecksum) {
+		fields = append(fields, object.FieldChecksum)
+	}
+	if m.FieldCleared(object.FieldIdempotencyKey) {
+		fields = append(fields, object.FieldIdempotencyKey)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1900,6 +2035,14 @@ func (m *ObjectMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ObjectMutation) ClearField(name string) error {
+	switch name {
+	case object.FieldChecksum:
+		m.ClearChecksum()
+		return nil
+	case object.FieldIdempotencyKey:
+		m.ClearIdempotencyKey()
+		return nil
+	}
 	return fmt.Errorf("unknown Object nullable field %s", name)
 }
 
@@ -1927,6 +2070,12 @@ func (m *ObjectMutation) ResetField(name string) error {
 		return nil
 	case object.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case object.FieldChecksum:
+		m.ResetChecksum()
+		return nil
+	case object.FieldIdempotencyKey:
+		m.ResetIdempotencyKey()
 		return nil
 	}
 	return fmt.Errorf("unknown Object field %s", name)
