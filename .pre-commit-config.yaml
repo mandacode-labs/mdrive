@@ -52,7 +52,7 @@ repos:
         name: go test
         description: Run unit tests
         language: system
-        entry: bash -c 'go test -v $(go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)'
+        entry: make test
         files: '\.go$'
         pass_filenames: false
         require_serial: true
