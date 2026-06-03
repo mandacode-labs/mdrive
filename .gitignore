@@ -10,5 +10,4 @@ cover*.out
 
 /bin
 
-# Generated OpenAPI bundled file (generated in Dockerfile)
-api/openapi.bundled.json
+# Generated OpenAPI bundled file (embedded at build time)
