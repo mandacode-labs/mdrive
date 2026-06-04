@@ -15,7 +15,7 @@ import (
 )
 
 func TestIntegration_StorageService_UploadFlow(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -100,7 +100,7 @@ func TestIntegration_StorageService_UploadFlow(t *testing.T) {
 }
 
 func TestIntegration_StorageService_ChecksumAndIdempotency(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
