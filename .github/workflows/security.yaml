@@ -19,7 +19,7 @@ jobs:
     name: Go Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
       - uses: securego/gosec@master
         with:
           args: './...'
@@ -28,7 +28,7 @@ jobs:
     name: Trivy Filesystem Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
       - uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
