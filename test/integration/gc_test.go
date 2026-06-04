@@ -16,7 +16,7 @@ import (
 )
 
 func TestIntegration_GC_PendingCleanup(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -57,7 +57,7 @@ func TestIntegration_GC_PendingCleanup(t *testing.T) {
 }
 
 func TestIntegration_GC_OrphanCleanup(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -103,7 +103,7 @@ func TestIntegration_GC_OrphanCleanup(t *testing.T) {
 }
 
 func TestIntegration_GC_NoFalsePositives(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)

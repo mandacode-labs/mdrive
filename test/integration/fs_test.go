@@ -16,7 +16,7 @@ import (
 )
 
 func TestIntegration_FsService_CreateDirectory(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -74,7 +74,7 @@ func TestIntegration_FsService_CreateDirectory(t *testing.T) {
 }
 
 func TestIntegration_FsService_CreateFile(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -174,7 +174,7 @@ func TestIntegration_FsService_CreateFile(t *testing.T) {
 }
 
 func TestIntegration_FsService_ListDirectory(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -202,7 +202,7 @@ func TestIntegration_FsService_ListDirectory(t *testing.T) {
 }
 
 func TestIntegration_FsService_Delete(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -244,7 +244,7 @@ func TestIntegration_FsService_Delete(t *testing.T) {
 }
 
 func TestIntegration_FsService_Rename(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)

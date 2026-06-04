@@ -18,7 +18,7 @@ import (
 )
 
 func TestIntegration_ObjectService_InitiateUpload(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -85,7 +85,7 @@ func TestIntegration_ObjectService_InitiateUpload(t *testing.T) {
 }
 
 func TestIntegration_ObjectService_CompleteUpload(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -150,7 +150,7 @@ func TestIntegration_ObjectService_CompleteUpload(t *testing.T) {
 }
 
 func TestIntegration_ObjectService_ChecksumValidation(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)
@@ -187,7 +187,7 @@ func TestIntegration_ObjectService_ChecksumValidation(t *testing.T) {
 }
 
 func TestIntegration_ObjectService_Delete(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
 	suite := NewSuite(t)

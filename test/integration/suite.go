@@ -44,6 +44,7 @@ import (
 // Shared containers for integration tests — started once via sync.Once.
 var (
 	sharedOnce      sync.Once
+	sharedErr       error
 	sharedPg        *postgres.PostgresContainer
 	sharedMinio     testcontainers.Container
 	sharedPgHost    string
@@ -52,7 +53,6 @@ var (
 )
 
 func startSharedContainers(ctx context.Context) error {
-	var startErr error
 	sharedOnce.Do(func() {
 		pgContainer, err := postgres.Run(ctx, "postgres:17-alpine",
 			postgres.WithDatabase("postgres"),
@@ -61,23 +61,23 @@ func startSharedContainers(ctx context.Context) error {
 			testcontainers.WithWaitStrategy(
 				wait.ForLog("database system is ready to accept connections").
 					WithOccurrence(2).
-					WithStartupTimeout(30*time.Second),
+					WithStartupTimeout(120*time.Second),
 			),
 		)
 		if err != nil {
-			startErr = fmt.Errorf("failed to start postgres: %w", err)
+			sharedErr = fmt.Errorf("failed to start postgres: %w", err)
 			return
 		}
 		sharedPg = pgContainer
 
 		pgHost, err := pgContainer.Host(ctx)
 		if err != nil {
-			startErr = fmt.Errorf("failed to get postgres host: %w", err)
+			sharedErr = fmt.Errorf("failed to get postgres host: %w", err)
 			return
 		}
 		pgPort, err := pgContainer.MappedPort(ctx, "5432")
 		if err != nil {
-			startErr = fmt.Errorf("failed to get postgres port: %w", err)
+			sharedErr = fmt.Errorf("failed to get postgres port: %w", err)
 			return
 		}
 		sharedPgHost = pgHost
@@ -97,19 +97,19 @@ func startSharedContainers(ctx context.Context) error {
 			Started: true,
 		})
 		if err != nil {
-			startErr = fmt.Errorf("failed to start minio: %w", err)
+			sharedErr = fmt.Errorf("failed to start minio: %w", err)
 			return
 		}
 		sharedMinio = minioContainer
 
 		mnHost, err := minioContainer.Host(ctx)
 		if err != nil {
-			startErr = fmt.Errorf("failed to get minio host: %w", err)
+			sharedErr = fmt.Errorf("failed to get minio host: %w", err)
 			return
 		}
 		mnPort, err := minioContainer.MappedPort(ctx, "9000")
 		if err != nil {
-			startErr = fmt.Errorf("failed to get minio port: %w", err)
+			sharedErr = fmt.Errorf("failed to get minio port: %w", err)
 			return
 		}
 		sharedMinioAddr = fmt.Sprintf("%s:%s", mnHost, mnPort.Port())
@@ -119,7 +119,7 @@ func startSharedContainers(ctx context.Context) error {
 			"minio", sharedMinioAddr,
 		)
 	})
-	return startErr
+	return sharedErr
 }
 
 func stopSharedContainers(ctx context.Context) {
