@@ -81,7 +81,7 @@ func startSharedContainers(ctx context.Context) error {
 			return
 		}
 		sharedPgHost = pgHost
-		sharedPgPort = pgPort.Int()
+		sharedPgPort = int(pgPort.Num())
 
 		minioContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 			ContainerRequest: testcontainers.ContainerRequest{
