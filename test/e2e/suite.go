@@ -77,7 +77,7 @@ func startSharedContainers(ctx context.Context) error {
 			return
 		}
 		sharedPgHost = pgHost
-		sharedPgPort = pgPort.Int()
+		sharedPgPort = int(pgPort.Num())
 
 		// Start Valkey
 		valkeyContainer, err := valkeymodule.Run(ctx, "valkey/valkey:8-alpine",
