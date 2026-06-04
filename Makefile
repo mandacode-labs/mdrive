@@ -87,7 +87,7 @@ test-kind: ## Run kind tests (requires kind, kubectl, helm, docker)
 # Build
 # ---------------------------------------------------------------------------
 .PHONY: build
-build: ## Build server binary
+build: openapi ## Build server binary (generates openapi.json first)
 	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/retrowin-server
 
 .PHONY: run

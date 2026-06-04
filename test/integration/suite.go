@@ -92,7 +92,7 @@ func startSharedContainers(ctx context.Context) error {
 					"MINIO_ROOT_PASSWORD": "minioadmin",
 				},
 				Cmd:        []string{"server", "/data"},
-				WaitingFor: wait.ForExposedPort().WithStartupTimeout(30 * time.Second),
+				WaitingFor: wait.ForExposedPort().WithStartupTimeout(120 * time.Second),
 			},
 			Started: true,
 		})
