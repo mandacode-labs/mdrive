@@ -29,16 +29,8 @@ jobs:
       - uses: actions/setup-python@v6.2.0
         with:
           python-version: '3.x'
-      - name: Get latest golangci-lint version
-        id: golangci_version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/golangci/golangci-lint/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | sed 's/^v//')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/bin v${{ steps.golangci_version.outputs.version }}
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
       - name: Install pre-commit
         run: pip install pre-commit
       - name: Run pre-commit hooks
