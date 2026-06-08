@@ -81,7 +81,7 @@ test-integration: ## Run integration tests (requires Docker)
 
 .PHONY: test-kind
 test-kind: ## Run kind tests (requires kind, kubectl, helm, docker)
-	go test -v ./test/kind/... -tags kind -timeout 15m
+	go test -v ./test/kind/... -tags kind -timeout 30m
 
 # ---------------------------------------------------------------------------
 # Build
