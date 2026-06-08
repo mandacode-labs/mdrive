@@ -25,6 +25,9 @@ type Storage interface {
 	GetPresignedUploadURL(ctx context.Context, bucket string, key string, contentType string, size int64, checksum string, expiry time.Duration) (string, error)
 
 	DeleteObject(ctx context.Context, bucket string, key string) error
+	// DeleteObjects removes multiple objects from storage in a single batch call.
+	// Implementations may have limits on the number of keys per call (e.g., S3: 1000).
+	DeleteObjects(ctx context.Context, bucket string, keys []string) error
 	ObjectExists(ctx context.Context, bucket string, key string) (bool, error)
 	GetObjectSize(ctx context.Context, bucket string, key string) (int64, error)
 	// GetObjectChecksum returns the content checksum (e.g., S3 ETag) for verification.

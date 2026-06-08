@@ -165,6 +165,9 @@ func applyFilter(query *ent.ObjectQuery, filter *domain.QueryFilter) *ent.Object
 	if filter.ID != nil {
 		query = query.Where(entobject.ID(*filter.ID))
 	}
+	if len(filter.IDs) > 0 {
+		query = query.Where(entobject.IDIn(filter.IDs...))
+	}
 	if filter.SystemID != nil {
 		query = query.Where(entobject.SystemIDEQ(*filter.SystemID))
 	}

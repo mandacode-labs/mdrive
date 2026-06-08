@@ -289,6 +289,74 @@ func (_c *ObjectServiceMock_Delete_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// DeleteBatch provides a mock function for the type ObjectServiceMock
+func (_mock *ObjectServiceMock) DeleteBatch(ctx context.Context, ids []string) ([]string, error) {
+	ret := _mock.Called(ctx, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBatch")
+	}
+
+	var r0 []string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) ([]string, error)); ok {
+		return returnFunc(ctx, ids)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) []string); ok {
+		r0 = returnFunc(ctx, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = returnFunc(ctx, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// ObjectServiceMock_DeleteBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBatch'
+type ObjectServiceMock_DeleteBatch_Call struct {
+	*mock.Call
+}
+
+// DeleteBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ids []string
+func (_e *ObjectServiceMock_Expecter) DeleteBatch(ctx interface{}, ids interface{}) *ObjectServiceMock_DeleteBatch_Call {
+	return &ObjectServiceMock_DeleteBatch_Call{Call: _e.mock.On("DeleteBatch", ctx, ids)}
+}
+
+func (_c *ObjectServiceMock_DeleteBatch_Call) Run(run func(ctx context.Context, ids []string)) *ObjectServiceMock_DeleteBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *ObjectServiceMock_DeleteBatch_Call) Return(strings []string, err error) *ObjectServiceMock_DeleteBatch_Call {
+	_c.Call.Return(strings, err)
+	return _c
+}
+
+func (_c *ObjectServiceMock_DeleteBatch_Call) RunAndReturn(run func(ctx context.Context, ids []string) ([]string, error)) *ObjectServiceMock_DeleteBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteBySystemID provides a mock function for the type ObjectServiceMock
 func (_mock *ObjectServiceMock) DeleteBySystemID(ctx context.Context, systemID string) error {
 	ret := _mock.Called(ctx, systemID)

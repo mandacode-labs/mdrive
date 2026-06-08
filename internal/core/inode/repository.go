@@ -46,6 +46,7 @@ type UpdateParams struct {
 // QueryFilter for querying inodes (repository layer).
 type QueryFilter struct {
 	ID       *string
+	IDs      []string
 	SystemID *string
 	UID      *int
 	GID      *int

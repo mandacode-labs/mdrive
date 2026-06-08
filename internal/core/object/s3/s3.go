@@ -140,6 +140,42 @@ func (s *S3Storage) DeleteObject(ctx context.Context, bucket string, key string)
 	return nil
 }
 
+// DeleteObjects removes multiple objects from storage in batches of 1000.
+func (s *S3Storage) DeleteObjects(ctx context.Context, bucket string, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	resolvedBucket := s.resolveBucket(bucket)
+	const batchSize = 1000
+
+	for i := 0; i < len(keys); i += batchSize {
+		end := i + batchSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+
+		batch := keys[i:end]
+		objects := make([]types.ObjectIdentifier, len(batch))
+		for j, key := range batch {
+			objects[j] = types.ObjectIdentifier{Key: aws.String(key)}
+		}
+
+		_, err := s.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(resolvedBucket),
+			Delete: &types.Delete{
+				Objects: objects,
+				Quiet:   aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete objects batch [%d:%d]: %w", i, end, err)
+		}
+	}
+
+	return nil
+}
+
 // ObjectExists checks if an object exists in storage.
 func (s *S3Storage) ObjectExists(ctx context.Context, bucket string, key string) (bool, error) {
 	_, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{

@@ -146,6 +146,69 @@ func (_c *StorageMock_DeleteObject_Call) RunAndReturn(run func(ctx context.Conte
 	return _c
 }
 
+// DeleteObjects provides a mock function for the type StorageMock
+func (_mock *StorageMock) DeleteObjects(ctx context.Context, bucket string, keys []string) error {
+	ret := _mock.Called(ctx, bucket, keys)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteObjects")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = returnFunc(ctx, bucket, keys)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// StorageMock_DeleteObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteObjects'
+type StorageMock_DeleteObjects_Call struct {
+	*mock.Call
+}
+
+// DeleteObjects is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bucket string
+//   - keys []string
+func (_e *StorageMock_Expecter) DeleteObjects(ctx interface{}, bucket interface{}, keys interface{}) *StorageMock_DeleteObjects_Call {
+	return &StorageMock_DeleteObjects_Call{Call: _e.mock.On("DeleteObjects", ctx, bucket, keys)}
+}
+
+func (_c *StorageMock_DeleteObjects_Call) Run(run func(ctx context.Context, bucket string, keys []string)) *StorageMock_DeleteObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *StorageMock_DeleteObjects_Call) Return(err error) *StorageMock_DeleteObjects_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *StorageMock_DeleteObjects_Call) RunAndReturn(run func(ctx context.Context, bucket string, keys []string) error) *StorageMock_DeleteObjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetObjectChecksum provides a mock function for the type StorageMock
 func (_mock *StorageMock) GetObjectChecksum(ctx context.Context, bucket string, key string) (string, error) {
 	ret := _mock.Called(ctx, bucket, key)

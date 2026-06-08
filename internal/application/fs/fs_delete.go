@@ -3,6 +3,7 @@ package fs
 import (
 	"context"
 
+	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
@@ -42,7 +43,7 @@ func (s *service) deleteObjectRef(ctx context.Context, in inodeGetter) error {
 		return nil
 	}
 	if err := s.objectSvc.Delete(ctx, objectID); err != nil {
-		if !errors.IsNotFound(err) {
+		if !errors.IsNotFound(err) && !ent.IsNotFound(err) {
 			logging.Ctx(ctx).Warn().
 				Str("object_id", objectID).
 				Err(err).

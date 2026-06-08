@@ -145,6 +145,9 @@ func applyFilter(query *ent.InodeQuery, filter *domain.QueryFilter) *ent.InodeQu
 	if filter.ID != nil {
 		query = query.Where(entinode.ID(*filter.ID))
 	}
+	if len(filter.IDs) > 0 {
+		query = query.Where(entinode.IDIn(filter.IDs...))
+	}
 	if filter.SystemID != nil {
 		query = query.Where(entinode.SystemIDEQ(*filter.SystemID))
 	}

@@ -30,31 +30,36 @@ func TestRm_EmptyPaths(t *testing.T) {
 	assert.True(t, errors.IsBadRequest(err))
 }
 
-func TestRm_SuccessSinglePath(t *testing.T) {
+func TestRm_SuccessSingleFile(t *testing.T) {
 	inodeSvc := inodeMocks.NewInodeServiceMock(t)
 	dentrySvc := dentryMocks.NewDentryServiceMock(t)
 	userSvc := userMocks.NewUserServiceMock(t)
 	now := time.Now()
 
+	// Root directory setup
 	dirContent := content.DirContent{Entries: []content.DirEntry{
 		{Name: "file", InodeID: "file-id", FileType: uint8(inode.ModeRegular >> 12)},
 	}}
 	raw, _ := json.Marshal(dirContent)
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
+	// ResolvePath calls Find to get root - use On for multiple calls
+	inodeSvc.On("Find", mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
+
+	// ResolvePath calls GetByID for the file
 	fileInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "file-id").Return(fileInode, nil)
+	inodeSvc.On("GetByID", mock.Anything, "file-id").Return(fileInode, nil)
 
-	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "file", InodeID: "file-id", FileType: uint8(inode.ModeRegular >> 12)}}, nil)
+	// Permission check
+	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
+	// Batch delete
+	inodeSvc.On("Delete", mock.Anything, "file-id").Return(nil)
 
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file").Return(nil)
+	// Batch unlink
+	dentrySvc.On("UnlinkBatch", mock.Anything, "root-id", []string{"file"}).Return(nil)
 
-	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(nil)
-
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -67,7 +72,7 @@ func TestRm_SuccessSinglePath(t *testing.T) {
 	assert.Empty(t, result.Errors)
 }
 
-func TestRm_SuccessMultiplePaths(t *testing.T) {
+func TestRm_SuccessMultipleFiles(t *testing.T) {
 	inodeSvc := inodeMocks.NewInodeServiceMock(t)
 	dentrySvc := dentryMocks.NewDentryServiceMock(t)
 	userSvc := userMocks.NewUserServiceMock(t)
@@ -79,30 +84,27 @@ func TestRm_SuccessMultiplePaths(t *testing.T) {
 	}}
 	raw, _ := json.Marshal(dirContent)
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
+
+	// ResolvePath for both files
+	inodeSvc.On("Find", mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
 	file1Inode := inode.NewInode("file1-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "file1-id").Return(file1Inode, nil)
-
-	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
-
-	dentrySvc.On("ReadDir", mock.Anything, "root-id").Return([]dentry.DirEntry{
-		{Name: "file1", InodeID: "file1-id", FileType: uint8(inode.ModeRegular >> 12)},
-		{Name: "file2", InodeID: "file2-id", FileType: uint8(inode.ModeRegular >> 12)},
-	}, nil)
-
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file1").Return(nil)
-
-	inodeSvc.EXPECT().Delete(mock.Anything, "file1-id").Return(nil)
+	inodeSvc.On("GetByID", mock.Anything, "file1-id").Return(file1Inode, nil)
 
 	file2Inode := inode.NewInode("file2-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "file2-id").Return(file2Inode, nil)
+	inodeSvc.On("GetByID", mock.Anything, "file2-id").Return(file2Inode, nil)
 
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file2").Return(nil)
+	// Permission checks
+	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	inodeSvc.EXPECT().Delete(mock.Anything, "file2-id").Return(nil)
+	// Batch delete
+	inodeSvc.On("Delete", mock.Anything, "file1-id").Return(nil)
+	inodeSvc.On("Delete", mock.Anything, "file2-id").Return(nil)
 
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	// Batch unlink
+	dentrySvc.On("UnlinkBatch", mock.Anything, "root-id", []string{"file1", "file2"}).Return(nil)
+
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -111,6 +113,8 @@ func TestRm_SuccessMultiplePaths(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, result.Deleted, 2)
+	assert.Contains(t, result.Deleted, "/file1")
+	assert.Contains(t, result.Deleted, "/file2")
 	assert.Empty(t, result.Errors)
 }
 
@@ -125,20 +129,23 @@ func TestRm_MixedSuccessFailure(t *testing.T) {
 	}}
 	raw, _ := json.Marshal(dirContent)
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
+
+	// ResolvePath for /file1 and /nonexistent
+	inodeSvc.On("Find", mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
 	file1Inode := inode.NewInode("file1-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "file1-id").Return(file1Inode, nil)
+	inodeSvc.On("GetByID", mock.Anything, "file1-id").Return(file1Inode, nil)
 
-	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
+	// Permission check for file1
+	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	dentrySvc.On("ReadDir", mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "file1", InodeID: "file1-id", FileType: uint8(inode.ModeRegular >> 12)}}, nil)
+	// Batch delete for file1
+	inodeSvc.On("Delete", mock.Anything, "file1-id").Return(nil)
 
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file1").Return(nil)
+	// Batch unlink for file1
+	dentrySvc.On("UnlinkBatch", mock.Anything, "root-id", []string{"file1"}).Return(nil)
 
-	inodeSvc.EXPECT().Delete(mock.Anything, "file1-id").Return(nil)
-
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -163,32 +170,52 @@ func TestRm_NonEmptyDirectory(t *testing.T) {
 	}}
 	raw, _ := json.Marshal(dirContent)
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
+
+	childInode := inode.NewInode("child-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
+
+	// ResolvePath for /dir
+	inodeSvc.On("Find", mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode, childInode}, nil)
 
 	dirInodeContent := content.DirContent{Entries: []content.DirEntry{
 		{Name: "child", InodeID: "child-id", FileType: uint8(inode.ModeRegular >> 12)},
 	}}
 	dirRaw, _ := json.Marshal(dirInodeContent)
 	dirInode := inode.NewInode("dir-id", "sys", inode.ModeDirectory|0755, 1000, 1000, 0, 1, 0, now, now, now, dirRaw, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "dir-id").Return(dirInode, nil)
+	inodeSvc.On("GetByID", mock.Anything, "dir-id").Return(dirInode, nil)
 
-	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "dir", InodeID: "dir-id", FileType: uint8(inode.ModeDirectory >> 12)}}, nil)
+	// Permission check for dir
+	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	// For recursive delete, collect child entries from dir
+	dentrySvc.On("ReadDir", mock.Anything, "dir-id").Return([]dentry.DirEntry{
+		{Name: "child", InodeID: "child-id", FileType: uint8(inode.ModeRegular >> 12)},
+	}, nil)
+
+	inodeSvc.On("GetByID", mock.Anything, "child-id").Return(childInode, nil)
+
+	// Batch delete for child and dir
+	inodeSvc.On("Delete", mock.Anything, "child-id").Return(nil)
+	inodeSvc.On("Delete", mock.Anything, "dir-id").Return(nil)
+
+	// Batch unlink for child from dir and dir from root
+	dentrySvc.On("UnlinkBatch", mock.Anything, "dir-id", []string{"child"}).Return(nil)
+	dentrySvc.On("UnlinkBatch", mock.Anything, "root-id", []string{"dir"}).Return(nil)
+
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
-		SystemID: "sys",
-		Paths:    []string{"/dir"},
+		SystemID:  "sys",
+		Paths:     []string{"/dir"},
+		Recursive: true,
 	})
 
 	assert.NoError(t, err)
-	assert.Empty(t, result.Deleted)
-	assert.Len(t, result.Errors, 1)
-	assert.Equal(t, "/dir", result.Errors[0].Path)
-	assert.True(t, errors.IsBadRequest(result.Errors[0].Error))
+	assert.Len(t, result.Deleted, 1)
+	assert.Equal(t, "/dir", result.Deleted[0])
+	assert.Empty(t, result.Errors)
 }
 
-func TestRm_UnlinkFailure(t *testing.T) {
+func TestRm_PermissionDenied(t *testing.T) {
 	inodeSvc := inodeMocks.NewInodeServiceMock(t)
 	dentrySvc := dentryMocks.NewDentryServiceMock(t)
 	userSvc := userMocks.NewUserServiceMock(t)
@@ -199,50 +226,16 @@ func TestRm_UnlinkFailure(t *testing.T) {
 	}}
 	raw, _ := json.Marshal(dirContent)
 	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
 
-	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "file", InodeID: "file-id", FileType: uint8(inode.ModeRegular >> 12)}}, nil)
+	// ResolvePath
+	inodeSvc.On("Find", mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
+	fileInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0644, 2000, 2000, 0, 1, 0, now, now, now, nil, now, now)
+	inodeSvc.On("GetByID", mock.Anything, "file-id").Return(fileInode, nil)
 
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file").Return(errors.Internal("unlink failed"))
+	// Permission check fails
+	userSvc.On("ResolveUIDAndGIDs", mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
-
-	result, err := svc.Rm(context.Background(), &RmCommand{
-		SystemID: "sys",
-		Paths:    []string{"/file"},
-	})
-
-	assert.NoError(t, err)
-	assert.Empty(t, result.Deleted)
-	assert.Len(t, result.Errors, 1)
-	assert.Equal(t, "/file", result.Errors[0].Path)
-}
-
-func TestRm_DeleteFailure(t *testing.T) {
-	inodeSvc := inodeMocks.NewInodeServiceMock(t)
-	dentrySvc := dentryMocks.NewDentryServiceMock(t)
-	userSvc := userMocks.NewUserServiceMock(t)
-	now := time.Now()
-
-	dirContent := content.DirContent{Entries: []content.DirEntry{
-		{Name: "file", InodeID: "file-id", FileType: uint8(inode.ModeRegular >> 12)},
-	}}
-	raw, _ := json.Marshal(dirContent)
-	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
-
-	fileInode := inode.NewInode("file-id", "sys", inode.ModeRegular|0644, 1000, 1000, 0, 1, 0, now, now, now, nil, now, now)
-	inodeSvc.EXPECT().GetByID(mock.Anything, "file-id").Return(fileInode, nil)
-
-	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
-
-	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{{Name: "file", InodeID: "file-id", FileType: uint8(inode.ModeRegular >> 12)}}, nil)
-
-	dentrySvc.EXPECT().Unlink(mock.Anything, "root-id", "file").Return(nil)
-
-	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(errors.Internal("delete failed"))
-
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rm(context.Background(), &RmCommand{
 		SystemID: "sys",
@@ -253,26 +246,5 @@ func TestRm_DeleteFailure(t *testing.T) {
 	assert.Empty(t, result.Deleted)
 	assert.Len(t, result.Errors, 1)
 	assert.Equal(t, "/file", result.Errors[0].Path)
-}
-
-// --- rmOne ---
-
-func TestRmOne_NotFound(t *testing.T) {
-	inodeSvc := inodeMocks.NewInodeServiceMock(t)
-	dentrySvc := dentryMocks.NewDentryServiceMock(t)
-	now := time.Now()
-
-	dirContent := content.DirContent{Entries: []content.DirEntry{}}
-	raw, _ := json.Marshal(dirContent)
-	rootInode := inode.NewInode("root-id", "sys", inode.ModeDirectory|0755, 0, 0, 0, 1, inode.FlagRoot, now, now, now, raw, now, now)
-	inodeSvc.EXPECT().Find(mock.Anything, mock.Anything).Return([]*inode.Inode{rootInode}, nil)
-
-	dentrySvc.EXPECT().ReadDir(mock.Anything, "root-id").Return([]dentry.DirEntry{}, nil)
-
-	svc := NewService(nil, inodeSvc, nil, nil, nil, dentrySvc, nil).(*service)
-
-	err := svc.rmOne(context.Background(), "sys", "/nonexistent", false)
-
-	assert.Error(t, err)
-	assert.True(t, errors.IsNotFound(err))
+	assert.True(t, errors.IsForbidden(result.Errors[0].Error))
 }

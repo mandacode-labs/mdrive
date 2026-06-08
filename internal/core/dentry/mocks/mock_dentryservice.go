@@ -377,3 +377,66 @@ func (_c *DentryServiceMock_Unlink_Call) RunAndReturn(run func(ctx context.Conte
 	_c.Call.Return(run)
 	return _c
 }
+
+// UnlinkBatch provides a mock function for the type DentryServiceMock
+func (_mock *DentryServiceMock) UnlinkBatch(ctx context.Context, dirID string, names []string) error {
+	ret := _mock.Called(ctx, dirID, names)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnlinkBatch")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = returnFunc(ctx, dirID, names)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// DentryServiceMock_UnlinkBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnlinkBatch'
+type DentryServiceMock_UnlinkBatch_Call struct {
+	*mock.Call
+}
+
+// UnlinkBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dirID string
+//   - names []string
+func (_e *DentryServiceMock_Expecter) UnlinkBatch(ctx interface{}, dirID interface{}, names interface{}) *DentryServiceMock_UnlinkBatch_Call {
+	return &DentryServiceMock_UnlinkBatch_Call{Call: _e.mock.On("UnlinkBatch", ctx, dirID, names)}
+}
+
+func (_c *DentryServiceMock_UnlinkBatch_Call) Run(run func(ctx context.Context, dirID string, names []string)) *DentryServiceMock_UnlinkBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *DentryServiceMock_UnlinkBatch_Call) Return(err error) *DentryServiceMock_UnlinkBatch_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *DentryServiceMock_UnlinkBatch_Call) RunAndReturn(run func(ctx context.Context, dirID string, names []string) error) *DentryServiceMock_UnlinkBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
