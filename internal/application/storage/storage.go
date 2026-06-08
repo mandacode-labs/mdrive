@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"time"
 
 	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
@@ -11,6 +10,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // StorageService defines the interface for file storage operations.
@@ -185,10 +185,10 @@ func (s *service) DeleteObjectByInode(ctx context.Context, inodeID string) error
 
 	// Best-effort S3 cleanup - ignore storage errors
 	if err := s.objectSvc.Delete(ctx, c.ObjectID); err != nil {
-		slog.Warn("failed to delete object from storage, skipping",
-			"object_id", c.ObjectID,
-			"error", err,
-		)
+		logging.Ctx(ctx).Warn().
+			Str("object_id", c.ObjectID).
+			Err(err).
+			Msg("failed to delete object from storage, skipping")
 	}
 	return nil
 }

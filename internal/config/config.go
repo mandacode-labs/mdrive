@@ -21,9 +21,10 @@ type Config struct {
 
 // AppConfig holds application-level configuration.
 type AppConfig struct {
-	Name    string `mapstructure:"name" yaml:"name"`
-	Version string `mapstructure:"version" yaml:"version"`
-	Env     string `mapstructure:"env" yaml:"env"`
+	Name     string `mapstructure:"name" yaml:"name"`
+	Version  string `mapstructure:"version" yaml:"version"`
+	Env      string `mapstructure:"env" yaml:"env"`
+	LogLevel string `mapstructure:"logLevel" yaml:"logLevel"`
 }
 
 // HTTPConfig holds HTTP server configuration.
@@ -188,6 +189,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.name", "retrowin")
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.env", "development")
+	v.SetDefault("app.logLevel", "info")
 	v.SetDefault("http.host", "0.0.0.0")
 	v.SetDefault("http.port", 8080)
 	v.SetDefault("database.driver", "postgres")

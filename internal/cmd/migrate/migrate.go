@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"time"
 
 	"entgo.io/ent/dialect/sql/schema"
@@ -14,6 +13,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/ent/migrate/migrations"
 	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // MigrateOptions holds options for migration apply.
@@ -25,12 +25,12 @@ type MigrateOptions struct {
 }
 
 // ApplyMigrations applies database migrations using the configured mode.
-func ApplyMigrations(cfg *config.Config, opts MigrateOptions) error {
+func ApplyMigrations(cfg *config.Config, opts MigrateOptions, logger *logging.Logger) error {
 	if opts.Clean {
 		if err := dropAllTables(cfg); err != nil {
 			return fmt.Errorf("failed to drop tables: %w", err)
 		}
-		fmt.Println("All tables dropped")
+		logger.Info().Msg("all tables dropped")
 	}
 
 	mode := opts.Mode
@@ -40,9 +40,9 @@ func ApplyMigrations(cfg *config.Config, opts MigrateOptions) error {
 
 	switch mode {
 	case "versioned":
-		return applyVersionedMigrations(cfg, opts)
+		return applyVersionedMigrations(cfg, opts, logger)
 	case "auto", "":
-		return applyAutoMigrations(cfg)
+		return applyAutoMigrations(cfg, logger)
 	default:
 		return fmt.Errorf("unknown migration mode: %s (use 'auto' or 'versioned')", mode)
 	}
@@ -76,7 +76,6 @@ func dropAllTables(cfg *config.Config) error {
 		return fmt.Errorf("failed to build drop statements: %w", err)
 	}
 	if stmts == "" {
-		fmt.Println("No tables to drop")
 		return nil
 	}
 
@@ -85,7 +84,7 @@ func dropAllTables(cfg *config.Config) error {
 }
 
 // applyAutoMigrations uses ent's auto-migration (Schema.Create).
-func applyAutoMigrations(cfg *config.Config) error {
+func applyAutoMigrations(cfg *config.Config, logger *logging.Logger) error {
 	entClient, err := ent.Open(cfg.Database.Driver, cfg.DSN())
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
@@ -99,13 +98,13 @@ func applyAutoMigrations(cfg *config.Config) error {
 		return fmt.Errorf("failed to apply migrations: %w", err)
 	}
 
-	fmt.Println("Auto-migrations applied successfully")
+	logger.Info().Msg("auto-migrations applied successfully")
 	return nil
 }
 
 // applyVersionedMigrations uses atlasexec to apply versioned SQL migrations.
 // Requires the 'atlas' CLI binary to be available in PATH.
-func applyVersionedMigrations(cfg *config.Config, opts MigrateOptions) error {
+func applyVersionedMigrations(cfg *config.Config, opts MigrateOptions, logger *logging.Logger) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -148,12 +147,16 @@ func applyVersionedMigrations(cfg *config.Config, opts MigrateOptions) error {
 	}
 
 	if len(res.Applied) == 0 {
-		fmt.Println("No pending migrations")
+		logger.Info().Msg("no pending migrations")
 	} else {
 		for _, f := range res.Applied {
-			_, _ = fmt.Fprintf(os.Stdout, "  Applied: %s\n", f.Name)
+			logger.Info().Str("migration", f.Name).Msg("applied migration")
 		}
-		fmt.Printf("Applied %d migration(s) successfully (%s -> %s)\n", len(res.Applied), res.Current, res.Target)
+		logger.Info().
+			Int("count", len(res.Applied)).
+			Str("from", res.Current).
+			Str("to", res.Target).
+			Msg("versioned migrations applied successfully")
 	}
 
 	return nil

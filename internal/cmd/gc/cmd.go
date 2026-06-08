@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // NewCmd creates a new cobra command for the gc command
@@ -52,7 +53,10 @@ func newRunCmd() *cobra.Command {
 				}
 			}
 
-			return runGC(cfg, expiry)
+			// Create logger
+			logger := logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
+
+			return runGC(cfg, expiry, logger)
 		},
 	}
 

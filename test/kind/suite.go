@@ -137,16 +137,27 @@ func getFreePort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-// PodLogs returns the logs of a pod.
+// PodLogs returns the logs of a pod, retrying if the container is not ready.
 func (s *Suite) PodLogs(t *testing.T, podName string) string {
 	t.Helper()
 
-	cmd := exec.Command("kubectl", "--kubeconfig", s.kubeconfig,
-		"logs", podName,
-		"--namespace", s.namespace,
-	)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "Failed to get pod logs: %s", string(output))
+	var output []byte
+	var err error
+
+	// Retry for up to 60s if container is still creating/crashed
+	require.Eventually(t, func() bool {
+		cmd := exec.Command("kubectl", "--kubeconfig", s.kubeconfig,
+			"logs", podName,
+			"--namespace", s.namespace,
+		)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			// Retry if container is still creating or crashed
+			return false
+		}
+		return true
+	}, 60*time.Second, 2*time.Second, "Failed to get pod logs after retries")
+
 	return string(output)
 }
 

@@ -3,6 +3,7 @@
 package kind
 
 import (
+	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -18,11 +19,19 @@ func TestKind_Deployment(t *testing.T) {
 
 	// Build Docker image and load it into kind
 	t.Run("build and load image", func(t *testing.T) {
-		cmd := exec.Command("docker", "build",
+		cacheRef := os.Getenv("DOCKER_CACHE_REF")
+		if cacheRef == "" {
+			cacheRef = "registry.mandacode.com/retrowin/cache:main"
+		}
+
+		cmd := exec.Command("docker", "buildx", "build",
+			"--cache-from", "type=registry,ref="+cacheRef,
+			"--load",
 			"-f", "../../build/docker/server.Dockerfile",
 			"-t", "retrowin:test",
 			"../..",
 		)
+		cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, "Failed to build Docker image: %s", string(output))
 

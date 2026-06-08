@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/retrowin-go/internal/cmd/migrate"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 func TestMigration_AutoMode(t *testing.T) {
@@ -27,7 +28,8 @@ func TestMigration_AutoMode(t *testing.T) {
 	cfg := suite.GetConfig()
 
 	t.Run("applies auto migrations to empty database", func(t *testing.T) {
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"})
+		logger := logging.NewLogger("test", "info")
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"}, logger)
 		require.NoError(t, err, "Auto migration should succeed")
 
 		// Verify core tables exist
@@ -44,7 +46,8 @@ func TestMigration_AutoMode(t *testing.T) {
 	})
 
 	t.Run("idempotent auto migration", func(t *testing.T) {
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"})
+		logger := logging.NewLogger("test", "info")
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"}, logger)
 		require.NoError(t, err, "Running auto migration again should succeed")
 	})
 }
@@ -68,15 +71,16 @@ func TestMigration_VersionedMode(t *testing.T) {
 	// Use baseline to skip migrations that were already applied by auto-migration.
 	// The baseline must be the latest migration version that exists in the database.
 	t.Run("applies versioned migrations with baseline on existing database", func(t *testing.T) {
+		logger := logging.NewLogger("test", "info")
 		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{
 			Mode:     "versioned",
 			Baseline: "20260602021721",
-		})
+		}, logger)
 		require.NoError(t, err, "Versioned migration with baseline should succeed")
 	})
 
 	t.Run("no pending migrations on reapply", func(t *testing.T) {
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "versioned"})
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "versioned"}, logging.NewLogger("test", "info"))
 		require.NoError(t, err, "Reapplying versioned migrations should succeed")
 	})
 }
@@ -98,10 +102,11 @@ func TestMigration_VersionedOnCleanDB(t *testing.T) {
 
 	t.Run("clean then versioned migration on fresh database", func(t *testing.T) {
 		// Clean drops all tables (including ones created by suite.Start auto-migration)
+		logger := logging.NewLogger("test", "info")
 		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{
 			Mode:  "versioned",
 			Clean: true,
-		})
+		}, logger)
 		require.NoError(t, err, "Clean + versioned migration should succeed")
 
 		// Verify core tables exist
@@ -118,7 +123,7 @@ func TestMigration_VersionedOnCleanDB(t *testing.T) {
 	})
 
 	t.Run("no pending migrations on reapply", func(t *testing.T) {
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "versioned"})
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "versioned"}, logging.NewLogger("test", "info"))
 		require.NoError(t, err, "Reapplying versioned migrations should succeed")
 	})
 }
@@ -139,7 +144,7 @@ func TestMigration_CleanAndReapply(t *testing.T) {
 	cfg := suite.GetConfig()
 
 	// First apply to create tables
-	err = migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"})
+	err = migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"}, logging.NewLogger("test", "info"))
 	require.NoError(t, err, "Initial migration should succeed")
 
 	// Verify tables exist
@@ -151,7 +156,7 @@ func TestMigration_CleanAndReapply(t *testing.T) {
 	require.True(t, tableCount > 0, "Should have tables after initial migration")
 
 	t.Run("clean drops all tables", func(t *testing.T) {
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto", Clean: true})
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto", Clean: true}, logging.NewLogger("test", "info"))
 		require.NoError(t, err, "Clean migration should succeed")
 
 		// Verify tables were recreated
@@ -165,11 +170,11 @@ func TestMigration_CleanAndReapply(t *testing.T) {
 
 	t.Run("clean on empty database is safe", func(t *testing.T) {
 		// Drop everything first
-		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Clean: true})
+		err := migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Clean: true}, logging.NewLogger("test", "info"))
 		require.NoError(t, err, "Clean on empty database should not error")
 
 		// Re-apply
-		err = migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"})
+		err = migrate.ApplyMigrations(cfg, migrate.MigrateOptions{Mode: "auto"}, logging.NewLogger("test", "info"))
 		require.NoError(t, err)
 	})
 }
