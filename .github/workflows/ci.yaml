@@ -30,7 +30,8 @@ jobs:
         with:
           python-version: '3.x'
       - name: Install golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/bin latest
       - name: Install pre-commit
         run: pip install pre-commit
       - name: Run pre-commit hooks
