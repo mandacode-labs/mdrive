@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -31,6 +30,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
 	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // Shared containers — started once in TestMain, reused by all tests.
@@ -138,11 +138,12 @@ func startSharedContainers(ctx context.Context) error {
 		}
 		sharedMinioAddr = fmt.Sprintf("%s:%s", mnHost, mnPort.Port())
 
-		slog.Info("Shared containers started",
-			"pg", fmt.Sprintf("%s:%d", sharedPgHost, sharedPgPort),
-			"valkey", sharedValkeyAddr,
-			"minio", sharedMinioAddr,
-		)
+		logger := logging.NewLogger("test", "info")
+		logger.Info().
+			Str("pg", fmt.Sprintf("%s:%d", sharedPgHost, sharedPgPort)).
+			Str("valkey", sharedValkeyAddr).
+			Str("minio", sharedMinioAddr).
+			Msg("shared containers started")
 	})
 	return startErr
 }
@@ -216,7 +217,11 @@ func (s *Suite) Start(ctx context.Context) error {
 		if err == nil {
 			break
 		}
-		slog.Warn("valkey client not ready, retrying", "attempt", i+1, "error", err)
+		logger := logging.NewLogger("test", "info")
+		logger.Warn().
+			Int("attempt", i+1).
+			Err(err).
+			Msg("valkey client not ready, retrying")
 		time.Sleep(500 * time.Millisecond)
 	}
 	if err != nil {

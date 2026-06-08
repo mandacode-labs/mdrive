@@ -19,8 +19,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 	"github.com/mandacode-labs/retrowin-go/pkg/api"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/valkey-io/valkey-go"
@@ -71,14 +71,13 @@ func ProvideConfig(cfgFile string, port int) (*config.Config, error) {
 	return cfg, nil
 }
 
-// ProvideLogger creates a new zap logger.
-func ProvideLogger() *zap.Logger {
-	logger, _ := zap.NewProduction()
-	return logger
+// ProvideLogger creates a new zerolog logger.
+func ProvideLogger(cfg *config.Config) *logging.Logger {
+	return logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
 }
 
 // NewEntClient creates a new Ent client and returns the underlying *sql.DB for raw queries.
-func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent.Client, *sql.DB, error) {
+func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *logging.Logger) (*ent.Client, *sql.DB, error) {
 	// Open database connection with OTel instrumentation
 	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
 		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
@@ -103,22 +102,22 @@ func NewEntClient(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*ent
 			if err := db.PingContext(ctx); err != nil {
 				return fmt.Errorf("failed to ping database: %w", err)
 			}
-			logger.Info("connected to database",
-				zap.String("host", cfg.Database.Host),
-				zap.String("database", cfg.Database.Name),
-			)
+			logger.Info().
+				Str("host", cfg.Database.Host).
+				Str("database", cfg.Database.Name).
+				Msg("connected to database")
 
 			// Auto migrate in development
 			if cfg.App.Env == "development" {
 				if err := client.Schema.Create(ctx); err != nil {
-					logger.Warn("failed to auto-migrate schema", zap.Error(err))
+					logger.Warn().Err(err).Msg("failed to auto-migrate schema")
 				}
 			}
 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			logger.Info("closing database connection")
+			logger.Info().Msg("closing database connection")
 			if err := client.Close(); err != nil {
 				return fmt.Errorf("failed to close ent client: %w", err)
 			}
@@ -147,7 +146,6 @@ func ProvideValkeyClient(cfg *config.Config) (valkey.Client, error) {
 		client.Close()
 		return nil, fmt.Errorf("failed to connect to cache: %w", err)
 	}
-	fmt.Printf("Connected to %s\n", cfg.Cache.Provider)
 
 	return client, nil
 }
@@ -168,16 +166,16 @@ func ProvideStorage(cfg *config.Config) (object.Storage, error) {
 }
 
 // ProvideTelemetry provides and registers OTel providers.
-func ProvideTelemetry(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*telemetry.Providers, error) {
+func ProvideTelemetry(lc fx.Lifecycle, cfg *config.Config, logger *logging.Logger) (*telemetry.Providers, error) {
 	providers, err := telemetry.NewProviders(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize telemetry: %w", err)
 	}
 	if cfg.Telemetry.Enabled {
-		logger.Info("telemetry enabled",
-			zap.String("endpoint", cfg.Telemetry.Endpoint),
-			zap.String("service", cfg.Telemetry.ServiceName),
-		)
+		logger.Info().
+			Str("endpoint", cfg.Telemetry.Endpoint).
+			Str("service", cfg.Telemetry.ServiceName).
+			Msg("telemetry enabled")
 	}
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
@@ -218,11 +216,12 @@ func ProvideHTTPMux(
 }
 
 // ProvideHTTPHandler provides the HTTP handler with middleware chain.
-func ProvideHTTPHandler(mux *http.ServeMux, callbackCfg *middleware.CallbackConfig, cfg *config.Config) http.Handler {
+func ProvideHTTPHandler(mux *http.ServeMux, callbackCfg *middleware.CallbackConfig, cfg *config.Config, logger *logging.Logger) http.Handler {
 	var handler http.Handler = mux
 	handler = middleware.CallbackMiddleware(callbackCfg)(handler)
 	handler = middleware.CORSMiddleware(cfg)(handler)
-	handler = middleware.RecoveryMiddleware()(handler)
+	handler = middleware.RecoveryMiddleware(logger)(handler)
+	handler = middleware.RequestLoggingMiddleware(logger)(handler)
 	if cfg.Telemetry.Enabled {
 		handler = otelhttp.NewHandler(handler, "http-server")
 	}
@@ -234,6 +233,7 @@ func ProvideHTTPServer(
 	handler http.Handler,
 	cfg *config.Config,
 	lc fx.Lifecycle,
+	logger *logging.Logger,
 ) *http.Server {
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	srv := &http.Server{
@@ -252,17 +252,17 @@ func ProvideHTTPServer(
 				return fmt.Errorf("failed to listen on %s: %w", addr, err)
 			}
 
-			fmt.Printf("Starting server on %s\n", addr)
+			logger.Info().Str("addr", addr).Msg("starting server")
 
 			go func() {
 				if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-					fmt.Printf("Server error: %v\n", err)
+					logger.Error().Err(err).Msg("server error")
 				}
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			fmt.Println("Shutting down server...")
+			logger.Info().Msg("shutting down server")
 			return srv.Shutdown(ctx)
 		},
 	})
@@ -272,7 +272,7 @@ func ProvideHTTPServer(
 
 // RegisterShutdownHooks registers shutdown signal handlers.
 // Taking srv *http.Server as parameter ensures the HTTP server provider is constructed.
-func RegisterShutdownHooks(lc fx.Lifecycle, entClient *ent.Client, valkeyCli valkey.Client, srv *http.Server) {
+func RegisterShutdownHooks(lc fx.Lifecycle, entClient *ent.Client, valkeyCli valkey.Client, srv *http.Server, logger *logging.Logger) {
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			if err := entClient.Close(); err != nil {
@@ -281,14 +281,14 @@ func RegisterShutdownHooks(lc fx.Lifecycle, entClient *ent.Client, valkeyCli val
 			if valkeyCli != nil {
 				valkeyCli.Close()
 			}
-			fmt.Println("Server stopped")
+			logger.Info().Msg("server stopped")
 			return nil
 		},
 	})
 }
 
 // WaitForShutdown waits for shutdown signals.
-func WaitForShutdown(lc fx.Lifecycle) {
+func WaitForShutdown(lc fx.Lifecycle, logger *logging.Logger) {
 	shutdownCh := make(chan os.Signal, 1)
 	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
 
@@ -296,7 +296,7 @@ func WaitForShutdown(lc fx.Lifecycle) {
 		OnStart: func(context.Context) error {
 			go func() {
 				sig := <-shutdownCh
-				fmt.Printf("\nReceived signal %v, shutting down...\n", sig)
+				logger.Info().Str("signal", sig.String()).Msg("received shutdown signal")
 			}()
 			return nil
 		},

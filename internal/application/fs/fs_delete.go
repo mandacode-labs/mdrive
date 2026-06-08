@@ -2,9 +2,9 @@ package fs
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // Delete removes an inode by ID.
@@ -43,7 +43,10 @@ func (s *service) deleteObjectRef(ctx context.Context, in inodeGetter) error {
 	}
 	if err := s.objectSvc.Delete(ctx, objectID); err != nil {
 		if !errors.IsNotFound(err) {
-			slog.Warn("failed to delete object, skipping", "object_id", objectID, "error", err)
+			logging.Ctx(ctx).Warn().
+				Str("object_id", objectID).
+				Err(err).
+				Msg("failed to delete object, skipping")
 		}
 	}
 	return nil

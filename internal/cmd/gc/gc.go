@@ -13,10 +13,11 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
 	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
 	s3storage "github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // runGC bootstraps dependencies and runs garbage collection.
-func runGC(cfg *config.Config, pendingExpiry time.Duration) error {
+func runGC(cfg *config.Config, pendingExpiry time.Duration, logger *logging.Logger) error {
 	ctx := context.Background()
 
 	// Create DB client (same pattern as migrate command)
@@ -38,13 +39,15 @@ func runGC(cfg *config.Config, pendingExpiry time.Duration) error {
 	// Run GC
 	collector := gcapp.NewGarbageCollector(objectSvc, objStorage, pendingExpiry)
 
-	fmt.Println("Running garbage collection...")
+	logger.Info().Msg("running garbage collection")
 	result, err := collector.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("garbage collection failed: %w", err)
 	}
 
-	fmt.Printf("GC complete: %d pending cleaned, %d orphans cleaned\n",
-		result.PendingCleaned, result.OrphansCleaned)
+	logger.Info().
+		Int("pending_cleaned", result.PendingCleaned).
+		Int("orphans_cleaned", result.OrphansCleaned).
+		Msg("garbage collection complete")
 	return nil
 }

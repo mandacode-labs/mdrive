@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // base64ToHex converts a base64-encoded string to hex-encoded string.
@@ -411,10 +411,10 @@ func (s *service) CleanupStorageBySystemID(ctx context.Context, systemID string)
 	}
 	for _, obj := range objects {
 		if err := s.storage.DeleteObject(ctx, obj.Bucket(), obj.StorageKey()); err != nil {
-			slog.Warn("failed to delete object from storage, skipping",
-				"object_id", obj.ID(),
-				"error", err,
-			)
+			logging.Ctx(ctx).Warn().
+				Str("object_id", obj.ID()).
+				Err(err).
+				Msg("failed to delete object from storage, skipping")
 		}
 	}
 	return nil

@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 // NewCmd creates a new cobra command for the migrate command
@@ -43,6 +44,9 @@ func newApplyCmd() *cobra.Command {
 				return err
 			}
 
+			// Create logger
+			logger := logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
+
 			// CLI flags override config
 			opts := MigrateOptions{
 				Mode:       mode,
@@ -54,7 +58,7 @@ func newApplyCmd() *cobra.Command {
 				opts.Mode = "auto"
 			}
 
-			return ApplyMigrations(cfg, opts)
+			return ApplyMigrations(cfg, opts, logger)
 		},
 	}
 

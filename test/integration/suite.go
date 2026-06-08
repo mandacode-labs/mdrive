@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -35,6 +34,7 @@ import (
 	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
 	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
 	domainsystem "github.com/mandacode-labs/retrowin-go/internal/system"
 	systemrepo "github.com/mandacode-labs/retrowin-go/internal/system/repository"
@@ -114,10 +114,11 @@ func startSharedContainers(ctx context.Context) error {
 		}
 		sharedMinioAddr = fmt.Sprintf("%s:%s", mnHost, mnPort.Port())
 
-		slog.Info("Integration test containers started",
-			"pg", fmt.Sprintf("%s:%d", sharedPgHost, sharedPgPort),
-			"minio", sharedMinioAddr,
-		)
+		logger := logging.NewLogger("test", "info")
+		logger.Info().
+			Str("pg", fmt.Sprintf("%s:%d", sharedPgHost, sharedPgPort)).
+			Str("minio", sharedMinioAddr).
+			Msg("integration test containers started")
 	})
 	return sharedErr
 }

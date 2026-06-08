@@ -2,10 +2,10 @@ package gc
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/retrowin-go/internal/logging"
 )
 
 const (
@@ -69,17 +69,17 @@ func (gc *GarbageCollector) cleanupPending(ctx context.Context) (int, error) {
 	cleaned := 0
 	for _, obj := range pendingObjects {
 		if err := gc.objectSvc.Delete(ctx, obj.ID()); err != nil {
-			slog.Warn("failed to delete expired pending object",
-				"object_id", obj.ID(),
-				"error", err,
-			)
+			logging.Ctx(ctx).Warn().
+				Str("object_id", obj.ID()).
+				Err(err).
+				Msg("failed to delete expired pending object")
 			continue
 		}
 		cleaned++
-		slog.Info("cleaned up expired pending object",
-			"object_id", obj.ID(),
-			"age", time.Since(obj.CreatedAt()),
-		)
+		logging.Ctx(ctx).Info().
+			Str("object_id", obj.ID()).
+			Dur("age", time.Since(obj.CreatedAt())).
+			Msg("cleaned up expired pending object")
 	}
 
 	return cleaned, nil
@@ -96,10 +96,10 @@ func (gc *GarbageCollector) cleanupOrphans(ctx context.Context) (int, error) {
 	for _, obj := range activeObjects {
 		exists, err := gc.storage.ObjectExists(ctx, obj.Bucket(), obj.StorageKey())
 		if err != nil {
-			slog.Warn("failed to check object existence, skipping",
-				"object_id", obj.ID(),
-				"error", err,
-			)
+			logging.Ctx(ctx).Warn().
+				Str("object_id", obj.ID()).
+				Err(err).
+				Msg("failed to check object existence, skipping")
 			continue
 		}
 		if exists {
@@ -108,18 +108,18 @@ func (gc *GarbageCollector) cleanupOrphans(ctx context.Context) (int, error) {
 
 		// S3 data is gone — clean up DB record only
 		if err := gc.objectSvc.DeleteFromDB(ctx, obj.ID()); err != nil {
-			slog.Warn("failed to delete orphaned object from DB",
-				"object_id", obj.ID(),
-				"error", err,
-			)
+			logging.Ctx(ctx).Warn().
+				Str("object_id", obj.ID()).
+				Err(err).
+				Msg("failed to delete orphaned object from DB")
 			continue
 		}
 		cleaned++
-		slog.Info("cleaned up orphaned object",
-			"object_id", obj.ID(),
-			"bucket", obj.Bucket(),
-			"storage_key", obj.StorageKey(),
-		)
+		logging.Ctx(ctx).Info().
+			Str("object_id", obj.ID()).
+			Str("bucket", obj.Bucket()).
+			Str("storage_key", obj.StorageKey()).
+			Msg("cleaned up orphaned object")
 	}
 
 	return cleaned, nil
