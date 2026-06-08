@@ -210,7 +210,8 @@ func (s *Suite) JobExists(t *testing.T, jobName string) bool {
 	return err == nil
 }
 
-// PodIsRunning checks if any pod matching the label selector is in Running state.
+// PodIsRunning checks if any pod matching the label selector is fully ready.
+// Verifies the Pod's Ready condition is True, not just status.phase=Running.
 func (s *Suite) PodIsRunning(t *testing.T, labelSelector string) bool {
 	t.Helper()
 
@@ -218,12 +219,11 @@ func (s *Suite) PodIsRunning(t *testing.T, labelSelector string) bool {
 		"get", "pods",
 		"--namespace", s.namespace,
 		"--selector", labelSelector,
-		"--field-selector", "status.phase=Running",
-		"--output", "jsonpath={.items[0].metadata.name}",
+		"--output", "jsonpath={.items[0].status.conditions[?(@.type==\"Ready\")].status}",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
 	}
-	return len(output) > 0 && len(string(output)) > 0
+	return string(output) == "True"
 }
