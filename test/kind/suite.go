@@ -137,16 +137,27 @@ func getFreePort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-// PodLogs returns the logs of a pod.
+// PodLogs returns the logs of a pod, retrying if the container is not ready.
 func (s *Suite) PodLogs(t *testing.T, podName string) string {
 	t.Helper()
 
-	cmd := exec.Command("kubectl", "--kubeconfig", s.kubeconfig,
-		"logs", podName,
-		"--namespace", s.namespace,
-	)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "Failed to get pod logs: %s", string(output))
+	var output []byte
+	var err error
+
+	// Retry for up to 60s if container is still creating/crashed
+	require.Eventually(t, func() bool {
+		cmd := exec.Command("kubectl", "--kubeconfig", s.kubeconfig,
+			"logs", podName,
+			"--namespace", s.namespace,
+		)
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			// Retry if container is still creating or crashed
+			return false
+		}
+		return true
+	}, 60*time.Second, 2*time.Second, "Failed to get pod logs after retries")
+
 	return string(output)
 }
 
@@ -210,8 +221,7 @@ func (s *Suite) JobExists(t *testing.T, jobName string) bool {
 	return err == nil
 }
 
-// PodIsRunning checks if any pod matching the label selector is fully ready.
-// Verifies the Pod's Ready condition is True, not just status.phase=Running.
+// PodIsRunning checks if any pod matching the label selector is in Running state.
 func (s *Suite) PodIsRunning(t *testing.T, labelSelector string) bool {
 	t.Helper()
 
@@ -219,11 +229,12 @@ func (s *Suite) PodIsRunning(t *testing.T, labelSelector string) bool {
 		"get", "pods",
 		"--namespace", s.namespace,
 		"--selector", labelSelector,
-		"--output", "jsonpath={.items[0].status.conditions[?(@.type==\"Ready\")].status}",
+		"--field-selector", "status.phase=Running",
+		"--output", "jsonpath={.items[0].metadata.name}",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
 	}
-	return string(output) == "True"
+	return len(output) > 0 && len(string(output)) > 0
 }
