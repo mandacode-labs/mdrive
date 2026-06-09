@@ -97,52 +97,6 @@ type UploadSession struct {
 	ExpiresAt time.Time
 }
 
-// ObjectService defines the interface for object operations.
-type ObjectService interface {
-	// Create streams data to storage and creates an Object DB record atomically.
-	// Deprecated: Use InitiateUpload + CompleteUpload for large files.
-	Create(ctx context.Context, cmd *CreateCommand) (*Object, error)
-
-	// InitiateUpload creates a pending object and returns upload URL.
-	InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand) (*UploadSession, error)
-
-	// CompleteUpload marks object as active after client confirms upload.
-	CompleteUpload(ctx context.Context, objectID string) (*Object, error)
-
-	GetByID(ctx context.Context, id string) (*Object, error)
-	GetByStorageKey(ctx context.Context, systemID string, provider Provider, bucket string, storageKey string) (*Object, error)
-
-	// Delete atomically removes from external storage and DB.
-	Delete(ctx context.Context, id string) error
-
-	// DeleteBatch removes multiple objects from storage and DB.
-	// Returns the IDs that were successfully deleted.
-	DeleteBatch(ctx context.Context, ids []string) ([]string, error)
-
-	// DeleteBySystemID removes all objects for a system from DB (use CleanupStorageBySystemID first for S3 cleanup).
-	DeleteBySystemID(ctx context.Context, systemID string) error
-
-	// CleanupStorageBySystemID deletes all objects for a system from external storage (best-effort).
-	CleanupStorageBySystemID(ctx context.Context, systemID string) error
-
-	Find(ctx context.Context, filter Filter) ([]*Object, error)
-	FindOne(ctx context.Context, filter Filter) (*Object, error)
-	GetDownloadURL(ctx context.Context, id string, size int64) (string, time.Time, error)
-
-	// GC: Find pending objects older than threshold.
-	FindPendingOlderThan(ctx context.Context, olderThan time.Duration) ([]*Object, error)
-
-	// GC: Find all active objects.
-	FindActive(ctx context.Context) ([]*Object, error)
-
-	// DeleteFromDB removes the object record from DB only (no S3 call).
-	// Used by GC for orphan cleanup where S3 data is already gone.
-	DeleteFromDB(ctx context.Context, id string) error
-
-	// GetObjectSize returns the size of the object in storage.
-	GetObjectSize(ctx context.Context, id string) (int64, error)
-}
-
 // CreateCommand for creating a new object (service layer).
 type CreateCommand struct {
 	Provider   Provider
@@ -188,17 +142,18 @@ func BySystemIDAndStatus(systemID string, status Status) Filter {
 	return Filter{SystemID: &systemID, Status: &s}
 }
 
-type service struct {
+// Service implements object lifecycle operations.
+type Service struct {
 	repo    ObjectRepository
 	storage Storage
 }
 
-// NewService creates a new ObjectService.
-func NewService(repo ObjectRepository, storage Storage) ObjectService {
-	return &service{repo: repo, storage: storage}
+// NewService creates a new Service.
+func NewService(repo ObjectRepository, storage Storage) *Service {
+	return &Service{repo: repo, storage: storage}
 }
 
-func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*Object, error) {
+func (s *Service) Create(ctx context.Context, cmd *CreateCommand) (*Object, error) {
 	if cmd.SystemID == "" {
 		return nil, errors.BadRequest("system_id is required")
 	}
@@ -240,7 +195,7 @@ func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*Object, erro
 // InitiateUpload creates a pending object and returns presigned upload URL.
 // If idempotencyKey is provided and a pending object already exists with the same key,
 // the existing upload session is returned instead of creating a new one.
-func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand) (*UploadSession, error) {
+func (s *Service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand) (*UploadSession, error) {
 	if cmd.SystemID == "" {
 		return nil, errors.BadRequest("system_id is required")
 	}
@@ -320,7 +275,7 @@ func (s *service) InitiateUpload(ctx context.Context, cmd *InitiateUploadCommand
 
 // CompleteUpload marks object as active after client confirms upload.
 // Verifies the uploaded content matches the declared checksum (if provided).
-func (s *service) CompleteUpload(ctx context.Context, objectID string) (*Object, error) {
+func (s *Service) CompleteUpload(ctx context.Context, objectID string) (*Object, error) {
 	obj, err := s.repo.GetByID(ctx, objectID)
 	if err != nil {
 		return nil, err
@@ -370,7 +325,7 @@ func (s *service) CompleteUpload(ctx context.Context, objectID string) (*Object,
 	return s.repo.GetByID(ctx, objectID)
 }
 
-func (s *service) GetByID(ctx context.Context, id string) (*Object, error) {
+func (s *Service) GetByID(ctx context.Context, id string) (*Object, error) {
 	obj, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -381,7 +336,7 @@ func (s *service) GetByID(ctx context.Context, id string) (*Object, error) {
 	return obj, nil
 }
 
-func (s *service) GetByStorageKey(ctx context.Context, systemID string, provider Provider, bucket string, storageKey string) (*Object, error) {
+func (s *Service) GetByStorageKey(ctx context.Context, systemID string, provider Provider, bucket string, storageKey string) (*Object, error) {
 	obj, err := s.repo.GetByStorageKey(ctx, systemID, string(provider), bucket, storageKey)
 	if err != nil {
 		return nil, err
@@ -392,7 +347,7 @@ func (s *service) GetByStorageKey(ctx context.Context, systemID string, provider
 	return obj, nil
 }
 
-func (s *service) Delete(ctx context.Context, id string) error {
+func (s *Service) Delete(ctx context.Context, id string) error {
 	obj, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -408,7 +363,7 @@ func (s *service) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *service) DeleteBatch(ctx context.Context, ids []string) ([]string, error) {
+func (s *Service) DeleteBatch(ctx context.Context, ids []string) ([]string, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -471,11 +426,11 @@ func (s *service) DeleteBatch(ctx context.Context, ids []string) ([]string, erro
 	return deleted, nil
 }
 
-func (s *service) DeleteBySystemID(ctx context.Context, systemID string) error {
+func (s *Service) DeleteBySystemID(ctx context.Context, systemID string) error {
 	return s.repo.DeleteBySystemID(ctx, systemID)
 }
 
-func (s *service) CleanupStorageBySystemID(ctx context.Context, systemID string) error {
+func (s *Service) CleanupStorageBySystemID(ctx context.Context, systemID string) error {
 	objects, err := s.repo.Find(ctx, &QueryFilter{SystemID: &systemID})
 	if err != nil {
 		return err
@@ -491,11 +446,11 @@ func (s *service) CleanupStorageBySystemID(ctx context.Context, systemID string)
 	return nil
 }
 
-func (s *service) Find(ctx context.Context, filter Filter) ([]*Object, error) {
+func (s *Service) Find(ctx context.Context, filter Filter) ([]*Object, error) {
 	return s.repo.Find(ctx, &filter)
 }
 
-func (s *service) FindOne(ctx context.Context, filter Filter) (*Object, error) {
+func (s *Service) FindOne(ctx context.Context, filter Filter) (*Object, error) {
 	obj, err := s.repo.FindOne(ctx, &filter)
 	if err != nil {
 		return nil, err
@@ -506,7 +461,7 @@ func (s *service) FindOne(ctx context.Context, filter Filter) (*Object, error) {
 	return obj, nil
 }
 
-func (s *service) GetDownloadURL(ctx context.Context, id string, size int64) (string, time.Time, error) {
+func (s *Service) GetDownloadURL(ctx context.Context, id string, size int64) (string, time.Time, error) {
 	obj, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return "", time.Time{}, err
@@ -524,22 +479,22 @@ func (s *service) GetDownloadURL(ctx context.Context, id string, size int64) (st
 }
 
 // FindPendingOlderThan finds pending objects older than threshold for GC.
-func (s *service) FindPendingOlderThan(ctx context.Context, olderThan time.Duration) ([]*Object, error) {
+func (s *Service) FindPendingOlderThan(ctx context.Context, olderThan time.Duration) ([]*Object, error) {
 	return s.repo.FindPendingOlderThan(ctx, olderThan)
 }
 
 // FindActive finds all active objects for GC orphan detection.
-func (s *service) FindActive(ctx context.Context) ([]*Object, error) {
+func (s *Service) FindActive(ctx context.Context) ([]*Object, error) {
 	return s.repo.FindActive(ctx)
 }
 
 // DeleteFromDB removes the object record from DB only (no S3 call).
-func (s *service) DeleteFromDB(ctx context.Context, id string) error {
+func (s *Service) DeleteFromDB(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
 // GetObjectSize returns the size of the object in external storage.
-func (s *service) GetObjectSize(ctx context.Context, id string) (int64, error) {
+func (s *Service) GetObjectSize(ctx context.Context, id string) (int64, error) {
 	obj, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return 0, err

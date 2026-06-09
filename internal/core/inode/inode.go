@@ -1,12 +1,9 @@
 package inode
 
 import (
-	"context"
 	"encoding/json"
 	"slices"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
@@ -324,72 +321,4 @@ func BySystemID(systemID string) Filter {
 
 func ByUID(uid int) Filter {
 	return Filter{UID: &uid}
-}
-
-type service struct {
-	repo InodeRepository
-}
-
-// NewService creates a new InodeOperations.
-func NewService(repo InodeRepository) InodeOperations {
-	return &service{repo: repo}
-}
-
-func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*Inode, error) {
-	// Generate ID for the inode
-	inodeID := uuid.New().String()
-
-	params := &CreateParams{
-		ID:       inodeID,
-		SystemID: cmd.SystemID,
-		Mode:     cmd.Mode,
-		UID:      cmd.UID,
-		GID:      cmd.GID,
-		Size:     cmd.Size,
-		Flags:    cmd.Flags,
-		Content:  cmd.Content,
-	}
-	return s.repo.Create(ctx, params)
-}
-
-func (s *service) GetByID(ctx context.Context, id string) (*Inode, error) {
-	inode, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if inode == nil {
-		return nil, errors.NotFound("inode not found")
-	}
-	return inode, nil
-}
-
-func (s *service) Update(ctx context.Context, cmd *UpdateCommand) error {
-	return s.repo.Update(ctx, cmd)
-}
-
-func (s *service) Delete(ctx context.Context, id string) error {
-	return s.repo.Delete(ctx, id)
-}
-
-func (s *service) DeleteBySystemID(ctx context.Context, systemID string) error {
-	return s.repo.DeleteBySystemID(ctx, systemID)
-}
-
-func (s *service) Find(ctx context.Context, filter Filter) ([]*Inode, error) {
-	return s.repo.Find(ctx, &filter)
-}
-
-func (s *service) FindOne(ctx context.Context, filter Filter) (*Inode, error) {
-	inode, err := s.repo.FindOne(ctx, &filter)
-	if err != nil {
-		return nil, err
-	}
-	if inode == nil {
-		return nil, errors.NotFound("inode not found")
-	}
-	return inode, nil
-}
-
-func (s *service) UpdateLinkCount(ctx context.Context, id string, delta int) error {
-	return s.repo.UpdateLinkCount(ctx, id, delta)
 }

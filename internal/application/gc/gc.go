@@ -15,13 +15,13 @@ const (
 
 // GarbageCollector handles cleanup of expired pending objects and orphaned DB records.
 type GarbageCollector struct {
-	objectSvc object.ObjectService
+	objectSvc ObjectService
 	storage   object.Storage
 	expiry    time.Duration
 }
 
 // NewGarbageCollector creates a new garbage collector.
-func NewGarbageCollector(objectSvc object.ObjectService, storage object.Storage, expiry time.Duration) *GarbageCollector {
+func NewGarbageCollector(objectSvc ObjectService, storage object.Storage, expiry time.Duration) *GarbageCollector {
 	if expiry == 0 {
 		expiry = DefaultPendingExpiry
 	}

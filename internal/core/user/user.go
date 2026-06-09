@@ -44,40 +44,6 @@ func (su *SystemUser) Username() string { return su.username }
 func (su *SystemUser) UID() int         { return su.uid }
 func (su *SystemUser) GID() int         { return su.gid }
 
-// UserService defines the interface for user identity resolution.
-type UserService interface {
-	// ResolveUID extracts userID from context and looks up the UNIX uid
-	// for the user in the specified system.
-	ResolveUID(ctx context.Context, systemID string) (int, error)
-
-	// ResolveUIDAndGIDs resolves both UID and all GIDs for permission checking.
-	// Returns primary GID + additional group GIDs.
-	ResolveUIDAndGIDs(ctx context.Context, systemID string) (uid int, gids []int, err error)
-
-	// GetByUserAndSystem retrieves the SystemUser for detailed info.
-	GetByUserAndSystem(ctx context.Context, userID, systemID string) (*SystemUser, error)
-
-	// Create creates a new system user with auto-assigned UID/GID and private group.
-	// If cmd.UID is 0, it will be auto-assigned.
-	// GID is always set to UID (private group).
-	Create(ctx context.Context, cmd *CreateCommand) (*SystemUser, error)
-
-	// GetByID retrieves a system user by ID.
-	GetByID(ctx context.Context, id int) (*SystemUser, error)
-
-	// Delete removes a system user.
-	Delete(ctx context.Context, id int) error
-
-	// DeleteBySystemID removes all system users for a given system.
-	DeleteBySystemID(ctx context.Context, systemID string) error
-
-	// Find retrieves system users matching the filter.
-	Find(ctx context.Context, filter Filter) ([]*SystemUser, error)
-
-	// FindOne retrieves a single system user matching the filter.
-	FindOne(ctx context.Context, filter Filter) (*SystemUser, error)
-}
-
 // CreateCommand for creating a system-user (service layer).
 type CreateCommand struct {
 	UserID   string
@@ -117,18 +83,19 @@ const (
 	MaxUID = 65534
 )
 
-type service struct {
+// Service implements user identity resolution operations.
+type Service struct {
 	repo      SystemUserRepository
 	groupRepo SystemGroupRepository
 }
 
-// NewService creates a new UserService.
-func NewService(repo SystemUserRepository, groupRepo SystemGroupRepository) UserService {
-	return &service{repo: repo, groupRepo: groupRepo}
+// NewService creates a new Service.
+func NewService(repo SystemUserRepository, groupRepo SystemGroupRepository) *Service {
+	return &Service{repo: repo, groupRepo: groupRepo}
 }
 
 // ResolveUID extracts userID from context and looks up UID for the system.
-func (s *service) ResolveUID(ctx context.Context, systemID string) (int, error) {
+func (s *Service) ResolveUID(ctx context.Context, systemID string) (int, error) {
 	userID, ok := utils.GetUserID(ctx)
 	if !ok || userID == "" {
 		return 0, errors.Unauthorized("user not authenticated")
@@ -149,7 +116,7 @@ func (s *service) ResolveUID(ctx context.Context, systemID string) (int, error) 
 
 // ResolveUIDAndGIDs resolves both UID and GIDs for permission checking.
 // Returns primary GID + additional group GIDs from group memberships.
-func (s *service) ResolveUIDAndGIDs(ctx context.Context, systemID string) (int, []int, error) {
+func (s *Service) ResolveUIDAndGIDs(ctx context.Context, systemID string) (int, []int, error) {
 	userID, ok := utils.GetUserID(ctx)
 	if !ok || userID == "" {
 		return 0, nil, errors.Unauthorized("user not authenticated")
@@ -187,7 +154,7 @@ func (s *service) ResolveUIDAndGIDs(ctx context.Context, systemID string) (int, 
 	return su.UID(), gids, nil
 }
 
-func (s *service) GetByUserAndSystem(ctx context.Context, userID, systemID string) (*SystemUser, error) {
+func (s *Service) GetByUserAndSystem(ctx context.Context, userID, systemID string) (*SystemUser, error) {
 	return s.repo.FindOne(ctx, &QueryFilter{
 		UserID:   &userID,
 		SystemID: &systemID,
@@ -195,7 +162,7 @@ func (s *service) GetByUserAndSystem(ctx context.Context, userID, systemID strin
 }
 
 // Create creates a new system user with auto-assigned UID/GID and private group.
-func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*SystemUser, error) {
+func (s *Service) Create(ctx context.Context, cmd *CreateCommand) (*SystemUser, error) {
 	if cmd.UserID == "" {
 		return nil, errors.BadRequest("user_id is required")
 	}
@@ -274,7 +241,7 @@ func (s *service) Create(ctx context.Context, cmd *CreateCommand) (*SystemUser, 
 	return s.repo.Create(ctx, newUser)
 }
 
-func (s *service) GetByID(ctx context.Context, id int) (*SystemUser, error) {
+func (s *Service) GetByID(ctx context.Context, id int) (*SystemUser, error) {
 	su, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -285,18 +252,18 @@ func (s *service) GetByID(ctx context.Context, id int) (*SystemUser, error) {
 	return su, nil
 }
 
-func (s *service) Delete(ctx context.Context, id int) error {
+func (s *Service) Delete(ctx context.Context, id int) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *service) DeleteBySystemID(ctx context.Context, systemID string) error {
+func (s *Service) DeleteBySystemID(ctx context.Context, systemID string) error {
 	return s.repo.DeleteBySystemID(ctx, systemID)
 }
-func (s *service) Find(ctx context.Context, filter Filter) ([]*SystemUser, error) {
+func (s *Service) Find(ctx context.Context, filter Filter) ([]*SystemUser, error) {
 	return s.repo.Find(ctx, &filter)
 }
 
-func (s *service) FindOne(ctx context.Context, filter Filter) (*SystemUser, error) {
+func (s *Service) FindOne(ctx context.Context, filter Filter) (*SystemUser, error) {
 	su, err := s.repo.FindOne(ctx, &filter)
 	if err != nil {
 		return nil, err

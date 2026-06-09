@@ -6,9 +6,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
@@ -115,19 +112,19 @@ func (f Filter) toQueryFilter() *QueryFilter {
 
 type service struct {
 	repo        SystemRepository
-	inodeSvc    inode.InodeOperations
-	objectSvc   object.ObjectService
-	sysUserSvc  coreuser.UserService
-	sysGroupSvc coreuser.GroupService
+	inodeSvc    InodeService
+	objectSvc   ObjectService
+	sysUserSvc  UserService
+	sysGroupSvc GroupService
 }
 
 // NewService creates a new SystemService.
 func NewService(
 	repo SystemRepository,
-	inodeSvc inode.InodeOperations,
-	objectSvc object.ObjectService,
-	sysUserSvc coreuser.UserService,
-	sysGroupSvc coreuser.GroupService,
+	inodeSvc InodeService,
+	objectSvc ObjectService,
+	sysUserSvc UserService,
+	sysGroupSvc GroupService,
 ) SystemService {
 	return &service{
 		repo:        repo,

@@ -23,7 +23,6 @@ import (
 	valkeymodule "github.com/testcontainers/testcontainers-go/modules/valkey"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/valkey-io/valkey-go"
-	"go.uber.org/fx"
 	"gopkg.in/yaml.v3"
 
 	openapispec "github.com/mandacode-labs/retrowin-go/api"
@@ -174,7 +173,7 @@ type Suite struct {
 	baseURL      string
 	httpClient   *http.Client
 	cookieJar    []*http.Cookie
-	app          *fx.App
+	app          *serve.App
 	cfgFile      string
 	dbName       string // per-test database name
 	bucketName   string // per-test bucket name
@@ -377,12 +376,16 @@ func (s *Suite) StartServer(ctx context.Context) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	// Start the actual fx app with embedded OpenAPI spec
-	s.app = serve.NewFXApp(s.cfgFile, s.Config.HTTP.Port, openapispec.Spec)
+	// Start the actual app with embedded OpenAPI spec
+	var appErr error
+	s.app, appErr = serve.NewApp(s.cfgFile, s.Config.HTTP.Port, openapispec.Spec)
+	if appErr != nil {
+		return fmt.Errorf("failed to create app: %w", appErr)
+	}
 
-	go func() {
-		s.app.Run()
-	}()
+	if err := s.app.Start(); err != nil {
+		return fmt.Errorf("failed to start app: %w", err)
+	}
 
 	// Wait for server to be ready
 	var serverReady bool
@@ -410,7 +413,7 @@ func (s *Suite) Stop(ctx context.Context) error {
 	if s.app != nil {
 		stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_ = s.app.Stop(stopCtx)
+		_ = s.app.Shutdown(stopCtx)
 	}
 
 	if s.ValkeyClient != nil {

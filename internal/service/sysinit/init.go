@@ -37,12 +37,12 @@ type InitResult struct {
 
 type service struct {
 	systemSvc system.SystemService
-	userSvc   user.UserService
+	userSvc   UserService
 	fsSvc     vfs.VFS
-	inodeOps  inode.InodeOperations
+	inodeOps  InodeService
 }
 
-func NewService(systemSvc system.SystemService, userSvc user.UserService, fsSvc vfs.VFS, inodeOps inode.InodeOperations) InitService {
+func NewService(systemSvc system.SystemService, userSvc UserService, fsSvc vfs.VFS, inodeOps InodeService) InitService {
 	return &service{
 		systemSvc: systemSvc,
 		userSvc:   userSvc,

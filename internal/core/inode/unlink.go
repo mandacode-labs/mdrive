@@ -8,11 +8,11 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
-func (s *service) Unlink(ctx context.Context, dirID string, name string) error {
+func (s *Service) Unlink(ctx context.Context, dirID string, name string) error {
 	return s.UnlinkBatch(ctx, dirID, []string{name})
 }
 
-func (s *service) UnlinkBatch(ctx context.Context, dirID string, names []string) error {
+func (s *Service) UnlinkBatch(ctx context.Context, dirID string, names []string) error {
 	if len(names) == 0 {
 		return nil
 	}

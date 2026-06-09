@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -227,11 +226,10 @@ func ProvideHTTPHandler(mux *http.ServeMux, callbackCfg *middleware.CallbackConf
 	return handler
 }
 
-// ProvideHTTPServer provides the HTTP server.
+// ProvideHTTPServer creates the HTTP server without lifecycle hooks.
 func ProvideHTTPServer(
 	handler http.Handler,
 	cfg *config.Config,
-	lc fx.Lifecycle,
 	logger *logging.Logger,
 ) *http.Server {
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
@@ -243,28 +241,6 @@ func ProvideHTTPServer(
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			ln, err := net.Listen("tcp", addr)
-			if err != nil {
-				return fmt.Errorf("failed to listen on %s: %w", addr, err)
-			}
-
-			logger.Info().Str("addr", addr).Msg("starting server")
-
-			go func() {
-				if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
-					logger.Error().Err(err).Msg("server error")
-				}
-			}()
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			logger.Info().Msg("shutting down server")
-			return srv.Shutdown(ctx)
-		},
-	})
 
 	return srv
 }

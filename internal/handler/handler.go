@@ -9,8 +9,6 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
 	corevfs "github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/auth"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
 	"github.com/mandacode-labs/retrowin-go/internal/system"
@@ -27,15 +25,15 @@ type Handler struct {
 	extUserSvc extuser.UserService
 
 	// System user/group services (for /systems/{id}/users and /systems/{id}/groups endpoints)
-	sysUserSvc  coreuser.UserService
-	sysGroupSvc coreuser.GroupService
+	sysUserSvc  UserService
+	sysGroupSvc GroupService
 
 	// System service
 	systemSvc system.SystemService
 
 	// Filesystem and storage services
 	fsSvc      corevfs.VFS
-	inodeOps   inode.InodeOperations
+	inodeOps   InodeService
 	storageSvc storage.StorageService
 
 	// Init service
@@ -46,11 +44,11 @@ type Handler struct {
 func NewHandler(
 	authSvc auth.AuthService,
 	extUserSvc extuser.UserService,
-	sysUserSvc coreuser.UserService,
-	sysGroupSvc coreuser.GroupService,
+	sysUserSvc UserService,
+	sysGroupSvc GroupService,
 	systemSvc system.SystemService,
 	fsSvc corevfs.VFS,
-	inodeOps inode.InodeOperations,
+	inodeOps InodeService,
 	storageSvc storage.StorageService,
 	initSvc sysinit.InitService,
 ) *Handler {
@@ -69,6 +67,32 @@ func NewHandler(
 
 // Ensure Handler implements the ogen Handler interface.
 var _ api.Handler = (*Handler)(nil)
+
+// GetUser implements GET /user.
+func (h *Handler) GetUser(ctx context.Context) (api.GetUserRes, error) {
+	userID, ok := utils.GetUserID(ctx)
+	if !ok {
+		return &api.GetUserUnauthorized{}, nil
+	}
+
+	u, err := h.extUserSvc.GetByID(ctx, userID)
+	if err != nil {
+		return nil, h.domainError(err)
+	}
+
+	return &api.UserResponse{
+		User: api.User{
+			ID:         u.ID(),
+			Provider:   api.Provider(u.Provider()),
+			ProviderId: u.ProviderID(),
+		},
+	}, nil
+}
+
+// DeleteUser implements DELETE /user.
+func (h *Handler) DeleteUser(ctx context.Context) (api.DeleteUserRes, error) {
+	return &api.DeleteUserNoContent{}, nil
+}
 
 // Helper functions
 
