@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
@@ -52,12 +52,12 @@ type UploadResult struct {
 }
 
 type service struct {
-	fsSvc     fs.FsService
+	fsSvc     vfs.VFS
 	objectSvc object.ObjectService
 }
 
 // NewService creates a new storage service.
-func NewService(fsSvc fs.FsService, objectSvc object.ObjectService) StorageService {
+func NewService(fsSvc vfs.VFS, objectSvc object.ObjectService) StorageService {
 	return &service{
 		fsSvc:     fsSvc,
 		objectSvc: objectSvc,
@@ -123,7 +123,7 @@ func (s *service) createInodeWithObject(ctx context.Context, systemID string, mo
 		mode = inode.ModeObject | inode.PermOwnerRW | inode.PermGroupRX | inode.PermOtherR
 	}
 
-	createdInode, err := s.fsSvc.CreateFile(ctx, &fs.CreateFileCommand{
+	createdInode, err := s.fsSvc.CreateFile(ctx, &vfs.CreateFileCommand{
 		SystemID: systemID,
 		Mode:     mode,
 		Size:     size,

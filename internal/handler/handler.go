@@ -6,10 +6,10 @@ import (
 
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	corefs "github.com/mandacode-labs/retrowin-go/internal/application/fs"
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
+	corevfs "github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/auth"
-	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
@@ -34,8 +34,8 @@ type Handler struct {
 	systemSvc system.SystemService
 
 	// Filesystem and storage services
-	fsSvc      corefs.FsService
-	dentrySvc  dentry.DentryService
+	fsSvc      corevfs.VFS
+	inodeOps   inode.InodeOperations
 	storageSvc storage.StorageService
 
 	// Init service
@@ -49,8 +49,8 @@ func NewHandler(
 	sysUserSvc coreuser.UserService,
 	sysGroupSvc coreuser.GroupService,
 	systemSvc system.SystemService,
-	fsSvc corefs.FsService,
-	dentrySvc dentry.DentryService,
+	fsSvc corevfs.VFS,
+	inodeOps inode.InodeOperations,
 	storageSvc storage.StorageService,
 	initSvc sysinit.InitService,
 ) *Handler {
@@ -61,7 +61,7 @@ func NewHandler(
 		sysGroupSvc: sysGroupSvc,
 		systemSvc:   systemSvc,
 		fsSvc:       fsSvc,
-		dentrySvc:   dentrySvc,
+		inodeOps:    inodeOps,
 		storageSvc:  storageSvc,
 		initSvc:     initSvc,
 	}

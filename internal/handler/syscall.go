@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 )
 
@@ -18,7 +18,7 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 		return nil, h.domainError(err)
 	}
 
-	entries, err := h.dentrySvc.ReadDir(ctx, dirInode.ID())
+	entries, err := h.inodeOps.ReadDir(ctx, dirInode.ID())
 	if err != nil {
 		return nil, h.domainError(err)
 	}
@@ -101,7 +101,7 @@ func (h *Handler) Rename(ctx context.Context, req *api.RenameRequest, params api
 		return nil, h.domainError(err)
 	}
 
-	renamedInode, err := h.fsSvc.Rename(ctx, &fs.RenameCommand{
+	renamedInode, err := h.fsSvc.Rename(ctx, &vfs.RenameCommand{
 		SystemID: params.SystemId,
 		Path:     req.Path,
 		NewName:  req.NewName,
@@ -125,7 +125,7 @@ func (h *Handler) Mv(ctx context.Context, req *api.MvRequest, params api.MvParam
 		return nil, h.domainError(err)
 	}
 
-	result, err := h.fsSvc.Mv(ctx, &fs.MvCommand{
+	result, err := h.fsSvc.Mv(ctx, &vfs.MvCommand{
 		SystemID:    params.SystemId,
 		Sources:     req.Sources,
 		Destination: req.Destination,
@@ -159,7 +159,7 @@ func (h *Handler) Rm(ctx context.Context, req *api.RmRequest, params api.RmParam
 		recursive = req.Recursive.Value
 	}
 
-	result, err := h.fsSvc.Rm(ctx, &fs.RmCommand{
+	result, err := h.fsSvc.Rm(ctx, &vfs.RmCommand{
 		SystemID:  params.SystemId,
 		Paths:     req.Paths,
 		Recursive: recursive,

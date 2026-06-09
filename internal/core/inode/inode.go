@@ -296,8 +296,6 @@ func (i *Inode) ObjectID() (string, error) {
 	return objContent.ObjectID, nil
 }
 
-
-
 // CreateCommand for creating a new inode (service layer).
 type CreateCommand struct {
 	SystemID string

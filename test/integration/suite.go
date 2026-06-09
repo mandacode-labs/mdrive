@@ -24,10 +24,9 @@ import (
 	"github.com/mandacode-labs/retrowin-go/ent"
 	entsystem "github.com/mandacode-labs/retrowin-go/ent/system"
 	entusersystem "github.com/mandacode-labs/retrowin-go/ent/usersystem"
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	inoderepo "github.com/mandacode-labs/retrowin-go/internal/core/inode/repository"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
@@ -139,9 +138,8 @@ type Suite struct {
 	ObjectSvc     object.ObjectService
 	ObjectStorage object.Storage
 	StorageSvc    storage.StorageService
-	FsSvc         fs.FsService
-	InodeSvc      inode.InodeService
-	DentrySvc     dentry.DentryService
+	FsSvc         vfs.VFS
+	InodeSvc      inode.InodeOperations
 	UserSvc       user.UserService
 	SystemSvc     domainsystem.SystemService
 	InitSvc       sysinit.InitService
@@ -227,15 +225,13 @@ func (s *Suite) Start(ctx context.Context) error {
 	inodeRepo := inoderepo.NewRepository(s.EntClient)
 	s.InodeSvc = inode.NewService(inodeRepo)
 
-	s.DentrySvc = dentry.NewService(s.InodeSvc)
-
 	s.UserSvc = user.NewService(
 		systemrepo.NewSystemUserRepository(s.EntClient),
 		systemrepo.NewSystemGroupRepository(s.EntClient),
 	)
 
-	locker := dentry.NewLocker()
-	s.FsSvc = fs.NewService(s.EntClient, s.InodeSvc, s.ObjectSvc, s.ObjectStorage, s.UserSvc, s.DentrySvc, locker)
+	locker := vfs.NewLocker()
+	s.FsSvc = vfs.NewService(s.EntClient, s.InodeSvc, s.ObjectSvc, s.ObjectStorage, s.UserSvc, locker)
 
 	storageSvc := storage.NewService(s.FsSvc, s.ObjectSvc)
 	s.StorageSvc = storageSvc
@@ -245,7 +241,7 @@ func (s *Suite) Start(ctx context.Context) error {
 	groupSvc := user.NewGroupService(groupRepo)
 	s.SystemSvc = domainsystem.NewService(sysRepo, s.InodeSvc, s.ObjectSvc, s.UserSvc, groupSvc)
 
-	s.InitSvc = sysinit.NewService(s.SystemSvc, s.UserSvc, s.FsSvc, s.DentrySvc)
+	s.InitSvc = sysinit.NewService(s.SystemSvc, s.UserSvc, s.FsSvc, s.InodeSvc)
 
 	return nil
 }
