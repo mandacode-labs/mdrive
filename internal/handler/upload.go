@@ -7,8 +7,8 @@ import (
 
 	api "github.com/mandacode-labs/retrowin-go/pkg/api"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
@@ -83,7 +83,7 @@ func (h *Handler) CompleteUpload(ctx context.Context, req *api.CompleteUploadReq
 	}
 
 	// Atomic upload: object activation, inode creation, and dentry update in a single transaction
-	inodeResult, err := h.fsSvc.AtomicUpload(ctx, &fs.AtomicUploadCommand{
+	inodeResult, err := h.fsSvc.AtomicUpload(ctx, &vfs.AtomicUploadCommand{
 		ObjectID: req.ObjectId,
 		SystemID: params.SystemId,
 		DirPath:  dirPath,

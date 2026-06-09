@@ -3,8 +3,7 @@ package sysinit
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
-	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/core/user"
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
@@ -39,16 +38,16 @@ type InitResult struct {
 type service struct {
 	systemSvc system.SystemService
 	userSvc   user.UserService
-	fsSvc     fs.FsService
-	dentrySvc dentry.DentryService
+	fsSvc     vfs.VFS
+	inodeOps  inode.InodeOperations
 }
 
-func NewService(systemSvc system.SystemService, userSvc user.UserService, fsSvc fs.FsService, dentrySvc dentry.DentryService) InitService {
+func NewService(systemSvc system.SystemService, userSvc user.UserService, fsSvc vfs.VFS, inodeOps inode.InodeOperations) InitService {
 	return &service{
 		systemSvc: systemSvc,
 		userSvc:   userSvc,
 		fsSvc:     fsSvc,
-		dentrySvc: dentrySvc,
+		inodeOps:  inodeOps,
 	}
 }
 
@@ -120,7 +119,7 @@ func (s *service) createRootUser(ctx context.Context, systemID, rootUserID strin
 }
 
 func (s *service) createRootDirectory(ctx context.Context, systemID string) (*inode.Inode, error) {
-	rootDir, err := s.fsSvc.CreateDirectory(ctx, &fs.CreateDirectoryCommand{
+	rootDir, err := s.fsSvc.CreateDirectory(ctx, &vfs.CreateDirectoryCommand{
 		SystemID: systemID,
 		UID:      0, // root
 		GID:      0, // root group
@@ -134,7 +133,7 @@ func (s *service) createRootDirectory(ctx context.Context, systemID string) (*in
 }
 
 func (s *service) createHomeDirectory(ctx context.Context, systemID string, rootDirID string) (*inode.Inode, error) {
-	homeDir, err := s.fsSvc.CreateDirectory(ctx, &fs.CreateDirectoryCommand{
+	homeDir, err := s.fsSvc.CreateDirectory(ctx, &vfs.CreateDirectoryCommand{
 		SystemID: systemID,
 		UID:      0, // root
 		GID:      0, // root group
@@ -145,7 +144,7 @@ func (s *service) createHomeDirectory(ctx context.Context, systemID string, root
 	}
 
 	// Link home to root directory
-	if err := s.dentrySvc.Link(ctx, rootDirID, dentry.DirEntry{
+	if err := s.inodeOps.Link(ctx, rootDirID, inode.DirEntry{
 		Name:     "home",
 		InodeID:  homeDir.ID(),
 		FileType: uint8(inode.ModeDirectory >> 12),
@@ -154,7 +153,7 @@ func (s *service) createHomeDirectory(ctx context.Context, systemID string, root
 	}
 
 	// Add ".." entry to home directory
-	if err := s.dentrySvc.Link(ctx, homeDir.ID(), dentry.DirEntry{
+	if err := s.inodeOps.Link(ctx, homeDir.ID(), inode.DirEntry{
 		Name:     "..",
 		InodeID:  rootDirID,
 		FileType: uint8(inode.ModeDirectory >> 12),
@@ -166,7 +165,7 @@ func (s *service) createHomeDirectory(ctx context.Context, systemID string, root
 }
 
 func (s *service) createTrashDirectory(ctx context.Context, systemID string, homeDirID string) (*inode.Inode, error) {
-	trashDir, err := s.fsSvc.CreateDirectory(ctx, &fs.CreateDirectoryCommand{
+	trashDir, err := s.fsSvc.CreateDirectory(ctx, &vfs.CreateDirectoryCommand{
 		SystemID: systemID,
 		UID:      0, // root
 		GID:      0, // root group
@@ -177,7 +176,7 @@ func (s *service) createTrashDirectory(ctx context.Context, systemID string, hom
 	}
 
 	// Link .trash to home directory
-	if err := s.dentrySvc.Link(ctx, homeDirID, dentry.DirEntry{
+	if err := s.inodeOps.Link(ctx, homeDirID, inode.DirEntry{
 		Name:     ".trash",
 		InodeID:  trashDir.ID(),
 		FileType: uint8(inode.ModeDirectory >> 12),
@@ -186,7 +185,7 @@ func (s *service) createTrashDirectory(ctx context.Context, systemID string, hom
 	}
 
 	// Add ".." entry to trash directory
-	if err := s.dentrySvc.Link(ctx, trashDir.ID(), dentry.DirEntry{
+	if err := s.inodeOps.Link(ctx, trashDir.ID(), inode.DirEntry{
 		Name:     "..",
 		InodeID:  homeDirID,
 		FileType: uint8(inode.ModeDirectory >> 12),

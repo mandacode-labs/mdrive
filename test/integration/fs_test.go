@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/fs"
+	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
 )
@@ -100,7 +100,7 @@ func TestIntegration_FsService_CreateFile(t *testing.T) {
 		require.NoError(t, err)
 
 		// Complete upload via AtomicUpload
-		file, err := suite.FsSvc.AtomicUpload(ctx, &fs.AtomicUploadCommand{
+		file, err := suite.FsSvc.AtomicUpload(ctx, &vfs.AtomicUploadCommand{
 			ObjectID: session.ObjectID,
 			SystemID: sys.ID,
 			DirPath:  "/home",
@@ -133,7 +133,7 @@ func TestIntegration_FsService_CreateFile(t *testing.T) {
 		err = uploadToPresignedURL(session1.UploadURL, data1)
 		require.NoError(t, err)
 
-		file1, err := suite.FsSvc.AtomicUpload(ctx, &fs.AtomicUploadCommand{
+		file1, err := suite.FsSvc.AtomicUpload(ctx, &vfs.AtomicUploadCommand{
 			ObjectID: session1.ObjectID,
 			SystemID: sys.ID,
 			DirPath:  "/home",
@@ -154,7 +154,7 @@ func TestIntegration_FsService_CreateFile(t *testing.T) {
 		err = uploadToPresignedURL(session2.UploadURL, data2)
 		require.NoError(t, err)
 
-		file2, err := suite.FsSvc.AtomicUpload(ctx, &fs.AtomicUploadCommand{
+		file2, err := suite.FsSvc.AtomicUpload(ctx, &vfs.AtomicUploadCommand{
 			ObjectID: session2.ObjectID,
 			SystemID: sys.ID,
 			DirPath:  "/home",
@@ -193,7 +193,7 @@ func TestIntegration_FsService_ListDirectory(t *testing.T) {
 		require.NoError(t, err)
 
 		// List by system ID
-		entries, err := suite.FsSvc.List(ctx, &fs.ListFilter{SystemID: &sys.ID})
+		entries, err := suite.FsSvc.List(ctx, &vfs.ListFilter{SystemID: &sys.ID})
 		require.NoError(t, err)
 
 		// Should contain multiple inodes (at least root, home, dir1, dir2)
@@ -261,7 +261,7 @@ func TestIntegration_FsService_Rename(t *testing.T) {
 		_, err = suite.FsSvc.Mkdir(authCtx, sys.ID, "/home/oldname", 0755)
 		require.NoError(t, err)
 
-		_, err = suite.FsSvc.Rename(authCtx, &fs.RenameCommand{
+		_, err = suite.FsSvc.Rename(authCtx, &vfs.RenameCommand{
 			SystemID: sys.ID,
 			Path:     "/home/oldname",
 			NewName:  "newname",

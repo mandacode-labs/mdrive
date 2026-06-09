@@ -26,11 +26,10 @@ import (
 	"github.com/valkey-io/valkey-go"
 
 	"github.com/mandacode-labs/retrowin-go/ent"
-	corefs "github.com/mandacode-labs/retrowin-go/internal/application/fs"
 	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
+	corefs "github.com/mandacode-labs/retrowin-go/internal/application/vfs"
 	"github.com/mandacode-labs/retrowin-go/internal/auth"
 	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/core/dentry"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	inoderepo "github.com/mandacode-labs/retrowin-go/internal/core/inode/repository"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
@@ -361,8 +360,7 @@ func FxOptions(cfgFile string, port int, openAPISpec []byte) []fx.Option {
 			system.NewService,        // system management
 			sysinit.NewService,       // system initialization
 			// Application services
-			dentry.NewService,
-			dentry.NewLocker,
+			corefs.NewLocker,
 			corefs.NewService,
 			storage.NewService,
 			// Storage
