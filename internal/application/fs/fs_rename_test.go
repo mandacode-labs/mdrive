@@ -70,7 +70,7 @@ func TestRename_Success(t *testing.T) {
 
 	userSvc.EXPECT().ResolveUIDAndGIDs(mock.Anything, "sys").Return(1000, []int{1000}, nil)
 
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	result, err := svc.Rename(context.Background(), &RenameCommand{
 		SystemID: "sys",

@@ -35,6 +35,7 @@ type CreateParams struct {
 // QueryFilter for querying objects (repository layer).
 type QueryFilter struct {
 	ID             *string
+	IDs            []string
 	SystemID       *string
 	Provider       *string
 	Bucket         *string

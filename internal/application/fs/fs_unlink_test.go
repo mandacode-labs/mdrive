@@ -54,7 +54,7 @@ func TestUnlinkPath_Success(t *testing.T) {
 	// Mock Delete
 	inodeSvc.EXPECT().Delete(mock.Anything, "file-id").Return(nil)
 
-	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, nil)
+	svc := NewService(nil, inodeSvc, nil, nil, userSvc, dentrySvc, dentry.NewLocker())
 
 	err := svc.UnlinkPath(context.Background(), "sys", "/file")
 	assert.NoError(t, err)

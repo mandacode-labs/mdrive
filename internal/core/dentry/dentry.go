@@ -16,6 +16,8 @@ type DentryService interface {
 	Link(ctx context.Context, dirID string, entry DirEntry) error
 	// Unlink removes a directory entry from a directory inode by name.
 	Unlink(ctx context.Context, dirID string, name string) error
+	// UnlinkBatch removes multiple entries from a directory inode in a single update.
+	UnlinkBatch(ctx context.Context, dirID string, names []string) error
 	// RenameAt atomically replaces a directory entry, returning the previous inode ID.
 	RenameAt(ctx context.Context, dirID string, entry DirEntry) (string, error)
 	// ReadDir returns all directory entries for a directory inode.

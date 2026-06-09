@@ -10,6 +10,14 @@ import (
 )
 
 func (s *service) Unlink(ctx context.Context, dirID string, name string) error {
+	return s.UnlinkBatch(ctx, dirID, []string{name})
+}
+
+func (s *service) UnlinkBatch(ctx context.Context, dirID string, names []string) error {
+	if len(names) == 0 {
+		return nil
+	}
+
 	dir, err := s.inodeSvc.GetByID(ctx, dirID)
 	if err != nil {
 		return err
@@ -26,17 +34,17 @@ func (s *service) Unlink(ctx context.Context, dirID string, name string) error {
 		return errors.WrapInternal(err, "failed to parse directory content")
 	}
 
+	nameSet := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		nameSet[name] = struct{}{}
+	}
+
 	filtered := make([]content.DirEntry, 0, len(c.Entries))
-	found := false
 	for _, e := range c.Entries {
-		if e.Name == name {
-			found = true
+		if _, ok := nameSet[e.Name]; ok {
 			continue
 		}
 		filtered = append(filtered, e)
-	}
-	if !found {
-		return nil
 	}
 
 	c.Entries = filtered

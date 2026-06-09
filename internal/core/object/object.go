@@ -115,6 +115,10 @@ type ObjectService interface {
 	// Delete atomically removes from external storage and DB.
 	Delete(ctx context.Context, id string) error
 
+	// DeleteBatch removes multiple objects from storage and DB.
+	// Returns the IDs that were successfully deleted.
+	DeleteBatch(ctx context.Context, ids []string) ([]string, error)
+
 	// DeleteBySystemID removes all objects for a system from DB (use CleanupStorageBySystemID first for S3 cleanup).
 	DeleteBySystemID(ctx context.Context, systemID string) error
 
@@ -164,6 +168,10 @@ type Filter = QueryFilter
 // Filter helpers
 func ByID(id string) Filter {
 	return Filter{ID: &id}
+}
+
+func ByIDs(ids []string) Filter {
+	return Filter{IDs: ids}
 }
 
 func BySystemID(systemID string) Filter {
@@ -398,6 +406,69 @@ func (s *service) Delete(ctx context.Context, id string) error {
 	}
 
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *service) DeleteBatch(ctx context.Context, ids []string) ([]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	// Collect all objects
+	objects := make([]*Object, 0, len(ids))
+	for _, id := range ids {
+		obj, err := s.repo.GetByID(ctx, id)
+		if err != nil {
+			logging.Ctx(ctx).Warn().
+				Str("object_id", id).
+				Err(err).
+				Msg("failed to get object for batch delete, skipping")
+			continue
+		}
+		if obj == nil {
+			logging.Ctx(ctx).Warn().
+				Str("object_id", id).
+				Msg("object not found for batch delete, skipping")
+			continue
+		}
+		objects = append(objects, obj)
+	}
+
+	if len(objects) == 0 {
+		return nil, nil
+	}
+
+	// Group by bucket
+	bucketKeys := make(map[string][]string)
+	for _, obj := range objects {
+		bucketKeys[obj.Bucket()] = append(bucketKeys[obj.Bucket()], obj.StorageKey())
+	}
+
+	// Batch delete from S3
+	for bucket, keys := range bucketKeys {
+		if err := s.storage.DeleteObjects(ctx, bucket, keys); err != nil {
+			logging.Ctx(ctx).Error().
+				Str("bucket", bucket).
+				Int("key_count", len(keys)).
+				Err(err).
+				Msg("failed to batch delete objects from storage")
+			// Continue with DB cleanup anyway
+		}
+	}
+
+	// Delete from DB
+	deleted := make([]string, 0, len(objects))
+	for _, obj := range objects {
+		if err := s.repo.Delete(ctx, obj.ID()); err != nil {
+			logging.Ctx(ctx).Warn().
+				Str("object_id", obj.ID()).
+				Err(err).
+				Msg("failed to delete object record from DB, skipping")
+			continue
+		}
+		deleted = append(deleted, obj.ID())
+	}
+
+	return deleted, nil
 }
 
 func (s *service) DeleteBySystemID(ctx context.Context, systemID string) error {

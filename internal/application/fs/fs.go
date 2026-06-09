@@ -48,9 +48,6 @@ type FsService interface {
 	// AtomicUpload completes an upload and links the file to the filesystem atomically.
 	// Uses a transaction to ensure object, inode, and dentry updates are all-or-nothing.
 	AtomicUpload(ctx context.Context, cmd *AtomicUploadCommand) (*inode.Inode, error)
-	// DeleteRecursive recursively deletes a directory and all its contents.
-	// S3 objects are deleted before their DB records to prevent orphan storage costs.
-	DeleteRecursive(ctx context.Context, systemID string, path string) error
 }
 
 // CreateFileCommand for creating a regular file.
