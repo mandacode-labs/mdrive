@@ -2,7 +2,6 @@
 # Retrowin Makefile
 # =============================================================================
 
-# Default shell
 .SHELLFLAGS = -e -c
 
 # ---------------------------------------------------------------------------
@@ -16,130 +15,107 @@ MIGRATION_DIR = ent/migrate/migrations
 # Code Generation
 # ---------------------------------------------------------------------------
 .PHONY: gen
-gen: ent-gen ogen mock ## Generate all code (ent, ogen, mocks)
+gen: ent-gen ogen mock
 
 .PHONY: ent-gen
-ent-gen: ## Generate ent code from schema
+ent-gen:
 	go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
 
 .PHONY: openapi
-openapi: ## Bundle and validate OpenAPI spec
+openapi:
 	npx @apidevtools/swagger-cli bundle api/openapi.yaml --outfile api/openapi.bundled.json --type json
 	npx @apidevtools/swagger-cli validate api/openapi.bundled.json
 
 .PHONY: ogen
-ogen: openapi ## Generate API server code from OpenAPI spec
+ogen: openapi
 	@rm -f pkg/api/oas_*.go
 	go tool ogen -config ogen.yaml -target ./pkg/api -package api api/openapi.bundled.json
 
 .PHONY: mock
-mock: ## Generate mocks with mockery
+mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
 	mockery
 
 # ---------------------------------------------------------------------------
-# Lint & Security
+# Lint
 # ---------------------------------------------------------------------------
 .PHONY: lint
-lint: ## Run golangci-lint
+lint:
 	@which golangci-lint > /dev/null || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	golangci-lint run
-
-.PHONY: lint-fix
-lint-fix: ## Run golangci-lint with auto-fix
-	@which golangci-lint > /dev/null || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	golangci-lint fmt
-	golangci-lint run --fix
-
-.PHONY: sec
-sec: ## Run gosec security scanner
-	@which gosec > /dev/null || go install github.com/securego/gosec/v2/cmd/gosec@latest
-	gosec ./...
 
 # ---------------------------------------------------------------------------
 # Testing
 # ---------------------------------------------------------------------------
-# Unit test packages (exclude tests that require Docker or external infra)
-UNIT_TEST_FILTER := grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind
-UNIT_PKGS := $(shell go list ./... | $(UNIT_TEST_FILTER))
-
-.PHONY: test-unit
-test-unit: ## Run unit tests only
-	go test -v $(UNIT_PKGS) -coverprofile=cover-unit.out
+UNIT_PKGS = $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
 
 .PHONY: test
-test: ## Run all tests (unit + e2e + integration + kind)
-	go test -v ./... -coverprofile=cover.out
+test:
+	go test -count=1 $(UNIT_PKGS)
+
+.PHONY: test-all
+test-all:
+	go test -count=1 ./... -coverprofile=cover.out
 
 .PHONY: test-e2e
-test-e2e: ## Run e2e tests (requires Docker)
-	go test -v ./test/e2e/... -timeout 10m -coverprofile=cover-e2e.out
+test-e2e:
+	go test -count=1 ./test/e2e/... -timeout 10m -coverprofile=cover-e2e.out
 
 .PHONY: test-integration
-test-integration: ## Run integration tests (requires Docker)
-	go test -v ./test/integration/... -tags integration -timeout 5m -coverprofile=cover-integration.out
+test-integration:
+	go test -count=1 ./test/integration/... -tags integration -timeout 5m -coverprofile=cover-integration.out
 
 .PHONY: test-kind
-test-kind: ## Run kind tests (requires kind, kubectl, helm, docker)
-	go test -v ./test/kind/... -tags kind -timeout 30m
+test-kind:
+	go test -count=1 ./test/kind/... -tags kind -timeout 30m
 
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 .PHONY: build
-build: openapi ## Build server binary (generates openapi.json first)
+build:
 	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/retrowin-server
 
 .PHONY: run
-run: ## Run server in development mode
+run:
 	go run ./cmd/retrowin-server serve --config config.yaml
 
 # ---------------------------------------------------------------------------
 # Database Migrations
 # ---------------------------------------------------------------------------
 .PHONY: migrate-diff
-migrate-diff: ## Generate migration diff. Usage: make migrate-diff name=add_column
+migrate-diff:
 	atlas migrate diff $(name) \
 		--dir "file://$(MIGRATION_DIR)" \
 		--to "ent://ent/schema" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
 .PHONY: migrate-apply
-migrate-apply: ## Apply pending migrations
+migrate-apply:
 	go run ./cmd/retrowin-server migrate apply --config config.yaml
 
 .PHONY: migrate-status
-migrate-status: ## Show migration status
+migrate-status:
 	atlas migrate status --dir "file://$(MIGRATION_DIR)"
 
 .PHONY: migrate-lint
-migrate-lint: ## Lint migration files for safety
+migrate-lint:
 	atlas migrate lint --dir "file://$(MIGRATION_DIR)" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
 # ---------------------------------------------------------------------------
-# Pre-commit Hooks
+# Hooks
 # ---------------------------------------------------------------------------
-.PHONY: pre-commit-install
-pre-commit-install: ## Install pre-commit and pre-push hooks
-	@which pre-commit > /dev/null || (pip install pre-commit)
-	pre-commit install
-	pre-commit install --hook-type pre-push
-	@echo "Pre-commit hooks installed. Run 'make pre-commit-run' to test."
-
-.PHONY: pre-commit-run
-pre-commit-run: ## Run all pre-commit hooks on all files
-	pre-commit run --all-files
-
-.PHONY: pre-commit-update
-pre-commit-update: ## Update pre-commit hooks to latest versions
-	pre-commit autoupdate
+.PHONY: hooks
+hooks:
+	@which lefthook > /dev/null || go install github.com/evilmartians/lefthook@latest
+	lefthook install
 
 # ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
 .PHONY: clean
-clean: ## Clean build artifacts and generated files
+clean:
 	rm -rf $(BUILD_DIR)/
 	rm -f api/openapi.bundled.json
 	rm -f cover-*.out
@@ -148,7 +124,37 @@ clean: ## Clean build artifacts and generated files
 # Help
 # ---------------------------------------------------------------------------
 .PHONY: help
-help: ## Show this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+help:
+	@echo "Generation:"
+	@echo "  gen              Generate all code (ent, ogen, mocks)"
+	@echo "  ent-gen          Generate ent code from schema"
+	@echo "  ogen             Generate API server code from OpenAPI spec"
+	@echo "  mock             Generate mocks with mockery"
+	@echo ""
+	@echo "Lint:"
+	@echo "  lint             Run golangci-lint"
+	@echo ""
+	@echo "Test:"
+	@echo "  test             Run unit tests (no Docker required)"
+	@echo "  test-all         Run all tests (requires Docker)"
+	@echo "  test-e2e         Run e2e tests (requires Docker)"
+	@echo "  test-integration Run integration tests (requires Docker)"
+	@echo "  test-kind        Run kind tests (requires kind cluster)"
+	@echo ""
+	@echo "Build:"
+	@echo "  build            Build server binary"
+	@echo "  run              Run server in development mode"
+	@echo ""
+	@echo "DB:"
+	@echo "  migrate-diff     Generate migration diff (make name=xxx)"
+	@echo "  migrate-apply    Apply pending migrations"
+	@echo "  migrate-status   Show migration status"
+	@echo "  migrate-lint     Lint migration files"
+	@echo ""
+	@echo "Hooks:"
+	@echo "  hooks            Install lefthook git hooks"
+	@echo ""
+	@echo "Other:"
+	@echo "  clean            Remove build artifacts"
 
 .DEFAULT_GOAL := help

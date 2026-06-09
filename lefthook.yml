@@ -1,0 +1,41 @@
+pre-commit:
+  parallel: true
+  commands:
+    trailing-whitespace:
+      run: |
+        git diff --cached --name-only | while read f; do
+          if [ -f "$f" ] && grep -Iq . "$f" 2>/dev/null; then
+            if grep -n "[[:blank:]]$" "$f" | head -3; then
+              echo "❌ Trailing whitespace in $f"; exit 1
+            fi
+          fi
+        done
+    end-of-file-fixer:
+      run: |
+        git diff --cached --name-only | while read f; do
+          if [ -f "$f" ] && [ -s "$f" ]; then
+            last=$(tail -c 1 "$f")
+            if [ "$last" != "" ]; then
+              echo "❌ No newline at EOF: $f"; exit 1
+            fi
+          fi
+        done
+    gofmt:
+      glob: "*.go"
+      run: |
+        unformatted=$(gofmt -l {staged_files})
+        if [ -n "$unformatted" ]; then
+          echo "❌ Unformatted files:"; echo "$unformatted"; exit 1
+        fi
+    govet:
+      glob: "*.go"
+      run: go vet ./...
+    golangci:
+      glob: "*.go"
+      run: golangci-lint run
+
+pre-push:
+  parallel: false
+  commands:
+    test-unit:
+      run: go test -count=1 $(go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
