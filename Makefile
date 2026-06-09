@@ -1,15 +1,8 @@
-# =============================================================================
-# Retrowin Makefile
-# =============================================================================
-
 .SHELLFLAGS = -e -c
 
-# ---------------------------------------------------------------------------
-# Variables
-# ---------------------------------------------------------------------------
 APP_NAME    := retrowin-server
 BUILD_DIR   := bin
-MIGRATION_DIR = ent/migrate/migrations
+SCRIPTS     := scripts
 
 # ---------------------------------------------------------------------------
 # Code Generation
@@ -34,24 +27,21 @@ ogen: openapi
 .PHONY: mock
 mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
-	mockery
+	go run github.com/vektra/mockery/v2/cmd/mockery
 
 # ---------------------------------------------------------------------------
 # Lint
 # ---------------------------------------------------------------------------
 .PHONY: lint
 lint:
-	@which golangci-lint > /dev/null || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	golangci-lint run
+	$(SCRIPTS)/lint.sh
 
 # ---------------------------------------------------------------------------
-# Testing
+# Test
 # ---------------------------------------------------------------------------
-UNIT_PKGS = $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
-
 .PHONY: test
 test:
-	go test -count=1 $(UNIT_PKGS)
+	go test -count=1 $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
 
 .PHONY: test-all
 test-all:
@@ -59,15 +49,15 @@ test-all:
 
 .PHONY: test-e2e
 test-e2e:
-	go test -count=1 ./test/e2e/... -timeout 10m -coverprofile=cover-e2e.out
+	$(SCRIPTS)/test-e2e.sh
 
 .PHONY: test-integration
 test-integration:
-	go test -count=1 ./test/integration/... -tags integration -timeout 5m -coverprofile=cover-integration.out
+	$(SCRIPTS)/test-integration.sh
 
 .PHONY: test-kind
 test-kind:
-	go test -count=1 ./test/kind/... -tags kind -timeout 30m
+	$(SCRIPTS)/test-kind.sh
 
 # ---------------------------------------------------------------------------
 # Build
@@ -85,10 +75,7 @@ run:
 # ---------------------------------------------------------------------------
 .PHONY: migrate-diff
 migrate-diff:
-	atlas migrate diff $(name) \
-		--dir "file://$(MIGRATION_DIR)" \
-		--to "ent://ent/schema" \
-		--dev-url "docker://postgres/17/dev?search_path=public"
+	$(SCRIPTS)/migrate-diff.sh $(name)
 
 .PHONY: migrate-apply
 migrate-apply:
@@ -96,20 +83,18 @@ migrate-apply:
 
 .PHONY: migrate-status
 migrate-status:
-	atlas migrate status --dir "file://$(MIGRATION_DIR)"
+	$(SCRIPTS)/migrate-status.sh
 
 .PHONY: migrate-lint
 migrate-lint:
-	atlas migrate lint --dir "file://$(MIGRATION_DIR)" \
-		--dev-url "docker://postgres/17/dev?search_path=public"
+	$(SCRIPTS)/migrate-lint.sh
 
 # ---------------------------------------------------------------------------
 # Hooks
 # ---------------------------------------------------------------------------
 .PHONY: hooks
 hooks:
-	@which lefthook > /dev/null || go install github.com/evilmartians/lefthook@latest
-	lefthook install
+	$(SCRIPTS)/hooks.sh
 
 # ---------------------------------------------------------------------------
 # Cleanup
@@ -120,41 +105,6 @@ clean:
 	rm -f api/openapi.bundled.json
 	rm -f cover-*.out
 
-# ---------------------------------------------------------------------------
-# Help
-# ---------------------------------------------------------------------------
-.PHONY: help
-help:
-	@echo "Generation:"
-	@echo "  gen              Generate all code (ent, ogen, mocks)"
-	@echo "  ent-gen          Generate ent code from schema"
-	@echo "  ogen             Generate API server code from OpenAPI spec"
-	@echo "  mock             Generate mocks with mockery"
-	@echo ""
-	@echo "Lint:"
-	@echo "  lint             Run golangci-lint"
-	@echo ""
-	@echo "Test:"
-	@echo "  test             Run unit tests (no Docker required)"
-	@echo "  test-all         Run all tests (requires Docker)"
-	@echo "  test-e2e         Run e2e tests (requires Docker)"
-	@echo "  test-integration Run integration tests (requires Docker)"
-	@echo "  test-kind        Run kind tests (requires kind cluster)"
-	@echo ""
-	@echo "Build:"
-	@echo "  build            Build server binary"
-	@echo "  run              Run server in development mode"
-	@echo ""
-	@echo "DB:"
-	@echo "  migrate-diff     Generate migration diff (make name=xxx)"
-	@echo "  migrate-apply    Apply pending migrations"
-	@echo "  migrate-status   Show migration status"
-	@echo "  migrate-lint     Lint migration files"
-	@echo ""
-	@echo "Hooks:"
-	@echo "  hooks            Install lefthook git hooks"
-	@echo ""
-	@echo "Other:"
-	@echo "  clean            Remove build artifacts"
-
 .DEFAULT_GOAL := help
+help:
+	@grep -E '^[a-z0-9-]+:' Makefile | cut -d: -f1 | sort
