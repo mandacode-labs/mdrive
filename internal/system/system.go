@@ -115,7 +115,7 @@ func (f Filter) toQueryFilter() *QueryFilter {
 
 type service struct {
 	repo        SystemRepository
-	inodeSvc    inode.InodeService
+	inodeSvc    inode.InodeOperations
 	objectSvc   object.ObjectService
 	sysUserSvc  coreuser.UserService
 	sysGroupSvc coreuser.GroupService
@@ -124,7 +124,7 @@ type service struct {
 // NewService creates a new SystemService.
 func NewService(
 	repo SystemRepository,
-	inodeSvc inode.InodeService,
+	inodeSvc inode.InodeOperations,
 	objectSvc object.ObjectService,
 	sysUserSvc coreuser.UserService,
 	sysGroupSvc coreuser.GroupService,

@@ -296,17 +296,7 @@ func (i *Inode) ObjectID() (string, error) {
 	return objContent.ObjectID, nil
 }
 
-// InodeService defines the interface for inode operations.
-type InodeService interface {
-	Create(ctx context.Context, cmd *CreateCommand) (*Inode, error)
-	GetByID(ctx context.Context, id string) (*Inode, error)
-	Update(ctx context.Context, cmd *UpdateCommand) error
-	Delete(ctx context.Context, id string) error
-	DeleteBySystemID(ctx context.Context, systemID string) error
-	Find(ctx context.Context, filter Filter) ([]*Inode, error)
-	FindOne(ctx context.Context, filter Filter) (*Inode, error)
-	UpdateLinkCount(ctx context.Context, id string, delta int) error
-}
+
 
 // CreateCommand for creating a new inode (service layer).
 type CreateCommand struct {
@@ -342,8 +332,8 @@ type service struct {
 	repo InodeRepository
 }
 
-// NewService creates a new InodeService.
-func NewService(repo InodeRepository) InodeService {
+// NewService creates a new InodeOperations.
+func NewService(repo InodeRepository) InodeOperations {
 	return &service{repo: repo}
 }
 
