@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/user"
+	"github.com/mandacode-labs/mdrive/internal/user"
 )
 
 // UserService defines the interface for user operations.

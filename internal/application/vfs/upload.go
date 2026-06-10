@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	inoderepo "github.com/mandacode-labs/retrowin-go/internal/core/inode/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	inoderepo "github.com/mandacode-labs/mdrive/internal/core/inode/repository"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectrepo "github.com/mandacode-labs/mdrive/internal/core/object/repository"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // AtomicUpload completes an upload and links the file to the filesystem atomically.

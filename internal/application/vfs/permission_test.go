@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
 )
 
 func TestAccessType_Constants(t *testing.T) {

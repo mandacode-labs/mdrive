@@ -12,13 +12,13 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/mandacode-labs/retrowin-go/ent/inode"
-	"github.com/mandacode-labs/retrowin-go/ent/object"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
-	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
-	"github.com/mandacode-labs/retrowin-go/ent/user"
-	"github.com/mandacode-labs/retrowin-go/ent/usergroup"
-	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/inode"
+	"github.com/mandacode-labs/mdrive/ent/object"
+	"github.com/mandacode-labs/mdrive/ent/system"
+	"github.com/mandacode-labs/mdrive/ent/systemgroup"
+	"github.com/mandacode-labs/mdrive/ent/user"
+	"github.com/mandacode-labs/mdrive/ent/usergroup"
+	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // ent aliases to avoid import conflicts in user's code.

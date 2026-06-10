@@ -3,9 +3,9 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // Delete removes an inode by ID.

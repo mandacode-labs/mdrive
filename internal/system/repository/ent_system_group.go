@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	entsystemgroup "github.com/mandacode-labs/retrowin-go/ent/systemgroup"
-	entusergroup "github.com/mandacode-labs/retrowin-go/ent/usergroup"
-	entusersystem "github.com/mandacode-labs/retrowin-go/ent/usersystem"
-	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/mdrive/ent"
+	entsystemgroup "github.com/mandacode-labs/mdrive/ent/systemgroup"
+	entusergroup "github.com/mandacode-labs/mdrive/ent/usergroup"
+	entusersystem "github.com/mandacode-labs/mdrive/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
 // EntSystemGroupRepository implements user.SystemGroupRepository using Ent.

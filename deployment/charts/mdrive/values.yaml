@@ -1,11 +1,11 @@
-# Default values for retrowin.
+# Default values for mdrive.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
 
 image:
-  repository: ghcr.io/mandacode-labs/retrowin-server
+  repository: ghcr.io/mandacode-labs/mdrive
   pullPolicy: IfNotPresent
   tag: ""
 
@@ -46,7 +46,7 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: retrowin.local
+    - host: mdrive.local
       paths:
         - path: /
           pathType: Prefix
@@ -102,7 +102,7 @@ affinity: {}
 config:
   # Application settings
   app:
-    name: retrowin
+    name: mdrive
     version: 0.0.1
     env: production
 
@@ -116,8 +116,8 @@ config:
     driver: postgres
     host: ""
     port: 5432
-    name: retrowin
-    user: retrowin
+    name: mdrive
+    user: mdrive
     sslMode: disable
 
   # Cache settings (Valkey)
@@ -138,7 +138,7 @@ config:
     provider: s3
     region: us-east-1
     endpoint: ""          # Empty for AWS S3, or "http://minio:9000" for MinIO
-    bucket: retrowin
+    bucket: mdrive
     prefix: ""            # Key prefix (e.g. "storage" to store objects under storage/)
     useSSL: true          # Use HTTPS for S3/MinIO connections
 
@@ -146,16 +146,16 @@ config:
   auth:
     keycloak:
       baseURL: ""
-      realm: retrowin
-      clientID: retrowin-app
-      redirectURI: https://retrowin-api.mandacode.com/auth/callback
+      realm: mdrive
+      clientID: mdrive-app
+      redirectURI: https://mdrive-api.mandacode.com/auth/callback
     session:
       ttl: 86400        # 24 hours in seconds
       secure: true
       stateTTL: 300     # 5 minutes
-      redisKey: retrowin
+      redisKey: mdrive
       cookieName: session_id
-      frontendURL: https://retrowin.mandacode.com
+      frontendURL: https://mdrive.mandacode.com
       domain: ".mandacode.com"   # Share cookie across all subdomains
       sameSite: "lax"          # lax, strict, or none (use "none" with secure:true for cross-origin)
 
@@ -186,7 +186,7 @@ config:
     endpoint: "otel-collector:4317"
     insecure: false
     caCert: ""                            # Path to CA certificate file (e.g. "/etc/otel/certificates/ca.crt")
-    serviceName: "retrowin"
+    serviceName: "mdrive"
 
 # Secrets (passed as environment variables)
 secrets:

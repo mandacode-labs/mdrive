@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,7 +114,7 @@ storage:
 	require.NotNil(t, cfg)
 
 	// Check defaults
-	assert.Equal(t, "retrowin", cfg.App.Name)
+	assert.Equal(t, "mdrive", cfg.App.Name)
 	assert.Equal(t, "development", cfg.App.Env)
 	assert.Equal(t, "0.0.0.0", cfg.HTTP.Host)
 	assert.Equal(t, 8080, cfg.HTTP.Port)
@@ -130,7 +130,7 @@ storage:
 	assert.False(t, cfg.Telemetry.Enabled)
 	assert.Equal(t, "localhost:4317", cfg.Telemetry.Endpoint)
 	assert.True(t, cfg.Telemetry.Insecure)
-	assert.Equal(t, "retrowin", cfg.Telemetry.ServiceName)
+	assert.Equal(t, "mdrive", cfg.Telemetry.ServiceName)
 }
 
 func TestLoadFromPath_DatabasePasswordFromEnv(t *testing.T) {

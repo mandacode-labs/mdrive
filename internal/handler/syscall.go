@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // Ls implements GET /syscall/{systemId}/ls.

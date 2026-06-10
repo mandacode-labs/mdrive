@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/retrowin-go/ent/inode"
-	"github.com/mandacode-labs/retrowin-go/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/inode"
+	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
 
 // InodeDelete is the builder for deleting a Inode entity.

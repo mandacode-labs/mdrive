@@ -3,7 +3,7 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
 )
 
 // ObjectService defines the subset of object operations needed by the VFS layer.

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
+	coreuser "github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
 // GroupService defines the subset of group operations needed by the handler layer.

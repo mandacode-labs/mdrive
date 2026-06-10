@@ -10,10 +10,10 @@ import (
 	"entgo.io/ent/dialect/sql/schema"
 
 	"ariga.io/atlas/atlasexec"
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/ent/migrate/migrations"
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/ent/migrate/migrations"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // MigrateOptions holds options for migration apply.

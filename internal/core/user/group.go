@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // SystemGroup represents a group in a system.

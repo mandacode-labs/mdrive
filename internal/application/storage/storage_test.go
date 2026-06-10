@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	vfsMocks "github.com/mandacode-labs/retrowin-go/internal/application/vfs/mocks"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectMocks "github.com/mandacode-labs/retrowin-go/internal/core/object/mocks"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
+	vfsMocks "github.com/mandacode-labs/mdrive/internal/application/vfs/mocks"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectMocks "github.com/mandacode-labs/mdrive/internal/core/object/mocks"
 )
 
 func newTestObject(id string) *object.Object {

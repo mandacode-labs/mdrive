@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/utils"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // GetRootDirectory implements GET /fs/{systemId}/root.

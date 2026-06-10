@@ -4,8 +4,8 @@ import (
 	"context"
 	"path"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // Mkdir creates a directory at the given path.

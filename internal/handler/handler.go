@@ -4,16 +4,16 @@ import (
 	"context"
 	"time"
 
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	corevfs "github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	"github.com/mandacode-labs/retrowin-go/internal/auth"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
-	"github.com/mandacode-labs/retrowin-go/internal/system"
-	extuser "github.com/mandacode-labs/retrowin-go/internal/user"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	corevfs "github.com/mandacode-labs/mdrive/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/service/sysinit"
+	"github.com/mandacode-labs/mdrive/internal/system"
+	extuser "github.com/mandacode-labs/mdrive/internal/user"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 // Handler implements the ogen API handler interface.

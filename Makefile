@@ -1,6 +1,6 @@
 .SHELLFLAGS = -e -c
 
-APP_NAME    := retrowin-server
+APP_NAME    := mdrive
 BUILD_DIR   := bin
 SCRIPTS     := scripts
 
@@ -64,11 +64,11 @@ test-kind:
 # ---------------------------------------------------------------------------
 .PHONY: build
 build:
-	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/retrowin-server
+	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/mdrive
 
 .PHONY: run
 run:
-	go run ./cmd/retrowin-server serve --config config.yaml
+	go run ./cmd/mdrive serve --config config.yaml
 
 # ---------------------------------------------------------------------------
 # Database Migrations
@@ -79,7 +79,7 @@ migrate-diff:
 
 .PHONY: migrate-apply
 migrate-apply:
-	go run ./cmd/retrowin-server migrate apply --config config.yaml
+	go run ./cmd/mdrive migrate apply --config config.yaml
 
 .PHONY: migrate-status
 migrate-status:

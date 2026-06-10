@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/retrowin-go/ent/predicate"
-	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // UserSystemDelete is the builder for deleting a UserSystem entity.

@@ -8,9 +8,9 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
-	"github.com/mandacode-labs/retrowin-go/ent/usergroup"
-	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/systemgroup"
+	"github.com/mandacode-labs/mdrive/ent/usergroup"
+	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // UserGroup is the model entity for the UserGroup schema.

@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // DirEntry represents a directory entry (filename to inode mapping).

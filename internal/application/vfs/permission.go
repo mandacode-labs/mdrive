@@ -3,7 +3,7 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
 )
 
 // AccessType is an alias for inode.AccessType for backward compatibility.

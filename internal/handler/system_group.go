@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	coreuser "github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 // CreateSystemGroup implements POST /systems/{systemId}/groups.

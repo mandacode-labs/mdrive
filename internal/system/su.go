@@ -3,7 +3,7 @@ package system
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // SystemUser represents a user's membership in a system.

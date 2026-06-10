@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 func (s *Service) ReadDir(ctx context.Context, id string) ([]DirEntry, error) {

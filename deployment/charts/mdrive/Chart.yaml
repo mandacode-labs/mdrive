@@ -1,6 +1,6 @@
 apiVersion: v2
-name: retrowin
-description: A Helm chart for Retrowin
+name: mdrive
+description: A Helm chart for Mandacode Drive
 
 type: application
 
@@ -9,7 +9,7 @@ version: 0.1.0
 appVersion: "0.1.0"
 
 keywords:
-  - retrowin
+  - mdrive
   - api
   - server
   - file-storage
@@ -18,6 +18,6 @@ maintainers:
   - name: sauce
     email: sauce@mandacode-labs.com
 
-home: https://github.com/mandacode-labs/retrowin-go
+home: https://github.com/mandacode-labs/mdrive
 sources:
-  - https://github.com/mandacode-labs/retrowin-go
+  - https://github.com/mandacode-labs/mdrive

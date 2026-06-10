@@ -19,32 +19,32 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.uber.org/fx"
 
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
-	"github.com/mandacode-labs/retrowin-go/pkg/api"
+	"github.com/mandacode-labs/mdrive/internal/logging"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/valkey-io/valkey-go"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	corefs "github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	"github.com/mandacode-labs/retrowin-go/internal/auth"
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	inoderepo "github.com/mandacode-labs/retrowin-go/internal/core/inode/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
-	s3storage "github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
-	"github.com/mandacode-labs/retrowin-go/internal/handler"
-	"github.com/mandacode-labs/retrowin-go/internal/middleware"
-	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
-	"github.com/mandacode-labs/retrowin-go/internal/session"
-	sessionRepo "github.com/mandacode-labs/retrowin-go/internal/session/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/system"
-	systemrepo "github.com/mandacode-labs/retrowin-go/internal/system/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/telemetry"
-	"github.com/mandacode-labs/retrowin-go/internal/user"
-	userrepo "github.com/mandacode-labs/retrowin-go/internal/user/repository"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	corefs "github.com/mandacode-labs/mdrive/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	inoderepo "github.com/mandacode-labs/mdrive/internal/core/inode/repository"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectrepo "github.com/mandacode-labs/mdrive/internal/core/object/repository"
+	s3storage "github.com/mandacode-labs/mdrive/internal/core/object/s3"
+	coreuser "github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/handler"
+	"github.com/mandacode-labs/mdrive/internal/middleware"
+	"github.com/mandacode-labs/mdrive/internal/service/sysinit"
+	"github.com/mandacode-labs/mdrive/internal/session"
+	sessionRepo "github.com/mandacode-labs/mdrive/internal/session/repository"
+	"github.com/mandacode-labs/mdrive/internal/system"
+	systemrepo "github.com/mandacode-labs/mdrive/internal/system/repository"
+	"github.com/mandacode-labs/mdrive/internal/telemetry"
+	"github.com/mandacode-labs/mdrive/internal/user"
+	userrepo "github.com/mandacode-labs/mdrive/internal/user/repository"
 )
 
 // ProvideConfig provides the config from file.
@@ -388,7 +388,7 @@ func NewValkeySessionRepository(client valkey.Client) session.SessionRepository 
 	if client == nil {
 		return nil
 	}
-	return sessionRepo.NewValkeySessionRepository(client, "retrowin:session:")
+	return sessionRepo.NewValkeySessionRepository(client, "mdrive:session:")
 }
 
 // ProvideKeycloak provides the Keycloak OIDC client.

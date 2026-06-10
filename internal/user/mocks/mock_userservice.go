@@ -7,7 +7,7 @@ package userMocks
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/user"
+	"github.com/mandacode-labs/mdrive/internal/user"
 	mock "github.com/stretchr/testify/mock"
 )
 

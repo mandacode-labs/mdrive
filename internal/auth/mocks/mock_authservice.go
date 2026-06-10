@@ -7,7 +7,7 @@ package authMocks
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/auth"
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -15,11 +15,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/ent/object"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
-	domainsession "github.com/mandacode-labs/retrowin-go/internal/session"
-	"github.com/mandacode-labs/retrowin-go/internal/session/repository"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/ent/object"
+	"github.com/mandacode-labs/mdrive/ent/system"
+	domainsession "github.com/mandacode-labs/mdrive/internal/session"
+	"github.com/mandacode-labs/mdrive/internal/session/repository"
 )
 
 // HTTP Methods
@@ -140,7 +140,7 @@ func (s *Suite) CreateTestSession(ctx context.Context, userID string) (string, e
 	now := time.Now()
 	expiresAt := now.Add(1 * time.Hour)
 
-	sessionRepo := repository.NewValkeySessionRepository(s.ValkeyClient, "retrowin:session:")
+	sessionRepo := repository.NewValkeySessionRepository(s.ValkeyClient, "mdrive:session:")
 	session := domainsession.NewSession(
 		domainsession.SessionID(sessionID),
 		userID,

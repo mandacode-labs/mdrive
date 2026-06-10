@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gcapp "github.com/mandacode-labs/retrowin-go/internal/application/gc"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	gcapp "github.com/mandacode-labs/mdrive/internal/application/gc"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
 )
 
 func TestIntegration_GC_PendingCleanup(t *testing.T) {

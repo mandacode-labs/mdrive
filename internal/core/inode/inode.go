@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // Mode constants following Linux inode conventions.

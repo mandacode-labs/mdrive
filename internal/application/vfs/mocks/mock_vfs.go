@@ -7,8 +7,8 @@ package vfsMocks
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
 	mock "github.com/stretchr/testify/mock"
 )
 

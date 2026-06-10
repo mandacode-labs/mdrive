@@ -5,13 +5,13 @@ package ent
 import (
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/ent/inode"
-	"github.com/mandacode-labs/retrowin-go/ent/object"
-	"github.com/mandacode-labs/retrowin-go/ent/schema"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
-	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
-	"github.com/mandacode-labs/retrowin-go/ent/user"
-	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/inode"
+	"github.com/mandacode-labs/mdrive/ent/object"
+	"github.com/mandacode-labs/mdrive/ent/schema"
+	"github.com/mandacode-labs/mdrive/ent/system"
+	"github.com/mandacode-labs/mdrive/ent/systemgroup"
+	"github.com/mandacode-labs/mdrive/ent/user"
+	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // The init function reads all schema descriptors with runtime code

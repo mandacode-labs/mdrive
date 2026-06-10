@@ -72,9 +72,9 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v5.0.0
       - name: Lint Helm chart
-        run: helm lint deployment/charts/retrowin
+        run: helm lint deployment/charts/mdrive
       - name: Helm Template
-        run: helm template retrowin ./deployment/charts/retrowin
+        run: helm template mdrive ./deployment/charts/mdrive
       - name: GoReleaser check
         uses: goreleaser/goreleaser-action@v7.2.2
         with:
@@ -170,7 +170,7 @@ jobs:
           context: .
           file: build/docker/server.Dockerfile
           push: false
-          tags: retrowin-server:test
+          tags: mdrive:test
           cache-from: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/cache:main
           cache-to: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/cache:main,mode=max
 

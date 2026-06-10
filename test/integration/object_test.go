@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 func TestIntegration_ObjectService_InitiateUpload(t *testing.T) {
