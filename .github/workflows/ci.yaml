@@ -28,9 +28,9 @@ jobs:
           go-version: "1.26.3"
           cache: false
       - name: Run format checks
-        run: make check-format
+        run: make fmt
       - name: Run go vet
-        run: make check-vet
+        run: make vet
 
   lint-checks:
     name: Lint & Validate
