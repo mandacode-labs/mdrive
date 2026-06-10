@@ -2,39 +2,43 @@
 
 APP_NAME    := mdrive
 BUILD_DIR   := bin
-SCRIPTS     := scripts
 
 # ---------------------------------------------------------------------------
 # Code Generation
 # ---------------------------------------------------------------------------
-.PHONY: gen
-gen: ent-gen ogen mock
+.PHONY: generate
+generate: gen-ent gen-api gen-mock
 
-.PHONY: ent-gen
-ent-gen:
+.PHONY: gen-ent
+gen-ent:
 	go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
 
-.PHONY: openapi
-openapi:
+.PHONY: gen-api
+gen-api:
 	npx @apidevtools/swagger-cli bundle api/openapi.yaml --outfile api/openapi.bundled.json --type json
 	npx @apidevtools/swagger-cli validate api/openapi.bundled.json
-
-.PHONY: ogen
-ogen: openapi
 	@rm -f pkg/api/oas_*.go
 	go tool ogen -config ogen.yaml -target ./pkg/api -package api api/openapi.bundled.json
 
-.PHONY: mock
-mock:
+.PHONY: gen-mock
+gen-mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
 	go run github.com/vektra/mockery/v2/cmd/mockery
 
 # ---------------------------------------------------------------------------
-# Lint
+# Format & Vet
 # ---------------------------------------------------------------------------
+.PHONY: fmt
+fmt:
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint fmt
+
+.PHONY: vet
+vet:
+	go vet ./...
+
 .PHONY: lint
 lint:
-	$(SCRIPTS)/lint.sh
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --timeout=5m
 
 # ---------------------------------------------------------------------------
 # Test
@@ -43,58 +47,59 @@ lint:
 test:
 	go test -count=1 $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
 
-.PHONY: test-all
-test-all:
-	go test -count=1 ./... -coverprofile=cover.out
+.PHONY: test-integration
+test-integration:
+	go test -count=1 ./test/integration/... -tags integration -timeout 5m -coverprofile=cover-integration.out
 
 .PHONY: test-e2e
 test-e2e:
-	$(SCRIPTS)/test-e2e.sh
-
-.PHONY: test-integration
-test-integration:
-	$(SCRIPTS)/test-integration.sh
+	go test -count=1 ./test/e2e/... -timeout 10m -coverprofile=cover-e2e.out
 
 .PHONY: test-kind
 test-kind:
-	$(SCRIPTS)/test-kind.sh
+	go test -count=1 ./test/kind/... -tags kind -timeout 30m
 
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 .PHONY: build
 build:
-	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/mdrive
+	go build -o $(BUILD_DIR)/$(APP_NAME) ./cmd/$(APP_NAME)
 
 .PHONY: run
 run:
-	go run ./cmd/mdrive serve --config config.yaml
+	go run ./cmd/$(APP_NAME) serve --config config.yaml
 
 # ---------------------------------------------------------------------------
 # Database Migrations
 # ---------------------------------------------------------------------------
 .PHONY: migrate-diff
 migrate-diff:
-	$(SCRIPTS)/migrate-diff.sh $(name)
+	go run ariga.io/atlas/cmd/atlas migrate diff $(name) \
+		--dir "file://ent/migrate/migrations" \
+		--to "ent://ent/schema" \
+		--dev-url "docker://postgres/17/dev?search_path=public"
 
 .PHONY: migrate-apply
 migrate-apply:
-	go run ./cmd/mdrive migrate apply --config config.yaml
+	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
 
 .PHONY: migrate-status
 migrate-status:
-	$(SCRIPTS)/migrate-status.sh
+	go run ariga.io/atlas/cmd/atlas migrate status --dir "file://ent/migrate/migrations"
 
 .PHONY: migrate-lint
 migrate-lint:
-	$(SCRIPTS)/migrate-lint.sh
+	go run ariga.io/atlas/cmd/atlas migrate lint \
+		--dir "file://ent/migrate/migrations" \
+		--dev-url "docker://postgres/17/dev?search_path=public"
 
 # ---------------------------------------------------------------------------
 # Hooks
 # ---------------------------------------------------------------------------
-.PHONY: hooks
-hooks:
-	$(SCRIPTS)/hooks.sh
+.PHONY: install-hooks
+install-hooks:
+	go run github.com/evilmartians/lefthook install
 
 # ---------------------------------------------------------------------------
 # Cleanup
