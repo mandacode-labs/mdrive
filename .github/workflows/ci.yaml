@@ -83,12 +83,12 @@ jobs:
       - name: Go Security Scan
         uses: securego/gosec@master
         with:
-          args: './...'
+          args: "./..."
       - name: Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
+          scan-type: "fs"
+          scan-ref: "."
 
   unit-test:
     name: Unit Tests
