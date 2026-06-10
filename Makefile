@@ -31,7 +31,7 @@ gen-mock:
 # ---------------------------------------------------------------------------
 .PHONY: fmt
 fmt:
-	! gofmt -l . | read -r
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint fmt
 
 .PHONY: vet
 vet:
