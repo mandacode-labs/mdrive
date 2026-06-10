@@ -1,39 +1,30 @@
 # Roadmap
 
-## Completed
+## Priority 1: System Stabilization
 
-- [x] POSIX-like inode system with mode, uid, gid, timestamps
-- [x] Atomic upload (presigned URL → S3 → transaction → inode link)
-- [x] OIDC authentication (Keycloak + PKCE)
-- [x] Session management (Valkey/Redis)
-- [x] Multi-tenancy (system isolation)
-- [x] Garbage collection (pending expiry + orphan detection)
-- [x] OpenTelemetry tracing
-- [x] Versioned database migrations (Atlas)
-- [x] Helm deployment with HPA, CronJob, migration job
-- [x] Full test pyramid (unit → integration → e2e → kind)
+- [ ] Stabilize error handling and reduce edge cases
+- [ ] Harden the CI/CD pipeline for reliability
+- [ ] Improve test coverage across critical paths
+- [ ] Add circuit breakers and graceful degradation for external services
+- [ ] Strengthen logging and observability (tracing, metrics, alerting)
 
-## Short Term (2026 H1)
+## Priority 2: Linux System Compatibility & Flexibility
 
-- [ ] S3 multipart upload support
-- [ ] Directory batch operations (mkdir -p, rm -rf)
-- [ ] File sharing (time-limited presigned URL)
-- [ ] Write locking (prevent concurrent writes)
-- [ ] WebSocket for real-time directory updates
-- [ ] Soft delete (trash bin) with restore
+- [ ] Refactor existing methods to align closer with Linux system call semantics
+- [ ] Improve POSIX compliance (mode, uid, gid, permission handling)
+- [ ] Add flexibility for various Linux filesystem behaviors
+- [ ] Support for hard links, symbolic links, and special files
 
-## Medium Term (2026 H2)
+## Priority 3: Storage Disk (Block Device) Concept
 
-- [ ] WebDAV or NFS compatibility layer
-- [ ] FUSE mount (local filesystem proxy)
-- [ ] Distributed locking (multi-node coordination)
-- [ ] Write caching (reduce S3 round-trips)
-- [ ] Event system (S3 → webhook → notification)
+- [ ] Introduce storage disk abstraction — users can configure S3 (or other storage) as a block device
+- [ ] Pre-register storage credentials and endpoints (secret management)
+- [ ] Template-like behavior: select target disk per upload / file operation
+- [ ] Multi-backend support (switch between S3, MinIO, other object storage)
 
-## Long Term (2027)
+## Priority 4: Permission System & User Management Application
 
-- [ ] Global deduplication (content-addressable storage)
-- [ ] CDN integration (CloudFront / CloudFlare)
-- [ ] Storage tiering (S3 → Glacier → Deep Archive)
-- [ ] Federation (cross-cluster sync)
-- [ ] Audit logging (immutable event log)
+- [ ] Build internal permission system (ACL, RBAC)
+- [ ] Add user/group management application
+- [ ] Provide self-service user management interface
+- [ ] Implement role-based access control for systems and files
