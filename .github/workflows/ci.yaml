@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   pre-commit:
@@ -94,6 +95,7 @@ jobs:
         uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-unit.out
           fail_ci_if_error: false
 
@@ -115,6 +117,7 @@ jobs:
         uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-integration.out
           fail_ci_if_error: false
 
@@ -138,6 +141,7 @@ jobs:
         uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-e2e.out
           fail_ci_if_error: false
           flags: e2e
