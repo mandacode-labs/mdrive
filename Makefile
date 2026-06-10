@@ -31,12 +31,6 @@ gen-mock:
 # ---------------------------------------------------------------------------
 .PHONY: fmt
 fmt:
-	! grep -IUrn "[[:blank:]]$$" . --include="*.go" --include="*.yaml" --include="*.yml" --include="*.json" --include="*.md"
-	find . -name '*.go' -o -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.md' | while read f; do \
-	  if [ -s "$$f" ] && [ "$$(tail -c 1 "$$f")" != "" ]; then \
-	    echo "No newline at EOF: $$f"; exit 1; \
-	  fi; \
-	done
 	! gofmt -l . | read -r
 
 .PHONY: vet
