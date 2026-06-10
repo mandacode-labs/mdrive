@@ -4,7 +4,7 @@
 
 ## Design Principles
 
-1. **Explicit over implicit**. Dependency injection is manual by default. Uber FX is available when lifecycle management is needed.
+1. **Explicit over implicit**. Dependency injection is manual only. No DI framework in production.
 2. **Interfaces are defined by consumers**. Small, focused interfaces. Not by implementers.
 3. **Plain structs**. Domain models are simple structs with getters. No inheritance, no generics complexity.
 4. **Standard library patterns**. `context.Context`, `error` with `%w` wrapping, `fmt.Errorf`.
@@ -36,9 +36,7 @@ test/                — E2E, integration, kind tests
 
 ## Dependency Injection
 
-Two complementary styles:
-
-### 1. Manual Wiring (default)
+Production uses **manual explicit wiring** only:
 
 ```go
 // internal/cmd/serve/app.go
@@ -52,19 +50,7 @@ func NewApp(...) *App {
 
 Every dependency is constructed explicitly. Simple, traceable, no magic.
 
-### 2. Uber FX (optional)
-
-```go
-// internal/cmd/serve/serve.go
-func FxOptions(...) []fx.Option {
-    return []fx.Option{
-        fx.Provide(ProvideConfig, ProvideLogger, ...),
-        fx.Invoke(RegisterShutdownHooks),
-    }
-}
-```
-
-For advanced startup/shutdown orchestration with lifecycle hooks.
+Uber FX code exists in `serve.go` but is **test-only** — not used in production.
 
 ## Interface Pattern
 
