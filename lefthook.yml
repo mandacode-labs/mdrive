@@ -30,12 +30,8 @@ pre-commit:
     govet:
       glob: "*.go"
       run: go vet ./...
-    golangci:
-      glob: "*.go"
-      run: golangci-lint run
 
 pre-push:
-  parallel: false
   commands:
     test-unit:
-      run: go test -count=1 $(go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
+      run: make test

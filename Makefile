@@ -32,6 +32,20 @@ mock:
 # ---------------------------------------------------------------------------
 # Lint
 # ---------------------------------------------------------------------------
+.PHONY: check-format
+check-format:
+	! grep -IUrn "[[:blank:]]$$" . --include="*.go" --include="*.yaml" --include="*.yml" --include="*.json" --include="*.md"
+	git ls-files -- '*.go' '*.yaml' '*.yml' '*.json' '*.md' | while read f; do \
+	  if [ -s "$$f" ] && [ "$$(tail -c 1 "$$f")" != "" ]; then \
+	    echo "No newline at EOF: $$f"; exit 1; \
+	  fi; \
+	done
+	! gofmt -l . | read -r
+
+.PHONY: check-vet
+check-vet:
+	go vet ./...
+
 .PHONY: lint
 lint:
 	$(SCRIPTS)/lint.sh
