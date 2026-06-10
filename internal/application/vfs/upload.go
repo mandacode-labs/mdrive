@@ -134,7 +134,7 @@ func (s *service) withTx(ctx context.Context, fn func(*ent.Tx) error) error {
 }
 
 // txServices creates transaction-scoped service instances.
-func (s *service) txServices(tx *ent.Tx) (object.ObjectService, inode.InodeOperations) {
+func (s *service) txServices(tx *ent.Tx) (ObjectService, InodeService) {
 	objRepo := objectrepo.NewRepository(tx.Client())
 	objSvc := object.NewService(objRepo, s.storage)
 
@@ -145,7 +145,7 @@ func (s *service) txServices(tx *ent.Tx) (object.ObjectService, inode.InodeOpera
 }
 
 // resolvePathTx resolves a path using transaction-scoped services.
-func (s *service) resolvePathTx(ctx context.Context, inodeOps inode.InodeOperations, systemID string, pathStr string) (*inode.Inode, error) {
+func (s *service) resolvePathTx(ctx context.Context, inodeOps InodeService, systemID string, pathStr string) (*inode.Inode, error) {
 	// Use a temporary vfs service with tx-scoped dependencies for path resolution
 	txVfs := &service{
 		inodeOps: inodeOps,
@@ -155,7 +155,7 @@ func (s *service) resolvePathTx(ctx context.Context, inodeOps inode.InodeOperati
 }
 
 // deleteInodeTx deletes an inode and its associated object within a transaction.
-func (s *service) deleteInodeTx(ctx context.Context, inodeOps inode.InodeOperations, objSvc object.ObjectService, id string) error {
+func (s *service) deleteInodeTx(ctx context.Context, inodeOps InodeService, objSvc ObjectService, id string) error {
 	in, err := inodeOps.GetByID(ctx, id)
 	if err != nil {
 		return err

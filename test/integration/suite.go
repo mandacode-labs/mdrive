@@ -135,12 +135,12 @@ func stopSharedContainers(ctx context.Context) {
 type Suite struct {
 	EntClient     *ent.Client
 	DB            *sql.DB
-	ObjectSvc     object.ObjectService
+	ObjectSvc     *object.Service
 	ObjectStorage object.Storage
 	StorageSvc    storage.StorageService
 	FsSvc         vfs.VFS
-	InodeSvc      inode.InodeOperations
-	UserSvc       user.UserService
+	InodeSvc      *inode.Service
+	UserSvc       *user.Service
 	SystemSvc     domainsystem.SystemService
 	InitSvc       sysinit.InitService
 	MinioClient   *minio.Client

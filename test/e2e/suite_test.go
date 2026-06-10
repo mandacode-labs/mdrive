@@ -179,27 +179,16 @@ func TestSuite_FullServerStartup(t *testing.T) {
 	t.Logf("Using config file: %s", cfgFile)
 	t.Logf("Database: %s:%d", cfg.Database.Host, cfg.Database.Port)
 
-	// Start the actual fx app with embedded OpenAPI spec
-	// This test verifies that the real server starts and responds to health checks
-	app := serve.NewFXApp(cfgFile, cfg.HTTP.Port, openapispec.Spec)
+	// Start the actual app with embedded OpenAPI spec
+	app, err := serve.NewApp(cfgFile, cfg.HTTP.Port, openapispec.Spec)
+	require.NoError(t, err, "Failed to create app")
 
 	// Start app in background
-	appDone := make(chan struct{})
-	go func() {
-		app.Run()
-		close(appDone)
-	}()
+	err = app.Start()
+	require.NoError(t, err, "Failed to start app")
 
 	// Wait for app to start
 	time.Sleep(2 * time.Second)
-
-	// Verify app is still running (hasn't exited)
-	select {
-	case <-appDone:
-		t.Fatal("FX app exited unexpectedly during startup")
-	default:
-		// App is still running, proceed with tests
-	}
 
 	// Test /health endpoint - this MUST succeed for the test to pass
 	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", cfg.HTTP.Port))
@@ -212,16 +201,12 @@ func TestSuite_FullServerStartup(t *testing.T) {
 	require.NoError(t, err, "Failed to read response")
 	assert.Contains(t, string(body), "healthy", "Response should contain 'healthy'")
 
-	t.Log("Full fx server startup test passed - server is running and responding")
+	t.Log("Full server startup test passed - server is running and responding")
 
 	// Shutdown the app
-	_ = app.Stop(context.Background())
-	select {
-	case <-appDone:
-	case <-time.After(10 * time.Second):
-		// Don't fail the test if shutdown takes longer, just log it
-		t.Log("App shutdown took longer than expected (this is OK for test cleanup)")
-	}
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = app.Shutdown(shutdownCtx)
 }
 
 func TestSuite_OpenAPI(t *testing.T) {

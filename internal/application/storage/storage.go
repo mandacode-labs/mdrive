@@ -53,11 +53,11 @@ type UploadResult struct {
 
 type service struct {
 	fsSvc     vfs.VFS
-	objectSvc object.ObjectService
+	objectSvc ObjectService
 }
 
 // NewService creates a new storage service.
-func NewService(fsSvc vfs.VFS, objectSvc object.ObjectService) StorageService {
+func NewService(fsSvc vfs.VFS, objectSvc ObjectService) StorageService {
 	return &service{
 		fsSvc:     fsSvc,
 		objectSvc: objectSvc,

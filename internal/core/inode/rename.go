@@ -8,7 +8,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
-func (s *service) RenameAt(ctx context.Context, dirID string, entry DirEntry) (string, error) {
+func (s *Service) RenameAt(ctx context.Context, dirID string, entry DirEntry) (string, error) {
 	dir, err := s.GetByID(ctx, dirID)
 	if err != nil {
 		return "", err

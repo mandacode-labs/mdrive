@@ -33,7 +33,11 @@ func NewCmd() *cobra.Command {
 			} else {
 				spec = openapispec.Spec
 			}
-			app := NewFXApp(cfgFile, port, spec)
+			app, err := NewApp(cfgFile, port, spec)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error initializing app: %v\n", err)
+				os.Exit(1)
+			}
 			app.Run()
 		},
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
-func (s *service) ReadDir(ctx context.Context, id string) ([]DirEntry, error) {
+func (s *Service) ReadDir(ctx context.Context, id string) ([]DirEntry, error) {
 	in, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (s *service) ReadDir(ctx context.Context, id string) ([]DirEntry, error) {
 	return c.Entries, nil
 }
 
-func (s *service) Lookup(ctx context.Context, dirID string, name string) (*DirEntry, error) {
+func (s *Service) Lookup(ctx context.Context, dirID string, name string) (*DirEntry, error) {
 	entries, err := s.ReadDir(ctx, dirID)
 	if err != nil {
 		return nil, err

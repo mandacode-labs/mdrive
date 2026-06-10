@@ -6,7 +6,6 @@ import (
 	"github.com/mandacode-labs/retrowin-go/ent"
 	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
 	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	"github.com/mandacode-labs/retrowin-go/internal/core/user"
 )
 
 // VFS defines the interface for virtual filesystem operations.
@@ -155,15 +154,15 @@ type AtomicUploadCommand struct {
 
 type service struct {
 	entClient *ent.Client
-	inodeOps  inode.InodeOperations
-	objectSvc object.ObjectService
+	inodeOps  InodeService
+	objectSvc ObjectService
 	storage   object.Storage
-	userSvc   user.UserService
+	userSvc   UserService
 	dirLock   *Locker
 }
 
 // NewService creates a new VFS service.
-func NewService(entClient *ent.Client, inodeOps inode.InodeOperations, objectSvc object.ObjectService, storage object.Storage, userSvc user.UserService, dirLock *Locker) VFS {
+func NewService(entClient *ent.Client, inodeOps InodeService, objectSvc ObjectService, storage object.Storage, userSvc UserService, dirLock *Locker) VFS {
 	return &service{
 		entClient: entClient,
 		inodeOps:  inodeOps,

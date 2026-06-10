@@ -8,7 +8,7 @@ import (
 	"github.com/mandacode-labs/retrowin-go/internal/errors"
 )
 
-func (s *service) Link(ctx context.Context, dirID string, entry DirEntry) error {
+func (s *Service) Link(ctx context.Context, dirID string, entry DirEntry) error {
 	dir, err := s.GetByID(ctx, dirID)
 	if err != nil {
 		return err
