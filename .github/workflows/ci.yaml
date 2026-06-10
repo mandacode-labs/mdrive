@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   format-checks:
@@ -95,9 +96,10 @@ jobs:
       - name: Run unit tests
           run: make test
       - name: Upload coverage
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-unit.out
           fail_ci_if_error: false
 
@@ -116,9 +118,10 @@ jobs:
       - name: Run integration tests
         run: make test-integration
       - name: Upload coverage
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-integration.out
           fail_ci_if_error: false
 
@@ -139,9 +142,10 @@ jobs:
       - name: Run e2e tests
         run: make test-e2e
       - name: Upload coverage
-        uses: codecov/codecov-action@v6.0.1
+        uses: codecov/codecov-action@v7.0.0
         if: always()
         with:
+          use_oidc: true
           files: cover-e2e.out
           fail_ci_if_error: false
           flags: e2e
