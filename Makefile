@@ -2,7 +2,6 @@
 
 APP_NAME    := mdrive
 BUILD_DIR   := bin
-SCRIPTS     := scripts
 
 # ---------------------------------------------------------------------------
 # Code Generation
@@ -39,7 +38,7 @@ vet:
 
 .PHONY: lint
 lint:
-	$(SCRIPTS)/lint.sh
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --timeout=5m
 
 # ---------------------------------------------------------------------------
 # Test
@@ -100,7 +99,7 @@ migrate-lint:
 # ---------------------------------------------------------------------------
 .PHONY: install-hooks
 install-hooks:
-	$(SCRIPTS)/hooks.sh
+	go run github.com/evilmartians/lefthook install
 
 # ---------------------------------------------------------------------------
 # Cleanup
