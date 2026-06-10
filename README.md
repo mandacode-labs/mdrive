@@ -128,7 +128,10 @@ sequenceDiagram
 ## Quick Start
 
 ```bash
-# Run server
+# Install hooks
+make install-hooks
+
+# Build
 make build
 ./bin/mdrive serve --config config.yaml
 
@@ -138,6 +141,13 @@ make test-integration
 make test-e2e
 make test-kind  # requires kind, kubectl, helm, docker
 ```
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) — Design philosophy, patterns, layers
+- [Development](docs/DEVELOPMENT.md) — Quick start, conventions, commands
+- [Testing](docs/TESTING.md) — Test pyramid, CI integration
+- [Roadmap](docs/ROADMAP.md) — Completed, short term, medium term, long term
 
 ## Project Structure
 
