@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "retrowin.fullname" . }}
+  name: {{ include "mdrive.fullname" . }}
   labels:
-    {{- include "retrowin.labels" . | nindent 4 }}
+    {{- include "mdrive.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "retrowin.selectorLabels" . | nindent 4 }}
+    {{- include "mdrive.selectorLabels" . | nindent 4 }}

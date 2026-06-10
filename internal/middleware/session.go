@@ -3,14 +3,14 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/session"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/session"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 const (
 	// SessionCookieName is the name of the session cookie.
-	SessionCookieName = "retrowin_session"
+	SessionCookieName = "mdrive_session"
 )
 
 // SessionAuth holds session authentication configuration.

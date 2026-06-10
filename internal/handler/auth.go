@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/url"
 
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 
-	"github.com/mandacode-labs/retrowin-go/internal/auth"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/middleware"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/middleware"
 )
 
 // InitiateLogin implements GET /auth/login.

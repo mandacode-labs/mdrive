@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode/content"
-	inodeMocks "github.com/mandacode-labs/retrowin-go/internal/core/inode/mocks"
-	userMocks "github.com/mandacode-labs/retrowin-go/internal/core/user/mocks"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode/content"
+	inodeMocks "github.com/mandacode-labs/mdrive/internal/core/inode/mocks"
+	userMocks "github.com/mandacode-labs/mdrive/internal/core/user/mocks"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 func TestRename_EmptyNewName(t *testing.T) {

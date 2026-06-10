@@ -4,8 +4,8 @@ package migrate
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // NewCmd creates a new cobra command for the migrate command

@@ -3,9 +3,9 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
 )
 
 // VFS defines the interface for virtual filesystem operations.

@@ -8,8 +8,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
 	mock "github.com/stretchr/testify/mock"
 )
 

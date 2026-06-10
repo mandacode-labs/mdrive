@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gcapp "github.com/mandacode-labs/retrowin-go/internal/application/gc"
-	objectdomain "github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
-	s3storage "github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
+	gcapp "github.com/mandacode-labs/mdrive/internal/application/gc"
+	objectdomain "github.com/mandacode-labs/mdrive/internal/core/object"
+	objectrepo "github.com/mandacode-labs/mdrive/internal/core/object/repository"
+	s3storage "github.com/mandacode-labs/mdrive/internal/core/object/s3"
 )
 
 func TestGC_PendingCleanup(t *testing.T) {

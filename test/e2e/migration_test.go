@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/cmd/migrate"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/cmd/migrate"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 func TestMigration_AutoMode(t *testing.T) {

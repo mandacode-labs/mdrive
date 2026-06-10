@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 // Rename renames a single entry within the same directory.

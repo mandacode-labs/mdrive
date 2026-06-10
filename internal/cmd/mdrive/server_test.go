@@ -1,5 +1,5 @@
-// Package retrowinserver implements the retrowin-server command
-package retrowinserver
+// Package mdrive implements the mdrive command
+package mdrive
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
+	"github.com/mandacode-labs/mdrive/internal/cmd/serve"
 )
 
 // TestServerOptions verifies that the fx options are properly constructed.

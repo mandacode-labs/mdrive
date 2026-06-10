@@ -5,7 +5,7 @@ package usersystem
 import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/mandacode-labs/retrowin-go/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.

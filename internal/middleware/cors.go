@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
 func CORSMiddleware(cfg *config.Config) func(next http.Handler) http.Handler {

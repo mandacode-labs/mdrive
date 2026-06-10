@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	openapispec "github.com/mandacode-labs/retrowin-go/api"
+	openapispec "github.com/mandacode-labs/mdrive/api"
 )
 
 // NewCmd creates a new cobra command for the serve command

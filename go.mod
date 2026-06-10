@@ -1,4 +1,4 @@
-module github.com/mandacode-labs/retrowin-go
+module github.com/mandacode-labs/mdrive
 
 go 1.26.1
 

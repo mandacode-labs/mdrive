@@ -3,7 +3,7 @@ package sysinit
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
 // UserService defines the subset of user operations needed by sysinit.

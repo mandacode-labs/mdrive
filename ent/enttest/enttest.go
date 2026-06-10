@@ -5,12 +5,12 @@ package enttest
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
+	"github.com/mandacode-labs/mdrive/ent"
 	// required by schema hooks.
-	_ "github.com/mandacode-labs/retrowin-go/ent/runtime"
+	_ "github.com/mandacode-labs/mdrive/ent/runtime"
 
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/mandacode-labs/retrowin-go/ent/migrate"
+	"github.com/mandacode-labs/mdrive/ent/migrate"
 )
 
 type (

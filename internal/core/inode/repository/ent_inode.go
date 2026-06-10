@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	entinode "github.com/mandacode-labs/retrowin-go/ent/inode"
-	domain "github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/ent"
+	entinode "github.com/mandacode-labs/mdrive/ent/inode"
+	domain "github.com/mandacode-labs/mdrive/internal/core/inode"
 )
 
 // timeNow returns the current time. Extracted for testability.

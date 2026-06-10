@@ -4,8 +4,8 @@ import (
 	"context"
 	"path"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // Rm removes multiple paths, like Unix rm.

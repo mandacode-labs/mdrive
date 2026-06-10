@@ -21,23 +21,23 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	entsystem "github.com/mandacode-labs/retrowin-go/ent/system"
-	entusersystem "github.com/mandacode-labs/retrowin-go/ent/usersystem"
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	inoderepo "github.com/mandacode-labs/retrowin-go/internal/core/inode/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
-	"github.com/mandacode-labs/retrowin-go/internal/core/user"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
-	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
-	domainsystem "github.com/mandacode-labs/retrowin-go/internal/system"
-	systemrepo "github.com/mandacode-labs/retrowin-go/internal/system/repository"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	"github.com/mandacode-labs/mdrive/ent"
+	entsystem "github.com/mandacode-labs/mdrive/ent/system"
+	entusersystem "github.com/mandacode-labs/mdrive/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	inoderepo "github.com/mandacode-labs/mdrive/internal/core/inode/repository"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectrepo "github.com/mandacode-labs/mdrive/internal/core/object/repository"
+	"github.com/mandacode-labs/mdrive/internal/core/object/s3"
+	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/service/sysinit"
+	domainsystem "github.com/mandacode-labs/mdrive/internal/system"
+	systemrepo "github.com/mandacode-labs/mdrive/internal/system/repository"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 // Shared containers for integration tests — started once via sync.Once.
@@ -159,7 +159,7 @@ func (s *Suite) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to start shared containers: %w", err)
 	}
 
-	s.dbName = "retrowin_int_test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
+	s.dbName = "mdrive_int_test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
 	adminDSN := fmt.Sprintf("host=%s port=%d user=test password=test dbname=postgres sslmode=disable",
 		sharedPgHost, sharedPgPort)
 

@@ -3,8 +3,8 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // ChmodPath changes permissions of a path.

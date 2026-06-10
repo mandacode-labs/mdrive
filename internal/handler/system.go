@@ -3,13 +3,13 @@ package handler
 import (
 	"context"
 
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 
-	coreuser "github.com/mandacode-labs/retrowin-go/internal/core/user"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/service/sysinit"
-	"github.com/mandacode-labs/retrowin-go/internal/system"
-	"github.com/mandacode-labs/retrowin-go/internal/utils"
+	coreuser "github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/service/sysinit"
+	"github.com/mandacode-labs/mdrive/internal/system"
+	"github.com/mandacode-labs/mdrive/internal/utils"
 )
 
 // CreateSystem implements POST /systems.

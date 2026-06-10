@@ -9,11 +9,11 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
-	"github.com/mandacode-labs/retrowin-go/ent/systemgroup"
-	"github.com/mandacode-labs/retrowin-go/ent/user"
-	"github.com/mandacode-labs/retrowin-go/ent/usergroup"
-	"github.com/mandacode-labs/retrowin-go/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/system"
+	"github.com/mandacode-labs/mdrive/ent/systemgroup"
+	"github.com/mandacode-labs/mdrive/ent/user"
+	"github.com/mandacode-labs/mdrive/ent/usergroup"
+	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // UserSystemCreate is the builder for creating a UserSystem entity.

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
 )
 
 // InodeService defines the subset of inode operations needed by the handler layer.

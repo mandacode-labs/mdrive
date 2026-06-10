@@ -186,7 +186,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 }
 
 func setDefaults(v *viper.Viper) {
-	v.SetDefault("app.name", "retrowin")
+	v.SetDefault("app.name", "mdrive")
 	v.SetDefault("app.version", "0.1.0")
 	v.SetDefault("app.env", "development")
 	v.SetDefault("app.logLevel", "info")
@@ -205,7 +205,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.session.ttl", 86400) // 24 hours
 	v.SetDefault("auth.session.secure", false)
 	v.SetDefault("auth.session.stateTTL", 300) // 5 minutes
-	v.SetDefault("auth.session.redisKey", "retrowin")
+	v.SetDefault("auth.session.redisKey", "mdrive")
 	v.SetDefault("auth.session.cookieName", "session_id")
 	v.SetDefault("auth.session.frontendURL", "http://localhost:5173")
 	v.SetDefault("auth.session.domain", "")      // Empty means current host only
@@ -214,7 +214,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("telemetry.enabled", false)
 	v.SetDefault("telemetry.endpoint", "localhost:4317")
 	v.SetDefault("telemetry.insecure", true)
-	v.SetDefault("telemetry.serviceName", "retrowin")
+	v.SetDefault("telemetry.serviceName", "mdrive")
 }
 
 func bindEnvVars(v *viper.Viper) {

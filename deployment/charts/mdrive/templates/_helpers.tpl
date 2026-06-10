@@ -1,8 +1,8 @@
-{{- define "retrowin.name" -}}
+{{- define "mdrive.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "retrowin.fullname" -}}
+{{- define "mdrive.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -15,33 +15,33 @@
 {{- end }}
 {{- end }}
 
-{{- define "retrowin.chart" -}}
+{{- define "mdrive.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{- define "retrowin.labels" -}}
-helm.sh/chart: {{ include "retrowin.chart" . }}
-{{ include "retrowin.selectorLabels" . }}
+{{- define "mdrive.labels" -}}
+helm.sh/chart: {{ include "mdrive.chart" . }}
+{{ include "mdrive.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{- define "retrowin.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "retrowin.name" . }}
+{{- define "mdrive.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "mdrive.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "retrowin.serviceAccountName" -}}
+{{- define "mdrive.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "retrowin.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "mdrive.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
-{{- define "retrowin.image" -}}
+{{- define "mdrive.image" -}}
 {{- $registryName := .Values.image.registry | default "" -}}
 {{- $repositoryName := .Values.image.repository -}}
 {{- $tag := .Values.image.tag | default .Chart.AppVersion | toString -}}

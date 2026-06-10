@@ -25,11 +25,11 @@ import (
 	"github.com/valkey-io/valkey-go"
 	"gopkg.in/yaml.v3"
 
-	openapispec "github.com/mandacode-labs/retrowin-go/api"
-	"github.com/mandacode-labs/retrowin-go/ent"
-	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	openapispec "github.com/mandacode-labs/mdrive/api"
+	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/cmd/serve"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // Shared containers — started once in TestMain, reused by all tests.
@@ -229,7 +229,7 @@ func (s *Suite) Start(ctx context.Context) error {
 	s.ValkeyClient = valkeyClient
 
 	// Create a per-test database for isolation (with retry)
-	s.dbName = "retrowin_test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
+	s.dbName = "mdrive_test_" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
 	adminDSN := fmt.Sprintf("host=%s port=%d user=test password=test dbname=postgres sslmode=disable",
 		sharedPgHost, sharedPgPort)
 
@@ -290,7 +290,7 @@ func (s *Suite) Start(ctx context.Context) error {
 	// Create test config
 	s.Config = &config.Config{
 		App: config.AppConfig{
-			Name:    "retrowin-test",
+			Name:    "mdrive-test",
 			Version: "test",
 			Env:     "test",
 		},
@@ -335,7 +335,7 @@ func (s *Suite) Start(ctx context.Context) error {
 				TTL:        3600,
 				Secure:     false,
 				StateTTL:   300,
-				RedisKey:   "retrowin-test",
+				RedisKey:   "mdrive-test",
 				CookieName: "session_id",
 			},
 		},
@@ -343,7 +343,7 @@ func (s *Suite) Start(ctx context.Context) error {
 			Enabled: true,
 			AllowedOrigins: []string{
 				"http://localhost:3000",
-				"https://retrowin.starship.co",
+				"https://mdrive.starship.co",
 			},
 			AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 			AllowedHeaders: []string{"Content-Type", "Authorization", "X-Requested-With"},
@@ -360,7 +360,7 @@ func (s *Suite) Start(ctx context.Context) error {
 // StartServer starts the HTTP server
 func (s *Suite) StartServer(ctx context.Context) error {
 	// Create a temporary config file
-	tmpDir, err := os.MkdirTemp("", "retrowin-test-*")
+	tmpDir, err := os.MkdirTemp("", "mdrive-test-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %w", err)
 	}

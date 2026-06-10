@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
 )
 
 func TestIntegration_StorageService_UploadFlow(t *testing.T) {

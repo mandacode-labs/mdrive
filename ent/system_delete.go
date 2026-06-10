@@ -8,8 +8,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/retrowin-go/ent/predicate"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/system"
 )
 
 // SystemDelete is the builder for deleting a System entity.

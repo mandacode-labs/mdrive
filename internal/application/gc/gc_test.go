@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectMocks "github.com/mandacode-labs/retrowin-go/internal/core/object/mocks"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectMocks "github.com/mandacode-labs/mdrive/internal/core/object/mocks"
 )
 
 func newTestObject(id, bucket, storageKey string, status object.Status) *object.Object {

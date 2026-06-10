@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	openapispec "github.com/mandacode-labs/retrowin-go/api"
-	"github.com/mandacode-labs/retrowin-go/internal/cmd/serve"
+	openapispec "github.com/mandacode-labs/mdrive/api"
+	"github.com/mandacode-labs/mdrive/internal/cmd/serve"
 )
 
 func TestSuite_Start(t *testing.T) {
@@ -90,7 +90,7 @@ func TestSuite_ServerStartup(t *testing.T) {
 
 	shutdown := make(chan struct{})
 
-	// Create a test HTTP server that simulates the retrowin server
+	// Create a test HTTP server that simulates the mdrive server
 	mux := http.NewServeMux()
 
 	// Health check endpoint (direct access, no /v1 prefix)
@@ -309,7 +309,7 @@ func TestSuite_CORS(t *testing.T) {
 	t.Run("Preflight_AllowedOrigin", func(t *testing.T) {
 		req, err := http.NewRequest("OPTIONS", baseURL+"/user", nil)
 		require.NoError(t, err, "Failed to create request")
-		req.Header.Set("Origin", "https://retrowin.starship.co")
+		req.Header.Set("Origin", "https://mdrive.starship.co")
 		req.Header.Set("Access-Control-Request-Method", "GET")
 
 		resp, err := http.DefaultClient.Do(req)
@@ -319,7 +319,7 @@ func TestSuite_CORS(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, resp.StatusCode, "OPTIONS should return 204")
 
 		allowOrigin := resp.Header.Get("Access-Control-Allow-Origin")
-		assert.Equal(t, "https://retrowin.starship.co", allowOrigin, "Should return configured origin")
+		assert.Equal(t, "https://mdrive.starship.co", allowOrigin, "Should return configured origin")
 	})
 
 	t.Log("CORS tests passed successfully")

@@ -10,8 +10,8 @@ import (
 
 	"github.com/valkey-io/valkey-go"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
-	"github.com/mandacode-labs/retrowin-go/internal/session"
+	"github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/session"
 )
 
 // LoginRequest represents a Keycloak login request.

@@ -1,4 +1,4 @@
-# retrowin-go
+# mdrive
 
 A distributed POSIX-like filesystem backed by object storage (S3/MinIO), built with Go.
 
@@ -10,7 +10,7 @@ graph TB
         A[Web Client / CLI]
     end
 
-    subgraph "retrowin-go Server"
+    subgraph "mdrive Server"
         B[HTTP API / ogen]
         C[Auth Middleware<br/>Keycloak OIDC]
         D[FsService]
@@ -130,7 +130,7 @@ sequenceDiagram
 ```bash
 # Run server
 make build
-./bin/retrowin-server serve --config config.yaml
+./bin/mdrive serve --config config.yaml
 
 # Run tests
 make test

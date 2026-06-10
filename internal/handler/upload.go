@@ -5,12 +5,12 @@ import (
 	"net/url"
 	"path"
 
-	api "github.com/mandacode-labs/retrowin-go/pkg/api"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 
-	"github.com/mandacode-labs/retrowin-go/internal/application/storage"
-	"github.com/mandacode-labs/retrowin-go/internal/application/vfs"
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/application/storage"
+	"github.com/mandacode-labs/mdrive/internal/application/vfs"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // InitiateUpload implements POST /fs/{systemId}/upload/initiate.

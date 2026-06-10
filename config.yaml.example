@@ -1,5 +1,5 @@
 app:
-  name: retrowin
+  name: mdrive
   version: 0.1.0
   env: development
 
@@ -11,7 +11,7 @@ database:
   driver: postgres
   host: localhost
   port: 5432
-  name: retrowin
+  name: mdrive
   user: postgres
   password: postgres
   sslmode: disable
@@ -29,25 +29,25 @@ storage:
   endpoint: ""          # Leave empty for auto-detection based on provider
   access_key: ""        # Leave empty for IRSA/IAM role authentication
   secret_key: ""        # Leave empty for IRSA/IAM role authentication
-  bucket: retrowin-files
+  bucket: mdrive-files
   use_ssl: false        # For MinIO/LocalStack: true = HTTPS, false = HTTP
 
 auth:
   keycloak:
     base_url: http://localhost:8081
-    realm: retrowin
-    client_id: retrowin-api
+    realm: mdrive
+    client_id: mdrive-api
     client_secret: ""
     redirect_uri: http://localhost:8080/auth/callback
   session:
     ttl: 86400          # Session TTL in seconds (24 hours)
     secure: false       # Set Secure flag on cookie (true for production)
     state_ttl: 300      # OAuth state TTL in seconds (5 minutes)
-    redis_key: retrowin # Redis key prefix
+    redis_key: mdrive # Redis key prefix
 
 telemetry:
   enabled: false          # Enable OpenTelemetry tracing and metrics
   endpoint: "localhost:4317" # OTLP gRPC endpoint
   insecure: true          # Use insecure gRPC connection (development only)
   caCert: ""              # Path to CA certificate for TLS (leave empty for system CA)
-  serviceName: "retrowin" # Service name for traces and metrics
+  serviceName: "mdrive" # Service name for traces and metrics

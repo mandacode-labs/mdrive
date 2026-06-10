@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // RequestLoggingMiddleware logs all HTTP requests with timing and status.

@@ -5,13 +5,13 @@ import (
 
 	_ "github.com/lib/pq" // postgres driver
 
-	retrowinserver "github.com/mandacode-labs/retrowin-go/internal/cmd/retrowin-server"
+	mdrivecmd "github.com/mandacode-labs/mdrive/internal/cmd/mdrive"
 )
 
 var version = "dev"
 
 func main() {
-	cmd := retrowinserver.NewCmd()
+	cmd := mdrivecmd.NewCmd()
 	cmd.Version = version
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)

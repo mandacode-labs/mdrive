@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "retrowin.fullname" . }}-migration-{{ .Release.Revision }}
+  name: {{ include "mdrive.fullname" . }}-migration-{{ .Release.Revision }}
   labels:
-    {{- include "retrowin.labels" . | nindent 4 }}
+    {{- include "mdrive.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
@@ -15,14 +15,14 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "retrowin.selectorLabels" . | nindent 8 }}
+        {{- include "mdrive.selectorLabels" . | nindent 8 }}
     spec:
       restartPolicy: Never
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "retrowin.serviceAccountName" . }}
+      serviceAccountName: {{ include "mdrive.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -30,7 +30,7 @@ spec:
         - name: migration
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "retrowin.image" . }}
+          image: {{ include "mdrive.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - migrate
@@ -54,7 +54,7 @@ spec:
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.database.existingSecret | default (include "retrowin.fullname" .) }}
+                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
             {{- end }}
           volumeMounts:
@@ -66,7 +66,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "retrowin.fullname" . }}
+            name: {{ include "mdrive.fullname" . }}
         - name: tmp
           emptyDir: {}
 {{- end }}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 func TestLn_EmptyTarget(t *testing.T) {

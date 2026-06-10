@@ -43,7 +43,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -a \
     -ldflags="-w -s \
               -X main.version=${VERSION}" \
-    -o retrowin-server ./cmd/retrowin-server
+    -o mdrive ./cmd/mdrive
 
 ############################
 # 2. Runtime Stage
@@ -53,10 +53,10 @@ FROM alpine:3.23.0 AS runtime
 ARG VERSION
 
 # OCI labels
-LABEL org.opencontainers.image.title="Retrowin Server" \
-      org.opencontainers.image.description="Retrowin API Server" \
+LABEL org.opencontainers.image.title="Mandacode Drive" \
+      org.opencontainers.image.description="Mandacode Drive API Server" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/mandacode-labs/retrowin-go"
+      org.opencontainers.image.source="https://github.com/mandacode-labs/mdrive"
 
 # Install runtime dependencies
 RUN apk add --no-cache \
@@ -71,18 +71,18 @@ RUN curl -sSfLo /usr/local/bin/atlas \
     chmod +x /usr/local/bin/atlas
 
 # Create non-root user
-RUN adduser -D -u 1001 retrowin
+RUN adduser -D -u 1001 mdrive
 
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/retrowin-server /app/retrowin-server
+COPY --from=builder /build/mdrive /app/mdrive
 
 # Create config directory
-RUN mkdir -p /app/config && chown -R retrowin:retrowin /app
+RUN mkdir -p /app/config && chown -R mdrive:mdrive /app
 
 # Switch to non-root user
-USER retrowin
+USER mdrive
 
 # Expose port
 EXPOSE 8080
@@ -96,5 +96,5 @@ ENV PORT=8080 \
     GIN_MODE=release
 
 # Run
-ENTRYPOINT ["/app/retrowin-server"]
+ENTRYPOINT ["/app/mdrive"]
 CMD ["serve"]

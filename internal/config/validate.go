@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/mandacode-labs/retrowin-go/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/errors"
 )
 
 // Validate validates the configuration.

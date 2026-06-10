@@ -13,7 +13,7 @@ import (
 	collectormetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 
-	"github.com/mandacode-labs/retrowin-go/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
 // mockTraceCollector implements TraceServiceServer.
@@ -92,7 +92,7 @@ func TestNewProviders_EnabledWithMockCollector(t *testing.T) {
 			Enabled:     true,
 			Endpoint:    addr,
 			Insecure:    true,
-			ServiceName: "retrowin-test",
+			ServiceName: "mdrive-test",
 		},
 	}
 
@@ -162,7 +162,7 @@ func TestProviders_Shutdown_Idempotent(t *testing.T) {
 			Enabled:     true,
 			Endpoint:    addr,
 			Insecure:    true,
-			ServiceName: "retrowin-test",
+			ServiceName: "mdrive-test",
 		},
 	}
 

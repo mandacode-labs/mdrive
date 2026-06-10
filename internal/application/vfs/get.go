@@ -3,7 +3,7 @@ package vfs
 import (
 	"context"
 
-	"github.com/mandacode-labs/retrowin-go/internal/core/inode"
+	"github.com/mandacode-labs/mdrive/internal/core/inode"
 )
 
 func (s *service) Get(ctx context.Context, id string) (*inode.Inode, error) {

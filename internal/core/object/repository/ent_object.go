@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	entobject "github.com/mandacode-labs/retrowin-go/ent/object"
-	domain "github.com/mandacode-labs/retrowin-go/internal/core/object"
+	"github.com/mandacode-labs/mdrive/ent"
+	entobject "github.com/mandacode-labs/mdrive/ent/object"
+	domain "github.com/mandacode-labs/mdrive/internal/core/object"
 )
 
 // EntRepository implements domain.ObjectRepository using Ent.

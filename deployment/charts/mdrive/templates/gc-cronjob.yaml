@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "retrowin.fullname" . }}-gc
+  name: {{ include "mdrive.fullname" . }}-gc
   labels:
-    {{- include "retrowin.labels" . | nindent 4 }}
+    {{- include "mdrive.labels" . | nindent 4 }}
 spec:
   schedule: {{ .Values.gc.schedule | quote }}
   concurrencyPolicy: {{ .Values.gc.concurrencyPolicy }}
@@ -18,14 +18,14 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "retrowin.selectorLabels" . | nindent 12 }}
+            {{- include "mdrive.selectorLabels" . | nindent 12 }}
         spec:
           restartPolicy: Never
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          serviceAccountName: {{ include "retrowin.serviceAccountName" . }}
+          serviceAccountName: {{ include "mdrive.serviceAccountName" . }}
           automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
           securityContext:
             {{- toYaml .Values.podSecurityContext | nindent 12 }}
@@ -33,7 +33,7 @@ spec:
             - name: gc
               securityContext:
                 {{- toYaml .Values.securityContext | nindent 16 }}
-              image: {{ include "retrowin.image" . }}
+              image: {{ include "mdrive.image" . }}
               imagePullPolicy: {{ .Values.image.pullPolicy }}
               args:
                 - gc
@@ -47,19 +47,19 @@ spec:
                 - name: DATABASE_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.secrets.database.existingSecret | default (include "retrowin.fullname" .) }}
+                      name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                       key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
                 {{- end }}
                 {{- if or .Values.secrets.storage.accessKey .Values.secrets.storage.existingSecret }}
                 - name: STORAGE_ACCESS_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.secrets.storage.existingSecret | default (include "retrowin.fullname" .) }}
+                      name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
                       key: storage-access-key
                 - name: STORAGE_SECRET_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: {{ .Values.secrets.storage.existingSecret | default (include "retrowin.fullname" .) }}
+                      name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
                       key: storage-secret-key
                 {{- end }}
               volumeMounts:
@@ -73,7 +73,7 @@ spec:
           volumes:
             - name: config
               configMap:
-                name: {{ include "retrowin.fullname" . }}
+                name: {{ include "mdrive.fullname" . }}
             - name: tmp
               emptyDir: {}
 {{- end }}

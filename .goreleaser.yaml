@@ -5,9 +5,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: retrowin-server
-    main: ./cmd/retrowin-server
-    binary: retrowin-server
+  - id: mdrive
+    main: ./cmd/mdrive
+    binary: mdrive
     env:
       - CGO_ENABLED=0
     goos:
@@ -20,10 +20,10 @@ builds:
       - -s -w -X main.version={{.Version}}
 
 archives:
-  - id: retrowin-server
+  - id: mdrive
     ids:
-      - retrowin-server
-    name_template: "retrowin-server_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+      - mdrive
+    name_template: "mdrive_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
     files:

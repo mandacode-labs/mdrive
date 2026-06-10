@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/mandacode-labs/retrowin-go/ent/system"
+	"github.com/mandacode-labs/mdrive/ent/system"
 )
 
 // System is the model entity for the System schema.

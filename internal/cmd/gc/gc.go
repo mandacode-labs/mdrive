@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mandacode-labs/retrowin-go/ent"
-	gcapp "github.com/mandacode-labs/retrowin-go/internal/application/gc"
+	"github.com/mandacode-labs/mdrive/ent"
+	gcapp "github.com/mandacode-labs/mdrive/internal/application/gc"
 
-	"github.com/mandacode-labs/retrowin-go/internal/config"
-	"github.com/mandacode-labs/retrowin-go/internal/core/object"
-	objectrepo "github.com/mandacode-labs/retrowin-go/internal/core/object/repository"
-	s3storage "github.com/mandacode-labs/retrowin-go/internal/core/object/s3"
-	"github.com/mandacode-labs/retrowin-go/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/core/object"
+	objectrepo "github.com/mandacode-labs/mdrive/internal/core/object/repository"
+	s3storage "github.com/mandacode-labs/mdrive/internal/core/object/s3"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // runGC bootstraps dependencies and runs garbage collection.

@@ -24,8 +24,8 @@ type Suite struct {
 // NewSuite creates a new kind test suite.
 func NewSuite(t *testing.T) *Suite {
 	return &Suite{
-		clusterName: fmt.Sprintf("retrowin-test-%d", time.Now().Unix()),
-		namespace:   "retrowin-test",
+		clusterName: fmt.Sprintf("mdrive-test-%d", time.Now().Unix()),
+		namespace:   "mdrive-test",
 	}
 }
 
@@ -67,13 +67,13 @@ func (s *Suite) Stop(t *testing.T) {
 	}
 }
 
-// InstallHelmChart installs the retrowin Helm chart.
+// InstallHelmChart installs the mdrive Helm chart.
 func (s *Suite) InstallHelmChart(t *testing.T, imageRepository, imageTag string) {
 	t.Helper()
 
-	chartPath := "../../deployment/charts/retrowin"
+	chartPath := "../../deployment/charts/mdrive"
 
-	cmd := exec.Command("helm", "install", "retrowin", chartPath,
+	cmd := exec.Command("helm", "install", "mdrive", chartPath,
 		"--kubeconfig", s.kubeconfig,
 		"--namespace", s.namespace,
 		"--set", fmt.Sprintf("image.repository=%s", imageRepository),
