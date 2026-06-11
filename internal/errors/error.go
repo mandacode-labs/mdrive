@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -11,11 +12,17 @@ type Error struct {
 	Message    string         `json:"message"`
 	StatusCode int            `json:"-"`
 	Details    map[string]any `json:"details,omitempty"`
+	cause      error          // wrapped error
 }
 
 // Error implements the error interface.
 func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+// Unwrap returns the wrapped error.
+func (e *Error) Unwrap() error {
+	return e.cause
 }
 
 // New creates a new Error.
@@ -64,7 +71,8 @@ func ServiceUnavailable(message string) *Error {
 
 // IsNotFound checks if the error is a not found error.
 func IsNotFound(err error) bool {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e.StatusCode == http.StatusNotFound
 	}
 	return false
@@ -72,7 +80,8 @@ func IsNotFound(err error) bool {
 
 // IsBadRequest checks if the error is a bad request error.
 func IsBadRequest(err error) bool {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e.StatusCode == http.StatusBadRequest
 	}
 	return false
@@ -85,7 +94,8 @@ func IsAlreadyExists(err error) bool {
 
 // IsConflict checks if the error is a conflict error.
 func IsConflict(err error) bool {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e.StatusCode == http.StatusConflict
 	}
 	return false
@@ -93,7 +103,8 @@ func IsConflict(err error) bool {
 
 // IsUnauthorized checks if the error is an unauthorized error.
 func IsUnauthorized(err error) bool {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e.StatusCode == http.StatusUnauthorized
 	}
 	return false
@@ -101,7 +112,8 @@ func IsUnauthorized(err error) bool {
 
 // IsForbidden checks if the error is a forbidden error.
 func IsForbidden(err error) bool {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e.StatusCode == http.StatusForbidden
 	}
 	return false
@@ -109,10 +121,11 @@ func IsForbidden(err error) bool {
 
 // FromError converts a standard error to an Error.
 func FromError(err error) *Error {
-	if e, ok := err.(*Error); ok {
+	var e *Error
+	if errors.As(err, &e) {
 		return e
 	}
-	return Internal(err.Error())
+	return WrapInternal(err, err.Error())
 }
 
 // Wrap wraps a standard error with a new Error code and message.
@@ -121,7 +134,7 @@ func Wrap(err error, code, message string, statusCode int) *Error {
 		Code:       code,
 		Message:    message,
 		StatusCode: statusCode,
-		Details:    map[string]any{"cause": err.Error()},
+		cause:      err,
 	}
 }
 

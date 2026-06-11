@@ -433,7 +433,12 @@ func (s *Suite) UploadToPresignedURL(t *testing.T, presignedURL string, data []b
 	require.NoError(t, err, "Failed to create upload request")
 	req.Header.Set("Content-Type", "text/plain")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	// Timeout scales with data size: 10s base + 1s per 10MB
+	timeout := 10*time.Second + time.Duration(len(data)/(10*1024*1024))*time.Second
+	if timeout < 10*time.Second {
+		timeout = 10 * time.Second
+	}
+	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	require.NoError(t, err, "Failed to upload to presigned URL")
 	defer func() { _ = resp.Body.Close() }()

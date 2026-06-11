@@ -5,7 +5,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/errors"
-	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
 // Delete removes an inode by ID.
@@ -43,12 +42,10 @@ func (s *service) deleteObjectRef(ctx context.Context, in inodeGetter) error {
 		return nil
 	}
 	if err := s.objectSvc.Delete(ctx, objectID); err != nil {
-		if !errors.IsNotFound(err) && !ent.IsNotFound(err) {
-			logging.Ctx(ctx).Warn().
-				Str("object_id", objectID).
-				Err(err).
-				Msg("failed to delete object, skipping")
+		if errors.IsNotFound(err) || ent.IsNotFound(err) {
+			return nil // Already deleted, not an error
 		}
+		return errors.WrapInternal(err, "failed to delete object reference")
 	}
 	return nil
 }

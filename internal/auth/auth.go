@@ -175,7 +175,7 @@ func (s *authService) HandleCallback(ctx context.Context, req *CallbackRequest) 
 
 	token, err := client.Exchange(ctx, req.Code, loginReq.CodeVerifier)
 	if err != nil {
-		return nil, errors.Unauthorized(fmt.Sprintf("failed to exchange code: %v", err))
+		return nil, errors.WrapInternal(err, "failed to exchange code")
 	}
 
 	// Extract raw ID token for RP-initiated logout
@@ -183,7 +183,7 @@ func (s *authService) HandleCallback(ctx context.Context, req *CallbackRequest) 
 
 	userInfo, err := client.GetUserInfo(ctx, token)
 	if err != nil {
-		return nil, errors.Internal(fmt.Sprintf("failed to get user info: %v", err))
+		return nil, errors.WrapInternal(err, "failed to get user info")
 	}
 
 	userID, err := s.userSvc.FindOrCreate(
@@ -199,7 +199,7 @@ func (s *authService) HandleCallback(ctx context.Context, req *CallbackRequest) 
 
 	sess, err := s.sessionSvc.Create(ctx, userID, rawIDToken)
 	if err != nil {
-		return nil, errors.Internal(fmt.Sprintf("failed to create session: %v", err))
+		return nil, errors.WrapInternal(err, "failed to create session")
 	}
 
 	s.deleteLoginRequest(ctx, req.State)

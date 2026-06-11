@@ -9,6 +9,7 @@ import (
 	"github.com/ogen-go/ogen/ogenerrors"
 
 	domainerrors "github.com/mandacode-labs/mdrive/internal/errors"
+	"github.com/mandacode-labs/mdrive/internal/logging"
 	api "github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -64,7 +65,9 @@ func (h *Handler) ErrorHandler(ctx context.Context, w http.ResponseWriter, r *ht
 				Message: domainErr.Message,
 			},
 		}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logging.Ctx(ctx).Error().Err(err).Msg("failed to encode error response")
+		}
 		return
 	}
 
@@ -79,7 +82,9 @@ func (h *Handler) ErrorHandler(ctx context.Context, w http.ResponseWriter, r *ht
 				Message: "authentication required",
 			},
 		}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logging.Ctx(ctx).Error().Err(err).Msg("failed to encode error response")
+		}
 		return
 	}
 
@@ -92,5 +97,7 @@ func (h *Handler) ErrorHandler(ctx context.Context, w http.ResponseWriter, r *ht
 			Message: err.Error(),
 		},
 	}
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		logging.Ctx(ctx).Error().Err(err).Msg("failed to encode error response")
+	}
 }
