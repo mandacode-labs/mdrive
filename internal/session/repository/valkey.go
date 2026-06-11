@@ -86,12 +86,17 @@ func (r *ValkeySessionRepository) Save(ctx context.Context, session *domain.Sess
 func (r *ValkeySessionRepository) Get(ctx context.Context, id domain.SessionID) (*domain.Session, error) {
 	result := r.client.Do(ctx, r.client.B().Get().Key(r.sessionKey(id)).Build())
 	if result.Error() != nil {
-		return nil, nil
+		// valkey.Nil means the key does not exist (session not found)
+		if result.Error() == valkey.Nil {
+			return nil, nil
+		}
+		// Any other error is a connection or server error
+		return nil, fmt.Errorf("session retrieval failed: %w", result.Error())
 	}
 
 	data, err := result.ToString()
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("session data read failed: %w", err)
 	}
 
 	var sd sessionData
