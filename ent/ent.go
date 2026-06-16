@@ -12,13 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/mandacode-labs/mdrive/ent/inode"
-	"github.com/mandacode-labs/mdrive/ent/object"
-	"github.com/mandacode-labs/mdrive/ent/system"
-	"github.com/mandacode-labs/mdrive/ent/systemgroup"
-	"github.com/mandacode-labs/mdrive/ent/user"
-	"github.com/mandacode-labs/mdrive/ent/usergroup"
-	"github.com/mandacode-labs/mdrive/ent/usersystem"
+	"github.com/mandacode-labs/mdrive/ent/node"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -79,13 +73,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			inode.Table:       inode.ValidColumn,
-			object.Table:      object.ValidColumn,
-			system.Table:      system.ValidColumn,
-			systemgroup.Table: systemgroup.ValidColumn,
-			user.Table:        user.ValidColumn,
-			usergroup.Table:   usergroup.ValidColumn,
-			usersystem.Table:  usersystem.ValidColumn,
+			node.Table: node.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

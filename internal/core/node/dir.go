@@ -1,0 +1,141 @@
+package node
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
+// DirEntry follows the Linux struct linux_dirent pattern: an inode reference plus a name.
+// We additionally include the type for ls-style listing (Linux exposes d_type for this).
+// JSON tags are kept short to minimize inline content size.
+type DirEntry struct {
+	InodeID uuid.UUID `json:"ino"`
+	Name    string    `json:"name"`
+	Type    NodeType  `json:"type"`
+}
+
+// DirContent is the JSON-serialized listing of a directory node.
+// Stored inline in the node's content field.
+type DirContent struct {
+	Entries []DirEntry `json:"items"`
+}
+
+// NewDirContent creates a DirContent from a list of entries.
+func NewDirContent(entries []DirEntry) *DirContent {
+	if entries == nil {
+		entries = []DirEntry{}
+	}
+	return &DirContent{Entries: entries}
+}
+
+// Marshal returns the JSON representation of DirContent.
+func (d *DirContent) Marshal() ([]byte, error) {
+	return json.Marshal(d)
+}
+
+// findEntry returns the entry with the given name, or nil if not present.
+func (d *DirContent) findEntry(name string) *DirEntry {
+	for i := range d.Entries {
+		if d.Entries[i].Name == name {
+			return &d.Entries[i]
+		}
+	}
+	return nil
+}
+
+// NewDirectory creates a new empty directory node.
+func NewDirectory() (*Node, error) {
+	data, err := json.Marshal(NewDirContent(nil))
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal directory content: %w", err)
+	}
+	n := newNode(NodeTypeDirectory)
+	if err := n.write(Content(data), 0); err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+// ReadDir returns the directory listing.
+func (n *Node) ReadDir() (DirContent, error) {
+	content, err := n.read()
+	if err != nil {
+		return DirContent{}, fmt.Errorf("failed to read directory content: %w", err)
+	}
+	var dc DirContent
+	if err := json.Unmarshal(content, &dc); err != nil {
+		return DirContent{}, fmt.Errorf("failed to unmarshal directory content: %w", err)
+	}
+	return dc, nil
+}
+
+// WriteDir replaces the directory's content with the given listing.
+func (n *Node) WriteDir(dc DirContent) error {
+	if n.typ != NodeTypeDirectory {
+		return ErrNotDirectory
+	}
+	data, err := json.Marshal(&dc)
+	if err != nil {
+		return fmt.Errorf("failed to marshal directory content: %w", err)
+	}
+	if len(data) > MaxContentSize {
+		return ErrContentTooLarge
+	}
+	return n.write(Content(data), int64(len(data)))
+}
+
+// AddEntry adds a child entry to the directory.
+// Fails if the entry already exists or the node is not a directory.
+func (n *Node) AddEntry(name string, child *Node) error {
+	if n.typ != NodeTypeDirectory {
+		return ErrNotDirectory
+	}
+	if name == "" {
+		return ErrInvalidName
+	}
+	dc, err := n.ReadDir()
+	if err != nil {
+		return err
+	}
+	if dc.findEntry(name) != nil {
+		return ErrEntryExists
+	}
+	dc.Entries = append(dc.Entries, DirEntry{
+		InodeID: child.id,
+		Name:    name,
+		Type:    child.typ,
+	})
+	return n.WriteDir(dc)
+}
+
+// RemoveEntry removes a child entry by name.
+func (n *Node) RemoveEntry(name string) error {
+	if n.typ != NodeTypeDirectory {
+		return ErrNotDirectory
+	}
+	dc, err := n.ReadDir()
+	if err != nil {
+		return err
+	}
+	for i := range dc.Entries {
+		if dc.Entries[i].Name == name {
+			dc.Entries = append(dc.Entries[:i], dc.Entries[i+1:]...)
+			return n.WriteDir(dc)
+		}
+	}
+	return ErrEntryNotFound
+}
+
+// Lookup returns the child entry with the given name, or nil if not present.
+func (n *Node) Lookup(name string) (*DirEntry, error) {
+	if n.typ != NodeTypeDirectory {
+		return nil, ErrNotDirectory
+	}
+	dc, err := n.ReadDir()
+	if err != nil {
+		return nil, err
+	}
+	return dc.findEntry(name), nil
+}
