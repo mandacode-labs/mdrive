@@ -2,23 +2,25 @@ package vfs
 
 import (
 	"context"
-	"errors"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
-// Service is the VFS orchestration layer. It composes domain services
-// (node, drive, user) with cross-cutting concerns (Storage, Permission)
-// to perform path-based, permission-checked operations.
+// Service is the VFS orchestration layer.
+//
+// It exposes POSIX-style file system commands (Mkdir, Touch, Rm, Mv, Ls, Cat, etc.)
+// that operate on path strings. Under the hood it composes node/drive/user domain
+// services with a Storage backend and permission checks via OpenFGA.
 type Service struct {
 	nodeSvc  *node.Service
 	driveSvc *drive.Service
 	userSvc  *user.Service
 	store    Storage
 	perm     permission.Checker
+	path     *Resolver
 }
 
 // NewService creates a new VFS Service.
@@ -35,6 +37,7 @@ func NewService(
 		userSvc:  userSvc,
 		store:    store,
 		perm:     checker,
+		path:     newResolver(nodeSvc),
 	}
 }
 
@@ -47,6 +50,7 @@ func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error 
 			userSvc:  s.userSvc,
 			store:    s.store,
 			perm:     s.perm,
+			path:     newResolver(txNode),
 		})
 	})
 }
@@ -58,7 +62,16 @@ func (s *Service) checkAccess(ctx context.Context, userID, permission, driveID s
 		return err
 	}
 	if !allowed {
-		return errors.New("vfs: permission denied")
+		return ErrPermission
 	}
 	return nil
+}
+
+// mustGetDrive returns the drive or panics (internal helper for already-valid call chains).
+func (s *Service) mustGetDrive(ctx context.Context, driveID string) *drive.Drive {
+	d, err := s.driveSvc.GetByID(ctx, driveID)
+	if err != nil || d == nil || d.RootNodeID() == nil {
+		return nil
+	}
+	return d
 }
