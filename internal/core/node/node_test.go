@@ -354,31 +354,28 @@ func TestNewObject_NegativeSize(t *testing.T) {
 	}
 }
 
-func TestNewContent(t *testing.T) {
-	c, err := NewContent([]byte("hello"))
-	if err != nil {
-		t.Errorf("NewContent: %v", err)
-	}
+func TestContentSize(t *testing.T) {
+	c := Content([]byte("hello"))
 	if c.Size() != 5 {
 		t.Errorf("expected size 5, got %d", c.Size())
 	}
 }
 
-func TestNewContent_TooLarge(t *testing.T) {
+func TestWriteContentTooLarge(t *testing.T) {
+	n, _ := NewFile("x")
 	large := make([]byte, MaxContentSize+1)
-	if _, err := NewContent(large); err != ErrContentTooLarge {
+	if err := n.write(large, int64(len(large))); err != ErrContentTooLarge {
 		t.Errorf("expected ErrContentTooLarge, got %v", err)
 	}
 }
 
 func TestNewRootNode(t *testing.T) {
-	driveID := "01H8XGJWBWBAQ4ZEXAMPLE0DRIVE"
-	n := NewRootNode(driveID)
+	n := NewRootNode()
 	if n.Type() != NodeTypeDirectory {
 		t.Errorf("expected type directory, got %v", n.Type())
 	}
-	if n.DriveID() != driveID {
-		t.Errorf("expected driveID %q, got %q", driveID, n.DriveID())
+	if n.Status() != StatusActive {
+		t.Errorf("expected status active, got %v", n.Status())
 	}
 }
 
@@ -416,5 +413,25 @@ func TestFlags(t *testing.T) {
 	}
 	if !f.Has(FlagNoAtime) {
 		t.Error("expected other flag to remain set")
+	}
+}
+
+func TestStatus(t *testing.T) {
+	n, _ := NewFile("x")
+	if n.Status() != StatusActive {
+		t.Errorf("expected default status active, got %v", n.Status())
+	}
+	// Verify status constants
+	if StatusPending != "pending" {
+		t.Errorf("StatusPending should be 'pending'")
+	}
+	if StatusActive != "active" {
+		t.Errorf("StatusActive should be 'active'")
+	}
+	if StatusPendingDelete != "pending_delete" {
+		t.Errorf("StatusPendingDelete should be 'pending_delete'")
+	}
+	if StatusMissing != "missing" {
+		t.Errorf("StatusMissing should be 'missing'")
 	}
 }

@@ -18,10 +18,10 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
-	// FieldDriveID holds the string denoting the drive_id field in the database.
-	FieldDriveID = "drive_id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
+	// FieldStatus holds the string denoting the status field in the database.
+	FieldStatus = "status"
 	// FieldSize holds the string denoting the size field in the database.
 	FieldSize = "size"
 	// FieldNlink holds the string denoting the nlink field in the database.
@@ -49,8 +49,8 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
-	FieldDriveID,
 	FieldType,
+	FieldStatus,
 	FieldSize,
 	FieldNlink,
 	FieldContent,
@@ -79,8 +79,6 @@ var (
 	DefaultUpdateTime func() time.Time
 	// UpdateDefaultUpdateTime holds the default value on update for the "update_time" field.
 	UpdateDefaultUpdateTime func() time.Time
-	// DriveIDValidator is a validator for the "drive_id" field. It is called by the builders before save.
-	DriveIDValidator func(string) error
 	// DefaultSize holds the default value on creation for the "size" field.
 	DefaultSize int64
 	// DefaultNlink holds the default value on creation for the "nlink" field.
@@ -122,6 +120,34 @@ func TypeValidator(_type Type) error {
 	}
 }
 
+// Status defines the type for the "status" enum field.
+type Status string
+
+// StatusActive is the default value of the Status enum.
+const DefaultStatus = StatusActive
+
+// Status values.
+const (
+	StatusPending       Status = "pending"
+	StatusActive        Status = "active"
+	StatusPendingDelete Status = "pending_delete"
+	StatusMissing       Status = "missing"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusPending, StatusActive, StatusPendingDelete, StatusMissing:
+		return nil
+	default:
+		return fmt.Errorf("node: invalid enum value for status field: %q", s)
+	}
+}
+
 // OrderOption defines the ordering options for the Node queries.
 type OrderOption func(*sql.Selector)
 
@@ -140,14 +166,14 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
-// ByDriveID orders the results by the drive_id field.
-func ByDriveID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDriveID, opts...).ToFunc()
-}
-
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByStatus orders the results by the status field.
+func ByStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
 // BySize orders the results by the size field.

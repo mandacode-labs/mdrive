@@ -15,7 +15,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/mandacode-labs/mdrive/ent/drive"
+	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
 // Client is the client that holds all ent builders.
@@ -23,8 +27,14 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Drive is the client for interacting with the Drive builders.
+	Drive *DriveClient
+	// DriveStorage is the client for interacting with the DriveStorage builders.
+	DriveStorage *DriveStorageClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -36,7 +46,10 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Drive = NewDriveClient(c.config)
+	c.DriveStorage = NewDriveStorageClient(c.config)
 	c.Node = NewNodeClient(c.config)
+	c.User = NewUserClient(c.config)
 }
 
 type (
@@ -127,9 +140,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Node:   NewNodeClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Drive:        NewDriveClient(cfg),
+		DriveStorage: NewDriveStorageClient(cfg),
+		Node:         NewNodeClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
@@ -147,16 +163,19 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Node:   NewNodeClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Drive:        NewDriveClient(cfg),
+		DriveStorage: NewDriveStorageClient(cfg),
+		Node:         NewNodeClient(cfg),
+		User:         NewUserClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Node.
+//		Drive.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -178,22 +197,332 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.Drive.Use(hooks...)
+	c.DriveStorage.Use(hooks...)
 	c.Node.Use(hooks...)
+	c.User.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.Drive.Intercept(interceptors...)
+	c.DriveStorage.Intercept(interceptors...)
 	c.Node.Intercept(interceptors...)
+	c.User.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *DriveMutation:
+		return c.Drive.mutate(ctx, m)
+	case *DriveStorageMutation:
+		return c.DriveStorage.mutate(ctx, m)
 	case *NodeMutation:
 		return c.Node.mutate(ctx, m)
+	case *UserMutation:
+		return c.User.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// DriveClient is a client for the Drive schema.
+type DriveClient struct {
+	config
+}
+
+// NewDriveClient returns a client for the Drive from the given config.
+func NewDriveClient(c config) *DriveClient {
+	return &DriveClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `drive.Hooks(f(g(h())))`.
+func (c *DriveClient) Use(hooks ...Hook) {
+	c.hooks.Drive = append(c.hooks.Drive, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `drive.Intercept(f(g(h())))`.
+func (c *DriveClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Drive = append(c.inters.Drive, interceptors...)
+}
+
+// Create returns a builder for creating a Drive entity.
+func (c *DriveClient) Create() *DriveCreate {
+	mutation := newDriveMutation(c.config, OpCreate)
+	return &DriveCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Drive entities.
+func (c *DriveClient) CreateBulk(builders ...*DriveCreate) *DriveCreateBulk {
+	return &DriveCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DriveClient) MapCreateBulk(slice any, setFunc func(*DriveCreate, int)) *DriveCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DriveCreateBulk{err: fmt.Errorf("calling to DriveClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DriveCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DriveCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Drive.
+func (c *DriveClient) Update() *DriveUpdate {
+	mutation := newDriveMutation(c.config, OpUpdate)
+	return &DriveUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DriveClient) UpdateOne(_m *Drive) *DriveUpdateOne {
+	mutation := newDriveMutation(c.config, OpUpdateOne, withDrive(_m))
+	return &DriveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DriveClient) UpdateOneID(id string) *DriveUpdateOne {
+	mutation := newDriveMutation(c.config, OpUpdateOne, withDriveID(id))
+	return &DriveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Drive.
+func (c *DriveClient) Delete() *DriveDelete {
+	mutation := newDriveMutation(c.config, OpDelete)
+	return &DriveDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DriveClient) DeleteOne(_m *Drive) *DriveDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DriveClient) DeleteOneID(id string) *DriveDeleteOne {
+	builder := c.Delete().Where(drive.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DriveDeleteOne{builder}
+}
+
+// Query returns a query builder for Drive.
+func (c *DriveClient) Query() *DriveQuery {
+	return &DriveQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDrive},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Drive entity by its id.
+func (c *DriveClient) Get(ctx context.Context, id string) (*Drive, error) {
+	return c.Query().Where(drive.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DriveClient) GetX(ctx context.Context, id string) *Drive {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryStorage queries the storage edge of a Drive.
+func (c *DriveClient) QueryStorage(_m *Drive) *DriveStorageQuery {
+	query := (&DriveStorageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drive.Table, drive.FieldID, id),
+			sqlgraph.To(drivestorage.Table, drivestorage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, drive.StorageTable, drive.StorageColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DriveClient) Hooks() []Hook {
+	return c.hooks.Drive
+}
+
+// Interceptors returns the client interceptors.
+func (c *DriveClient) Interceptors() []Interceptor {
+	return c.inters.Drive
+}
+
+func (c *DriveClient) mutate(ctx context.Context, m *DriveMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DriveCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DriveUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DriveUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DriveDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Drive mutation op: %q", m.Op())
+	}
+}
+
+// DriveStorageClient is a client for the DriveStorage schema.
+type DriveStorageClient struct {
+	config
+}
+
+// NewDriveStorageClient returns a client for the DriveStorage from the given config.
+func NewDriveStorageClient(c config) *DriveStorageClient {
+	return &DriveStorageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `drivestorage.Hooks(f(g(h())))`.
+func (c *DriveStorageClient) Use(hooks ...Hook) {
+	c.hooks.DriveStorage = append(c.hooks.DriveStorage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `drivestorage.Intercept(f(g(h())))`.
+func (c *DriveStorageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DriveStorage = append(c.inters.DriveStorage, interceptors...)
+}
+
+// Create returns a builder for creating a DriveStorage entity.
+func (c *DriveStorageClient) Create() *DriveStorageCreate {
+	mutation := newDriveStorageMutation(c.config, OpCreate)
+	return &DriveStorageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DriveStorage entities.
+func (c *DriveStorageClient) CreateBulk(builders ...*DriveStorageCreate) *DriveStorageCreateBulk {
+	return &DriveStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DriveStorageClient) MapCreateBulk(slice any, setFunc func(*DriveStorageCreate, int)) *DriveStorageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DriveStorageCreateBulk{err: fmt.Errorf("calling to DriveStorageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DriveStorageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DriveStorageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DriveStorage.
+func (c *DriveStorageClient) Update() *DriveStorageUpdate {
+	mutation := newDriveStorageMutation(c.config, OpUpdate)
+	return &DriveStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DriveStorageClient) UpdateOne(_m *DriveStorage) *DriveStorageUpdateOne {
+	mutation := newDriveStorageMutation(c.config, OpUpdateOne, withDriveStorage(_m))
+	return &DriveStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DriveStorageClient) UpdateOneID(id int) *DriveStorageUpdateOne {
+	mutation := newDriveStorageMutation(c.config, OpUpdateOne, withDriveStorageID(id))
+	return &DriveStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DriveStorage.
+func (c *DriveStorageClient) Delete() *DriveStorageDelete {
+	mutation := newDriveStorageMutation(c.config, OpDelete)
+	return &DriveStorageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DriveStorageClient) DeleteOne(_m *DriveStorage) *DriveStorageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DriveStorageClient) DeleteOneID(id int) *DriveStorageDeleteOne {
+	builder := c.Delete().Where(drivestorage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DriveStorageDeleteOne{builder}
+}
+
+// Query returns a query builder for DriveStorage.
+func (c *DriveStorageClient) Query() *DriveStorageQuery {
+	return &DriveStorageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDriveStorage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DriveStorage entity by its id.
+func (c *DriveStorageClient) Get(ctx context.Context, id int) (*DriveStorage, error) {
+	return c.Query().Where(drivestorage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DriveStorageClient) GetX(ctx context.Context, id int) *DriveStorage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDrive queries the drive edge of a DriveStorage.
+func (c *DriveStorageClient) QueryDrive(_m *DriveStorage) *DriveQuery {
+	query := (&DriveClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drivestorage.Table, drivestorage.FieldID, id),
+			sqlgraph.To(drive.Table, drive.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, drivestorage.DriveTable, drivestorage.DriveColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *DriveStorageClient) Hooks() []Hook {
+	return c.hooks.DriveStorage
+}
+
+// Interceptors returns the client interceptors.
+func (c *DriveStorageClient) Interceptors() []Interceptor {
+	return c.inters.DriveStorage
+}
+
+func (c *DriveStorageClient) mutate(ctx context.Context, m *DriveStorageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DriveStorageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DriveStorageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DriveStorageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DriveStorageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DriveStorage mutation op: %q", m.Op())
 	}
 }
 
@@ -330,12 +659,145 @@ func (c *NodeClient) mutate(ctx context.Context, m *NodeMutation) (Value, error)
 	}
 }
 
+// UserClient is a client for the User schema.
+type UserClient struct {
+	config
+}
+
+// NewUserClient returns a client for the User from the given config.
+func NewUserClient(c config) *UserClient {
+	return &UserClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `user.Hooks(f(g(h())))`.
+func (c *UserClient) Use(hooks ...Hook) {
+	c.hooks.User = append(c.hooks.User, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `user.Intercept(f(g(h())))`.
+func (c *UserClient) Intercept(interceptors ...Interceptor) {
+	c.inters.User = append(c.inters.User, interceptors...)
+}
+
+// Create returns a builder for creating a User entity.
+func (c *UserClient) Create() *UserCreate {
+	mutation := newUserMutation(c.config, OpCreate)
+	return &UserCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of User entities.
+func (c *UserClient) CreateBulk(builders ...*UserCreate) *UserCreateBulk {
+	return &UserCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserClient) MapCreateBulk(slice any, setFunc func(*UserCreate, int)) *UserCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserCreateBulk{err: fmt.Errorf("calling to UserClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for User.
+func (c *UserClient) Update() *UserUpdate {
+	mutation := newUserMutation(c.config, OpUpdate)
+	return &UserUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserClient) UpdateOne(_m *User) *UserUpdateOne {
+	mutation := newUserMutation(c.config, OpUpdateOne, withUser(_m))
+	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserClient) UpdateOneID(id string) *UserUpdateOne {
+	mutation := newUserMutation(c.config, OpUpdateOne, withUserID(id))
+	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for User.
+func (c *UserClient) Delete() *UserDelete {
+	mutation := newUserMutation(c.config, OpDelete)
+	return &UserDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserClient) DeleteOne(_m *User) *UserDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserClient) DeleteOneID(id string) *UserDeleteOne {
+	builder := c.Delete().Where(user.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserDeleteOne{builder}
+}
+
+// Query returns a query builder for User.
+func (c *UserClient) Query() *UserQuery {
+	return &UserQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUser},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a User entity by its id.
+func (c *UserClient) Get(ctx context.Context, id string) (*User, error) {
+	return c.Query().Where(user.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserClient) GetX(ctx context.Context, id string) *User {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *UserClient) Hooks() []Hook {
+	return c.hooks.User
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserClient) Interceptors() []Interceptor {
+	return c.inters.User
+}
+
+func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown User mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Node []ent.Hook
+		Drive, DriveStorage, Node, User []ent.Hook
 	}
 	inters struct {
-		Node []ent.Interceptor
+		Drive, DriveStorage, Node, User []ent.Interceptor
 	}
 )

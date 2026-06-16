@@ -22,10 +22,10 @@ type Node struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
-	// DriveID holds the value of the "drive_id" field.
-	DriveID string `json:"drive_id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type node.Type `json:"type,omitempty"`
+	// Status holds the value of the "status" field.
+	Status node.Status `json:"status,omitempty"`
 	// Size holds the value of the "size" field.
 	Size int64 `json:"size,omitempty"`
 	// Nlink holds the value of the "nlink" field.
@@ -56,7 +56,7 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case node.FieldSize, node.FieldNlink, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldDriveID, node.FieldType, node.FieldRevision:
+		case node.FieldType, node.FieldStatus, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
 			values[i] = new(sql.NullTime)
@@ -95,17 +95,17 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
-		case node.FieldDriveID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field drive_id", values[i])
-			} else if value.Valid {
-				_m.DriveID = value.String
-			}
 		case node.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
 				_m.Type = node.Type(value.String)
+			}
+		case node.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = node.Status(value.String)
 			}
 		case node.FieldSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -203,11 +203,11 @@ func (_m *Node) String() string {
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("drive_id=")
-	builder.WriteString(_m.DriveID)
-	builder.WriteString(", ")
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("size=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Size))

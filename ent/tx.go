@@ -12,8 +12,14 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Drive is the client for interacting with the Drive builders.
+	Drive *DriveClient
+	// DriveStorage is the client for interacting with the DriveStorage builders.
+	DriveStorage *DriveStorageClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
 
 	// lazily loaded.
 	client     *Client
@@ -145,7 +151,10 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Drive = NewDriveClient(tx.config)
+	tx.DriveStorage = NewDriveStorageClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
+	tx.User = NewUserClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.
@@ -155,7 +164,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Node.QueryXXX(), the query will be executed
+// applies a query, for example: Drive.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

@@ -49,12 +49,6 @@ func (_c *NodeCreate) SetNillableUpdateTime(v *time.Time) *NodeCreate {
 	return _c
 }
 
-// SetDriveID sets the "drive_id" field.
-func (_c *NodeCreate) SetDriveID(v string) *NodeCreate {
-	_c.mutation.SetDriveID(v)
-	return _c
-}
-
 // SetType sets the "type" field.
 func (_c *NodeCreate) SetType(v node.Type) *NodeCreate {
 	_c.mutation.SetType(v)
@@ -65,6 +59,20 @@ func (_c *NodeCreate) SetType(v node.Type) *NodeCreate {
 func (_c *NodeCreate) SetNillableType(v *node.Type) *NodeCreate {
 	if v != nil {
 		_c.SetType(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *NodeCreate) SetStatus(v node.Status) *NodeCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableStatus(v *node.Status) *NodeCreate {
+	if v != nil {
+		_c.SetStatus(*v)
 	}
 	return _c
 }
@@ -200,6 +208,10 @@ func (_c *NodeCreate) defaults() {
 		v := node.DefaultType
 		_c.mutation.SetType(v)
 	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := node.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	if _, ok := _c.mutation.Size(); !ok {
 		v := node.DefaultSize
 		_c.mutation.SetSize(v)
@@ -222,20 +234,20 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Node.update_time"`)}
 	}
-	if _, ok := _c.mutation.DriveID(); !ok {
-		return &ValidationError{Name: "drive_id", err: errors.New(`ent: missing required field "Node.drive_id"`)}
-	}
-	if v, ok := _c.mutation.DriveID(); ok {
-		if err := node.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Node.drive_id": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Node.type"`)}
 	}
 	if v, ok := _c.mutation.GetType(); ok {
 		if err := node.TypeValidator(v); err != nil {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Node.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := node.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Size(); !ok {
@@ -315,13 +327,13 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		_spec.SetField(node.FieldUpdateTime, field.TypeTime, value)
 		_node.UpdateTime = value
 	}
-	if value, ok := _c.mutation.DriveID(); ok {
-		_spec.SetField(node.FieldDriveID, field.TypeString, value)
-		_node.DriveID = value
-	}
 	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
 		_node.Type = value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if value, ok := _c.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)

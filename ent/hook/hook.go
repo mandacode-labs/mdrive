@@ -9,6 +9,30 @@ import (
 	"github.com/mandacode-labs/mdrive/ent"
 )
 
+// The DriveFunc type is an adapter to allow the use of ordinary
+// function as Drive mutator.
+type DriveFunc func(context.Context, *ent.DriveMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DriveFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DriveMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveMutation", m)
+}
+
+// The DriveStorageFunc type is an adapter to allow the use of ordinary
+// function as DriveStorage mutator.
+type DriveStorageFunc func(context.Context, *ent.DriveStorageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DriveStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DriveStorageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveStorageMutation", m)
+}
+
 // The NodeFunc type is an adapter to allow the use of ordinary
 // function as Node mutator.
 type NodeFunc func(context.Context, *ent.NodeMutation) (ent.Value, error)
@@ -19,6 +43,18 @@ func (f NodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NodeMutation", m)
+}
+
+// The UserFunc type is an adapter to allow the use of ordinary
+// function as User mutator.
+type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.UserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
 }
 
 // Condition is a hook condition function.

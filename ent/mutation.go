@@ -12,8 +12,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/ent/drive"
+	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
 const (
@@ -25,8 +28,1555 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeNode = "Node"
+	TypeDrive        = "Drive"
+	TypeDriveStorage = "DriveStorage"
+	TypeNode         = "Node"
+	TypeUser         = "User"
 )
+
+// DriveMutation represents an operation that mutates the Drive nodes in the graph.
+type DriveMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *string
+	create_time    *time.Time
+	update_time    *time.Time
+	public_id      *string
+	name           *string
+	description    *string
+	provider       *drive.Provider
+	owner_id       *string
+	root_node_id   *uuid.UUID
+	clearedFields  map[string]struct{}
+	storage        *int
+	clearedstorage bool
+	done           bool
+	oldValue       func(context.Context) (*Drive, error)
+	predicates     []predicate.Drive
+}
+
+var _ ent.Mutation = (*DriveMutation)(nil)
+
+// driveOption allows management of the mutation configuration using functional options.
+type driveOption func(*DriveMutation)
+
+// newDriveMutation creates new mutation for the Drive entity.
+func newDriveMutation(c config, op Op, opts ...driveOption) *DriveMutation {
+	m := &DriveMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDrive,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDriveID sets the ID field of the mutation.
+func withDriveID(id string) driveOption {
+	return func(m *DriveMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Drive
+		)
+		m.oldValue = func(ctx context.Context) (*Drive, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Drive.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDrive sets the old Drive of the mutation.
+func withDrive(node *Drive) driveOption {
+	return func(m *DriveMutation) {
+		m.oldValue = func(context.Context) (*Drive, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DriveMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DriveMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Drive entities.
+func (m *DriveMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DriveMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DriveMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Drive.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateTime sets the "create_time" field.
+func (m *DriveMutation) SetCreateTime(t time.Time) {
+	m.create_time = &t
+}
+
+// CreateTime returns the value of the "create_time" field in the mutation.
+func (m *DriveMutation) CreateTime() (r time.Time, exists bool) {
+	v := m.create_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateTime returns the old "create_time" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldCreateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateTime: %w", err)
+	}
+	return oldValue.CreateTime, nil
+}
+
+// ResetCreateTime resets all changes to the "create_time" field.
+func (m *DriveMutation) ResetCreateTime() {
+	m.create_time = nil
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (m *DriveMutation) SetUpdateTime(t time.Time) {
+	m.update_time = &t
+}
+
+// UpdateTime returns the value of the "update_time" field in the mutation.
+func (m *DriveMutation) UpdateTime() (r time.Time, exists bool) {
+	v := m.update_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateTime returns the old "update_time" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldUpdateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateTime: %w", err)
+	}
+	return oldValue.UpdateTime, nil
+}
+
+// ResetUpdateTime resets all changes to the "update_time" field.
+func (m *DriveMutation) ResetUpdateTime() {
+	m.update_time = nil
+}
+
+// SetPublicID sets the "public_id" field.
+func (m *DriveMutation) SetPublicID(s string) {
+	m.public_id = &s
+}
+
+// PublicID returns the value of the "public_id" field in the mutation.
+func (m *DriveMutation) PublicID() (r string, exists bool) {
+	v := m.public_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublicID returns the old "public_id" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldPublicID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublicID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublicID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublicID: %w", err)
+	}
+	return oldValue.PublicID, nil
+}
+
+// ResetPublicID resets all changes to the "public_id" field.
+func (m *DriveMutation) ResetPublicID() {
+	m.public_id = nil
+}
+
+// SetName sets the "name" field.
+func (m *DriveMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *DriveMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *DriveMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *DriveMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *DriveMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldDescription(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *DriveMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[drive.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *DriveMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[drive.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *DriveMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, drive.FieldDescription)
+}
+
+// SetProvider sets the "provider" field.
+func (m *DriveMutation) SetProvider(d drive.Provider) {
+	m.provider = &d
+}
+
+// Provider returns the value of the "provider" field in the mutation.
+func (m *DriveMutation) Provider() (r drive.Provider, exists bool) {
+	v := m.provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProvider returns the old "provider" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldProvider(ctx context.Context) (v drive.Provider, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProvider: %w", err)
+	}
+	return oldValue.Provider, nil
+}
+
+// ResetProvider resets all changes to the "provider" field.
+func (m *DriveMutation) ResetProvider() {
+	m.provider = nil
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (m *DriveMutation) SetOwnerID(s string) {
+	m.owner_id = &s
+}
+
+// OwnerID returns the value of the "owner_id" field in the mutation.
+func (m *DriveMutation) OwnerID() (r string, exists bool) {
+	v := m.owner_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOwnerID returns the old "owner_id" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldOwnerID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOwnerID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOwnerID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOwnerID: %w", err)
+	}
+	return oldValue.OwnerID, nil
+}
+
+// ResetOwnerID resets all changes to the "owner_id" field.
+func (m *DriveMutation) ResetOwnerID() {
+	m.owner_id = nil
+}
+
+// SetRootNodeID sets the "root_node_id" field.
+func (m *DriveMutation) SetRootNodeID(u uuid.UUID) {
+	m.root_node_id = &u
+}
+
+// RootNodeID returns the value of the "root_node_id" field in the mutation.
+func (m *DriveMutation) RootNodeID() (r uuid.UUID, exists bool) {
+	v := m.root_node_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRootNodeID returns the old "root_node_id" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldRootNodeID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRootNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRootNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRootNodeID: %w", err)
+	}
+	return oldValue.RootNodeID, nil
+}
+
+// ClearRootNodeID clears the value of the "root_node_id" field.
+func (m *DriveMutation) ClearRootNodeID() {
+	m.root_node_id = nil
+	m.clearedFields[drive.FieldRootNodeID] = struct{}{}
+}
+
+// RootNodeIDCleared returns if the "root_node_id" field was cleared in this mutation.
+func (m *DriveMutation) RootNodeIDCleared() bool {
+	_, ok := m.clearedFields[drive.FieldRootNodeID]
+	return ok
+}
+
+// ResetRootNodeID resets all changes to the "root_node_id" field.
+func (m *DriveMutation) ResetRootNodeID() {
+	m.root_node_id = nil
+	delete(m.clearedFields, drive.FieldRootNodeID)
+}
+
+// SetStorageID sets the "storage" edge to the DriveStorage entity by id.
+func (m *DriveMutation) SetStorageID(id int) {
+	m.storage = &id
+}
+
+// ClearStorage clears the "storage" edge to the DriveStorage entity.
+func (m *DriveMutation) ClearStorage() {
+	m.clearedstorage = true
+}
+
+// StorageCleared reports if the "storage" edge to the DriveStorage entity was cleared.
+func (m *DriveMutation) StorageCleared() bool {
+	return m.clearedstorage
+}
+
+// StorageID returns the "storage" edge ID in the mutation.
+func (m *DriveMutation) StorageID() (id int, exists bool) {
+	if m.storage != nil {
+		return *m.storage, true
+	}
+	return
+}
+
+// StorageIDs returns the "storage" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// StorageID instead. It exists only for internal usage by the builders.
+func (m *DriveMutation) StorageIDs() (ids []int) {
+	if id := m.storage; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetStorage resets all changes to the "storage" edge.
+func (m *DriveMutation) ResetStorage() {
+	m.storage = nil
+	m.clearedstorage = false
+}
+
+// Where appends a list predicates to the DriveMutation builder.
+func (m *DriveMutation) Where(ps ...predicate.Drive) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DriveMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DriveMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Drive, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DriveMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DriveMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Drive).
+func (m *DriveMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DriveMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.create_time != nil {
+		fields = append(fields, drive.FieldCreateTime)
+	}
+	if m.update_time != nil {
+		fields = append(fields, drive.FieldUpdateTime)
+	}
+	if m.public_id != nil {
+		fields = append(fields, drive.FieldPublicID)
+	}
+	if m.name != nil {
+		fields = append(fields, drive.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, drive.FieldDescription)
+	}
+	if m.provider != nil {
+		fields = append(fields, drive.FieldProvider)
+	}
+	if m.owner_id != nil {
+		fields = append(fields, drive.FieldOwnerID)
+	}
+	if m.root_node_id != nil {
+		fields = append(fields, drive.FieldRootNodeID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DriveMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case drive.FieldCreateTime:
+		return m.CreateTime()
+	case drive.FieldUpdateTime:
+		return m.UpdateTime()
+	case drive.FieldPublicID:
+		return m.PublicID()
+	case drive.FieldName:
+		return m.Name()
+	case drive.FieldDescription:
+		return m.Description()
+	case drive.FieldProvider:
+		return m.Provider()
+	case drive.FieldOwnerID:
+		return m.OwnerID()
+	case drive.FieldRootNodeID:
+		return m.RootNodeID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DriveMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case drive.FieldCreateTime:
+		return m.OldCreateTime(ctx)
+	case drive.FieldUpdateTime:
+		return m.OldUpdateTime(ctx)
+	case drive.FieldPublicID:
+		return m.OldPublicID(ctx)
+	case drive.FieldName:
+		return m.OldName(ctx)
+	case drive.FieldDescription:
+		return m.OldDescription(ctx)
+	case drive.FieldProvider:
+		return m.OldProvider(ctx)
+	case drive.FieldOwnerID:
+		return m.OldOwnerID(ctx)
+	case drive.FieldRootNodeID:
+		return m.OldRootNodeID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Drive field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DriveMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case drive.FieldCreateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateTime(v)
+		return nil
+	case drive.FieldUpdateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateTime(v)
+		return nil
+	case drive.FieldPublicID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublicID(v)
+		return nil
+	case drive.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case drive.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case drive.FieldProvider:
+		v, ok := value.(drive.Provider)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProvider(v)
+		return nil
+	case drive.FieldOwnerID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOwnerID(v)
+		return nil
+	case drive.FieldRootNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRootNodeID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Drive field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DriveMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DriveMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DriveMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Drive numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DriveMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(drive.FieldDescription) {
+		fields = append(fields, drive.FieldDescription)
+	}
+	if m.FieldCleared(drive.FieldRootNodeID) {
+		fields = append(fields, drive.FieldRootNodeID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DriveMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DriveMutation) ClearField(name string) error {
+	switch name {
+	case drive.FieldDescription:
+		m.ClearDescription()
+		return nil
+	case drive.FieldRootNodeID:
+		m.ClearRootNodeID()
+		return nil
+	}
+	return fmt.Errorf("unknown Drive nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DriveMutation) ResetField(name string) error {
+	switch name {
+	case drive.FieldCreateTime:
+		m.ResetCreateTime()
+		return nil
+	case drive.FieldUpdateTime:
+		m.ResetUpdateTime()
+		return nil
+	case drive.FieldPublicID:
+		m.ResetPublicID()
+		return nil
+	case drive.FieldName:
+		m.ResetName()
+		return nil
+	case drive.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case drive.FieldProvider:
+		m.ResetProvider()
+		return nil
+	case drive.FieldOwnerID:
+		m.ResetOwnerID()
+		return nil
+	case drive.FieldRootNodeID:
+		m.ResetRootNodeID()
+		return nil
+	}
+	return fmt.Errorf("unknown Drive field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DriveMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.storage != nil {
+		edges = append(edges, drive.EdgeStorage)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DriveMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case drive.EdgeStorage:
+		if id := m.storage; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DriveMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DriveMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DriveMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedstorage {
+		edges = append(edges, drive.EdgeStorage)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DriveMutation) EdgeCleared(name string) bool {
+	switch name {
+	case drive.EdgeStorage:
+		return m.clearedstorage
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DriveMutation) ClearEdge(name string) error {
+	switch name {
+	case drive.EdgeStorage:
+		m.ClearStorage()
+		return nil
+	}
+	return fmt.Errorf("unknown Drive unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DriveMutation) ResetEdge(name string) error {
+	switch name {
+	case drive.EdgeStorage:
+		m.ResetStorage()
+		return nil
+	}
+	return fmt.Errorf("unknown Drive edge %s", name)
+}
+
+// DriveStorageMutation represents an operation that mutates the DriveStorage nodes in the graph.
+type DriveStorageMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int
+	bucket         *string
+	endpoint       *string
+	region         *string
+	access_key     *string
+	secret_key     *string
+	use_path_style *bool
+	clearedFields  map[string]struct{}
+	drive          *string
+	cleareddrive   bool
+	done           bool
+	oldValue       func(context.Context) (*DriveStorage, error)
+	predicates     []predicate.DriveStorage
+}
+
+var _ ent.Mutation = (*DriveStorageMutation)(nil)
+
+// drivestorageOption allows management of the mutation configuration using functional options.
+type drivestorageOption func(*DriveStorageMutation)
+
+// newDriveStorageMutation creates new mutation for the DriveStorage entity.
+func newDriveStorageMutation(c config, op Op, opts ...drivestorageOption) *DriveStorageMutation {
+	m := &DriveStorageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDriveStorage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDriveStorageID sets the ID field of the mutation.
+func withDriveStorageID(id int) drivestorageOption {
+	return func(m *DriveStorageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DriveStorage
+		)
+		m.oldValue = func(ctx context.Context) (*DriveStorage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DriveStorage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDriveStorage sets the old DriveStorage of the mutation.
+func withDriveStorage(node *DriveStorage) drivestorageOption {
+	return func(m *DriveStorageMutation) {
+		m.oldValue = func(context.Context) (*DriveStorage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DriveStorageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DriveStorageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DriveStorageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DriveStorageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DriveStorage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDriveID sets the "drive_id" field.
+func (m *DriveStorageMutation) SetDriveID(s string) {
+	m.drive = &s
+}
+
+// DriveID returns the value of the "drive_id" field in the mutation.
+func (m *DriveStorageMutation) DriveID() (r string, exists bool) {
+	v := m.drive
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDriveID returns the old "drive_id" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldDriveID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDriveID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDriveID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDriveID: %w", err)
+	}
+	return oldValue.DriveID, nil
+}
+
+// ResetDriveID resets all changes to the "drive_id" field.
+func (m *DriveStorageMutation) ResetDriveID() {
+	m.drive = nil
+}
+
+// SetBucket sets the "bucket" field.
+func (m *DriveStorageMutation) SetBucket(s string) {
+	m.bucket = &s
+}
+
+// Bucket returns the value of the "bucket" field in the mutation.
+func (m *DriveStorageMutation) Bucket() (r string, exists bool) {
+	v := m.bucket
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBucket returns the old "bucket" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldBucket(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBucket is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBucket requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBucket: %w", err)
+	}
+	return oldValue.Bucket, nil
+}
+
+// ResetBucket resets all changes to the "bucket" field.
+func (m *DriveStorageMutation) ResetBucket() {
+	m.bucket = nil
+}
+
+// SetEndpoint sets the "endpoint" field.
+func (m *DriveStorageMutation) SetEndpoint(s string) {
+	m.endpoint = &s
+}
+
+// Endpoint returns the value of the "endpoint" field in the mutation.
+func (m *DriveStorageMutation) Endpoint() (r string, exists bool) {
+	v := m.endpoint
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndpoint returns the old "endpoint" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldEndpoint(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndpoint is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndpoint requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndpoint: %w", err)
+	}
+	return oldValue.Endpoint, nil
+}
+
+// ClearEndpoint clears the value of the "endpoint" field.
+func (m *DriveStorageMutation) ClearEndpoint() {
+	m.endpoint = nil
+	m.clearedFields[drivestorage.FieldEndpoint] = struct{}{}
+}
+
+// EndpointCleared returns if the "endpoint" field was cleared in this mutation.
+func (m *DriveStorageMutation) EndpointCleared() bool {
+	_, ok := m.clearedFields[drivestorage.FieldEndpoint]
+	return ok
+}
+
+// ResetEndpoint resets all changes to the "endpoint" field.
+func (m *DriveStorageMutation) ResetEndpoint() {
+	m.endpoint = nil
+	delete(m.clearedFields, drivestorage.FieldEndpoint)
+}
+
+// SetRegion sets the "region" field.
+func (m *DriveStorageMutation) SetRegion(s string) {
+	m.region = &s
+}
+
+// Region returns the value of the "region" field in the mutation.
+func (m *DriveStorageMutation) Region() (r string, exists bool) {
+	v := m.region
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRegion returns the old "region" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldRegion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRegion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRegion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRegion: %w", err)
+	}
+	return oldValue.Region, nil
+}
+
+// ResetRegion resets all changes to the "region" field.
+func (m *DriveStorageMutation) ResetRegion() {
+	m.region = nil
+}
+
+// SetAccessKey sets the "access_key" field.
+func (m *DriveStorageMutation) SetAccessKey(s string) {
+	m.access_key = &s
+}
+
+// AccessKey returns the value of the "access_key" field in the mutation.
+func (m *DriveStorageMutation) AccessKey() (r string, exists bool) {
+	v := m.access_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccessKey returns the old "access_key" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldAccessKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccessKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccessKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccessKey: %w", err)
+	}
+	return oldValue.AccessKey, nil
+}
+
+// ResetAccessKey resets all changes to the "access_key" field.
+func (m *DriveStorageMutation) ResetAccessKey() {
+	m.access_key = nil
+}
+
+// SetSecretKey sets the "secret_key" field.
+func (m *DriveStorageMutation) SetSecretKey(s string) {
+	m.secret_key = &s
+}
+
+// SecretKey returns the value of the "secret_key" field in the mutation.
+func (m *DriveStorageMutation) SecretKey() (r string, exists bool) {
+	v := m.secret_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSecretKey returns the old "secret_key" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldSecretKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSecretKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSecretKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSecretKey: %w", err)
+	}
+	return oldValue.SecretKey, nil
+}
+
+// ResetSecretKey resets all changes to the "secret_key" field.
+func (m *DriveStorageMutation) ResetSecretKey() {
+	m.secret_key = nil
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (m *DriveStorageMutation) SetUsePathStyle(b bool) {
+	m.use_path_style = &b
+}
+
+// UsePathStyle returns the value of the "use_path_style" field in the mutation.
+func (m *DriveStorageMutation) UsePathStyle() (r bool, exists bool) {
+	v := m.use_path_style
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsePathStyle returns the old "use_path_style" field's value of the DriveStorage entity.
+// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveStorageMutation) OldUsePathStyle(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsePathStyle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsePathStyle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsePathStyle: %w", err)
+	}
+	return oldValue.UsePathStyle, nil
+}
+
+// ResetUsePathStyle resets all changes to the "use_path_style" field.
+func (m *DriveStorageMutation) ResetUsePathStyle() {
+	m.use_path_style = nil
+}
+
+// ClearDrive clears the "drive" edge to the Drive entity.
+func (m *DriveStorageMutation) ClearDrive() {
+	m.cleareddrive = true
+	m.clearedFields[drivestorage.FieldDriveID] = struct{}{}
+}
+
+// DriveCleared reports if the "drive" edge to the Drive entity was cleared.
+func (m *DriveStorageMutation) DriveCleared() bool {
+	return m.cleareddrive
+}
+
+// DriveIDs returns the "drive" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DriveID instead. It exists only for internal usage by the builders.
+func (m *DriveStorageMutation) DriveIDs() (ids []string) {
+	if id := m.drive; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDrive resets all changes to the "drive" edge.
+func (m *DriveStorageMutation) ResetDrive() {
+	m.drive = nil
+	m.cleareddrive = false
+}
+
+// Where appends a list predicates to the DriveStorageMutation builder.
+func (m *DriveStorageMutation) Where(ps ...predicate.DriveStorage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DriveStorageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DriveStorageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DriveStorage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DriveStorageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DriveStorageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DriveStorage).
+func (m *DriveStorageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DriveStorageMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.drive != nil {
+		fields = append(fields, drivestorage.FieldDriveID)
+	}
+	if m.bucket != nil {
+		fields = append(fields, drivestorage.FieldBucket)
+	}
+	if m.endpoint != nil {
+		fields = append(fields, drivestorage.FieldEndpoint)
+	}
+	if m.region != nil {
+		fields = append(fields, drivestorage.FieldRegion)
+	}
+	if m.access_key != nil {
+		fields = append(fields, drivestorage.FieldAccessKey)
+	}
+	if m.secret_key != nil {
+		fields = append(fields, drivestorage.FieldSecretKey)
+	}
+	if m.use_path_style != nil {
+		fields = append(fields, drivestorage.FieldUsePathStyle)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DriveStorageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case drivestorage.FieldDriveID:
+		return m.DriveID()
+	case drivestorage.FieldBucket:
+		return m.Bucket()
+	case drivestorage.FieldEndpoint:
+		return m.Endpoint()
+	case drivestorage.FieldRegion:
+		return m.Region()
+	case drivestorage.FieldAccessKey:
+		return m.AccessKey()
+	case drivestorage.FieldSecretKey:
+		return m.SecretKey()
+	case drivestorage.FieldUsePathStyle:
+		return m.UsePathStyle()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DriveStorageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case drivestorage.FieldDriveID:
+		return m.OldDriveID(ctx)
+	case drivestorage.FieldBucket:
+		return m.OldBucket(ctx)
+	case drivestorage.FieldEndpoint:
+		return m.OldEndpoint(ctx)
+	case drivestorage.FieldRegion:
+		return m.OldRegion(ctx)
+	case drivestorage.FieldAccessKey:
+		return m.OldAccessKey(ctx)
+	case drivestorage.FieldSecretKey:
+		return m.OldSecretKey(ctx)
+	case drivestorage.FieldUsePathStyle:
+		return m.OldUsePathStyle(ctx)
+	}
+	return nil, fmt.Errorf("unknown DriveStorage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DriveStorageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case drivestorage.FieldDriveID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDriveID(v)
+		return nil
+	case drivestorage.FieldBucket:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBucket(v)
+		return nil
+	case drivestorage.FieldEndpoint:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndpoint(v)
+		return nil
+	case drivestorage.FieldRegion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRegion(v)
+		return nil
+	case drivestorage.FieldAccessKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccessKey(v)
+		return nil
+	case drivestorage.FieldSecretKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSecretKey(v)
+		return nil
+	case drivestorage.FieldUsePathStyle:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsePathStyle(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DriveStorage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DriveStorageMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DriveStorageMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DriveStorageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown DriveStorage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DriveStorageMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(drivestorage.FieldEndpoint) {
+		fields = append(fields, drivestorage.FieldEndpoint)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DriveStorageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DriveStorageMutation) ClearField(name string) error {
+	switch name {
+	case drivestorage.FieldEndpoint:
+		m.ClearEndpoint()
+		return nil
+	}
+	return fmt.Errorf("unknown DriveStorage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DriveStorageMutation) ResetField(name string) error {
+	switch name {
+	case drivestorage.FieldDriveID:
+		m.ResetDriveID()
+		return nil
+	case drivestorage.FieldBucket:
+		m.ResetBucket()
+		return nil
+	case drivestorage.FieldEndpoint:
+		m.ResetEndpoint()
+		return nil
+	case drivestorage.FieldRegion:
+		m.ResetRegion()
+		return nil
+	case drivestorage.FieldAccessKey:
+		m.ResetAccessKey()
+		return nil
+	case drivestorage.FieldSecretKey:
+		m.ResetSecretKey()
+		return nil
+	case drivestorage.FieldUsePathStyle:
+		m.ResetUsePathStyle()
+		return nil
+	}
+	return fmt.Errorf("unknown DriveStorage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DriveStorageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.drive != nil {
+		edges = append(edges, drivestorage.EdgeDrive)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DriveStorageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case drivestorage.EdgeDrive:
+		if id := m.drive; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DriveStorageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DriveStorageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DriveStorageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddrive {
+		edges = append(edges, drivestorage.EdgeDrive)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DriveStorageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case drivestorage.EdgeDrive:
+		return m.cleareddrive
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DriveStorageMutation) ClearEdge(name string) error {
+	switch name {
+	case drivestorage.EdgeDrive:
+		m.ClearDrive()
+		return nil
+	}
+	return fmt.Errorf("unknown DriveStorage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DriveStorageMutation) ResetEdge(name string) error {
+	switch name {
+	case drivestorage.EdgeDrive:
+		m.ResetDrive()
+		return nil
+	}
+	return fmt.Errorf("unknown DriveStorage edge %s", name)
+}
 
 // NodeMutation represents an operation that mutates the Node nodes in the graph.
 type NodeMutation struct {
@@ -36,8 +1586,8 @@ type NodeMutation struct {
 	id            *uuid.UUID
 	create_time   *time.Time
 	update_time   *time.Time
-	drive_id      *string
 	_type         *node.Type
+	status        *node.Status
 	size          *int64
 	addsize       *int64
 	nlink         *uint32
@@ -232,42 +1782,6 @@ func (m *NodeMutation) ResetUpdateTime() {
 	m.update_time = nil
 }
 
-// SetDriveID sets the "drive_id" field.
-func (m *NodeMutation) SetDriveID(s string) {
-	m.drive_id = &s
-}
-
-// DriveID returns the value of the "drive_id" field in the mutation.
-func (m *NodeMutation) DriveID() (r string, exists bool) {
-	v := m.drive_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDriveID returns the old "drive_id" field's value of the Node entity.
-// If the Node object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldDriveID(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDriveID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDriveID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDriveID: %w", err)
-	}
-	return oldValue.DriveID, nil
-}
-
-// ResetDriveID resets all changes to the "drive_id" field.
-func (m *NodeMutation) ResetDriveID() {
-	m.drive_id = nil
-}
-
 // SetType sets the "type" field.
 func (m *NodeMutation) SetType(n node.Type) {
 	m._type = &n
@@ -302,6 +1816,42 @@ func (m *NodeMutation) OldType(ctx context.Context) (v node.Type, err error) {
 // ResetType resets all changes to the "type" field.
 func (m *NodeMutation) ResetType() {
 	m._type = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *NodeMutation) SetStatus(n node.Status) {
+	m.status = &n
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *NodeMutation) Status() (r node.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldStatus(ctx context.Context) (v node.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *NodeMutation) ResetStatus() {
+	m.status = nil
 }
 
 // SetSize sets the "size" field.
@@ -742,11 +2292,11 @@ func (m *NodeMutation) Fields() []string {
 	if m.update_time != nil {
 		fields = append(fields, node.FieldUpdateTime)
 	}
-	if m.drive_id != nil {
-		fields = append(fields, node.FieldDriveID)
-	}
 	if m._type != nil {
 		fields = append(fields, node.FieldType)
+	}
+	if m.status != nil {
+		fields = append(fields, node.FieldStatus)
 	}
 	if m.size != nil {
 		fields = append(fields, node.FieldSize)
@@ -787,10 +2337,10 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.CreateTime()
 	case node.FieldUpdateTime:
 		return m.UpdateTime()
-	case node.FieldDriveID:
-		return m.DriveID()
 	case node.FieldType:
 		return m.GetType()
+	case node.FieldStatus:
+		return m.Status()
 	case node.FieldSize:
 		return m.Size()
 	case node.FieldNlink:
@@ -822,10 +2372,10 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreateTime(ctx)
 	case node.FieldUpdateTime:
 		return m.OldUpdateTime(ctx)
-	case node.FieldDriveID:
-		return m.OldDriveID(ctx)
 	case node.FieldType:
 		return m.OldType(ctx)
+	case node.FieldStatus:
+		return m.OldStatus(ctx)
 	case node.FieldSize:
 		return m.OldSize(ctx)
 	case node.FieldNlink:
@@ -867,19 +2417,19 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdateTime(v)
 		return nil
-	case node.FieldDriveID:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDriveID(v)
-		return nil
 	case node.FieldType:
 		v, ok := value.(node.Type)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetType(v)
+		return nil
+	case node.FieldStatus:
+		v, ok := value.(node.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
 		return nil
 	case node.FieldSize:
 		v, ok := value.(int64)
@@ -1047,11 +2597,11 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldUpdateTime:
 		m.ResetUpdateTime()
 		return nil
-	case node.FieldDriveID:
-		m.ResetDriveID()
-		return nil
 	case node.FieldType:
 		m.ResetType()
+		return nil
+	case node.FieldStatus:
+		m.ResetStatus()
 		return nil
 	case node.FieldSize:
 		m.ResetSize()
@@ -1130,4 +2680,682 @@ func (m *NodeMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *NodeMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Node edge %s", name)
+}
+
+// UserMutation represents an operation that mutates the User nodes in the graph.
+type UserMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	create_time   *time.Time
+	update_time   *time.Time
+	public_id     *string
+	name          *string
+	email         *string
+	provider      *string
+	provider_id   *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*User, error)
+	predicates    []predicate.User
+}
+
+var _ ent.Mutation = (*UserMutation)(nil)
+
+// userOption allows management of the mutation configuration using functional options.
+type userOption func(*UserMutation)
+
+// newUserMutation creates new mutation for the User entity.
+func newUserMutation(c config, op Op, opts ...userOption) *UserMutation {
+	m := &UserMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeUser,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withUserID sets the ID field of the mutation.
+func withUserID(id string) userOption {
+	return func(m *UserMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *User
+		)
+		m.oldValue = func(ctx context.Context) (*User, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().User.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withUser sets the old User of the mutation.
+func withUser(node *User) userOption {
+	return func(m *UserMutation) {
+		m.oldValue = func(context.Context) (*User, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m UserMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m UserMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of User entities.
+func (m *UserMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *UserMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *UserMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().User.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateTime sets the "create_time" field.
+func (m *UserMutation) SetCreateTime(t time.Time) {
+	m.create_time = &t
+}
+
+// CreateTime returns the value of the "create_time" field in the mutation.
+func (m *UserMutation) CreateTime() (r time.Time, exists bool) {
+	v := m.create_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateTime returns the old "create_time" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldCreateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateTime: %w", err)
+	}
+	return oldValue.CreateTime, nil
+}
+
+// ResetCreateTime resets all changes to the "create_time" field.
+func (m *UserMutation) ResetCreateTime() {
+	m.create_time = nil
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (m *UserMutation) SetUpdateTime(t time.Time) {
+	m.update_time = &t
+}
+
+// UpdateTime returns the value of the "update_time" field in the mutation.
+func (m *UserMutation) UpdateTime() (r time.Time, exists bool) {
+	v := m.update_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateTime returns the old "update_time" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldUpdateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateTime: %w", err)
+	}
+	return oldValue.UpdateTime, nil
+}
+
+// ResetUpdateTime resets all changes to the "update_time" field.
+func (m *UserMutation) ResetUpdateTime() {
+	m.update_time = nil
+}
+
+// SetPublicID sets the "public_id" field.
+func (m *UserMutation) SetPublicID(s string) {
+	m.public_id = &s
+}
+
+// PublicID returns the value of the "public_id" field in the mutation.
+func (m *UserMutation) PublicID() (r string, exists bool) {
+	v := m.public_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPublicID returns the old "public_id" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPublicID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPublicID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPublicID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPublicID: %w", err)
+	}
+	return oldValue.PublicID, nil
+}
+
+// ResetPublicID resets all changes to the "public_id" field.
+func (m *UserMutation) ResetPublicID() {
+	m.public_id = nil
+}
+
+// SetName sets the "name" field.
+func (m *UserMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *UserMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *UserMutation) ResetName() {
+	m.name = nil
+}
+
+// SetEmail sets the "email" field.
+func (m *UserMutation) SetEmail(s string) {
+	m.email = &s
+}
+
+// Email returns the value of the "email" field in the mutation.
+func (m *UserMutation) Email() (r string, exists bool) {
+	v := m.email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmail returns the old "email" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEmail(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmail: %w", err)
+	}
+	return oldValue.Email, nil
+}
+
+// ClearEmail clears the value of the "email" field.
+func (m *UserMutation) ClearEmail() {
+	m.email = nil
+	m.clearedFields[user.FieldEmail] = struct{}{}
+}
+
+// EmailCleared returns if the "email" field was cleared in this mutation.
+func (m *UserMutation) EmailCleared() bool {
+	_, ok := m.clearedFields[user.FieldEmail]
+	return ok
+}
+
+// ResetEmail resets all changes to the "email" field.
+func (m *UserMutation) ResetEmail() {
+	m.email = nil
+	delete(m.clearedFields, user.FieldEmail)
+}
+
+// SetProvider sets the "provider" field.
+func (m *UserMutation) SetProvider(s string) {
+	m.provider = &s
+}
+
+// Provider returns the value of the "provider" field in the mutation.
+func (m *UserMutation) Provider() (r string, exists bool) {
+	v := m.provider
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProvider returns the old "provider" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldProvider(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProvider is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProvider requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProvider: %w", err)
+	}
+	return oldValue.Provider, nil
+}
+
+// ResetProvider resets all changes to the "provider" field.
+func (m *UserMutation) ResetProvider() {
+	m.provider = nil
+}
+
+// SetProviderID sets the "provider_id" field.
+func (m *UserMutation) SetProviderID(s string) {
+	m.provider_id = &s
+}
+
+// ProviderID returns the value of the "provider_id" field in the mutation.
+func (m *UserMutation) ProviderID() (r string, exists bool) {
+	v := m.provider_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProviderID returns the old "provider_id" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldProviderID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProviderID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProviderID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProviderID: %w", err)
+	}
+	return oldValue.ProviderID, nil
+}
+
+// ResetProviderID resets all changes to the "provider_id" field.
+func (m *UserMutation) ResetProviderID() {
+	m.provider_id = nil
+}
+
+// Where appends a list predicates to the UserMutation builder.
+func (m *UserMutation) Where(ps ...predicate.User) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the UserMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *UserMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.User, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *UserMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *UserMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (User).
+func (m *UserMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *UserMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.create_time != nil {
+		fields = append(fields, user.FieldCreateTime)
+	}
+	if m.update_time != nil {
+		fields = append(fields, user.FieldUpdateTime)
+	}
+	if m.public_id != nil {
+		fields = append(fields, user.FieldPublicID)
+	}
+	if m.name != nil {
+		fields = append(fields, user.FieldName)
+	}
+	if m.email != nil {
+		fields = append(fields, user.FieldEmail)
+	}
+	if m.provider != nil {
+		fields = append(fields, user.FieldProvider)
+	}
+	if m.provider_id != nil {
+		fields = append(fields, user.FieldProviderID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *UserMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case user.FieldCreateTime:
+		return m.CreateTime()
+	case user.FieldUpdateTime:
+		return m.UpdateTime()
+	case user.FieldPublicID:
+		return m.PublicID()
+	case user.FieldName:
+		return m.Name()
+	case user.FieldEmail:
+		return m.Email()
+	case user.FieldProvider:
+		return m.Provider()
+	case user.FieldProviderID:
+		return m.ProviderID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case user.FieldCreateTime:
+		return m.OldCreateTime(ctx)
+	case user.FieldUpdateTime:
+		return m.OldUpdateTime(ctx)
+	case user.FieldPublicID:
+		return m.OldPublicID(ctx)
+	case user.FieldName:
+		return m.OldName(ctx)
+	case user.FieldEmail:
+		return m.OldEmail(ctx)
+	case user.FieldProvider:
+		return m.OldProvider(ctx)
+	case user.FieldProviderID:
+		return m.OldProviderID(ctx)
+	}
+	return nil, fmt.Errorf("unknown User field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case user.FieldCreateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateTime(v)
+		return nil
+	case user.FieldUpdateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateTime(v)
+		return nil
+	case user.FieldPublicID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPublicID(v)
+		return nil
+	case user.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case user.FieldEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmail(v)
+		return nil
+	case user.FieldProvider:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProvider(v)
+		return nil
+	case user.FieldProviderID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProviderID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown User field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *UserMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *UserMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UserMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown User numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *UserMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(user.FieldEmail) {
+		fields = append(fields, user.FieldEmail)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *UserMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *UserMutation) ClearField(name string) error {
+	switch name {
+	case user.FieldEmail:
+		m.ClearEmail()
+		return nil
+	}
+	return fmt.Errorf("unknown User nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *UserMutation) ResetField(name string) error {
+	switch name {
+	case user.FieldCreateTime:
+		m.ResetCreateTime()
+		return nil
+	case user.FieldUpdateTime:
+		m.ResetUpdateTime()
+		return nil
+	case user.FieldPublicID:
+		m.ResetPublicID()
+		return nil
+	case user.FieldName:
+		m.ResetName()
+		return nil
+	case user.FieldEmail:
+		m.ResetEmail()
+		return nil
+	case user.FieldProvider:
+		m.ResetProvider()
+		return nil
+	case user.FieldProviderID:
+		m.ResetProviderID()
+		return nil
+	}
+	return fmt.Errorf("unknown User field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *UserMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *UserMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *UserMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *UserMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *UserMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *UserMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *UserMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown User unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *UserMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown User edge %s", name)
 }

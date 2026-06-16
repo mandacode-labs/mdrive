@@ -40,6 +40,18 @@ func (nt NodeType) Equals(other NodeType) bool {
 	return nt == other
 }
 
+// Status represents the lifecycle state of a node.
+// Most types are always StatusActive. Object nodes progress through the
+// pending -> active -> pending_delete cycle (with GC possibly setting missing).
+type Status string
+
+const (
+	StatusPending       Status = "pending"        // Object node created, S3 upload not yet confirmed
+	StatusActive        Status = "active"         // Normal state
+	StatusPendingDelete Status = "pending_delete" // Soft delete, S3 cleanup in progress
+	StatusMissing       Status = "missing"        // GC detected S3 object missing
+)
+
 // Flags is a bitmask of node-level flags (ext2-style i_flags).
 type Flags uint32
 
@@ -131,89 +143,67 @@ func (r Revision) Time() (time.Time, error) {
 }
 
 // Content is the raw inline data of a node.
-// For small files/dirs/symlinks, this is JSON-serialized metadata stored directly in the node row.
-// Max size is 4 KiB; large data is stored externally (e.g., S3) and referenced via ObjectContent.
+// Stored as a JSON-serialized blob in the node's content column, up to 4 KiB.
+// Large data is stored externally (e.g., S3) and referenced via ObjectContent.
 type Content []byte
 
 // MaxContentSize is the maximum size of inline content.
 const MaxContentSize = 4096
 
-// NewContent creates Content from the given data, enforcing the size limit.
-func NewContent(data []byte) (Content, error) {
-	if len(data) > MaxContentSize {
-		return nil, ErrContentTooLarge
-	}
-	return Content(data), nil
-}
-
-// MustContent creates Content, panicking on size violation. Use only with trusted input.
-func MustContent(data []byte) Content {
-	c, err := NewContent(data)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func (c Content) Size() int {
-	return len(c)
-}
-
-func (c Content) Data() []byte {
-	return c
-}
+func (c Content) Size() int { return len(c) }
+func (c Content) Data() []byte { return c }
 
 // Node is the POSIX-style inode abstraction.
 // A node holds metadata and (for small items) inline content. The node does NOT know its
-// parent or its name — that information lives in the parent directory's DirContent,
-// exactly as in Unix where i_parent and i_name are absent from the inode structure.
+// drive, parent, or name — those live in the drive (root_node_id) and parent directory
+// (DirContent), exactly as in Unix where i_parent and i_name are absent from the inode.
 type Node struct {
-	id      uuid.UUID
-	driveID string // ULID of the owning drive (denormalized for query)
-	typ     NodeType
-	size    int64
-	nlink   uint32
-	content Content
-	atime   time.Time
-	mtime   time.Time
-	ctime   time.Time
-	crtime  time.Time
-	flags   Flags
-	rev     Revision
+	id        uuid.UUID
+	typ       NodeType
+	status    Status
+	size      int64
+	nlink     uint32
+	content   Content
+	atime     time.Time
+	mtime     time.Time
+	ctime     time.Time
+	crtime    time.Time
+	flags     Flags
+	rev       Revision
 }
 
 // newNode creates a new Node. Private: external code must use type-specific constructors
-// (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content.
+// (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content and status.
 func newNode(typ NodeType) *Node {
 	now := time.Now()
 	return &Node{
-		id:      uuid.New(),
-		driveID: "",
-		typ:     typ,
-		size:    0,
-		nlink:   1,
+		id:     uuid.New(),
+		typ:    typ,
+		status: StatusActive,
+		size:   0,
+		nlink:  1,
 		content: nil,
-		atime:   now,
-		mtime:   now,
-		ctime:   now,
-		crtime:  now,
-		flags:   0,
-		rev:     newRevision(),
+		atime:  now,
+		mtime:  now,
+		ctime:  now,
+		crtime: now,
+		flags:  0,
+		rev:    newRevision(),
 	}
 }
 
-// NewRootNode creates a new root node for a drive. Public because it has no parent.
-func NewRootNode(driveID string) *Node {
-	n := newNode(NodeTypeDirectory)
-	n.driveID = driveID
-	return n
+// NewRootNode creates a new root directory node for a drive.
+// Public because root nodes have no parent. The drive package records
+// this node's ID as drive.root_node_id after creation.
+func NewRootNode() *Node {
+	return newNode(NodeTypeDirectory)
 }
 
 // Getters (all public).
 
 func (n *Node) ID() uuid.UUID      { return n.id }
-func (n *Node) DriveID() string   { return n.driveID }
 func (n *Node) Type() NodeType     { return n.typ }
+func (n *Node) Status() Status     { return n.status }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
 func (n *Node) ATime() time.Time   { return n.atime }
@@ -281,16 +271,18 @@ func (n *Node) unlink() {
 	n.touch()
 }
 
-// setDriveID assigns the owning drive. Only used by NewRootNode and the Service when
-// creating a node outside of a directory (rare). Future nodes typically inherit driveID
-// from their parent or from the create context.
-func (n *Node) setDriveID(driveID string) {
-	n.driveID = driveID
+// setStatus updates the node's status. Used by Service to transition states
+// (e.g., pending -> active when S3 upload completes, or -> pending_delete on delete).
+func (n *Node) setStatus(s Status) {
+	if n.status == s {
+		return
+	}
+	n.status = s
 	n.touch()
 }
 
-// SetSize updates the size field. Used by file writes and object creation.
-// Public because the size is set externally (e.g., after a successful S3 upload).
+// SetSize updates the size field. Used by file writes and object creation
+// after a successful upload.
 func (n *Node) SetSize(size int64) {
 	n.size = size
 	n.touch()

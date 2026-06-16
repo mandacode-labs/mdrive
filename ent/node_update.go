@@ -34,20 +34,6 @@ func (_u *NodeUpdate) SetUpdateTime(v time.Time) *NodeUpdate {
 	return _u
 }
 
-// SetDriveID sets the "drive_id" field.
-func (_u *NodeUpdate) SetDriveID(v string) *NodeUpdate {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableDriveID(v *string) *NodeUpdate {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
-	return _u
-}
-
 // SetType sets the "type" field.
 func (_u *NodeUpdate) SetType(v node.Type) *NodeUpdate {
 	_u.mutation.SetType(v)
@@ -58,6 +44,20 @@ func (_u *NodeUpdate) SetType(v node.Type) *NodeUpdate {
 func (_u *NodeUpdate) SetNillableType(v *node.Type) *NodeUpdate {
 	if v != nil {
 		_u.SetType(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *NodeUpdate) SetStatus(v node.Status) *NodeUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableStatus(v *node.Status) *NodeUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -250,14 +250,14 @@ func (_u *NodeUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NodeUpdate) check() error {
-	if v, ok := _u.mutation.DriveID(); ok {
-		if err := node.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Node.drive_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.GetType(); ok {
 		if err := node.TypeValidator(v); err != nil {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := node.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Content(); ok {
@@ -288,11 +288,11 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(node.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DriveID(); ok {
-		_spec.SetField(node.FieldDriveID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)
@@ -359,20 +359,6 @@ func (_u *NodeUpdateOne) SetUpdateTime(v time.Time) *NodeUpdateOne {
 	return _u
 }
 
-// SetDriveID sets the "drive_id" field.
-func (_u *NodeUpdateOne) SetDriveID(v string) *NodeUpdateOne {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableDriveID(v *string) *NodeUpdateOne {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
-	return _u
-}
-
 // SetType sets the "type" field.
 func (_u *NodeUpdateOne) SetType(v node.Type) *NodeUpdateOne {
 	_u.mutation.SetType(v)
@@ -383,6 +369,20 @@ func (_u *NodeUpdateOne) SetType(v node.Type) *NodeUpdateOne {
 func (_u *NodeUpdateOne) SetNillableType(v *node.Type) *NodeUpdateOne {
 	if v != nil {
 		_u.SetType(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *NodeUpdateOne) SetStatus(v node.Status) *NodeUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableStatus(v *node.Status) *NodeUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -588,14 +588,14 @@ func (_u *NodeUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NodeUpdateOne) check() error {
-	if v, ok := _u.mutation.DriveID(); ok {
-		if err := node.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Node.drive_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.GetType(); ok {
 		if err := node.TypeValidator(v); err != nil {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.Status(); ok {
+		if err := node.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Content(); ok {
@@ -643,11 +643,11 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(node.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.DriveID(); ok {
-		_spec.SetField(node.FieldDriveID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)
