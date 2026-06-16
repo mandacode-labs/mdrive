@@ -48,20 +48,6 @@ func (_u *NodeUpdate) SetNillableType(v *node.Type) *NodeUpdate {
 	return _u
 }
 
-// SetStatus sets the "status" field.
-func (_u *NodeUpdate) SetStatus(v node.Status) *NodeUpdate {
-	_u.mutation.SetStatus(v)
-	return _u
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableStatus(v *node.Status) *NodeUpdate {
-	if v != nil {
-		_u.SetStatus(*v)
-	}
-	return _u
-}
-
 // SetSize sets the "size" field.
 func (_u *NodeUpdate) SetSize(v int64) *NodeUpdate {
 	_u.mutation.ResetSize()
@@ -255,11 +241,6 @@ func (_u *NodeUpdate) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Status(); ok {
-		if err := node.StatusValidator(v); err != nil {
-			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Content(); ok {
 		if err := node.ContentValidator(v); err != nil {
 			return &ValidationError{Name: "content", err: fmt.Errorf(`ent: validator failed for field "Node.content": %w`, err)}
@@ -290,9 +271,6 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)
@@ -369,20 +347,6 @@ func (_u *NodeUpdateOne) SetType(v node.Type) *NodeUpdateOne {
 func (_u *NodeUpdateOne) SetNillableType(v *node.Type) *NodeUpdateOne {
 	if v != nil {
 		_u.SetType(*v)
-	}
-	return _u
-}
-
-// SetStatus sets the "status" field.
-func (_u *NodeUpdateOne) SetStatus(v node.Status) *NodeUpdateOne {
-	_u.mutation.SetStatus(v)
-	return _u
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableStatus(v *node.Status) *NodeUpdateOne {
-	if v != nil {
-		_u.SetStatus(*v)
 	}
 	return _u
 }
@@ -593,11 +557,6 @@ func (_u *NodeUpdateOne) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Status(); ok {
-		if err := node.StatusValidator(v); err != nil {
-			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Content(); ok {
 		if err := node.ContentValidator(v); err != nil {
 			return &ValidationError{Name: "content", err: fmt.Errorf(`ent: validator failed for field "Node.content": %w`, err)}
@@ -645,9 +604,6 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)

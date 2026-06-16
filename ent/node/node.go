@@ -20,8 +20,6 @@ const (
 	FieldUpdateTime = "update_time"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
-	// FieldStatus holds the string denoting the status field in the database.
-	FieldStatus = "status"
 	// FieldSize holds the string denoting the size field in the database.
 	FieldSize = "size"
 	// FieldNlink holds the string denoting the nlink field in the database.
@@ -50,7 +48,6 @@ var Columns = []string{
 	FieldCreateTime,
 	FieldUpdateTime,
 	FieldType,
-	FieldStatus,
 	FieldSize,
 	FieldNlink,
 	FieldContent,
@@ -120,34 +117,6 @@ func TypeValidator(_type Type) error {
 	}
 }
 
-// Status defines the type for the "status" enum field.
-type Status string
-
-// StatusActive is the default value of the Status enum.
-const DefaultStatus = StatusActive
-
-// Status values.
-const (
-	StatusPending       Status = "pending"
-	StatusActive        Status = "active"
-	StatusPendingDelete Status = "pending_delete"
-	StatusMissing       Status = "missing"
-)
-
-func (s Status) String() string {
-	return string(s)
-}
-
-// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
-func StatusValidator(s Status) error {
-	switch s {
-	case StatusPending, StatusActive, StatusPendingDelete, StatusMissing:
-		return nil
-	default:
-		return fmt.Errorf("node: invalid enum value for status field: %q", s)
-	}
-}
-
 // OrderOption defines the ordering options for the Node queries.
 type OrderOption func(*sql.Selector)
 
@@ -169,11 +138,6 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
-}
-
-// ByStatus orders the results by the status field.
-func ByStatus(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
 // BySize orders the results by the size field.

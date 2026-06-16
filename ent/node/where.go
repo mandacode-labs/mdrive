@@ -210,26 +210,6 @@ func TypeNotIn(vs ...Type) predicate.Node {
 	return predicate.Node(sql.FieldNotIn(FieldType, vs...))
 }
 
-// StatusEQ applies the EQ predicate on the "status" field.
-func StatusEQ(v Status) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldStatus, v))
-}
-
-// StatusNEQ applies the NEQ predicate on the "status" field.
-func StatusNEQ(v Status) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldStatus, v))
-}
-
-// StatusIn applies the In predicate on the "status" field.
-func StatusIn(vs ...Status) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldStatus, vs...))
-}
-
-// StatusNotIn applies the NotIn predicate on the "status" field.
-func StatusNotIn(vs ...Status) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldStatus, vs...))
-}
-
 // SizeEQ applies the EQ predicate on the "size" field.
 func SizeEQ(v int64) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldSize, v))

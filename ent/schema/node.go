@@ -5,7 +5,6 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
-	"entgo.io/ent/schema/index"
 	"entgo.io/ent/schema/mixin"
 
 	"github.com/google/uuid"
@@ -50,14 +49,6 @@ func (Node) Fields() []ent.Field {
 			Values("file", "directory", "symlink", "object", "device").
 			Default("file"),
 
-		// Status: lifecycle state. Most types are always "active".
-		// Object nodes (S3-backed) progress through:
-		//   pending (initial) -> active (S3 confirmed) -> pending_delete (delete in progress) -> [gone]
-		// GC may also set "missing" if the S3 object disappears while the node exists.
-		field.Enum("status").
-			Values("pending", "active", "pending_delete", "missing").
-			Default("active"),
-
 		// Size in bytes. For objects, this is the size of the externally-stored data.
 		field.Int64("size").
 			Default(0),
@@ -90,8 +81,5 @@ func (Node) Fields() []ent.Field {
 
 // Indexes of the Node.
 func (Node) Indexes() []ent.Index {
-	return []ent.Index{
-		// For GC: find nodes by type and status.
-		index.Fields("type", "status"),
-	}
+	return nil
 }

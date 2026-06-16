@@ -9,7 +9,7 @@ import (
 )
 
 // Service is the node-domain service. It encapsulates node-level operations
-// (create, link, unlink, status transitions) using the Repository for persistence.
+// (create, link, unlink) using the Repository for persistence.
 //
 // The Service has no dependencies on storage or permission subsystems;
 // orchestration across multiple concerns lives in higher layers (e.g., application/vfs).
@@ -58,57 +58,16 @@ func (s *Service) CreateSymlink(ctx context.Context, target string) (*Node, erro
 	return n, nil
 }
 
-// CreateObjectPending creates a new object node in StatusPending (S3 upload not yet confirmed).
-// The caller is responsible for transitioning to StatusActive once the upload is verified.
-func (s *Service) CreateObjectPending(ctx context.Context, content ObjectContent, size int64) (*Node, error) {
+// CreateObject creates a new object node and persists it.
+func (s *Service) CreateObject(ctx context.Context, content ObjectContent, size int64) (*Node, error) {
 	n, err := NewObject(content, size)
 	if err != nil {
 		return nil, fmt.Errorf("create object: %w", err)
 	}
-	n.setStatus(StatusPending)
 	if err := s.repo.Save(ctx, n); err != nil {
 		return nil, fmt.Errorf("save object: %w", err)
 	}
 	return n, nil
-}
-
-// MarkObjectActive transitions an Object node from StatusPending to StatusActive.
-// Call this after the S3 upload is verified.
-func (s *Service) MarkObjectActive(ctx context.Context, id uuid.UUID) error {
-	n, err := s.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if n.Type() != NodeTypeObject {
-		return ErrInvalidType
-	}
-	n.setStatus(StatusActive)
-	return s.repo.Save(ctx, n)
-}
-
-// MarkObjectPendingDelete transitions a node to StatusPendingDelete (soft delete).
-// Used to coordinate S3 cleanup: the caller is expected to delete from S3
-// and then call DeleteNode for hard removal.
-func (s *Service) MarkObjectPendingDelete(ctx context.Context, id uuid.UUID) error {
-	n, err := s.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	n.setStatus(StatusPendingDelete)
-	return s.repo.Save(ctx, n)
-}
-
-// MarkObjectMissing is used by GC to mark an Object node whose S3 data is gone.
-func (s *Service) MarkObjectMissing(ctx context.Context, id uuid.UUID) error {
-	n, err := s.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if n.Type() != NodeTypeObject {
-		return ErrInvalidType
-	}
-	n.setStatus(StatusMissing)
-	return s.repo.Save(ctx, n)
 }
 
 // Link adds a child to a parent directory and persists the updated parent.
@@ -164,8 +123,8 @@ func (s *Service) Update(ctx context.Context, n *Node) error {
 }
 
 // Delete removes the node with the given id (hard delete).
-// For Object nodes, callers should first transition to StatusPendingDelete
-// and delete the S3 object, then call Delete.
+// For Object nodes, callers should delete the S3 object first, then call Delete.
+// Orphan S3 objects (where the node was deleted but S3 delete failed) are handled by GC.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete: %w", err)

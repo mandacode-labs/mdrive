@@ -70,7 +70,6 @@ var (
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"file", "directory", "symlink", "object", "device"}, Default: "file"},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "active", "pending_delete", "missing"}, Default: "active"},
 		{Name: "size", Type: field.TypeInt64, Default: 0},
 		{Name: "nlink", Type: field.TypeUint32, Default: 1},
 		{Name: "content", Type: field.TypeBytes, Nullable: true, Size: 4096},
@@ -86,13 +85,6 @@ var (
 		Name:       "nodes",
 		Columns:    NodesColumns,
 		PrimaryKey: []*schema.Column{NodesColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "node_type_status",
-				Unique:  false,
-				Columns: []*schema.Column{NodesColumns[3], NodesColumns[4]},
-			},
-		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{

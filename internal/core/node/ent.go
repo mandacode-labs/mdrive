@@ -55,7 +55,6 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 		_, err := r.client.Node.Create().
 			SetID(n.id).
 			SetType(entnode.Type(n.typ)).
-			SetStatus(entnode.Status(n.status)).
 			SetSize(n.size).
 			SetNlink(n.nlink).
 			SetAtime(n.atime).
@@ -70,7 +69,6 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	}
 	_, err = r.client.Node.UpdateOneID(n.id).
 		SetType(entnode.Type(n.typ)).
-		SetStatus(entnode.Status(n.status)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
 		SetAtime(n.atime).
@@ -128,7 +126,6 @@ func fromEnt(e *ent.Node) *Node {
 	n := &Node{
 		id:     e.ID,
 		typ:    parseNodeType(string(e.Type)),
-		status: parseNodeStatus(string(e.Status)),
 		size:   e.Size,
 		nlink:  e.Nlink,
 		atime:  e.Atime,
@@ -162,22 +159,6 @@ func parseNodeType(s string) NodeType {
 		return NodeTypeDevice
 	default:
 		return NodeType(0) // unknown
-	}
-}
-
-// parseNodeStatus converts the ent string enum back into the domain Status.
-func parseNodeStatus(s string) Status {
-	switch s {
-	case "pending":
-		return StatusPending
-	case "active":
-		return StatusActive
-	case "pending_delete":
-		return StatusPendingDelete
-	case "missing":
-		return StatusMissing
-	default:
-		return StatusActive
 	}
 }
 

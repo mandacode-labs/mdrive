@@ -40,18 +40,6 @@ func (nt NodeType) Equals(other NodeType) bool {
 	return nt == other
 }
 
-// Status represents the lifecycle state of a node.
-// Most types are always StatusActive. Object nodes progress through the
-// pending -> active -> pending_delete cycle (with GC possibly setting missing).
-type Status string
-
-const (
-	StatusPending       Status = "pending"        // Object node created, S3 upload not yet confirmed
-	StatusActive        Status = "active"         // Normal state
-	StatusPendingDelete Status = "pending_delete" // Soft delete, S3 cleanup in progress
-	StatusMissing       Status = "missing"        // GC detected S3 object missing
-)
-
 // Flags is a bitmask of node-level flags (ext2-style i_flags).
 type Flags uint32
 
@@ -150,45 +138,47 @@ type Content []byte
 // MaxContentSize is the maximum size of inline content.
 const MaxContentSize = 4096
 
-func (c Content) Size() int { return len(c) }
-func (c Content) Data() []byte { return c }
+func (c Content) Size() int     { return len(c) }
+func (c Content) Data() []byte   { return c }
 
 // Node is the POSIX-style inode abstraction.
 // A node holds metadata and (for small items) inline content. The node does NOT know its
 // drive, parent, or name — those live in the drive (root_node_id) and parent directory
 // (DirContent), exactly as in Unix where i_parent and i_name are absent from the inode.
+//
+// S3 data state is NOT tracked here. For object nodes, the actual S3 data
+// existence is checked lazily on read (HEAD to S3). If the S3 object is
+// missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
-	id        uuid.UUID
-	typ       NodeType
-	status    Status
-	size      int64
-	nlink     uint32
-	content   Content
-	atime     time.Time
-	mtime     time.Time
-	ctime     time.Time
-	crtime    time.Time
-	flags     Flags
-	rev       Revision
+	id      uuid.UUID
+	typ     NodeType
+	size    int64
+	nlink   uint32
+	content Content
+	atime   time.Time
+	mtime   time.Time
+	ctime   time.Time
+	crtime  time.Time
+	flags   Flags
+	rev     Revision
 }
 
 // newNode creates a new Node. Private: external code must use type-specific constructors
-// (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content and status.
+// (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content.
 func newNode(typ NodeType) *Node {
 	now := time.Now()
 	return &Node{
-		id:     uuid.New(),
-		typ:    typ,
-		status: StatusActive,
-		size:   0,
-		nlink:  1,
+		id:      uuid.New(),
+		typ:     typ,
+		size:    0,
+		nlink:   1,
 		content: nil,
-		atime:  now,
-		mtime:  now,
-		ctime:  now,
-		crtime: now,
-		flags:  0,
-		rev:    newRevision(),
+		atime:   now,
+		mtime:   now,
+		ctime:   now,
+		crtime:  now,
+		flags:   0,
+		rev:     newRevision(),
 	}
 }
 
@@ -203,7 +193,6 @@ func NewRootNode() *Node {
 
 func (n *Node) ID() uuid.UUID      { return n.id }
 func (n *Node) Type() NodeType     { return n.typ }
-func (n *Node) Status() Status     { return n.status }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
 func (n *Node) ATime() time.Time   { return n.atime }
@@ -268,16 +257,6 @@ func (n *Node) unlink() {
 	if n.nlink > 0 {
 		n.nlink--
 	}
-	n.touch()
-}
-
-// setStatus updates the node's status. Used by Service to transition states
-// (e.g., pending -> active when S3 upload completes, or -> pending_delete on delete).
-func (n *Node) setStatus(s Status) {
-	if n.status == s {
-		return
-	}
-	n.status = s
 	n.touch()
 }
 

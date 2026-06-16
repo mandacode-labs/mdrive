@@ -1587,7 +1587,6 @@ type NodeMutation struct {
 	create_time   *time.Time
 	update_time   *time.Time
 	_type         *node.Type
-	status        *node.Status
 	size          *int64
 	addsize       *int64
 	nlink         *uint32
@@ -1816,42 +1815,6 @@ func (m *NodeMutation) OldType(ctx context.Context) (v node.Type, err error) {
 // ResetType resets all changes to the "type" field.
 func (m *NodeMutation) ResetType() {
 	m._type = nil
-}
-
-// SetStatus sets the "status" field.
-func (m *NodeMutation) SetStatus(n node.Status) {
-	m.status = &n
-}
-
-// Status returns the value of the "status" field in the mutation.
-func (m *NodeMutation) Status() (r node.Status, exists bool) {
-	v := m.status
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldStatus returns the old "status" field's value of the Node entity.
-// If the Node object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldStatus(ctx context.Context) (v node.Status, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldStatus requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
-	}
-	return oldValue.Status, nil
-}
-
-// ResetStatus resets all changes to the "status" field.
-func (m *NodeMutation) ResetStatus() {
-	m.status = nil
 }
 
 // SetSize sets the "size" field.
@@ -2285,7 +2248,7 @@ func (m *NodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 12)
 	if m.create_time != nil {
 		fields = append(fields, node.FieldCreateTime)
 	}
@@ -2294,9 +2257,6 @@ func (m *NodeMutation) Fields() []string {
 	}
 	if m._type != nil {
 		fields = append(fields, node.FieldType)
-	}
-	if m.status != nil {
-		fields = append(fields, node.FieldStatus)
 	}
 	if m.size != nil {
 		fields = append(fields, node.FieldSize)
@@ -2339,8 +2299,6 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdateTime()
 	case node.FieldType:
 		return m.GetType()
-	case node.FieldStatus:
-		return m.Status()
 	case node.FieldSize:
 		return m.Size()
 	case node.FieldNlink:
@@ -2374,8 +2332,6 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldUpdateTime(ctx)
 	case node.FieldType:
 		return m.OldType(ctx)
-	case node.FieldStatus:
-		return m.OldStatus(ctx)
 	case node.FieldSize:
 		return m.OldSize(ctx)
 	case node.FieldNlink:
@@ -2423,13 +2379,6 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetType(v)
-		return nil
-	case node.FieldStatus:
-		v, ok := value.(node.Status)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetStatus(v)
 		return nil
 	case node.FieldSize:
 		v, ok := value.(int64)
@@ -2599,9 +2548,6 @@ func (m *NodeMutation) ResetField(name string) error {
 		return nil
 	case node.FieldType:
 		m.ResetType()
-		return nil
-	case node.FieldStatus:
-		m.ResetStatus()
 		return nil
 	case node.FieldSize:
 		m.ResetSize()

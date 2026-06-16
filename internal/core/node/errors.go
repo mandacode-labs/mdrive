@@ -2,7 +2,7 @@ package node
 
 import "errors"
 
-// Node-domain errors. Use errors.Is to check.
+// Node-domain sentinel errors. Use errors.Is(err, node.ErrXxx) to check.
 var (
 	// ErrNotFound is returned when a node is not present in the repository.
 	ErrNotFound = errors.New("node: not found")

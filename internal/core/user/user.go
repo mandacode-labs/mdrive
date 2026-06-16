@@ -3,10 +3,10 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/errors"
-	"github.com/mandacode-labs/mdrive/internal/idgen"
+	"github.com/oklog/ulid/v2"
 )
 
 // User is an externally-authenticated user.
@@ -46,12 +46,12 @@ func NewUser(
 }
 
 // Getters.
-func (u *User) ID() string         { return u.id }
-func (u *User) PublicID() string   { return u.publicID }
-func (u *User) Name() string       { return u.name }
-func (u *User) Email() *string     { return u.email }
-func (u *User) Provider() string   { return u.provider }
-func (u *User) ProviderID() string { return u.providerID }
+func (u *User) ID() string           { return u.id }
+func (u *User) PublicID() string     { return u.publicID }
+func (u *User) Name() string         { return u.name }
+func (u *User) Email() *string       { return u.email }
+func (u *User) Provider() string     { return u.provider }
+func (u *User) ProviderID() string   { return u.providerID }
 func (u *User) CreatedAt() time.Time { return u.createdAt }
 func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 
@@ -93,18 +93,18 @@ func NewService(repo Repository) *Service {
 // Identity is (provider, provider_id).
 func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User, error) {
 	if cmd.Provider == "" {
-		return nil, errors.BadRequest("provider is required")
+		return nil, ErrProviderRequired
 	}
 	if cmd.ProviderID == "" {
-		return nil, errors.BadRequest("provider_id is required")
+		return nil, ErrProviderIDRequired
 	}
 	if cmd.Name == "" {
-		return nil, errors.BadRequest("name is required")
+		return nil, ErrNameRequired
 	}
 
 	existing, err := s.repo.GetByProviderID(ctx, cmd.Provider, cmd.ProviderID)
 	if err != nil {
-		return nil, errors.WrapInternal(err, "lookup user")
+		return nil, fmt.Errorf("lookup user: %w", err)
 	}
 	if existing != nil {
 		// Update name/email if changed.
@@ -121,7 +121,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 			)
 			saved, err := s.repo.Update(ctx, updated)
 			if err != nil {
-				return nil, errors.WrapInternal(err, "update user")
+				return nil, fmt.Errorf("update user: %w", err)
 			}
 			return saved, nil
 		}
@@ -131,7 +131,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 	// Create new user with generated IDs.
 	created, err := s.repo.Create(ctx, cmd)
 	if err != nil {
-		return nil, errors.WrapInternal(err, "create user")
+		return nil, fmt.Errorf("create user: %w", err)
 	}
 	return created, nil
 }
@@ -143,7 +143,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, errors.NotFound("user not found")
+		return nil, ErrNotFound
 	}
 	return u, nil
 }
@@ -155,7 +155,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*User, er
 		return nil, err
 	}
 	if u == nil {
-		return nil, errors.NotFound("user not found")
+		return nil, ErrNotFound
 	}
 	return u, nil
 }
@@ -185,5 +185,5 @@ func emailChanged(u *User, cmd *CreateCommand) bool {
 
 // GenerateID returns a new ULID for use as user ID.
 func GenerateID() string {
-	return idgen.Generate()
+	return ulid.Make().String()
 }

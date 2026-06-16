@@ -24,8 +24,6 @@ type Node struct {
 	UpdateTime time.Time `json:"update_time,omitempty"`
 	// Type holds the value of the "type" field.
 	Type node.Type `json:"type,omitempty"`
-	// Status holds the value of the "status" field.
-	Status node.Status `json:"status,omitempty"`
 	// Size holds the value of the "size" field.
 	Size int64 `json:"size,omitempty"`
 	// Nlink holds the value of the "nlink" field.
@@ -56,7 +54,7 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case node.FieldSize, node.FieldNlink, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldType, node.FieldStatus, node.FieldRevision:
+		case node.FieldType, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
 			values[i] = new(sql.NullTime)
@@ -100,12 +98,6 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field type", values[i])
 			} else if value.Valid {
 				_m.Type = node.Type(value.String)
-			}
-		case node.FieldStatus:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field status", values[i])
-			} else if value.Valid {
-				_m.Status = node.Status(value.String)
 			}
 		case node.FieldSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -205,9 +197,6 @@ func (_m *Node) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))
-	builder.WriteString(", ")
-	builder.WriteString("status=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("size=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Size))

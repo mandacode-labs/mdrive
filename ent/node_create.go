@@ -63,20 +63,6 @@ func (_c *NodeCreate) SetNillableType(v *node.Type) *NodeCreate {
 	return _c
 }
 
-// SetStatus sets the "status" field.
-func (_c *NodeCreate) SetStatus(v node.Status) *NodeCreate {
-	_c.mutation.SetStatus(v)
-	return _c
-}
-
-// SetNillableStatus sets the "status" field if the given value is not nil.
-func (_c *NodeCreate) SetNillableStatus(v *node.Status) *NodeCreate {
-	if v != nil {
-		_c.SetStatus(*v)
-	}
-	return _c
-}
-
 // SetSize sets the "size" field.
 func (_c *NodeCreate) SetSize(v int64) *NodeCreate {
 	_c.mutation.SetSize(v)
@@ -208,10 +194,6 @@ func (_c *NodeCreate) defaults() {
 		v := node.DefaultType
 		_c.mutation.SetType(v)
 	}
-	if _, ok := _c.mutation.Status(); !ok {
-		v := node.DefaultStatus
-		_c.mutation.SetStatus(v)
-	}
 	if _, ok := _c.mutation.Size(); !ok {
 		v := node.DefaultSize
 		_c.mutation.SetSize(v)
@@ -240,14 +222,6 @@ func (_c *NodeCreate) check() error {
 	if v, ok := _c.mutation.GetType(); ok {
 		if err := node.TypeValidator(v); err != nil {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.Status(); !ok {
-		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Node.status"`)}
-	}
-	if v, ok := _c.mutation.Status(); ok {
-		if err := node.StatusValidator(v); err != nil {
-			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Node.status": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Size(); !ok {
@@ -330,10 +304,6 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(node.FieldType, field.TypeEnum, value)
 		_node.Type = value
-	}
-	if value, ok := _c.mutation.Status(); ok {
-		_spec.SetField(node.FieldStatus, field.TypeEnum, value)
-		_node.Status = value
 	}
 	if value, ok := _c.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)

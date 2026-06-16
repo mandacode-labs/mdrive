@@ -374,9 +374,6 @@ func TestNewRootNode(t *testing.T) {
 	if n.Type() != NodeTypeDirectory {
 		t.Errorf("expected type directory, got %v", n.Type())
 	}
-	if n.Status() != StatusActive {
-		t.Errorf("expected status active, got %v", n.Status())
-	}
 }
 
 func TestRevision(t *testing.T) {
@@ -413,25 +410,5 @@ func TestFlags(t *testing.T) {
 	}
 	if !f.Has(FlagNoAtime) {
 		t.Error("expected other flag to remain set")
-	}
-}
-
-func TestStatus(t *testing.T) {
-	n, _ := NewFile("x")
-	if n.Status() != StatusActive {
-		t.Errorf("expected default status active, got %v", n.Status())
-	}
-	// Verify status constants
-	if StatusPending != "pending" {
-		t.Errorf("StatusPending should be 'pending'")
-	}
-	if StatusActive != "active" {
-		t.Errorf("StatusActive should be 'active'")
-	}
-	if StatusPendingDelete != "pending_delete" {
-		t.Errorf("StatusPendingDelete should be 'pending_delete'")
-	}
-	if StatusMissing != "missing" {
-		t.Errorf("StatusMissing should be 'missing'")
 	}
 }
