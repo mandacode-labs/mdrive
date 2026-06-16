@@ -8,98 +8,70 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-// Node operations on the vfs Service.
-//
-// These methods compose node domain constructors with repository persistence
-// and (where appropriate) permission checks. They are the VFS-level API
-// analogous to the Linux VFS layer: path-based operations with metadata
-// and error handling.
+// Node operations — delegates to the node domain service.
 
-// CreateFile creates a file node and persists it.
+// CreateFile creates and persists a file node.
 func (s *Service) CreateFile(ctx context.Context, content string) (*node.Node, error) {
-	n, err := node.NewFile(content)
+	n, err := s.nodeSvc.CreateFile(ctx, content)
 	if err != nil {
-		return nil, fmt.Errorf("vfs: create file: %w", err)
-	}
-	if err := s.node.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("vfs: save file: %w", err)
+		return nil, fmt.Errorf("vfs: %w", err)
 	}
 	return n, nil
 }
 
-// CreateDirectory creates a directory node and persists it.
+// CreateDirectory creates and persists a directory node.
 func (s *Service) CreateDirectory(ctx context.Context) (*node.Node, error) {
-	n, err := node.NewDirectory()
+	n, err := s.nodeSvc.CreateDirectory(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("vfs: create directory: %w", err)
-	}
-	if err := s.node.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("vfs: save directory: %w", err)
+		return nil, fmt.Errorf("vfs: %w", err)
 	}
 	return n, nil
 }
 
-// CreateSymlink creates a symlink node and persists it.
+// CreateSymlink creates and persists a symlink node.
 func (s *Service) CreateSymlink(ctx context.Context, target string) (*node.Node, error) {
-	n, err := node.NewSymlink(target)
+	n, err := s.nodeSvc.CreateSymlink(ctx, target)
 	if err != nil {
-		return nil, fmt.Errorf("vfs: create symlink: %w", err)
-	}
-	if err := s.node.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("vfs: save symlink: %w", err)
+		return nil, fmt.Errorf("vfs: %w", err)
 	}
 	return n, nil
 }
 
-// CreateObject creates an object node and persists it.
+// CreateObject creates and persists an object node.
 func (s *Service) CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error) {
-	n, err := node.NewObject(content, size)
+	n, err := s.nodeSvc.CreateObject(ctx, content, size)
 	if err != nil {
-		return nil, fmt.Errorf("vfs: create object: %w", err)
-	}
-	if err := s.node.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("vfs: save object: %w", err)
+		return nil, fmt.Errorf("vfs: %w", err)
 	}
 	return n, nil
 }
 
-// Link adds a child entry to a parent directory and persists the parent.
+// Link adds a child entry to parent and persists the parent.
 func (s *Service) Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error {
-	if err := parent.AddEntry(name, child); err != nil {
-		return fmt.Errorf("vfs: link: %w", err)
-	}
-	return s.node.Save(ctx, parent)
+	return s.nodeSvc.Link(ctx, parent, name, child)
 }
 
-// Unlink removes a child entry from a parent directory and persists the parent.
+// Unlink removes a child entry from parent and persists the parent.
 func (s *Service) Unlink(ctx context.Context, parent *node.Node, name string) error {
-	if err := parent.RemoveEntry(name); err != nil {
-		return fmt.Errorf("vfs: unlink: %w", err)
-	}
-	return s.node.Save(ctx, parent)
+	return s.nodeSvc.Unlink(ctx, parent, name)
 }
 
 // GetNode returns a node by ID.
 func (s *Service) GetNode(ctx context.Context, id uuid.UUID) (*node.Node, error) {
-	n, err := s.node.Get(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("vfs: get node: %w", err)
-	}
-	return n, nil
+	return s.nodeSvc.GetByID(ctx, id)
 }
 
-// UpdateNode persists changes to a node after its mutable fields have been modified.
+// UpdateNode saves a node after mutation.
 func (s *Service) UpdateNode(ctx context.Context, n *node.Node) error {
-	return s.node.Save(ctx, n)
+	return s.nodeSvc.Update(ctx, n)
 }
 
 // DeleteNode removes a node by ID.
 func (s *Service) DeleteNode(ctx context.Context, id uuid.UUID) error {
-	return s.node.Delete(ctx, id)
+	return s.nodeSvc.Delete(ctx, id)
 }
 
-// ReadObjectData fetches the actual S3 data for an object node.
-// This combines the domain (reading ObjectContent) with infrastructure (S3 GET).
+// ReadObjectData fetches S3 data for an object node.
 func (s *Service) ReadObjectData(ctx context.Context, n *node.Node) ([]byte, error) {
 	oc, err := n.ReadObject()
 	if err != nil {
@@ -112,7 +84,7 @@ func (s *Service) ReadObjectData(ctx context.Context, n *node.Node) ([]byte, err
 	return data, nil
 }
 
-// ObjectExists checks whether the S3 object backing an object node still exists.
+// ObjectExists checks whether the S3 object backing an object node exists.
 func (s *Service) ObjectExists(ctx context.Context, n *node.Node) (bool, error) {
 	oc, err := n.ReadObject()
 	if err != nil {

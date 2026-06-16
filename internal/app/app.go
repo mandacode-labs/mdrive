@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/XSAM/otelsql"
+	"github.com/google/uuid"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/mandacode-labs/mdrive/ent"
@@ -17,24 +18,21 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
-// App holds all wired components (bare repos, no services).
-//
-// Service composition (orchestration across domains, permission checks,
-// S3 interaction) lives in internal/vfs. This package only wires the
-// infrastructure and core repositories.
+// App holds all wired components.
 type App struct {
 	Cfg *config.Config
 	Log *logging.Logger
 
-	NodeRepo  node.Repository
-	DriveRepo drive.Repository
-	UserRepo  user.Repository
+	NodeSvc  *node.Service
+	DriveSvc *drive.Service
+	UserSvc  *user.Service
+	UserEx   user.Exister
 
 	DB  *sql.DB
 	Ent *ent.Client
 }
 
-// New wires the core infrastructure and repositories.
+// New wires the infrastructure, core domain services, and the vfs service.
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	log := logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
 
@@ -62,17 +60,25 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	nodeRepo := node.NewEntRepository(entClient)
-	driveRepo := drive.NewRepository(entClient)
+	nodeSvc := node.NewService(nodeRepo)
+
 	userRepo := user.NewRepository(entClient)
+	userSvc := user.NewService(userRepo)
+	userEx := user.NewExisterAdapter(userRepo)
+
+	rootCreator := &rootNodeCreator{svc: nodeSvc}
+	driveRepo := drive.NewRepository(entClient)
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
 	return &App{
-		Cfg:       cfg,
-		Log:       log,
-		NodeRepo:  nodeRepo,
-		DriveRepo: driveRepo,
-		UserRepo:  userRepo,
-		DB:        db,
-		Ent:       entClient,
+		Cfg:      cfg,
+		Log:      log,
+		NodeSvc:  nodeSvc,
+		DriveSvc: driveSvc,
+		UserSvc:  userSvc,
+		UserEx:   userEx,
+		DB:       db,
+		Ent:      entClient,
 	}, nil
 }
 
@@ -85,4 +91,17 @@ func (a *App) Close() error {
 		return a.DB.Close()
 	}
 	return nil
+}
+
+// rootNodeCreator adapts node.Service to drive.RootCreator.
+type rootNodeCreator struct {
+	svc *node.Service
+}
+
+func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, error) {
+	root, err := n.svc.CreateDirectory(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return root.ID(), nil
 }
