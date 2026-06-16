@@ -33,4 +33,8 @@ var (
 
 	// ErrContentTooLarge is returned when content exceeds MaxContentSize.
 	ErrContentTooLarge = errors.New("node: content exceeds maximum size")
+
+	// ErrRevisionConflict is returned when a Save detects that the node's
+	// revision has changed since it was loaded (concurrent update).
+	ErrRevisionConflict = errors.New("node: revision conflict")
 )

@@ -12,8 +12,6 @@ import (
 )
 
 // entRepository is the Ent-backed implementation of Repository.
-// It is intentionally unexported: external callers obtain a Repository via
-// NewEntRepository, which returns the interface.
 type entRepository struct {
 	client *ent.Client
 }
@@ -35,13 +33,8 @@ func (r *entRepository) Get(ctx context.Context, id uuid.UUID) (*Node, error) {
 	return fromEnt(e), nil
 }
 
-// GetByID is an alias for Get, kept for clarity at call sites.
-func (r *entRepository) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
-	return r.Get(ctx, id)
-}
-
-// Save persists the node. If the node already exists (by id), it is updated;
-// otherwise it is inserted.
+// Save persists the node. On update, uses optimistic concurrency: the
+// UPDATE is conditional on revision matching the value loaded from the DB.
 func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	if n == nil {
 		return errors.New("save: node is nil")
@@ -52,22 +45,35 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	}
 	content := n.content
 	if !exists {
-		_, err := r.client.Node.Create().
-			SetID(n.id).
-			SetType(entnode.Type(n.typ)).
-			SetSize(n.size).
-			SetNlink(n.nlink).
-			SetAtime(n.atime).
-			SetMtime(n.mtime).
-			SetCtime(n.ctime).
-			SetCrtime(n.crtime).
-			SetFlags(uint32(n.flags)).
-			SetRevision(string(n.rev)).
-			SetContent(content).
-			Save(ctx)
-		return err
+		if err := r.insert(ctx, n, content); err != nil {
+			return err
+		}
+		n.staleRev = n.rev
+		return nil
 	}
-	_, err = r.client.Node.UpdateOneID(n.id).
+	return r.update(ctx, n, content)
+}
+
+func (r *entRepository) insert(ctx context.Context, n *Node, content Content) error {
+	_, err := r.client.Node.Create().
+		SetID(n.id).
+		SetType(entnode.Type(n.typ)).
+		SetSize(n.size).
+		SetNlink(n.nlink).
+		SetAtime(n.atime).
+		SetMtime(n.mtime).
+		SetCtime(n.ctime).
+		SetCrtime(n.crtime).
+		SetFlags(uint32(n.flags)).
+		SetRevision(string(n.rev)).
+		SetContent(content).
+		Save(ctx)
+	return err
+}
+
+func (r *entRepository) update(ctx context.Context, n *Node, content Content) error {
+	affected, err := r.client.Node.Update().
+		Where(entnode.IDEQ(n.id), entnode.RevisionEQ(string(n.staleRev))).
 		SetType(entnode.Type(n.typ)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
@@ -78,7 +84,14 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 		SetRevision(string(n.rev)).
 		SetContent(content).
 		Save(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrRevisionConflict
+	}
+	n.staleRev = n.rev
+	return nil
 }
 
 // Delete removes the node with the given id.
@@ -93,8 +106,7 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// WithTx executes fn within a transaction. The Repository passed to fn
-// operates on the transaction, so its operations are atomic.
+// WithTx executes fn within a transaction.
 func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
@@ -109,7 +121,6 @@ func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) e
 	return tx.Commit()
 }
 
-// exists checks whether a node with the given id exists.
 func (r *entRepository) exists(ctx context.Context, id uuid.UUID) (bool, error) {
 	n, err := r.client.Node.Query().Where(entnode.IDEQ(id)).Exist(ctx)
 	if err != nil {
@@ -118,25 +129,26 @@ func (r *entRepository) exists(ctx context.Context, id uuid.UUID) (bool, error) 
 	return n, nil
 }
 
-// fromEnt converts an ent.Node to a domain Node, populating all private fields.
+// fromEnt converts an ent.Node to a domain Node.
 func fromEnt(e *ent.Node) *Node {
 	if e == nil {
 		return nil
 	}
+	rev := Revision(e.Revision)
 	n := &Node{
-		id:     e.ID,
-		typ:    parseNodeType(string(e.Type)),
-		size:   e.Size,
-		nlink:  e.Nlink,
-		atime:  e.Atime,
-		mtime:  e.Mtime,
-		ctime:  e.Ctime,
-		crtime: e.Crtime,
-		flags:  Flags(e.Flags),
-		rev:    Revision(e.Revision),
+		id:       e.ID,
+		typ:      parseNodeType(string(e.Type)),
+		size:     e.Size,
+		nlink:    e.Nlink,
+		atime:    e.Atime,
+		mtime:    e.Mtime,
+		ctime:    e.Ctime,
+		crtime:   e.Crtime,
+		flags:    Flags(e.Flags),
+		rev:      rev,
+		staleRev: rev,
 	}
 	if e.Content != nil {
-		// Copy the slice so that the domain Node owns its content.
 		c := make(Content, len(*e.Content))
 		copy(c, *e.Content)
 		n.content = c
@@ -144,7 +156,6 @@ func fromEnt(e *ent.Node) *Node {
 	return n
 }
 
-// parseNodeType converts the ent string enum back into the domain NodeType.
 func parseNodeType(s string) NodeType {
 	switch s {
 	case "file":
@@ -158,9 +169,8 @@ func parseNodeType(s string) NodeType {
 	case "device":
 		return NodeTypeDevice
 	default:
-		return NodeType(0) // unknown
+		return NodeType(0)
 	}
 }
 
-// now is overridable in tests.
 var now = time.Now

@@ -10,8 +10,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
-// Rm removes the file or directory at path (like `rm [-r] /path`).
-func (s *Service) Rm(ctx context.Context, userID, driveID, path string, recursive bool) error {
+// Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
+// Set recursive=true to remove directories and their contents.
+func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string, recursive bool) error {
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
 		return err
 	}
@@ -19,13 +20,26 @@ func (s *Service) Rm(ctx context.Context, userID, driveID, path string, recursiv
 	if err != nil {
 		return err
 	}
+	var errs []error
+	for _, path := range paths {
+		if e := s.rmOnePath(ctx, rootID, path, recursive); e != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", path, e))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("rm: %v", errs)
+	}
+	return nil
+}
+
+func (s *Service) rmOnePath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) error {
 	n, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
 		return fmt.Errorf("rm: %w", err)
 	}
 	if n.IsDir() {
 		if !recursive {
-			return fmt.Errorf("rm: '%s' is a directory (use -r)", path)
+			return fmt.Errorf("'%s' is a directory (use -r)", path)
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}

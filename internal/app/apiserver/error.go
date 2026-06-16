@@ -5,24 +5,14 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/mandacode-labs/mdrive/api/rest/v1"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
-// APIError is the JSON-serializable error response.
-type APIError struct {
-	Code    string         `json:"code"`
-	Message string         `json:"message"`
-	Details map[string]any `json:"details,omitempty"`
-}
-
-// FromError converts a domain error to (HTTP status code, APIError).
-//
-// Each domain package defines its own sentinel errors. This function is the
-// single place that maps them to HTTP semantics. New domains should be
-// added here as their errors are introduced.
-func FromError(err error) (int, *APIError) {
+// FromError converts a domain error to (HTTP status code, v1.Error).
+func FromError(err error) (int, v1.Error) {
 	switch {
 	// 404 Not Found
 	case errors.Is(err, node.ErrNotFound),
@@ -30,17 +20,12 @@ func FromError(err error) (int, *APIError) {
 		errors.Is(err, user.ErrNotFound),
 		errors.Is(err, node.ErrEntryNotFound),
 		errors.Is(err, node.ErrNoContent):
-		return http.StatusNotFound, &APIError{
-			Code:    "not_found",
-			Message: "resource not found",
-		}
+		return http.StatusNotFound, v1.Error{Code: v1.CodeNotFound, Message: "not found"}
 
 	// 409 Conflict
-	case errors.Is(err, node.ErrEntryExists):
-		return http.StatusConflict, &APIError{
-			Code:    "entry_exists",
-			Message: "entry already exists",
-		}
+	case errors.Is(err, node.ErrEntryExists),
+		errors.Is(err, node.ErrRevisionConflict):
+		return http.StatusConflict, v1.Error{Code: v1.CodeConflict, Message: err.Error()}
 
 	// 400 Bad Request
 	case errors.Is(err, node.ErrInvalidName),
@@ -56,20 +41,13 @@ func FromError(err error) (int, *APIError) {
 		errors.Is(err, user.ErrProviderRequired),
 		errors.Is(err, user.ErrProviderIDRequired),
 		errors.Is(err, user.ErrNameRequired):
-		return http.StatusBadRequest, &APIError{
-			Code:    "bad_request",
-			Message: "invalid request",
-		}
+		return http.StatusBadRequest, v1.Error{Code: v1.CodeBadRequest, Message: err.Error()}
 	}
 
-	// Default: 500 Internal Server Error
-	return http.StatusInternalServerError, &APIError{
-		Code:    "internal",
-		Message: "internal server error",
-	}
+	return http.StatusInternalServerError, v1.Error{Code: v1.CodeInternal, Message: "internal error"}
 }
 
-// WriteError writes the error as an HTTP response.
+// WriteError serializes the error as JSON and writes it to the response.
 func WriteError(w http.ResponseWriter, err error) {
 	statusCode, apiErr := FromError(err)
 	w.Header().Set("Content-Type", "application/json")
@@ -77,7 +55,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	_ = json.NewEncoder(w).Encode(apiErr)
 }
 
-// WriteJSON writes a JSON response with the given status code.
+// WriteJSON writes a success response as JSON.
 func WriteJSON(w http.ResponseWriter, statusCode int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

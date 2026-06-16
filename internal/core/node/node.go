@@ -150,17 +150,22 @@ func (c Content) Data() []byte   { return c }
 // existence is checked lazily on read (HEAD to S3). If the S3 object is
 // missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
-	id      uuid.UUID
-	typ     NodeType
-	size    int64
-	nlink   uint32
-	content Content
-	atime   time.Time
-	mtime   time.Time
-	ctime   time.Time
-	crtime  time.Time
-	flags   Flags
-	rev     Revision
+	id       uuid.UUID
+	typ      NodeType
+	size     int64
+	nlink    uint32
+	content  Content
+	atime    time.Time
+	mtime    time.Time
+	ctime    time.Time
+	crtime   time.Time
+	flags    Flags
+	rev      Revision
+
+	// staleRev is the revision loaded from the DB. Save uses it for
+	// optimistic concurrency: UPDATE WHERE revision = staleRev.
+	// On conflict (0 rows affected) it returns ErrRevisionConflict.
+	staleRev Revision
 }
 
 // newNode creates a new Node. Private: external code must use type-specific constructors

@@ -9,6 +9,15 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/permission"
+)
+
+// Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
+var (
+	_ nodeClient = (*node.Service)(nil)
+	_ driveClient = (*drive.Service)(nil)
+	_ userClient = (*user.Service)(nil)
+	_ permClient = (*permission.OpenFGAChecker)(nil)
 )
 
 // --------------- Consumer-declared interfaces ---------------
