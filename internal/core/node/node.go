@@ -238,31 +238,11 @@ func (n *Node) read() (Content, error) {
 	return n.content, nil
 }
 
-// touch updates mtime/ctime/rev without changing content. Used for metadata-only updates.
-func (n *Node) touch() {
+// SetSize updates the size field and bumps mtime/ctime/rev.
+func (n *Node) SetSize(size int64) {
+	n.size = size
 	now := time.Now()
 	n.mtime = now
 	n.ctime = now
 	n.rev = n.rev.Next()
-}
-
-// link increments the link count. Private: only Service.Unlink callers manage links.
-func (n *Node) link() {
-	n.nlink++
-	n.touch()
-}
-
-// unlink decrements the link count. Private.
-func (n *Node) unlink() {
-	if n.nlink > 0 {
-		n.nlink--
-	}
-	n.touch()
-}
-
-// SetSize updates the size field. Used by file writes and object creation
-// after a successful upload.
-func (n *Node) SetSize(size int64) {
-	n.size = size
-	n.touch()
 }

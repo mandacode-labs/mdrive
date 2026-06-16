@@ -20,9 +20,6 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
-	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
 // Server is the HTTP API server.
@@ -87,8 +84,6 @@ func newRouter(a *app.App) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("GET /version", versionHandler(a.Cfg.App.Env))
-	// API routes will be registered here once the vfs/handler layer is in place.
-	_ = a
 	return mux
 }
 
@@ -103,8 +98,3 @@ func versionHandler(env string) http.HandlerFunc {
 		_ = json.NewEncoder(w).Encode(map[string]string{"env": env})
 	}
 }
-
-// suppress unused imports until the vfs/handler layer is wired in.
-var _ = drive.ErrNotFound
-var _ = node.ErrNotFound
-var _ = user.ErrNotFound

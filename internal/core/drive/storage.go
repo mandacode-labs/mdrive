@@ -12,6 +12,16 @@ type Storage struct {
 	usePathStyle bool
 }
 
+// StorageConfig is the input form of a Storage (used by CreateCommand).
+type StorageConfig struct {
+	Bucket       string
+	Endpoint     *string
+	Region       string
+	AccessKey    string
+	SecretKey    string
+	UsePathStyle bool
+}
+
 // NewStorage creates a new Storage.
 func NewStorage(
 	driveID string,
