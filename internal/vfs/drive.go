@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
@@ -50,14 +49,4 @@ func (s *Service) DeleteDrive(ctx context.Context, id string) error {
 // ListUserDrives returns all drives owned by actorID.
 func (s *Service) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
 	return s.drive.ListByOwner(ctx, actorID)
-}
-
-// UpsertUser creates or updates a user from OIDC claims.
-func (s *Service) UpsertUser(ctx context.Context, cmd *user.CreateCommand) (*user.User, error) {
-	return s.user.UpsertFromOIDC(ctx, cmd)
-}
-
-// GetUser returns a user by private ID.
-func (s *Service) GetUser(ctx context.Context, id string) (*user.User, error) {
-	return s.user.GetByID(ctx, id)
 }
