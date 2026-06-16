@@ -2,57 +2,99 @@ package vfs
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
+// --------------- Consumer-declared interfaces ---------------
+
+type nodeClient interface {
+	CreateFile(ctx context.Context, content string) (*node.Node, error)
+	CreateDirectory(ctx context.Context) (*node.Node, error)
+	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
+	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
+	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
+	Unlink(ctx context.Context, parent *node.Node, name string) error
+	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	WithTx(ctx context.Context, fn func(tx *node.Service) error) error
+}
+
+type driveClient interface {
+	GetByID(ctx context.Context, id string) (*drive.Drive, error)
+	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
+}
+
+type userClient interface {
+	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
+	GetByID(ctx context.Context, id string) (*user.User, error)
+	Exists(ctx context.Context, id string) (bool, error)
+}
+
+type permClient interface {
+	Check(ctx context.Context, userID, relation, objType, objID string) (bool, error)
+	Grant(ctx context.Context, userID, relation, objType, objID string) error
+}
+
+// --------------- VFS Service ---------------
+
 // Service is the VFS orchestration layer.
-//
-// It exposes POSIX-style file system commands (Mkdir, Touch, Rm, Mv, Ls, Cat, etc.)
-// that operate on path strings. Under the hood it composes node/drive/user domain
-// services with a Storage backend and permission checks via OpenFGA.
 type Service struct {
-	nodeSvc  *node.Service
-	driveSvc *drive.Service
-	userSvc  *user.Service
-	store    Storage
-	perm     permission.Checker
-	path     *Resolver
+	node  nodeClient
+	drive driveClient
+	user  userClient
+	store Storage
+	perm  permClient
+	path  *resolver
 }
 
 // NewService creates a new VFS Service.
 func NewService(
-	nodeSvc *node.Service,
-	driveSvc *drive.Service,
-	userSvc *user.Service,
+	n nodeClient,
+	d driveClient,
+	u userClient,
 	store Storage,
-	checker permission.Checker,
+	checker permClient,
 ) *Service {
 	return &Service{
-		nodeSvc:  nodeSvc,
-		driveSvc: driveSvc,
-		userSvc:  userSvc,
-		store:    store,
-		perm:     checker,
-		path:     newResolver(nodeSvc),
+		node:  n,
+		drive: d,
+		user:  u,
+		store: store,
+		perm:  checker,
+		path:  newResolver(n),
 	}
 }
 
-// WithTx executes fn within a transaction scoped to the node domain.
+// WithTx executes fn within a node-domain transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error {
-	return s.nodeSvc.WithTx(ctx, func(txNode *node.Service) error {
+	return s.node.WithTx(ctx, func(txNode *node.Service) error {
 		return fn(&Service{
-			nodeSvc:  txNode,
-			driveSvc: s.driveSvc,
-			userSvc:  s.userSvc,
-			store:    s.store,
-			perm:     s.perm,
-			path:     newResolver(txNode),
+			node:  txNode,
+			drive: s.drive,
+			user:  s.user,
+			store: s.store,
+			perm:  s.perm,
+			path:  newResolver(txNode),
 		})
 	})
+}
+
+// rootNodeID resolves the root node UUID for the given drive.
+func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
+	d, err := s.drive.GetByID(ctx, driveID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("vfs: %w", err)
+	}
+	if d == nil || d.RootNodeID() == nil {
+		return uuid.Nil, ErrNotFound
+	}
+	return *d.RootNodeID(), nil
 }
 
 // checkAccess returns nil if the user has the given permission on the drive.
@@ -65,13 +107,4 @@ func (s *Service) checkAccess(ctx context.Context, userID, permission, driveID s
 		return ErrPermission
 	}
 	return nil
-}
-
-// mustGetDrive returns the drive or panics (internal helper for already-valid call chains).
-func (s *Service) mustGetDrive(ctx context.Context, driveID string) *drive.Drive {
-	d, err := s.driveSvc.GetByID(ctx, driveID)
-	if err != nil || d == nil || d.RootNodeID() == nil {
-		return nil
-	}
-	return d
 }

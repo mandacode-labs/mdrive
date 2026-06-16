@@ -8,22 +8,22 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-// Resolver walks the node tree from a drive root to resolve Unix paths.
-type Resolver struct {
-	nodeSvc *node.Service
+// resolver walks the node tree from a drive root to resolve Unix paths.
+type resolver struct {
+	node nodeClient
 }
 
-func newResolver(nodeSvc *node.Service) *Resolver {
-	return &Resolver{nodeSvc: nodeSvc}
+func newResolver(n nodeClient) *resolver {
+	return &resolver{node: n}
 }
 
 // resolve walks from root to the node at the given absolute path.
-func (r *Resolver) resolve(ctx context.Context, rootID uuid.UUID, path string) (*node.Node, error) {
+func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, path string) (*node.Node, error) {
 	path = cleanPath(path)
 	if path == "" || path == "/" {
-		return r.nodeSvc.GetByID(ctx, rootID)
+		return r.node.GetByID(ctx, rootID)
 	}
-	current, err := r.nodeSvc.GetByID(ctx, rootID)
+	current, err := r.node.GetByID(ctx, rootID)
 	if err != nil || current == nil {
 		return nil, ErrNotFound
 	}
@@ -35,7 +35,7 @@ func (r *Resolver) resolve(ctx context.Context, rootID uuid.UUID, path string) (
 		if de == nil {
 			return nil, ErrNotFound
 		}
-		current, err = r.nodeSvc.GetByID(ctx, de.InodeID)
+		current, err = r.node.GetByID(ctx, de.InodeID)
 		if err != nil || current == nil {
 			return nil, ErrNotFound
 		}
@@ -44,7 +44,7 @@ func (r *Resolver) resolve(ctx context.Context, rootID uuid.UUID, path string) (
 }
 
 // resolveParent returns the parent node and the last path component.
-func (r *Resolver) resolveParent(ctx context.Context, rootID uuid.UUID, path string) (parent *node.Node, name string, err error) {
+func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, path string) (parent *node.Node, name string, err error) {
 	path = cleanPath(path)
 	idx := strings.LastIndex(path, "/")
 	if idx < 0 {
@@ -77,7 +77,6 @@ func cleanPath(path string) string {
 	if path == "" {
 		return "/"
 	}
-	// Simple normalization: remove double slashes, trailing slash (keep root).
 	for strings.Contains(path, "//") {
 		path = strings.ReplaceAll(path, "//", "/")
 	}

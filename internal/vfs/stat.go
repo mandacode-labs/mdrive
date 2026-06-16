@@ -13,11 +13,11 @@ func (s *Service) Stat(ctx context.Context, userID, driveID, path string) (*node
 	if err := s.checkAccess(ctx, userID, permission.PermissionView, driveID); err != nil {
 		return nil, err
 	}
-	d := s.mustGetDrive(ctx, driveID)
-	if d == nil {
-		return nil, ErrNotFound
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return nil, err
 	}
-	n, err := s.path.resolve(ctx, *d.RootNodeID(), path)
+	n, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("stat: %w", err)
 	}

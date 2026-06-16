@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
-// Mv moves src to dst (like `mv /src /dst`).
+// Mv moves src to dst (like `mv /src /dst`). Same-drive only for now.
 func (s *Service) Mv(ctx context.Context, userID, srcDriveID, srcPath, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
 		return ErrCrossDrive
@@ -15,26 +15,26 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID, srcPath, dstDriveI
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, srcDriveID); err != nil {
 		return err
 	}
-	d := s.mustGetDrive(ctx, srcDriveID)
-	if d == nil {
-		return ErrNotFound
+	rootID, err := s.rootNodeID(ctx, srcDriveID)
+	if err != nil {
+		return err
 	}
-	src, err := s.path.resolve(ctx, *d.RootNodeID(), srcPath)
+	src, err := s.path.resolve(ctx, rootID, srcPath)
 	if err != nil {
 		return fmt.Errorf("mv: src: %w", err)
 	}
-	dstParent, dstName, err := s.path.resolveParent(ctx, *d.RootNodeID(), dstPath)
+	dstParent, dstName, err := s.path.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
 		return fmt.Errorf("mv: dst: %w", err)
 	}
-	srcParent, srcName, _ := s.path.resolveParent(ctx, *d.RootNodeID(), srcPath)
+	srcParent, srcName, _ := s.path.resolveParent(ctx, rootID, srcPath)
 
 	if srcParent != nil {
-		_ = s.nodeSvc.Unlink(ctx, srcParent, srcName)
+		_ = s.node.Unlink(ctx, srcParent, srcName)
 	}
-	if err := s.nodeSvc.Link(ctx, dstParent, dstName, src); err != nil {
+	if err := s.node.Link(ctx, dstParent, dstName, src); err != nil {
 		if srcParent != nil {
-			_ = s.nodeSvc.Link(ctx, srcParent, srcName, src)
+			_ = s.node.Link(ctx, srcParent, srcName, src)
 		}
 		return fmt.Errorf("mv: link: %w", err)
 	}

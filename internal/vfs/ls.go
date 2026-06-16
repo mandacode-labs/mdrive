@@ -13,11 +13,11 @@ func (s *Service) Ls(ctx context.Context, userID, driveID, path string) (node.Di
 	if err := s.checkAccess(ctx, userID, permission.PermissionView, driveID); err != nil {
 		return node.DirContent{}, err
 	}
-	d := s.mustGetDrive(ctx, driveID)
-	if d == nil {
-		return node.DirContent{}, ErrNotFound
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return node.DirContent{}, err
 	}
-	n, err := s.path.resolve(ctx, *d.RootNodeID(), path)
+	n, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
 		return node.DirContent{}, fmt.Errorf("ls: %w", err)
 	}

@@ -13,24 +13,23 @@ func (s *Service) Mkdir(ctx context.Context, userID, driveID, path string) (*nod
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
 		return nil, err
 	}
-	d := s.mustGetDrive(ctx, driveID)
-	if d == nil {
-		return nil, ErrNotFound
-	}
-	parent, name, err := s.path.resolveParent(ctx, *d.RootNodeID(), path)
-	if err != nil {
-		return nil, fmt.Errorf("mkdir: %w", err)
-	}
-	if parent == nil || !parent.IsDir() {
-		return nil, ErrNotDirectory
-	}
-
-	dir, err := s.nodeSvc.CreateDirectory(ctx)
+	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.nodeSvc.Link(ctx, parent, name, dir); err != nil {
-		_ = s.nodeSvc.Delete(ctx, dir.ID())
+	parent, name, err := s.path.resolveParent(ctx, rootID, path)
+	if err != nil {
+		return nil, fmt.Errorf("mkdir: %w", err)
+	}
+	if !parent.IsDir() {
+		return nil, ErrNotDirectory
+	}
+	dir, err := s.node.CreateDirectory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.node.Link(ctx, parent, name, dir); err != nil {
+		_ = s.node.Delete(ctx, dir.ID())
 		return nil, fmt.Errorf("mkdir: link: %w", err)
 	}
 	return dir, nil
