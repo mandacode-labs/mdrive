@@ -79,6 +79,11 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*User, er
 	return u, nil
 }
 
+// GetByProviderID returns a user by (provider, providerID).
+func (s *Service) GetByProviderID(ctx context.Context, provider, providerID string) (*User, error) {
+	return s.repo.GetByProviderID(ctx, provider, providerID)
+}
+
 // Exists checks if a user exists.
 func (s *Service) Exists(ctx context.Context, id string) (bool, error) {
 	u, err := s.repo.GetByID(ctx, id)
@@ -86,6 +91,11 @@ func (s *Service) Exists(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	return u != nil, nil
+}
+
+// Update updates an existing user.
+func (s *Service) Update(ctx context.Context, u *User) (*User, error) {
+	return s.repo.Update(ctx, u)
 }
 
 func emailDiffers(u *User, cmd *CreateCommand) bool {

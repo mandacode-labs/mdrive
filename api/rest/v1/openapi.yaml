@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: mdrive API
+  version: 0.1.0
+  description: POSIX-like file system API over S3
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    $ref: "./paths/health.yaml"
+
+  /v1/drives:
+    $ref: "./paths/drive.yaml#/drives"
+
+  /v1/drives/{driveID}/root:
+    $ref: "./paths/drive.yaml#/drive"
+
+  /v1/drives/{driveID}/storage:
+    $ref: "./paths/drive.yaml#/storage"
+
+  /v1/drives/{driveID}/fs/mkdir:
+    $ref: "./paths/fs.yaml#/mkdir"
+
+  /v1/drives/{driveID}/fs/touch:
+    $ref: "./paths/fs.yaml#/touch"
+
+  /v1/drives/{driveID}/fs:
+    $ref: "./paths/fs.yaml#/rm"
+
+  /v1/drives/{driveID}/fs/mv:
+    $ref: "./paths/fs.yaml#/mv"
+
+  /v1/drives/{driveID}/fs/ls:
+    $ref: "./paths/fs.yaml#/ls"
+
+  /v1/drives/{driveID}/fs/cat:
+    $ref: "./paths/fs.yaml#/cat"
+
+  /v1/drives/{driveID}/fs/write:
+    $ref: "./paths/fs.yaml#/write"
+
+  /v1/drives/{driveID}/fs/symlink:
+    $ref: "./paths/fs.yaml#/symlink"
+
+  /v1/drives/{driveID}/fs/stat:
+    $ref: "./paths/fs.yaml#/stat"
+
+  /v1/drives/{driveID}/fs/object:
+    $ref: "./paths/fs.yaml#/object"
+
+  /v1/users:
+    $ref: "./paths/user.yaml"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      $ref: "./schemas/common.yaml#/Error"
+    Drive:
+      $ref: "./schemas/drive.yaml#/Drive"
+    DriveCreate:
+      $ref: "./schemas/drive.yaml#/DriveCreate"
+    DriveUpdate:
+      $ref: "./schemas/drive.yaml#/DriveUpdate"
+    StorageConfig:
+      $ref: "./schemas/drive.yaml#/StorageConfig"
+    DirContent:
+      $ref: "./schemas/node.yaml#/DirContent"
+    DirEntry:
+      $ref: "./schemas/node.yaml#/DirEntry"
+    ObjectContent:
+      $ref: "./schemas/node.yaml#/ObjectContent"
+    User:
+      $ref: "./schemas/user.yaml#/User"

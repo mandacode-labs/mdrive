@@ -1,0 +1,99 @@
+drives:
+  post:
+    operationId: createDrive
+    summary: Create a new drive
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/DriveCreate"
+    responses:
+      "201":
+        description: Drive created
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        $ref: "../openapi.yaml#/components/schemas/Error"
+  get:
+    operationId: listDrives
+    summary: List drives owned by the authenticated user
+    responses:
+      "200":
+        description: List of drives
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "../openapi.yaml#/components/schemas/Drive"
+
+drive:
+  get:
+    operationId: getDrive
+    summary: Get a drive by ID
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Drive
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Drive"
+  put:
+    operationId: updateDrive
+    summary: Update a drive
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/DriveUpdate"
+    responses:
+      "200":
+        description: Updated drive
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Drive"
+  delete:
+    operationId: deleteDrive
+    summary: Delete a drive and all its nodes
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "204":
+        description: Deleted
+
+storage:
+  get:
+    operationId: getDriveStorage
+    summary: Get a drive's storage configuration
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: Storage config
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/StorageConfig"

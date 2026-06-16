@@ -35,13 +35,21 @@ type nodeClient interface {
 }
 
 type driveClient interface {
+	Create(ctx context.Context, name string, desc *string, ownerID string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	GetByID(ctx context.Context, id string) (*drive.Drive, error)
+	GetByPublicID(ctx context.Context, pubID string) (*drive.Drive, error)
 	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
+	Update(ctx context.Context, id string, name, description *string) (*drive.Drive, error)
+	Delete(ctx context.Context, id string) error
+	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
 type userClient interface {
 	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
 	GetByID(ctx context.Context, id string) (*user.User, error)
+	GetByPublicID(ctx context.Context, pubID string) (*user.User, error)
+	GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error)
+	Update(ctx context.Context, u *user.User) (*user.User, error)
 	Exists(ctx context.Context, id string) (bool, error)
 }
 

@@ -1,0 +1,21 @@
+User:
+  type: object
+  properties:
+    id:
+      type: string
+    publicID:
+      type: string
+    name:
+      type: string
+    email:
+      type: string
+    provider:
+      type: string
+    providerID:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time

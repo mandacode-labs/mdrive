@@ -1,15 +1,7 @@
-// Package apiserver provides the HTTP API server for mdrive.
-//
-// Responsibilities:
-//   - Server lifecycle (start, graceful shutdown)
-//   - Route registration
-//   - Domain → HTTP error conversion
-//   - Handler delegation
 package apiserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -20,21 +12,30 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	api "github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // Server is the HTTP API server.
 type Server struct {
-	app    *app.App
-	http   *http.Server
-	addr   string
+	app  *app.App
+	http *http.Server
+	addr string
 }
 
-// NewServer creates a new Server with the given app.
-func NewServer(a *app.App) *Server {
-	router := newRouter(a)
+// NewServer creates a new Server. It wires the VFS service as the ogen Handler
+// and sets up the error handler for domain-to-HTTP conversion.
+func NewServer(a *app.App, fs handler.FS, getUser func(context.Context) (string, bool)) *Server {
+	h := handler.New(fs, getUser)
+
+	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(errorHandler))
+	if err != nil {
+		a.Log.Fatal().Err(err).Msg("failed to create ogen server")
+	}
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Cfg.HTTP.Host, a.Cfg.HTTP.Port),
-		Handler:           router,
+		Handler:           ogenServer,
 		ReadHeaderTimeout: 30 * time.Second,
 	}
 	return &Server{
@@ -79,22 +80,15 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// newRouter constructs the HTTP router with all routes.
-func newRouter(a *app.App) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", healthHandler)
-	mux.HandleFunc("GET /version", versionHandler(a.Cfg.App.Env))
-	return mux
+// errorHandler is the ogen-compatible error handler that converts domain
+// errors to HTTP status codes and JSON error responses.
+func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+	WriteError(w, err)
 }
 
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("ok"))
-}
+// noopSecurity is a stub security handler.
+type noopSecurity struct{}
 
-func versionHandler(env string) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"env": env})
-	}
+func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	return ctx, nil
 }

@@ -64,12 +64,25 @@ func (f *fakeNode) WithTx(_ context.Context, fn func(tx *node.Service) error) er
 // fakeDrive is a driveClient stub.
 type fakeDrive struct{ rootID uuid.UUID }
 
+func (d *fakeDrive) Create(_ context.Context, _ string, _ *string, _ string, _ drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
+	return nil, uuid.Nil, nil
+}
 func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
 	now := time.Now()
 	return drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, now, now), nil
 }
+func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
+	return d.GetByID(nil, "")
+}
 func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
 	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false), nil
+}
+func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
+	return nil, nil
+}
+func (d *fakeDrive) Delete(_ context.Context, _ string) error { return nil }
+func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error) {
+	return nil, nil
 }
 
 // fakeUser is a userClient stub.
@@ -79,7 +92,16 @@ func (u *fakeUser) UpsertFromOIDC(_ context.Context, _ *user.CreateCommand) (*us
 	return nil, nil
 }
 func (u *fakeUser) GetByID(_ context.Context, _ string) (*user.User, error) { return nil, nil }
-func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error)        { return true, nil }
+func (u *fakeUser) GetByPublicID(_ context.Context, _ string) (*user.User, error) {
+	return nil, nil
+}
+func (u *fakeUser) GetByProviderID(_ context.Context, _, _ string) (*user.User, error) {
+	return nil, nil
+}
+func (u *fakeUser) Update(_ context.Context, _ *user.User) (*user.User, error) {
+	return nil, nil
+}
+func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error) { return true, nil }
 
 // fakePerm is a permClient that grants everything.
 type fakePerm struct{}

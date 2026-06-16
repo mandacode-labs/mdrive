@@ -1,0 +1,33 @@
+/v1/users:
+  get:
+    operationId: getUser
+    summary: Get current user
+    responses:
+      "200":
+        description: User
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/User"
+
+  post:
+    operationId: upsertUser
+    summary: Upsert a user from OIDC claims
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, provider, providerID]
+            properties:
+              name: { type: string }
+              email: { type: string }
+              provider: { type: string }
+              providerID: { type: string }
+    responses:
+      "200":
+        description: User created or updated
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/User"

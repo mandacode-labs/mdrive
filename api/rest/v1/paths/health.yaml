@@ -1,0 +1,15 @@
+/health:
+  get:
+    operationId: health
+    summary: Health check
+    security: []
+    responses:
+      "200":
+        description: OK
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string

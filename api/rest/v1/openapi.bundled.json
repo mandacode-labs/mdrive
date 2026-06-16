@@ -2,16 +2,905 @@
   "openapi": "3.1.0",
   "info": {
     "title": "mdrive API",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "description": "POSIX-like file system API over S3"
   },
-  "paths": {},
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "/health": {
+        "get": {
+          "operationId": "health",
+          "summary": "Health check",
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives": {
+      "post": {
+        "operationId": "createDrive",
+        "summary": "Create a new drive",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriveCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Drive created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drive"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/schemas/Error"
+          }
+        }
+      },
+      "get": {
+        "operationId": "listDrives",
+        "summary": "List drives owned by the authenticated user",
+        "responses": {
+          "200": {
+            "description": "List of drives",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Drive"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/root": {
+      "get": {
+        "operationId": "getDrive",
+        "summary": "Get a drive by ID",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Drive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drive"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateDrive",
+        "summary": "Update a drive",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriveUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated drive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drive"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDrive",
+        "summary": "Delete a drive and all its nodes",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/storage": {
+      "get": {
+        "operationId": "getDriveStorage",
+        "summary": "Get a drive's storage configuration",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Storage config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/mkdir": {
+      "post": {
+        "operationId": "mkdir",
+        "summary": "Create a directory",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Directory created"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/touch": {
+      "post": {
+        "operationId": "touch",
+        "summary": "Create an empty file",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File created"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs": {
+      "delete": {
+        "operationId": "rm",
+        "summary": "Remove files or directories",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "paths"
+                ],
+                "properties": {
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "recursive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/mv": {
+      "post": {
+        "operationId": "mv",
+        "summary": "Move files or directories",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "sources",
+                  "destination"
+                ],
+                "properties": {
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "destination": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Moved"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/ls": {
+      "get": {
+        "operationId": "ls",
+        "summary": "List directory contents",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "/"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Directory listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirContent"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/cat": {
+      "get": {
+        "operationId": "cat",
+        "summary": "Read file contents",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/write": {
+      "put": {
+        "operationId": "write",
+        "summary": "Write inline content to a file",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "content"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Written"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/symlink": {
+      "post": {
+        "operationId": "symlink",
+        "summary": "Create a symbolic link",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "target",
+                  "linkPath"
+                ],
+                "properties": {
+                  "target": {
+                    "type": "string"
+                  },
+                  "linkPath": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Symlink created"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/stat": {
+      "get": {
+        "operationId": "stat",
+        "summary": "Get file metadata",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "atime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "mtime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "ctime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "flags": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/object": {
+      "post": {
+        "operationId": "writeLarge",
+        "summary": "Create an S3-backed object node",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "object",
+                  "size"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "format": "int64"
+                  },
+                  "object": {
+                    "$ref": "#/components/schemas/ObjectContent"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Object node created"
+          }
+        },
+        "default": {
+          "$ref": "#/components/schemas/Error"
+        }
+      }
+    },
+    "/v1/users": {
+      "/v1/users": {
+        "get": {
+          "operationId": "getUser",
+          "summary": "Get current user",
+          "responses": {
+            "200": {
+              "description": "User",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "post": {
+          "operationId": "upsertUser",
+          "summary": "Upsert a user from OIDC claims",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "provider",
+                    "providerID"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string"
+                    },
+                    "providerID": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "User created or updated",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
     "schemas": {
       "Error": {
         "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
         "properties": {
-          "code": {"type": "string"},
-          "message": {"type": "string"}
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code",
+            "enum": [
+              "not_found",
+              "conflict",
+              "bad_request",
+              "forbidden",
+              "unauthorized",
+              "internal",
+              "revision_conflict"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          }
+        }
+      },
+      "Drive": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "publicID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ownerID": {
+            "type": "string"
+          },
+          "rootNodeID": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DriveCreate": {
+        "type": "object",
+        "required": [
+          "name",
+          "storage"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "storage": {
+            "$ref": "#/components/schemas/StorageConfig"
+          }
+        }
+      },
+      "DriveUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "StorageConfig": {
+        "type": "object",
+        "required": [
+          "bucket",
+          "region",
+          "accessKey",
+          "secretKey"
+        ],
+        "properties": {
+          "bucket": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "accessKey": {
+            "type": "string"
+          },
+          "secretKey": {
+            "type": "string"
+          },
+          "usePathStyle": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DirContent": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DirEntry"
+            }
+          }
+        }
+      },
+      "DirEntry": {
+        "type": "object",
+        "properties": {
+          "inodeID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "ObjectContent": {
+        "type": "object",
+        "required": [
+          "bucket",
+          "key"
+        ],
+        "properties": {
+          "bucket": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "publicID": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "providerID": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       }
     }

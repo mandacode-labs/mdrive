@@ -15,10 +15,10 @@ gen-ent:
 
 .PHONY: gen-api
 gen-api:
-	npx @apidevtools/swagger-cli bundle api/openapi.yaml --outfile api/openapi.bundled.json --type json
-	npx @apidevtools/swagger-cli validate api/openapi.bundled.json
+	npx @apidevtools/swagger-cli bundle api/rest/v1/openapi.yaml --outfile api/rest/v1/openapi.bundled.json --type json
+	npx @apidevtools/swagger-cli validate api/rest/v1/openapi.bundled.json
 	@rm -f pkg/api/oas_*.go
-	go tool ogen -config ogen.yaml -target ./pkg/api -package api api/openapi.bundled.json
+	go tool ogen -config ogen.yaml -target ./pkg/api -package api api/rest/v1/openapi.bundled.json
 
 .PHONY: gen-mock
 gen-mock:
