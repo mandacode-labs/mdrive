@@ -2,12 +2,12 @@ package handler
 
 import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // --- Conversion helpers ---
 
-func driveToAPI(d *drive.Drive) *apiv1.Drive {
+func driveToAPI(d *drive.Drive) *api.Drive {
 	if d == nil {
 		return nil
 	}
@@ -16,29 +16,29 @@ func driveToAPI(d *drive.Drive) *apiv1.Drive {
 	if rid != nil {
 		rids = rid.String()
 	}
-	return &apiv1.Drive{
+	return &api.Drive{
 		ID:          apistr(d.ID()),
 		PublicID:    apistr(d.PublicID()),
 		Name:        apistr(d.Name()),
 		Description: apistrPtr(d.Description()),
 		OwnerID:     apistr(d.OwnerID()),
 		RootNodeID:  apistr(rids),
-		CreatedAt:   apiv1.OptDateTime{Value: d.CreatedAt(), Set: true},
-		UpdatedAt:   apiv1.OptDateTime{Value: d.UpdatedAt(), Set: true},
+		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
+		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
 	}
 }
 
-func apistr(s string) apiv1.OptString {
-	return apiv1.OptString{Value: s, Set: true}
+func apistr(s string) api.OptString {
+	return api.OptString{Value: s, Set: true}
 }
 
-func apistrPtr(s *string) apiv1.OptString {
+func apistrPtr(s *string) api.OptString {
 	if s == nil {
-		return apiv1.OptString{}
+		return api.OptString{}
 	}
-	return apiv1.OptString{Value: *s, Set: true}
+	return api.OptString{Value: *s, Set: true}
 }
 
-func optBool(b bool) apiv1.OptBool {
-	return apiv1.OptBool{Value: b, Set: true}
+func optBool(b bool) api.OptBool {
+	return api.OptBool{Value: b, Set: true}
 }

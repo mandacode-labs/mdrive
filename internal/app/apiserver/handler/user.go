@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // --- User handlers ---
 
-func (h *Handler) UpsertUser(ctx context.Context, req apiv1.OptUpsertUserReq) error {
+func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) error {
 	r := req.Value
 	var email *string
 	if r.Email.Set {
@@ -25,7 +25,7 @@ func (h *Handler) UpsertUser(ctx context.Context, req apiv1.OptUpsertUserReq) er
 	return err
 }
 
-func (h *Handler) GetUser(ctx context.Context) (*apiv1.User, error) {
+func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
 	u, err := h.vfs.GetUser(ctx, h.userID(ctx))
 	if err != nil {
 		return nil, err
@@ -33,16 +33,16 @@ func (h *Handler) GetUser(ctx context.Context) (*apiv1.User, error) {
 	return userToAPI(u), nil
 }
 
-func userToAPI(u *user.User) *apiv1.User {
+func userToAPI(u *user.User) *api.User {
 	if u == nil {
 		return nil
 	}
-	return &apiv1.User{
+	return &api.User{
 		ID:        apistr(u.ID()),
 		PublicID:  apistr(u.PublicID()),
 		Name:      apistr(u.Name()),
 		Email:     apistrPtr(u.Email()),
-		CreatedAt: apiv1.OptDateTime{Value: u.CreatedAt(), Set: true},
-		UpdatedAt: apiv1.OptDateTime{Value: u.UpdatedAt(), Set: true},
+		CreatedAt: api.OptDateTime{Value: u.CreatedAt(), Set: true},
+		UpdatedAt: api.OptDateTime{Value: u.UpdatedAt(), Set: true},
 	}
 }

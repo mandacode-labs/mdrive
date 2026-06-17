@@ -13,7 +13,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // Server is the HTTP API server.
@@ -28,7 +28,7 @@ type Server struct {
 func NewServer(a *app.App, fs handler.FS, getUser func(context.Context) (string, bool)) *Server {
 	h := handler.New(fs, getUser)
 
-	ogenServer, err := apiv1.NewServer(h, &noopSecurity{}, apiv1.WithErrorHandler(errorHandler))
+	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(errorHandler))
 	if err != nil {
 		a.Log.Fatal().Err(err).Msg("failed to create ogen server")
 	}
@@ -89,6 +89,6 @@ func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, e
 // noopSecurity is a stub security handler.
 type noopSecurity struct{}
 
-func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ apiv1.OperationName, _ apiv1.BearerAuth) (context.Context, error) {
+func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
 	return ctx, nil
 }

@@ -5,25 +5,25 @@ import (
 	"errors"
 	"net/http"
 
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
-// FromError converts a domain error to (HTTP status code, apiv1.Error).
-func FromError(err error) (int, apiv1.Error) {
+// FromError converts a domain error to (HTTP status code, api.Error).
+func FromError(err error) (int, api.Error) {
 	switch {
 	case errors.Is(err, node.ErrNotFound),
 		errors.Is(err, drive.ErrNotFound),
 		errors.Is(err, user.ErrNotFound),
 		errors.Is(err, node.ErrEntryNotFound),
 		errors.Is(err, node.ErrNoContent):
-		return http.StatusNotFound, apiv1.Error{Code: apiv1.ErrorCodeNotFound, Message: "not found"}
+		return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
 
 	case errors.Is(err, node.ErrEntryExists),
 		errors.Is(err, node.ErrRevisionConflict):
-		return http.StatusConflict, apiv1.Error{Code: apiv1.ErrorCodeConflict, Message: err.Error()}
+		return http.StatusConflict, api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}
 
 	case errors.Is(err, node.ErrInvalidName),
 		errors.Is(err, node.ErrInvalidType),
@@ -38,10 +38,10 @@ func FromError(err error) (int, apiv1.Error) {
 		errors.Is(err, user.ErrProviderRequired),
 		errors.Is(err, user.ErrProviderIDRequired),
 		errors.Is(err, user.ErrNameRequired):
-		return http.StatusBadRequest, apiv1.Error{Code: apiv1.ErrorCodeBadRequest, Message: err.Error()}
+		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
 	}
 
-	return http.StatusInternalServerError, apiv1.Error{Code: apiv1.ErrorCodeInternal, Message: "internal error"}
+	return http.StatusInternalServerError, api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}
 }
 
 func WriteError(w http.ResponseWriter, err error) {

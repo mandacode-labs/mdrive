@@ -6,12 +6,12 @@ import (
 	"net/url"
 	"time"
 
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // --- Presigned upload/download handlers ---
 
-func (h *Handler) InitiateUpload(ctx context.Context, req apiv1.OptPresignRequest, params apiv1.InitiateUploadParams) (apiv1.InitiateUploadRes, error) {
+func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest, params api.InitiateUploadParams) (api.InitiateUploadRes, error) {
 	r := req.Value
 	var ct *string
 	if r.ContentType.Set {
@@ -31,17 +31,17 @@ func (h *Handler) InitiateUpload(ctx context.Context, req apiv1.OptPresignReques
 	if err != nil {
 		return nil, fmt.Errorf("parse presigned url: %w", err)
 	}
-	return &apiv1.PresignResponse{
+	return &api.PresignResponse{
 		UploadId:  info.UploadID,
 		Method:    info.Method,
 		URL:       *u,
-		Headers:   apiv1.OptPresignResponseHeaders{Value: info.Headers, Set: len(info.Headers) > 0},
+		Headers:   api.OptPresignResponseHeaders{Value: info.Headers, Set: len(info.Headers) > 0},
 		Key:       info.Key,
 		ExpiresAt: info.ExpiresAt,
 	}, nil
 }
 
-func (h *Handler) CompleteUpload(ctx context.Context, req apiv1.OptUploadCompleteRequest, params apiv1.CompleteUploadParams) (apiv1.CompleteUploadRes, error) {
+func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteRequest, params api.CompleteUploadParams) (api.CompleteUploadRes, error) {
 	r := req.Value
 	var cs *string
 	if r.Checksum.Set {
@@ -52,15 +52,15 @@ func (h *Handler) CompleteUpload(ctx context.Context, req apiv1.OptUploadComplet
 	if err != nil {
 		return nil, err
 	}
-	return &apiv1.UploadCompleteResponse{
+	return &api.UploadCompleteResponse{
 		InodeID: n.ID().String(),
 		Size:    n.Size(),
-		Mtime:   apiv1.OptDateTime{Value: n.MTime(), Set: true},
-		Atime:   apiv1.OptDateTime{Value: n.ATime(), Set: true},
+		Mtime:   api.OptDateTime{Value: n.MTime(), Set: true},
+		Atime:   api.OptDateTime{Value: n.ATime(), Set: true},
 	}, nil
 }
 
-func (h *Handler) PresignDownload(ctx context.Context, params apiv1.PresignDownloadParams) (apiv1.PresignDownloadRes, error) {
+func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloadParams) (api.PresignDownloadRes, error) {
 	info, err := h.vfs.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, time.Hour)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (h *Handler) PresignDownload(ctx context.Context, params apiv1.PresignDownl
 	if err != nil {
 		return nil, fmt.Errorf("parse presigned url: %w", err)
 	}
-	return &apiv1.DownloadResponse{
+	return &api.DownloadResponse{
 		Method:    info.Method,
 		URL:       *u,
 		ExpiresAt: info.ExpiresAt,

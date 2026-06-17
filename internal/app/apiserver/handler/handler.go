@@ -11,7 +11,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // FS is the consumer-declared VFS interface.
@@ -55,5 +55,5 @@ func (h *Handler) userID(ctx context.Context) string {
 }
 
 // Compile-time check.
-var _ apiv1.Handler = (*Handler)(nil)
+var _ api.Handler = (*Handler)(nil)
 var _ = fmt.Sprintf
