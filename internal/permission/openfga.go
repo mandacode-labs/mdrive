@@ -80,7 +80,18 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	}
 
 	var creds *credentials.Credentials
-	if cfg.ClientID != "" && cfg.ClientSecret != "" {
+	if cfg.APIToken != "" {
+		var err error
+		creds, err = credentials.NewCredentials(credentials.Credentials{
+			Method: credentials.CredentialsMethodApiToken,
+			Config: &credentials.Config{
+				ApiToken: cfg.APIToken,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("openfga: credentials: %w", err)
+		}
+	} else if cfg.ClientID != "" && cfg.ClientSecret != "" {
 		var err error
 		creds, err = credentials.NewCredentials(credentials.Credentials{
 			Method: credentials.CredentialsMethodClientCredentials,
@@ -89,17 +100,6 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 				ClientCredentialsClientSecret:   cfg.ClientSecret,
 				ClientCredentialsApiTokenIssuer: cfg.TokenIssuer,
 				ClientCredentialsApiAudience:    cfg.Audience,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("openfga: credentials: %w", err)
-		}
-	} else if cfg.APIToken != "" {
-		var err error
-		creds, err = credentials.NewCredentials(credentials.Credentials{
-			Method: credentials.CredentialsMethodApiToken,
-			Config: &credentials.Config{
-				ApiToken: cfg.APIToken,
 			},
 		})
 		if err != nil {
