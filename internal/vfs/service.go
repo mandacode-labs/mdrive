@@ -114,8 +114,9 @@ func NewService(
 	}
 }
 
-// WithTx executes fn within a node-domain transaction.
-func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error {
+// WithNodeTx executes fn within a node-domain transaction.
+// Only Node operations are transactional; Store, Reg, Perm, and GC are NOT rolled back.
+func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) error {
 	return s.Node.WithTx(ctx, func(txNode *node.Service) error {
 		return fn(&Service{
 			Node:  txNode,

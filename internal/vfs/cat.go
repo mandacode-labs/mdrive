@@ -69,7 +69,9 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 			return ferr
 		}
 		if lerr := s.Node.Link(ctx, parent, name, f); lerr != nil {
-			_ = s.Node.Delete(ctx, f.ID())
+			if derr := s.Node.Delete(ctx, f.ID()); derr != nil {
+				return fmt.Errorf("write: link: %w (cleanup: %v)", lerr, derr)
+			}
 			return fmt.Errorf("write: link: %w", lerr)
 		}
 		return nil
@@ -89,6 +91,10 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 	if err != nil {
 		return err
 	}
+	// Check if path already exists
+	if n, err := s.path.resolve(ctx, rootID, path); err == nil {
+		return fmt.Errorf("write_large: %s: already exists (type=%s)", path, n.Type())
+	}
 	parent, name, perr := s.path.resolveParent(ctx, rootID, path)
 	if perr != nil {
 		return fmt.Errorf("write_large: %w", perr)
@@ -98,7 +104,9 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 		return err
 	}
 	if lerr := s.Node.Link(ctx, parent, name, n); lerr != nil {
-		_ = s.Node.Delete(ctx, n.ID())
+		if derr := s.Node.Delete(ctx, n.ID()); derr != nil {
+			return fmt.Errorf("write_large: link: %w (cleanup: %v)", lerr, derr)
+		}
 		return fmt.Errorf("write_large: link: %w", lerr)
 	}
 	return nil

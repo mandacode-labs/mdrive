@@ -45,11 +45,6 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 		size = *contentLength
 	}
 
-	url, err := s.Store.GetPresignedUploadURL(ctx, st.Bucket(), key, ct, size, "", expiry)
-	if err != nil {
-		return PresignInfo{}, fmt.Errorf("initiate upload: presign: %w", err)
-	}
-
 	meta := upload.PresignMeta{
 		UploadID:    uploadID,
 		DriveID:     driveID,
@@ -61,34 +56,50 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 		Size:        contentLength,
 		ExpiresAt:   time.Now().Add(expiry),
 	}
+	// Write to registry FIRST — if this fails, no presigned URL is issued.
 	if err := s.Reg.Put(ctx, meta, expiry); err != nil {
 		return PresignInfo{}, fmt.Errorf("initiate upload: register: %w", err)
 	}
 
+	url, err := s.Store.GetPresignedUploadURL(ctx, st.Bucket(), key, ct, size, "", expiry)
+	if err != nil {
+		_ = s.Reg.Delete(ctx, uploadID)
+		return PresignInfo{}, fmt.Errorf("initiate upload: presign: %w", err)
+	}
+
 	return PresignInfo{
-		UploadID: uploadID,
-		Method:   "PUT",
-		URL:      url,
-		Headers:  map[string]string{},
-		Key:      key,
+		UploadID:  uploadID,
+		Method:    "PUT",
+		URL:       url,
+		Headers:   map[string]string{},
+		Key:       key,
 		ExpiresAt: meta.ExpiresAt,
 	}, nil
 }
 
-// CompleteUpload validates the upload token and creates the object node at the destination path.
+// CompleteUpload validates the upload token, verifies the S3 object exists,
+// and creates the object node at the destination path.
 func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
 		return nil, err
 	}
 	meta, err := s.Reg.Get(ctx, uploadID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("complete upload: get token: %w", err)
 	}
 	if meta.DriveID != driveID {
-		return nil, ErrPermission
+		return nil, ErrUploadMismatch
 	}
 	if meta.Size != nil && *meta.Size != contentLength {
 		return nil, fmt.Errorf("complete upload: size mismatch: expected %d, got %d", *meta.Size, contentLength)
+	}
+
+	exists, err := s.Store.ObjectExists(ctx, meta.Bucket, meta.Key)
+	if err != nil {
+		return nil, fmt.Errorf("complete upload: check object: %w", err)
+	}
+	if !exists {
+		return nil, ErrObjectNotUploaded
 	}
 
 	rootID, err := s.rootNodeID(ctx, driveID)
@@ -119,10 +130,14 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, err
 	}
 	if lerr := s.Node.Link(ctx, parent, name, n); lerr != nil {
-		_ = s.Node.Delete(ctx, n.ID())
+		if derr := s.Node.Delete(ctx, n.ID()); derr != nil {
+			return nil, fmt.Errorf("complete upload: link: %w (cleanup: %v)", lerr, derr)
+		}
 		return nil, fmt.Errorf("complete upload: link: %w", lerr)
 	}
-	_ = s.Reg.Delete(ctx, uploadID)
+	if err := s.Reg.Delete(ctx, uploadID); err != nil {
+		return n, fmt.Errorf("complete upload: cleanup token: %w", err)
+	}
 	return n, nil
 }
 

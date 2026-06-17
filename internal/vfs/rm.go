@@ -25,7 +25,7 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 
 	var allRefs []ObjectRef
 
-	if err := s.WithTx(ctx, func(tx *Service) error {
+	if err := s.WithNodeTx(ctx, func(tx *Service) error {
 		for _, p := range paths {
 			refs, err := tx.rmPath(ctx, rootID, p, recursive)
 			if err != nil {
@@ -39,7 +39,9 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 	}
 
 	if len(allRefs) > 0 && s.GC != nil {
-		_ = s.GC.InsertTombstones(ctx, allRefs)
+		if err := s.GC.InsertTombstones(ctx, allRefs); err != nil {
+			return fmt.Errorf("rm: gc tombstone write failed (nodes deleted, GC will retry): %w", err)
+		}
 	}
 
 	return nil
@@ -78,7 +80,9 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 		if err != nil {
 			return nil, fmt.Errorf("rm: read object: %w", err)
 		}
-		refs = append(refs, ObjectRef{Bucket: oc.Bucket, Key: oc.Key})
+		if oc.Bucket != "" && oc.Key != "" {
+			refs = append(refs, ObjectRef{Bucket: oc.Bucket, Key: oc.Key})
+		}
 	}
 
 	if err := s.Node.Delete(ctx, n.ID()); err != nil {
