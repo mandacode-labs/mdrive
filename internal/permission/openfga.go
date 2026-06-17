@@ -26,10 +26,6 @@ const (
 	permShare  = "can_share"
 
 	storeName = "mdrive"
-
-	authMethodAPIToken        = "api_token"
-	authHeaderKey             = "Authorization"
-	authHeaderValuePrefix     = "Bearer "
 )
 
 // Exported permission constants for external use.
@@ -85,7 +81,7 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	if cfg.APIToken != "" {
 		var err error
 		creds, err = credentials.NewCredentials(credentials.Credentials{
-			Method: authMethodAPIToken,
+			Method: credentials.CredentialsMethodApiToken,
 			Config: &credentials.Config{
 				ApiToken: cfg.APIToken,
 			},
