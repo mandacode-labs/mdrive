@@ -14,6 +14,7 @@ type Config struct {
 	HTTP     HTTPConfig     `mapstructure:"http"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Storage  StorageConfig  `mapstructure:"storage"`
+	Crypto   CryptoConfig   `mapstructure:"crypto"`
 	Auth     AuthConfig     `mapstructure:"auth"`
 	OpenFGA  OpenFGAConfig  `mapstructure:"openfga"`
 }
@@ -79,6 +80,11 @@ func (c StorageConfig) PresignTTLDuration() time.Duration {
 	return d
 }
 
+// CryptoConfig holds at-rest encryption settings.
+type CryptoConfig struct {
+	MasterKey string `mapstructure:"master_key"`
+}
+
 // AuthConfig holds authentication settings.
 type AuthConfig struct {
 	Provider string `mapstructure:"provider"` // "zitadel", "keycloak"
@@ -135,6 +141,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.endpoint", "")
 	v.SetDefault("storage.use_path_style", false)
 	v.SetDefault("storage.presign_ttl", "1h")
+	v.SetDefault("crypto.master_key", "")
 	v.SetDefault("auth.provider", "zitadel")
 	v.SetDefault("openfga.api_url", "http://localhost:8081")
 }

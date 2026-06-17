@@ -18,4 +18,9 @@ var (
 
 	// ErrInvalidCredentials is returned when storage credentials are missing.
 	ErrInvalidCredentials = errors.New("drive: storage credentials are required")
+
+	// ErrDecryptionFailed is returned when stored credentials cannot be decrypted.
+	// This usually means the master key changed or the data was created before
+	// encryption was enabled; the owner must re-enter credentials.
+	ErrDecryptionFailed = errors.New("drive: failed to decrypt storage credentials")
 )

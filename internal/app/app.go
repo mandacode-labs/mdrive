@@ -15,6 +15,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 )
 
@@ -67,7 +68,17 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	userEx := user.NewExisterAdapter(userRepo)
 
 	rootCreator := &rootNodeCreator{svc: nodeSvc}
-	driveRepo := drive.NewRepository(entClient)
+
+	var cipher cryptopkg.Cipher = cryptopkg.NoOp{}
+	if cfg.Crypto.MasterKey != "" {
+		var err error
+		cipher, err = cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	driveRepo := drive.NewRepository(entClient, cipher)
 	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
 	return &App{

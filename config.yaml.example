@@ -32,6 +32,12 @@ storage:
   bucket: mdrive-files
   use_ssl: false        # For MinIO/LocalStack: true = HTTPS, false = HTTP
 
+crypto:
+  # 64-character hex-encoded 32-byte AES-256-GCM key.
+  # Generate with: openssl rand -hex 32
+  # If empty, storage credentials are stored in plaintext (development only).
+  master_key: ""
+
 auth:
   keycloak:
     base_url: http://localhost:8081
