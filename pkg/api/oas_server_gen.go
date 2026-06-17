@@ -14,6 +14,12 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/fs/cat
 	Cat(ctx context.Context, params CatParams) (CatOK, error)
+	// CompleteUpload implements completeUpload operation.
+	//
+	// Complete a presigned upload and create the object node.
+	//
+	// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+	CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
 	// CreateDrive implements createDrive operation.
 	//
 	// Create a new drive.
@@ -38,6 +44,24 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/storage
 	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (*StorageConfig, error)
+	// GetUser implements getUser operation.
+	//
+	// Get current user.
+	//
+	// GET /v1/users
+	GetUser(ctx context.Context) (*User, error)
+	// Health implements health operation.
+	//
+	// Health check.
+	//
+	// GET /health
+	Health(ctx context.Context) (*HealthOK, error)
+	// InitiateUpload implements initiateUpload operation.
+	//
+	// Initiate a presigned upload.
+	//
+	// POST /v1/drives/{driveID}/fs/upload
+	InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDrives implements listDrives operation.
 	//
 	// List drives owned by the authenticated user.
@@ -62,6 +86,12 @@ type Handler interface {
 	//
 	// POST /v1/drives/{driveID}/fs/mv
 	Mv(ctx context.Context, req OptMvReq, params MvParams) error
+	// PresignDownload implements presignDownload operation.
+	//
+	// Get a presigned download URL for an object node.
+	//
+	// GET /v1/drives/{driveID}/fs/download
+	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Rm implements rm operation.
 	//
 	// Remove files or directories.
@@ -92,6 +122,12 @@ type Handler interface {
 	//
 	// PUT /v1/drives/{driveID}/root
 	UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (*Drive, error)
+	// UpsertUser implements upsertUser operation.
+	//
+	// Upsert a user from OIDC claims.
+	//
+	// POST /v1/users
+	UpsertUser(ctx context.Context, req OptUpsertUserReq) (*User, error)
 	// Write implements write operation.
 	//
 	// Write inline content to a file.
@@ -103,7 +139,7 @@ type Handler interface {
 	// Create an S3-backed object node.
 	//
 	// POST /v1/drives/{driveID}/fs/object
-	WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) error
+	WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) (WriteLargeRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

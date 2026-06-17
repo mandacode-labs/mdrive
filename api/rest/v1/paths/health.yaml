@@ -1,4 +1,4 @@
-/health:
+health:
   get:
     operationId: health
     summary: Health check

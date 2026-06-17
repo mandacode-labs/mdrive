@@ -6,10 +6,13 @@ package handlerMocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -116,6 +119,98 @@ func (_c *FSMock_Cat_Call) Return(bytes []byte, err error) *FSMock_Cat_Call {
 }
 
 func (_c *FSMock_Cat_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) ([]byte, error)) *FSMock_Cat_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CompleteUpload provides a mock function for the type FSMock
+func (_mock *FSMock) CompleteUpload(ctx context.Context, userID string, driveID string, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
+	ret := _mock.Called(ctx, userID, driveID, uploadID, contentLength, checksum)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CompleteUpload")
+	}
+
+	var r0 *node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, *string) (*node.Node, error)); ok {
+		return returnFunc(ctx, userID, driveID, uploadID, contentLength, checksum)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64, *string) *node.Node); ok {
+		r0 = returnFunc(ctx, userID, driveID, uploadID, contentLength, checksum)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*node.Node)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, int64, *string) error); ok {
+		r1 = returnFunc(ctx, userID, driveID, uploadID, contentLength, checksum)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSMock_CompleteUpload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CompleteUpload'
+type FSMock_CompleteUpload_Call struct {
+	*mock.Call
+}
+
+// CompleteUpload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - driveID string
+//   - uploadID string
+//   - contentLength int64
+//   - checksum *string
+func (_e *FSMock_Expecter) CompleteUpload(ctx interface{}, userID interface{}, driveID interface{}, uploadID interface{}, contentLength interface{}, checksum interface{}) *FSMock_CompleteUpload_Call {
+	return &FSMock_CompleteUpload_Call{Call: _e.mock.On("CompleteUpload", ctx, userID, driveID, uploadID, contentLength, checksum)}
+}
+
+func (_c *FSMock_CompleteUpload_Call) Run(run func(ctx context.Context, userID string, driveID string, uploadID string, contentLength int64, checksum *string)) *FSMock_CompleteUpload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 int64
+		if args[4] != nil {
+			arg4 = args[4].(int64)
+		}
+		var arg5 *string
+		if args[5] != nil {
+			arg5 = args[5].(*string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *FSMock_CompleteUpload_Call) Return(node1 *node.Node, err error) *FSMock_CompleteUpload_Call {
+	_c.Call.Return(node1, err)
+	return _c
+}
+
+func (_c *FSMock_CompleteUpload_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, uploadID string, contentLength int64, checksum *string) (*node.Node, error)) *FSMock_CompleteUpload_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -403,6 +498,170 @@ func (_c *FSMock_GetDriveStorage_Call) Return(storage *drive.Storage, err error)
 }
 
 func (_c *FSMock_GetDriveStorage_Call) RunAndReturn(run func(ctx context.Context, driveID string) (*drive.Storage, error)) *FSMock_GetDriveStorage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUser provides a mock function for the type FSMock
+func (_mock *FSMock) GetUser(ctx context.Context, id string) (*user.User, error) {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUser")
+	}
+
+	var r0 *user.User
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*user.User, error)); ok {
+		return returnFunc(ctx, id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *user.User); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*user.User)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSMock_GetUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUser'
+type FSMock_GetUser_Call struct {
+	*mock.Call
+}
+
+// GetUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *FSMock_Expecter) GetUser(ctx interface{}, id interface{}) *FSMock_GetUser_Call {
+	return &FSMock_GetUser_Call{Call: _e.mock.On("GetUser", ctx, id)}
+}
+
+func (_c *FSMock_GetUser_Call) Run(run func(ctx context.Context, id string)) *FSMock_GetUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *FSMock_GetUser_Call) Return(user1 *user.User, err error) *FSMock_GetUser_Call {
+	_c.Call.Return(user1, err)
+	return _c
+}
+
+func (_c *FSMock_GetUser_Call) RunAndReturn(run func(ctx context.Context, id string) (*user.User, error)) *FSMock_GetUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InitiateUpload provides a mock function for the type FSMock
+func (_mock *FSMock) InitiateUpload(ctx context.Context, userID string, driveID string, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (vfs.PresignInfo, error) {
+	ret := _mock.Called(ctx, userID, driveID, destPath, contentType, contentLength, expiry)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InitiateUpload")
+	}
+
+	var r0 vfs.PresignInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, *string, *int64, time.Duration) (vfs.PresignInfo, error)); ok {
+		return returnFunc(ctx, userID, driveID, destPath, contentType, contentLength, expiry)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, *string, *int64, time.Duration) vfs.PresignInfo); ok {
+		r0 = returnFunc(ctx, userID, driveID, destPath, contentType, contentLength, expiry)
+	} else {
+		r0 = ret.Get(0).(vfs.PresignInfo)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, *string, *int64, time.Duration) error); ok {
+		r1 = returnFunc(ctx, userID, driveID, destPath, contentType, contentLength, expiry)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSMock_InitiateUpload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InitiateUpload'
+type FSMock_InitiateUpload_Call struct {
+	*mock.Call
+}
+
+// InitiateUpload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - driveID string
+//   - destPath string
+//   - contentType *string
+//   - contentLength *int64
+//   - expiry time.Duration
+func (_e *FSMock_Expecter) InitiateUpload(ctx interface{}, userID interface{}, driveID interface{}, destPath interface{}, contentType interface{}, contentLength interface{}, expiry interface{}) *FSMock_InitiateUpload_Call {
+	return &FSMock_InitiateUpload_Call{Call: _e.mock.On("InitiateUpload", ctx, userID, driveID, destPath, contentType, contentLength, expiry)}
+}
+
+func (_c *FSMock_InitiateUpload_Call) Run(run func(ctx context.Context, userID string, driveID string, destPath string, contentType *string, contentLength *int64, expiry time.Duration)) *FSMock_InitiateUpload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 *string
+		if args[4] != nil {
+			arg4 = args[4].(*string)
+		}
+		var arg5 *int64
+		if args[5] != nil {
+			arg5 = args[5].(*int64)
+		}
+		var arg6 time.Duration
+		if args[6] != nil {
+			arg6 = args[6].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+			arg6,
+		)
+	})
+	return _c
+}
+
+func (_c *FSMock_InitiateUpload_Call) Return(presignInfo vfs.PresignInfo, err error) *FSMock_InitiateUpload_Call {
+	_c.Call.Return(presignInfo, err)
+	return _c
+}
+
+func (_c *FSMock_InitiateUpload_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (vfs.PresignInfo, error)) *FSMock_InitiateUpload_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -710,6 +969,90 @@ func (_c *FSMock_Mv_Call) Return(err error) *FSMock_Mv_Call {
 }
 
 func (_c *FSMock_Mv_Call) RunAndReturn(run func(ctx context.Context, userID string, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string) error) *FSMock_Mv_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PresignDownload provides a mock function for the type FSMock
+func (_mock *FSMock) PresignDownload(ctx context.Context, userID string, driveID string, path string, expiry time.Duration) (vfs.PresignInfo, error) {
+	ret := _mock.Called(ctx, userID, driveID, path, expiry)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PresignDownload")
+	}
+
+	var r0 vfs.PresignInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, time.Duration) (vfs.PresignInfo, error)); ok {
+		return returnFunc(ctx, userID, driveID, path, expiry)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, time.Duration) vfs.PresignInfo); ok {
+		r0 = returnFunc(ctx, userID, driveID, path, expiry)
+	} else {
+		r0 = ret.Get(0).(vfs.PresignInfo)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, time.Duration) error); ok {
+		r1 = returnFunc(ctx, userID, driveID, path, expiry)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSMock_PresignDownload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PresignDownload'
+type FSMock_PresignDownload_Call struct {
+	*mock.Call
+}
+
+// PresignDownload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - driveID string
+//   - path string
+//   - expiry time.Duration
+func (_e *FSMock_Expecter) PresignDownload(ctx interface{}, userID interface{}, driveID interface{}, path interface{}, expiry interface{}) *FSMock_PresignDownload_Call {
+	return &FSMock_PresignDownload_Call{Call: _e.mock.On("PresignDownload", ctx, userID, driveID, path, expiry)}
+}
+
+func (_c *FSMock_PresignDownload_Call) Run(run func(ctx context.Context, userID string, driveID string, path string, expiry time.Duration)) *FSMock_PresignDownload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 time.Duration
+		if args[4] != nil {
+			arg4 = args[4].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *FSMock_PresignDownload_Call) Return(presignInfo vfs.PresignInfo, err error) *FSMock_PresignDownload_Call {
+	_c.Call.Return(presignInfo, err)
+	return _c
+}
+
+func (_c *FSMock_PresignDownload_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string, expiry time.Duration) (vfs.PresignInfo, error)) *FSMock_PresignDownload_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1111,6 +1454,74 @@ func (_c *FSMock_UpdateDrive_Call) Return(drive1 *drive.Drive, err error) *FSMoc
 }
 
 func (_c *FSMock_UpdateDrive_Call) RunAndReturn(run func(ctx context.Context, id string, name *string, description *string) (*drive.Drive, error)) *FSMock_UpdateDrive_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertUser provides a mock function for the type FSMock
+func (_mock *FSMock) UpsertUser(ctx context.Context, cmd *user.CreateCommand) (*user.User, error) {
+	ret := _mock.Called(ctx, cmd)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertUser")
+	}
+
+	var r0 *user.User
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *user.CreateCommand) (*user.User, error)); ok {
+		return returnFunc(ctx, cmd)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *user.CreateCommand) *user.User); ok {
+		r0 = returnFunc(ctx, cmd)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*user.User)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *user.CreateCommand) error); ok {
+		r1 = returnFunc(ctx, cmd)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSMock_UpsertUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertUser'
+type FSMock_UpsertUser_Call struct {
+	*mock.Call
+}
+
+// UpsertUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - cmd *user.CreateCommand
+func (_e *FSMock_Expecter) UpsertUser(ctx interface{}, cmd interface{}) *FSMock_UpsertUser_Call {
+	return &FSMock_UpsertUser_Call{Call: _e.mock.On("UpsertUser", ctx, cmd)}
+}
+
+func (_c *FSMock_UpsertUser_Call) Run(run func(ctx context.Context, cmd *user.CreateCommand)) *FSMock_UpsertUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *user.CreateCommand
+		if args[1] != nil {
+			arg1 = args[1].(*user.CreateCommand)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *FSMock_UpsertUser_Call) Return(user1 *user.User, err error) *FSMock_UpsertUser_Call {
+	_c.Call.Return(user1, err)
+	return _c
+}
+
+func (_c *FSMock_UpsertUser_Call) RunAndReturn(run func(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)) *FSMock_UpsertUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

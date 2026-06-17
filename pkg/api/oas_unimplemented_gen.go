@@ -22,6 +22,15 @@ func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatOK,
 	return r, ht.ErrNotImplemented
 }
 
+// CompleteUpload implements completeUpload operation.
+//
+// Complete a presigned upload and create the object node.
+//
+// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+func (UnimplementedHandler) CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (r CompleteUploadRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // CreateDrive implements createDrive operation.
 //
 // Create a new drive.
@@ -55,6 +64,33 @@ func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams)
 //
 // GET /v1/drives/{driveID}/storage
 func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (r *StorageConfig, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GetUser implements getUser operation.
+//
+// Get current user.
+//
+// GET /v1/users
+func (UnimplementedHandler) GetUser(ctx context.Context) (r *User, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Health implements health operation.
+//
+// Health check.
+//
+// GET /health
+func (UnimplementedHandler) Health(ctx context.Context) (r *HealthOK, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// InitiateUpload implements initiateUpload operation.
+//
+// Initiate a presigned upload.
+//
+// POST /v1/drives/{driveID}/fs/upload
+func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (r InitiateUploadRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -92,6 +128,15 @@ func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params M
 // POST /v1/drives/{driveID}/fs/mv
 func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParams) error {
 	return ht.ErrNotImplemented
+}
+
+// PresignDownload implements presignDownload operation.
+//
+// Get a presigned download URL for an object node.
+//
+// GET /v1/drives/{driveID}/fs/download
+func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignDownloadParams) (r PresignDownloadRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Rm implements rm operation.
@@ -139,6 +184,15 @@ func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate,
 	return r, ht.ErrNotImplemented
 }
 
+// UpsertUser implements upsertUser operation.
+//
+// Upsert a user from OIDC claims.
+//
+// POST /v1/users
+func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq) (r *User, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Write implements write operation.
 //
 // Write inline content to a file.
@@ -153,6 +207,6 @@ func (UnimplementedHandler) Write(ctx context.Context, req OptWriteReq, params W
 // Create an S3-backed object node.
 //
 // POST /v1/drives/{driveID}/fs/object
-func (UnimplementedHandler) WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) (r WriteLargeRes, _ error) {
+	return r, ht.ErrNotImplemented
 }

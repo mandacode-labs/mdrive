@@ -4,7 +4,10 @@ package api
 
 import (
 	"io"
+	"net/url"
 	"time"
+
+	"github.com/go-faster/errors"
 )
 
 type BearerAuth struct {
@@ -100,6 +103,45 @@ func (s *DirEntry) SetName(val OptString) {
 func (s *DirEntry) SetType(val OptString) {
 	s.Type = val
 }
+
+// Ref: #/components/schemas/DownloadResponse
+type DownloadResponse struct {
+	Method    string    `json:"method"`
+	URL       url.URL   `json:"url"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// GetMethod returns the value of Method.
+func (s *DownloadResponse) GetMethod() string {
+	return s.Method
+}
+
+// GetURL returns the value of URL.
+func (s *DownloadResponse) GetURL() url.URL {
+	return s.URL
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *DownloadResponse) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// SetMethod sets the value of Method.
+func (s *DownloadResponse) SetMethod(val string) {
+	s.Method = val
+}
+
+// SetURL sets the value of URL.
+func (s *DownloadResponse) SetURL(val url.URL) {
+	s.URL = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *DownloadResponse) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+func (*DownloadResponse) presignDownloadRes() {}
 
 // Ref: #/components/schemas/Drive
 type Drive struct {
@@ -260,20 +302,154 @@ func (s *DriveUpdate) SetDescription(val OptString) {
 
 // Ref: #/components/schemas/Error
 type Error struct {
+	// Machine-readable error code.
+	Code ErrorCode `json:"code"`
+	// Human-readable error message.
+	Message string `json:"message"`
+}
+
+// GetCode returns the value of Code.
+func (s *Error) GetCode() ErrorCode {
+	return s.Code
+}
+
+// GetMessage returns the value of Message.
+func (s *Error) GetMessage() string {
+	return s.Message
+}
+
+// SetCode sets the value of Code.
+func (s *Error) SetCode(val ErrorCode) {
+	s.Code = val
+}
+
+// SetMessage sets the value of Message.
+func (s *Error) SetMessage(val string) {
+	s.Message = val
+}
+
+// Machine-readable error code.
+type ErrorCode string
+
+const (
+	ErrorCodeNotFound         ErrorCode = "not_found"
+	ErrorCodeConflict         ErrorCode = "conflict"
+	ErrorCodeBadRequest       ErrorCode = "bad_request"
+	ErrorCodeForbidden        ErrorCode = "forbidden"
+	ErrorCodeUnauthorized     ErrorCode = "unauthorized"
+	ErrorCodeInternal         ErrorCode = "internal"
+	ErrorCodeRevisionConflict ErrorCode = "revision_conflict"
+)
+
+// AllValues returns all ErrorCode values.
+func (ErrorCode) AllValues() []ErrorCode {
+	return []ErrorCode{
+		ErrorCodeNotFound,
+		ErrorCodeConflict,
+		ErrorCodeBadRequest,
+		ErrorCodeForbidden,
+		ErrorCodeUnauthorized,
+		ErrorCodeInternal,
+		ErrorCodeRevisionConflict,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ErrorCode) MarshalText() ([]byte, error) {
+	switch s {
+	case ErrorCodeNotFound:
+		return []byte(s), nil
+	case ErrorCodeConflict:
+		return []byte(s), nil
+	case ErrorCodeBadRequest:
+		return []byte(s), nil
+	case ErrorCodeForbidden:
+		return []byte(s), nil
+	case ErrorCodeUnauthorized:
+		return []byte(s), nil
+	case ErrorCodeInternal:
+		return []byte(s), nil
+	case ErrorCodeRevisionConflict:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ErrorCode) UnmarshalText(data []byte) error {
+	switch ErrorCode(data) {
+	case ErrorCodeNotFound:
+		*s = ErrorCodeNotFound
+		return nil
+	case ErrorCodeConflict:
+		*s = ErrorCodeConflict
+		return nil
+	case ErrorCodeBadRequest:
+		*s = ErrorCodeBadRequest
+		return nil
+	case ErrorCodeForbidden:
+		*s = ErrorCodeForbidden
+		return nil
+	case ErrorCodeUnauthorized:
+		*s = ErrorCodeUnauthorized
+		return nil
+	case ErrorCodeInternal:
+		*s = ErrorCodeInternal
+		return nil
+	case ErrorCodeRevisionConflict:
+		*s = ErrorCodeRevisionConflict
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// ErrorStatusCode wraps Error with StatusCode.
+type ErrorStatusCode struct {
 	StatusCode int
+	Response   Error
 }
 
 // GetStatusCode returns the value of StatusCode.
-func (s *Error) GetStatusCode() int {
+func (s *ErrorStatusCode) GetStatusCode() int {
 	return s.StatusCode
 }
 
+// GetResponse returns the value of Response.
+func (s *ErrorStatusCode) GetResponse() Error {
+	return s.Response
+}
+
 // SetStatusCode sets the value of StatusCode.
-func (s *Error) SetStatusCode(val int) {
+func (s *ErrorStatusCode) SetStatusCode(val int) {
 	s.StatusCode = val
 }
 
-func (*Error) createDriveRes() {}
+// SetResponse sets the value of Response.
+func (s *ErrorStatusCode) SetResponse(val Error) {
+	s.Response = val
+}
+
+func (*ErrorStatusCode) completeUploadRes()  {}
+func (*ErrorStatusCode) createDriveRes()     {}
+func (*ErrorStatusCode) initiateUploadRes()  {}
+func (*ErrorStatusCode) presignDownloadRes() {}
+func (*ErrorStatusCode) writeLargeRes()      {}
+
+type HealthOK struct {
+	Status OptString `json:"status"`
+}
+
+// GetStatus returns the value of Status.
+func (s *HealthOK) GetStatus() OptString {
+	return s.Status
+}
+
+// SetStatus sets the value of Status.
+func (s *HealthOK) SetStatus(val OptString) {
+	s.Status = val
+}
 
 // MkdirCreated is response for Mkdir operation.
 type MkdirCreated struct{}
@@ -690,6 +866,98 @@ func (o OptMvReq) Or(d MvReq) MvReq {
 	return d
 }
 
+// NewOptPresignRequest returns new OptPresignRequest with value set to v.
+func NewOptPresignRequest(v PresignRequest) OptPresignRequest {
+	return OptPresignRequest{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPresignRequest is optional PresignRequest.
+type OptPresignRequest struct {
+	Value PresignRequest
+	Set   bool
+}
+
+// IsSet returns true if OptPresignRequest was set.
+func (o OptPresignRequest) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPresignRequest) Reset() {
+	var v PresignRequest
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPresignRequest) SetTo(v PresignRequest) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPresignRequest) Get() (v PresignRequest, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPresignRequest) Or(d PresignRequest) PresignRequest {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPresignResponseHeaders returns new OptPresignResponseHeaders with value set to v.
+func NewOptPresignResponseHeaders(v PresignResponseHeaders) OptPresignResponseHeaders {
+	return OptPresignResponseHeaders{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPresignResponseHeaders is optional PresignResponseHeaders.
+type OptPresignResponseHeaders struct {
+	Value PresignResponseHeaders
+	Set   bool
+}
+
+// IsSet returns true if OptPresignResponseHeaders was set.
+func (o OptPresignResponseHeaders) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPresignResponseHeaders) Reset() {
+	var v PresignResponseHeaders
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPresignResponseHeaders) SetTo(v PresignResponseHeaders) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPresignResponseHeaders) Get() (v PresignResponseHeaders, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPresignResponseHeaders) Or(d PresignResponseHeaders) PresignResponseHeaders {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptRmReq returns new OptRmReq with value set to v.
 func NewOptRmReq(v RmReq) OptRmReq {
 	return OptRmReq{
@@ -874,6 +1142,98 @@ func (o OptTouchReq) Or(d TouchReq) TouchReq {
 	return d
 }
 
+// NewOptUploadCompleteRequest returns new OptUploadCompleteRequest with value set to v.
+func NewOptUploadCompleteRequest(v UploadCompleteRequest) OptUploadCompleteRequest {
+	return OptUploadCompleteRequest{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUploadCompleteRequest is optional UploadCompleteRequest.
+type OptUploadCompleteRequest struct {
+	Value UploadCompleteRequest
+	Set   bool
+}
+
+// IsSet returns true if OptUploadCompleteRequest was set.
+func (o OptUploadCompleteRequest) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUploadCompleteRequest) Reset() {
+	var v UploadCompleteRequest
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUploadCompleteRequest) SetTo(v UploadCompleteRequest) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUploadCompleteRequest) Get() (v UploadCompleteRequest, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUploadCompleteRequest) Or(d UploadCompleteRequest) UploadCompleteRequest {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptUpsertUserReq returns new OptUpsertUserReq with value set to v.
+func NewOptUpsertUserReq(v UpsertUserReq) OptUpsertUserReq {
+	return OptUpsertUserReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUpsertUserReq is optional UpsertUserReq.
+type OptUpsertUserReq struct {
+	Value UpsertUserReq
+	Set   bool
+}
+
+// IsSet returns true if OptUpsertUserReq was set.
+func (o OptUpsertUserReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUpsertUserReq) Reset() {
+	var v UpsertUserReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUpsertUserReq) SetTo(v UpsertUserReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUpsertUserReq) Get() (v UpsertUserReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUpsertUserReq) Or(d UpsertUserReq) UpsertUserReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptWriteLargeReq returns new OptWriteLargeReq with value set to v.
 func NewOptWriteLargeReq(v WriteLargeReq) OptWriteLargeReq {
 	return OptWriteLargeReq{
@@ -964,6 +1324,134 @@ func (o OptWriteReq) Or(d WriteReq) WriteReq {
 		return v
 	}
 	return d
+}
+
+// Ref: #/components/schemas/PresignRequest
+type PresignRequest struct {
+	// Destination path inside the drive.
+	Path string `json:"path"`
+	// MIME type of the object (optional, included in the signed URL).
+	ContentType OptString `json:"contentType"`
+	// Expected object size in bytes (optional).
+	ContentLength OptInt64 `json:"contentLength"`
+}
+
+// GetPath returns the value of Path.
+func (s *PresignRequest) GetPath() string {
+	return s.Path
+}
+
+// GetContentType returns the value of ContentType.
+func (s *PresignRequest) GetContentType() OptString {
+	return s.ContentType
+}
+
+// GetContentLength returns the value of ContentLength.
+func (s *PresignRequest) GetContentLength() OptInt64 {
+	return s.ContentLength
+}
+
+// SetPath sets the value of Path.
+func (s *PresignRequest) SetPath(val string) {
+	s.Path = val
+}
+
+// SetContentType sets the value of ContentType.
+func (s *PresignRequest) SetContentType(val OptString) {
+	s.ContentType = val
+}
+
+// SetContentLength sets the value of ContentLength.
+func (s *PresignRequest) SetContentLength(val OptInt64) {
+	s.ContentLength = val
+}
+
+// Ref: #/components/schemas/PresignResponse
+type PresignResponse struct {
+	// Opaque token to pass to the complete endpoint.
+	UploadId string `json:"uploadId"`
+	Method   string `json:"method"`
+	// Presigned URL the client PUTs the bytes to.
+	URL url.URL `json:"url"`
+	// Headers that must be included with the PUT request.
+	Headers OptPresignResponseHeaders `json:"headers"`
+	// S3 object key that will be created.
+	Key       string    `json:"key"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// GetUploadId returns the value of UploadId.
+func (s *PresignResponse) GetUploadId() string {
+	return s.UploadId
+}
+
+// GetMethod returns the value of Method.
+func (s *PresignResponse) GetMethod() string {
+	return s.Method
+}
+
+// GetURL returns the value of URL.
+func (s *PresignResponse) GetURL() url.URL {
+	return s.URL
+}
+
+// GetHeaders returns the value of Headers.
+func (s *PresignResponse) GetHeaders() OptPresignResponseHeaders {
+	return s.Headers
+}
+
+// GetKey returns the value of Key.
+func (s *PresignResponse) GetKey() string {
+	return s.Key
+}
+
+// GetExpiresAt returns the value of ExpiresAt.
+func (s *PresignResponse) GetExpiresAt() time.Time {
+	return s.ExpiresAt
+}
+
+// SetUploadId sets the value of UploadId.
+func (s *PresignResponse) SetUploadId(val string) {
+	s.UploadId = val
+}
+
+// SetMethod sets the value of Method.
+func (s *PresignResponse) SetMethod(val string) {
+	s.Method = val
+}
+
+// SetURL sets the value of URL.
+func (s *PresignResponse) SetURL(val url.URL) {
+	s.URL = val
+}
+
+// SetHeaders sets the value of Headers.
+func (s *PresignResponse) SetHeaders(val OptPresignResponseHeaders) {
+	s.Headers = val
+}
+
+// SetKey sets the value of Key.
+func (s *PresignResponse) SetKey(val string) {
+	s.Key = val
+}
+
+// SetExpiresAt sets the value of ExpiresAt.
+func (s *PresignResponse) SetExpiresAt(val time.Time) {
+	s.ExpiresAt = val
+}
+
+func (*PresignResponse) initiateUploadRes() {}
+
+// Headers that must be included with the PUT request.
+type PresignResponseHeaders map[string]string
+
+func (s *PresignResponseHeaders) init() PresignResponseHeaders {
+	m := *s
+	if m == nil {
+		m = map[string]string{}
+		*s = m
+	}
+	return m
 }
 
 // RmNoContent is response for Rm operation.
@@ -1189,8 +1677,227 @@ func (s *TouchReq) SetPath(val string) {
 	s.Path = val
 }
 
+// Ref: #/components/schemas/UploadCompleteRequest
+type UploadCompleteRequest struct {
+	// Actual object size in bytes.
+	ContentLength int64 `json:"contentLength"`
+	// ETag or checksum of the uploaded object (optional).
+	Checksum OptString `json:"checksum"`
+}
+
+// GetContentLength returns the value of ContentLength.
+func (s *UploadCompleteRequest) GetContentLength() int64 {
+	return s.ContentLength
+}
+
+// GetChecksum returns the value of Checksum.
+func (s *UploadCompleteRequest) GetChecksum() OptString {
+	return s.Checksum
+}
+
+// SetContentLength sets the value of ContentLength.
+func (s *UploadCompleteRequest) SetContentLength(val int64) {
+	s.ContentLength = val
+}
+
+// SetChecksum sets the value of Checksum.
+func (s *UploadCompleteRequest) SetChecksum(val OptString) {
+	s.Checksum = val
+}
+
+// Ref: #/components/schemas/UploadCompleteResponse
+type UploadCompleteResponse struct {
+	InodeID string      `json:"inodeID"`
+	Size    int64       `json:"size"`
+	Mtime   OptDateTime `json:"mtime"`
+	Atime   OptDateTime `json:"atime"`
+}
+
+// GetInodeID returns the value of InodeID.
+func (s *UploadCompleteResponse) GetInodeID() string {
+	return s.InodeID
+}
+
+// GetSize returns the value of Size.
+func (s *UploadCompleteResponse) GetSize() int64 {
+	return s.Size
+}
+
+// GetMtime returns the value of Mtime.
+func (s *UploadCompleteResponse) GetMtime() OptDateTime {
+	return s.Mtime
+}
+
+// GetAtime returns the value of Atime.
+func (s *UploadCompleteResponse) GetAtime() OptDateTime {
+	return s.Atime
+}
+
+// SetInodeID sets the value of InodeID.
+func (s *UploadCompleteResponse) SetInodeID(val string) {
+	s.InodeID = val
+}
+
+// SetSize sets the value of Size.
+func (s *UploadCompleteResponse) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetMtime sets the value of Mtime.
+func (s *UploadCompleteResponse) SetMtime(val OptDateTime) {
+	s.Mtime = val
+}
+
+// SetAtime sets the value of Atime.
+func (s *UploadCompleteResponse) SetAtime(val OptDateTime) {
+	s.Atime = val
+}
+
+func (*UploadCompleteResponse) completeUploadRes() {}
+
+type UpsertUserReq struct {
+	Name       string    `json:"name"`
+	Email      OptString `json:"email"`
+	Provider   string    `json:"provider"`
+	ProviderID string    `json:"providerID"`
+}
+
+// GetName returns the value of Name.
+func (s *UpsertUserReq) GetName() string {
+	return s.Name
+}
+
+// GetEmail returns the value of Email.
+func (s *UpsertUserReq) GetEmail() OptString {
+	return s.Email
+}
+
+// GetProvider returns the value of Provider.
+func (s *UpsertUserReq) GetProvider() string {
+	return s.Provider
+}
+
+// GetProviderID returns the value of ProviderID.
+func (s *UpsertUserReq) GetProviderID() string {
+	return s.ProviderID
+}
+
+// SetName sets the value of Name.
+func (s *UpsertUserReq) SetName(val string) {
+	s.Name = val
+}
+
+// SetEmail sets the value of Email.
+func (s *UpsertUserReq) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetProvider sets the value of Provider.
+func (s *UpsertUserReq) SetProvider(val string) {
+	s.Provider = val
+}
+
+// SetProviderID sets the value of ProviderID.
+func (s *UpsertUserReq) SetProviderID(val string) {
+	s.ProviderID = val
+}
+
+// Ref: #/components/schemas/User
+type User struct {
+	ID         OptString   `json:"id"`
+	PublicID   OptString   `json:"publicID"`
+	Name       OptString   `json:"name"`
+	Email      OptString   `json:"email"`
+	Provider   OptString   `json:"provider"`
+	ProviderID OptString   `json:"providerID"`
+	CreatedAt  OptDateTime `json:"createdAt"`
+	UpdatedAt  OptDateTime `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *User) GetID() OptString {
+	return s.ID
+}
+
+// GetPublicID returns the value of PublicID.
+func (s *User) GetPublicID() OptString {
+	return s.PublicID
+}
+
+// GetName returns the value of Name.
+func (s *User) GetName() OptString {
+	return s.Name
+}
+
+// GetEmail returns the value of Email.
+func (s *User) GetEmail() OptString {
+	return s.Email
+}
+
+// GetProvider returns the value of Provider.
+func (s *User) GetProvider() OptString {
+	return s.Provider
+}
+
+// GetProviderID returns the value of ProviderID.
+func (s *User) GetProviderID() OptString {
+	return s.ProviderID
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *User) GetCreatedAt() OptDateTime {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *User) GetUpdatedAt() OptDateTime {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *User) SetID(val OptString) {
+	s.ID = val
+}
+
+// SetPublicID sets the value of PublicID.
+func (s *User) SetPublicID(val OptString) {
+	s.PublicID = val
+}
+
+// SetName sets the value of Name.
+func (s *User) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetEmail sets the value of Email.
+func (s *User) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetProvider sets the value of Provider.
+func (s *User) SetProvider(val OptString) {
+	s.Provider = val
+}
+
+// SetProviderID sets the value of ProviderID.
+func (s *User) SetProviderID(val OptString) {
+	s.ProviderID = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *User) SetCreatedAt(val OptDateTime) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *User) SetUpdatedAt(val OptDateTime) {
+	s.UpdatedAt = val
+}
+
 // WriteLargeCreated is response for WriteLarge operation.
 type WriteLargeCreated struct{}
+
+func (*WriteLargeCreated) writeLargeRes() {}
 
 type WriteLargeReq struct {
 	Path   string        `json:"path"`

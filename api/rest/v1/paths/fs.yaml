@@ -231,5 +231,96 @@ object:
     responses:
       "201":
         description: Object node created
-    default:
-      $ref: "../openapi.yaml#/components/schemas/Error"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+upload:
+  post:
+    operationId: initiateUpload
+    summary: Initiate a presigned upload
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/PresignRequest"
+    responses:
+      "201":
+        description: Presigned upload URL created
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/PresignResponse"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+uploadComplete:
+  post:
+    operationId: completeUpload
+    summary: Complete a presigned upload and create the object node
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: uploadId
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: "../openapi.yaml#/components/schemas/UploadCompleteRequest"
+    responses:
+      "201":
+        description: Object node created
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/UploadCompleteResponse"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+download:
+  get:
+    operationId: presignDownload
+    summary: Get a presigned download URL for an object node
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: path
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: Presigned download URL
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/DownloadResponse"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

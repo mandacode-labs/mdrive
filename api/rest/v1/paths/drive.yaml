@@ -15,7 +15,11 @@ drives:
             schema:
               $ref: "../openapi.yaml#/components/schemas/Drive"
       default:
-        $ref: "../openapi.yaml#/components/schemas/Error"
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
   get:
     operationId: listDrives
     summary: List drives owned by the authenticated user

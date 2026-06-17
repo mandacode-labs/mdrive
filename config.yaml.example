@@ -38,6 +38,13 @@ crypto:
   # If empty, storage credentials are stored in plaintext (development only).
   master_key: ""
 
+valkey:
+  addrs:
+    - localhost:6379
+  password: ""
+  db: 0
+  tls: false
+
 auth:
   keycloak:
     base_url: http://localhost:8081

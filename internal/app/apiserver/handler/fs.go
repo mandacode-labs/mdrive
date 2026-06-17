@@ -69,7 +69,7 @@ func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.Wri
 	return h.vfs.Write(ctx, h.userID(ctx), params.DriveID, r.Path, r.Content)
 }
 
-func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) error {
+func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) (api.WriteLargeRes, error) {
 	r := req.Value
 	ct := ""
 	if r.Object.ContentType.Set {
@@ -85,7 +85,10 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 		Mime:     ct,
 		Checksum: cs,
 	}
-	return h.vfs.WriteLarge(ctx, h.userID(ctx), params.DriveID, r.Path, obj, r.Size)
+	if err := h.vfs.WriteLarge(ctx, h.userID(ctx), params.DriveID, r.Path, obj, r.Size); err != nil {
+		return nil, err
+	}
+	return &api.WriteLargeCreated{}, nil
 }
 
 func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {

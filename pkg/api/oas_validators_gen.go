@@ -7,6 +7,73 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+func (s *Error) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Code.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "code",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s ErrorCode) Validate() error {
+	switch s {
+	case "not_found":
+		return nil
+	case "conflict":
+		return nil
+	case "bad_request":
+		return nil
+	case "forbidden":
+		return nil
+	case "unauthorized":
+		return nil
+	case "internal":
+		return nil
+	case "revision_conflict":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s *ErrorStatusCode) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Response.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "Response",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *MvReq) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer

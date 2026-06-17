@@ -1,0 +1,82 @@
+PresignRequest:
+  type: object
+  required: [path]
+  properties:
+    path:
+      type: string
+      description: Destination path inside the drive
+    contentType:
+      type: string
+      description: MIME type of the object (optional, included in the signed URL)
+    contentLength:
+      type: integer
+      format: int64
+      description: Expected object size in bytes (optional)
+
+PresignResponse:
+  type: object
+  required: [uploadId, method, url, key, expiresAt]
+  properties:
+    uploadId:
+      type: string
+      description: Opaque token to pass to the complete endpoint
+    method:
+      type: string
+      example: PUT
+    url:
+      type: string
+      format: uri
+      description: Presigned URL the client PUTs the bytes to
+    headers:
+      type: object
+      additionalProperties:
+        type: string
+      description: Headers that must be included with the PUT request
+    key:
+      type: string
+      description: S3 object key that will be created
+    expiresAt:
+      type: string
+      format: date-time
+
+UploadCompleteRequest:
+  type: object
+  required: [contentLength]
+  properties:
+    contentLength:
+      type: integer
+      format: int64
+      description: Actual object size in bytes
+    checksum:
+      type: string
+      description: ETag or checksum of the uploaded object (optional)
+
+UploadCompleteResponse:
+  type: object
+  required: [inodeID, size]
+  properties:
+    inodeID:
+      type: string
+    size:
+      type: integer
+      format: int64
+    mtime:
+      type: string
+      format: date-time
+    atime:
+      type: string
+      format: date-time
+
+DownloadResponse:
+  type: object
+  required: [method, url, expiresAt]
+  properties:
+    method:
+      type: string
+      example: GET
+    url:
+      type: string
+      format: uri
+    expiresAt:
+      type: string
+      format: date-time

@@ -124,6 +124,124 @@ func decodeCatParams(args [1]string, argsEscaped bool, r *http.Request) (params 
 	return params, nil
 }
 
+// CompleteUploadParams is parameters of completeUpload operation.
+type CompleteUploadParams struct {
+	DriveID  string
+	UploadId string
+}
+
+func unpackCompleteUploadParams(packed middleware.Parameters) (params CompleteUploadParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "uploadId",
+			In:   "path",
+		}
+		params.UploadId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeCompleteUploadParams(args [2]string, argsEscaped bool, r *http.Request) (params CompleteUploadParams, _ error) {
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: uploadId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "uploadId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.UploadId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "uploadId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DeleteDriveParams is parameters of deleteDrive operation.
 type DeleteDriveParams struct {
 	DriveID string
@@ -271,6 +389,71 @@ func unpackGetDriveStorageParams(packed middleware.Parameters) (params GetDriveS
 }
 
 func decodeGetDriveStorageParams(args [1]string, argsEscaped bool, r *http.Request) (params GetDriveStorageParams, _ error) {
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// InitiateUploadParams is parameters of initiateUpload operation.
+type InitiateUploadParams struct {
+	DriveID string
+}
+
+func unpackInitiateUploadParams(packed middleware.Parameters) (params InitiateUploadParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	return params
+}
+
+func decodeInitiateUploadParams(args [1]string, argsEscaped bool, r *http.Request) (params InitiateUploadParams, _ error) {
 	// Decode path: driveID.
 	if err := func() error {
 		param := args[0]
@@ -558,6 +741,116 @@ func decodeMvParams(args [1]string, argsEscaped bool, r *http.Request) (params M
 		return params, &ogenerrors.DecodeParamError{
 			Name: "driveID",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// PresignDownloadParams is parameters of presignDownload operation.
+type PresignDownloadParams struct {
+	DriveID string
+	Path    string
+}
+
+func unpackPresignDownloadParams(packed middleware.Parameters) (params PresignDownloadParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "path",
+			In:   "query",
+		}
+		params.Path = packed[key].(string)
+	}
+	return params
+}
+
+func decodePresignDownloadParams(args [1]string, argsEscaped bool, r *http.Request) (params PresignDownloadParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: path.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "path",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Path = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "path",
+			In:   "query",
 			Err:  err,
 		}
 	}

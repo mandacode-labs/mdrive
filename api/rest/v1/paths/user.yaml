@@ -1,4 +1,4 @@
-/v1/users:
+users:
   get:
     operationId: getUser
     summary: Get current user

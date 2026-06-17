@@ -15,7 +15,7 @@ security:
 
 paths:
   /health:
-    $ref: "./paths/health.yaml"
+    $ref: "./paths/health.yaml#/health"
 
   /v1/drives:
     $ref: "./paths/drive.yaml#/drives"
@@ -56,8 +56,17 @@ paths:
   /v1/drives/{driveID}/fs/object:
     $ref: "./paths/fs.yaml#/object"
 
+  /v1/drives/{driveID}/fs/upload:
+    $ref: "./paths/fs.yaml#/upload"
+
+  /v1/drives/{driveID}/fs/upload/{uploadId}/complete:
+    $ref: "./paths/fs.yaml#/uploadComplete"
+
+  /v1/drives/{driveID}/fs/download:
+    $ref: "./paths/fs.yaml#/download"
+
   /v1/users:
-    $ref: "./paths/user.yaml"
+    $ref: "./paths/user.yaml#/users"
 
 components:
   securitySchemes:
@@ -83,5 +92,15 @@ components:
       $ref: "./schemas/node.yaml#/DirEntry"
     ObjectContent:
       $ref: "./schemas/node.yaml#/ObjectContent"
+    PresignRequest:
+      $ref: "./schemas/upload.yaml#/PresignRequest"
+    PresignResponse:
+      $ref: "./schemas/upload.yaml#/PresignResponse"
+    UploadCompleteRequest:
+      $ref: "./schemas/upload.yaml#/UploadCompleteRequest"
+    UploadCompleteResponse:
+      $ref: "./schemas/upload.yaml#/UploadCompleteResponse"
+    DownloadResponse:
+      $ref: "./schemas/upload.yaml#/DownloadResponse"
     User:
       $ref: "./schemas/user.yaml#/User"
