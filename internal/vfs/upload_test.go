@@ -8,8 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 )
+
+type objectNotFoundStore struct {
+	Store
+}
+
+func (s *objectNotFoundStore) ObjectExists(_ context.Context, _, _ string) (bool, error) {
+	return false, nil
+}
 
 func TestInitiateAndCompleteUpload(t *testing.T) {
 	svc := newTestService()
@@ -52,4 +61,19 @@ func TestPresignDownloadNotObject(t *testing.T) {
 
 	_, err = svc.PresignDownload(ctx, "user1", "d1", "/plain.txt", time.Hour)
 	assert.Error(t, err)
+}
+
+func TestCompleteUpload_ObjectNotExists(t *testing.T) {
+	repo := newFakeRepo()
+	nodeSvc := node.NewService(repo)
+	root, _ := nodeSvc.CreateDirectory(context.Background())
+	d := &fakeDrive{rootID: root.ID()}
+	svc := NewService(nodeSvc, d, &fakeUser{}, &objectNotFoundStore{Store: &fakeStore{}}, &fakePerm{}, nil, nil)
+
+	ctx := context.Background()
+	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/missing.bin", nil, nil, time.Hour)
+	require.NoError(t, err)
+
+	_, err = svc.CompleteUpload(ctx, "user1", "d1", info.UploadID, 0, nil)
+	assert.ErrorIs(t, err, ErrObjectNotUploaded)
 }
