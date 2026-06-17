@@ -29,7 +29,7 @@ func NewServer(a *app.App, fs handler.FS) *Server {
 	})
 
 	if a.Auth != nil && a.Security != nil {
-		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL, a.Cfg.Auth.SessionTTLDuration())
+		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL, a.Cfg.App.Env != "development")
 	}
 
 	var securityHandler api.SecurityHandler = &noopSecurity{}

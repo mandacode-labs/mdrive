@@ -40,21 +40,21 @@ type FS interface {
 }
 
 type Handler struct {
-	vfs         FS
-	getUser     func(context.Context) (string, bool)
-	auth        *auth.Authenticator
-	sessionTTL  time.Duration
-	frontendURL string
+	vfs          FS
+	getUser      func(context.Context) (string, bool)
+	auth         *auth.Authenticator
+	frontendURL  string
+	secureCookie bool
 }
 
 func New(fs FS, getUser func(context.Context) (string, bool)) *Handler {
 	return &Handler{vfs: fs, getUser: getUser}
 }
 
-func (h *Handler) WithAuth(a *auth.Authenticator, frontendURL string, ttl time.Duration) {
+func (h *Handler) WithAuth(a *auth.Authenticator, frontendURL string, secureCookie bool) {
 	h.auth = a
 	h.frontendURL = frontendURL
-	h.sessionTTL = ttl
+	h.secureCookie = secureCookie
 }
 
 func (h *Handler) userID(ctx context.Context) string {

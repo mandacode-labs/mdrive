@@ -4,23 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/valkey-io/valkey-go"
 )
-
-// Common errors.
-var (
-	ErrNotFound = errors.New("session: not found")
-	ErrExpired  = errors.New("session: expired")
-)
-
-// Store persists and retrieves authentication sessions.
-type Store interface {
-	Create(ctx context.Context, s *Session) error
-	Get(ctx context.Context, id string) (*Session, error)
-	Delete(ctx context.Context, id string) error
-}
 
 // ValkeyStore implements Store with Valkey.
 type ValkeyStore struct {
@@ -37,7 +23,6 @@ func (s *ValkeyStore) key(id string) string {
 	return s.prefix + id
 }
 
-// Create saves a session with the session's remaining TTL.
 func (s *ValkeyStore) Create(ctx context.Context, sess *Session) error {
 	data, err := sess.Encode()
 	if err != nil {
@@ -54,7 +39,6 @@ func (s *ValkeyStore) Create(ctx context.Context, sess *Session) error {
 	return nil
 }
 
-// Get retrieves and validates a session.
 func (s *ValkeyStore) Get(ctx context.Context, id string) (*Session, error) {
 	resp := s.client.Do(ctx, s.client.B().Get().Key(s.key(id)).Build())
 	if err := resp.Error(); err != nil {
@@ -78,7 +62,6 @@ func (s *ValkeyStore) Get(ctx context.Context, id string) (*Session, error) {
 	return sess, nil
 }
 
-// Delete removes a session.
 func (s *ValkeyStore) Delete(ctx context.Context, id string) error {
 	resp := s.client.Do(ctx, s.client.B().Del().Key(s.key(id)).Build())
 	if err := resp.Error(); err != nil {
@@ -87,41 +70,4 @@ func (s *ValkeyStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// NewMemoryStore returns an in-memory store for tests.
-func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{items: map[string]*Session{}}
-}
-
-// MemoryStore is an in-memory Store for tests.
-type MemoryStore struct {
-	items map[string]*Session
-}
-
-func (s *MemoryStore) Create(_ context.Context, sess *Session) error {
-	s.items[sess.ID] = sess
-	return nil
-}
-
-func (s *MemoryStore) Get(_ context.Context, id string) (*Session, error) {
-	sess, ok := s.items[id]
-	if !ok {
-		return nil, ErrNotFound
-	}
-	if sess.IsExpired() {
-		delete(s.items, id)
-		return nil, ErrExpired
-	}
-	return sess, nil
-}
-
-func (s *MemoryStore) Delete(_ context.Context, id string) error {
-	delete(s.items, id)
-	return nil
-}
-
-// Compile-time check.
-var (
-	_ Store = (*ValkeyStore)(nil)
-	_ Store = (*MemoryStore)(nil)
-	_       = time.Now
-)
+var _ Store = (*ValkeyStore)(nil)

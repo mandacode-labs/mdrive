@@ -19,7 +19,10 @@ func (h *Handler) GoogleLogin(ctx context.Context) error {
 		return errNotConfigured()
 	}
 	state := mustRandomHex(32)
-	_, challenge, _ := generatePKCE()
+	verifier, challenge, _ := generatePKCE()
+	if err := h.auth.StorePKCE(ctx, state, verifier); err != nil {
+		return fmt.Errorf("store pkce: %w", err)
+	}
 	authURL, err := h.auth.AuthorizeURL(ctx, "google", h.frontendURL+"/auth/callback", state, challenge)
 	if err != nil {
 		return err
@@ -62,7 +65,8 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if h.auth == nil {
 		return errNotConfigured()
 	}
-	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.frontendURL+"/auth/callback", "")
+	verifier, _ := h.auth.GetPKCE(ctx, params.State)
+	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.frontendURL+"/auth/callback", verifier)
 	if err != nil {
 		return err
 	}
@@ -85,7 +89,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 			Value:    sess.ID,
 			Expires:  sess.ExpiresAt,
 			HttpOnly: true,
-			Secure:   true,
+			Secure:   h.secureCookie,
 			SameSite: http.SameSiteLaxMode,
 			Path:     "/",
 		})

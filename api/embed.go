@@ -1,4 +1,4 @@
-package openapispec
+package api
 
 import _ "embed"
 
