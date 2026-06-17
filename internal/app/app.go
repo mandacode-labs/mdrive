@@ -105,6 +105,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 			APIURL:               cfg.OpenFGA.APIURL,
 			StoreID:              cfg.OpenFGA.StoreID,
 			AuthorizationModelID: cfg.OpenFGA.AuthorizationModelID,
+			APIToken:             cfg.OpenFGA.APIToken,
 		})
 		if err != nil {
 			log.Warn().Err(err).Msg("openfga: initialization failed, permission checks disabled")

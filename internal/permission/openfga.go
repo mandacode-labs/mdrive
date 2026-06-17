@@ -8,28 +8,42 @@ import (
 	"time"
 
 	"github.com/openfga/go-sdk/client"
+	"github.com/openfga/go-sdk/credentials"
 )
 
-// Object types used in the OpenFGA model.
 const (
-	ObjectTypeDrive = "drive"
-	ObjectTypeUser  = "user"
+	objectTypeDrive = "drive"
+	objectTypeUser  = "user"
+
+	relationOwner  = "owner"
+	relationEditor = "editor"
+	relationViewer = "viewer"
+
+	permView   = "can_view"
+	permEdit   = "can_edit"
+	permDelete = "can_delete"
+	permManage = "can_manage"
+	permShare  = "can_share"
+
+	storeName = "mdrive"
+
+	authMethodAPIToken        = "api_token"
+	authHeaderKey             = "Authorization"
+	authHeaderValuePrefix     = "Bearer "
 )
 
-// Relations on the drive object.
+// Exported permission constants for external use.
 const (
-	RelationOwner  = "owner"
-	RelationEditor = "editor"
-	RelationViewer = "viewer"
-)
-
-// Permissions on the drive object.
-const (
-	PermissionView   = "can_view"
-	PermissionEdit   = "can_edit"
-	PermissionDelete = "can_delete"
-	PermissionManage = "can_manage"
-	PermissionShare  = "can_share"
+	ObjectTypeDrive   = objectTypeDrive
+	ObjectTypeUser    = objectTypeUser
+	RelationOwner     = relationOwner
+	RelationEditor    = relationEditor
+	RelationViewer    = relationViewer
+	PermissionView    = permView
+	PermissionEdit    = permEdit
+	PermissionDelete  = permDelete
+	PermissionManage  = permManage
+	PermissionShare   = permShare
 )
 
 // Checker grants, revokes, and checks OpenFGA relations.
@@ -50,35 +64,50 @@ type Config struct {
 	APIURL               string
 	StoreID              string
 	AuthorizationModelID string
+	APIToken             string
 	Timeout              time.Duration
 }
 
 // NewOpenFGAChecker creates a new OpenFGAChecker.
-// If StoreID is empty, a new store named "mdrive" is auto-created.
-// AuthorizationModelID must be pre-configured or set after store creation.
+// StoreID is required. If the store doesn't exist, it is auto-created.
+// APIToken enables bearer token authentication with OpenFGA.
 func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error) {
+	if cfg.StoreID == "" {
+		return nil, fmt.Errorf("openfga: store_id is required when api_url is configured")
+	}
+
 	timeout := cfg.Timeout
 	if timeout == 0 {
 		timeout = 10 * time.Second
 	}
+
+	var creds *credentials.Credentials
+	if cfg.APIToken != "" {
+		var err error
+		creds, err = credentials.NewCredentials(credentials.Credentials{
+			Method: authMethodAPIToken,
+			Config: &credentials.Config{
+				ApiToken: cfg.APIToken,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("openfga: credentials: %w", err)
+		}
+	}
+
 	c, err := client.NewSdkClient(&client.ClientConfiguration{
 		ApiUrl:               cfg.APIURL,
 		StoreId:              cfg.StoreID,
 		AuthorizationModelId: cfg.AuthorizationModelID,
+		Credentials:          creds,
 		HTTPClient:           &http.Client{Timeout: timeout},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("openfga: create client: %w", err)
 	}
 
-	if cfg.StoreID == "" {
-		storeID, err := ensureStore(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		if err := c.SetStoreId(storeID); err != nil {
-			return nil, fmt.Errorf("openfga: set store id: %w", err)
-		}
+	if err := ensureStore(ctx, c); err != nil {
+		return nil, err
 	}
 
 	if cfg.AuthorizationModelID != "" {
@@ -90,51 +119,42 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	return &OpenFGAChecker{client: c}, nil
 }
 
-// ensureStore returns an existing store or creates a new one named "mdrive".
-func ensureStore(ctx context.Context, c *client.OpenFgaClient) (string, error) {
-	resp, err := c.ListStores(ctx).Execute()
-	if err != nil {
-		return "", fmt.Errorf("openfga: list stores: %w", err)
+// ensureStore verifies the configured store exists, creating it if not.
+func ensureStore(ctx context.Context, c *client.OpenFgaClient) error {
+	_, err := c.GetStore(ctx).Execute()
+	if err == nil {
+		return nil
 	}
-	if len(resp.Stores) > 0 {
-		return resp.Stores[0].Id, nil
-	}
-	createResp, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{
-		Name: "mdrive",
+	resp, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{
+		Name: storeName,
 	}).Execute()
 	if err != nil {
-		return "", fmt.Errorf("openfga: create store: %w", err)
+		return fmt.Errorf("openfga: create store: %w", err)
 	}
-	return createResp.Id, nil
+	return fmt.Errorf("openfga: store not found, created new store (id=%s). Update your config with this store_id", resp.Id)
 }
 
 // Grant creates a (user, relation, object) tuple.
 func (c *OpenFGAChecker) Grant(ctx context.Context, user, relation, objectType, objectID string) error {
-	body := client.ClientWriteRequest{
-		Writes: []client.ClientTupleKey{
-			{
-				User:     userObject(user),
-				Relation: relation,
-				Object:   objectRef(objectType, objectID),
-			},
-		},
-	}
-	_, err := c.client.Write(ctx).Body(body).Execute()
+	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
+		Writes: []client.ClientTupleKey{{
+			User:     userObject(user),
+			Relation: relation,
+			Object:   objectRef(objectType, objectID),
+		}},
+	}).Execute()
 	return err
 }
 
 // Revoke deletes a (user, relation, object) tuple.
 func (c *OpenFGAChecker) Revoke(ctx context.Context, user, relation, objectType, objectID string) error {
-	body := client.ClientWriteRequest{
-		Deletes: []client.ClientTupleKeyWithoutCondition{
-			{
-				User:     userObject(user),
-				Relation: relation,
-				Object:   objectRef(objectType, objectID),
-			},
-		},
-	}
-	_, err := c.client.Write(ctx).Body(body).Execute()
+	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
+		Deletes: []client.ClientTupleKeyWithoutCondition{{
+			User:     userObject(user),
+			Relation: relation,
+			Object:   objectRef(objectType, objectID),
+		}},
+	}).Execute()
 	return err
 }
 
@@ -164,19 +184,17 @@ func (c *OpenFGAChecker) ListObjects(ctx context.Context, user, permission, obje
 	return resp.GetObjects(), nil
 }
 
-// userObject formats a user ID into the OpenFGA user object form.
 func userObject(userID string) string {
-	return fmt.Sprintf("%s:%s", ObjectTypeUser, userID)
+	return fmt.Sprintf("%s:%s", objectTypeUser, userID)
 }
 
-// objectRef formats a (type, id) pair into the OpenFGA object reference form.
 func objectRef(objectType, objectID string) string {
 	return fmt.Sprintf("%s:%s", objectType, objectID)
 }
 
 // DriveObjectRef returns the OpenFGA object reference for a drive.
 func DriveObjectRef(driveID string) string {
-	return objectRef(ObjectTypeDrive, driveID)
+	return objectRef(objectTypeDrive, driveID)
 }
 
 // UserObjectRef returns the OpenFGA user reference for a user.
@@ -184,30 +202,29 @@ func UserObjectRef(userID string) string {
 	return userObject(userID)
 }
 
-// GrantOwner grants the owner relation. Call this when a drive is created.
+// GrantOwner grants the owner relation.
 func GrantOwner(ctx context.Context, c Checker, userID, driveID string) error {
-	return c.Grant(ctx, userID, RelationOwner, ObjectTypeDrive, driveID)
+	return c.Grant(ctx, userID, relationOwner, objectTypeDrive, driveID)
 }
 
 // GrantEditor grants the editor relation.
 func GrantEditor(ctx context.Context, c Checker, userID, driveID string) error {
-	return c.Grant(ctx, userID, RelationEditor, ObjectTypeDrive, driveID)
+	return c.Grant(ctx, userID, relationEditor, objectTypeDrive, driveID)
 }
 
 // GrantViewer grants the viewer relation.
 func GrantViewer(ctx context.Context, c Checker, userID, driveID string) error {
-	return c.Grant(ctx, userID, RelationViewer, ObjectTypeDrive, driveID)
+	return c.Grant(ctx, userID, relationViewer, objectTypeDrive, driveID)
 }
 
 // RevokeAllRelations revokes all relations for a user on a drive.
 func RevokeAllRelations(ctx context.Context, c Checker, userID, driveID string) error {
-	for _, rel := range []string{RelationOwner, RelationEditor, RelationViewer} {
-		if err := c.Revoke(ctx, userID, rel, ObjectTypeDrive, driveID); err != nil {
+	for _, rel := range []string{relationOwner, relationEditor, relationViewer} {
+		if err := c.Revoke(ctx, userID, rel, objectTypeDrive, driveID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Compile-time check.
 var _ Checker = (*OpenFGAChecker)(nil)
