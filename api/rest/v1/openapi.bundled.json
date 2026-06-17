@@ -653,7 +653,7 @@
         }
       }
     },
-    "/v1/drives/{driveID}/fs/upload": {
+    "/v1/drives/{driveID}/uploads": {
       "post": {
         "operationId": "initiateUpload",
         "summary": "Initiate a presigned upload",
@@ -700,7 +700,7 @@
         }
       }
     },
-    "/v1/drives/{driveID}/fs/upload/{uploadId}/complete": {
+    "/v1/drives/{driveID}/uploads/{uploadId}/complete": {
       "post": {
         "operationId": "completeUpload",
         "summary": "Complete a presigned upload and create the object node",
@@ -755,7 +755,7 @@
         }
       }
     },
-    "/v1/drives/{driveID}/fs/download": {
+    "/v1/drives/{driveID}/downloads": {
       "get": {
         "operationId": "presignDownload",
         "summary": "Get a presigned download URL for an object node",

@@ -228,14 +228,14 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 //
 // Complete a presigned upload and create the object node.
 //
-// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("completeUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/upload/{uploadId}/complete"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/uploads/{uploadId}/complete"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -1478,14 +1478,14 @@ func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.Re
 //
 // Initiate a presigned upload.
 //
-// POST /v1/drives/{driveID}/fs/upload
+// POST /v1/drives/{driveID}/uploads
 func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("initiateUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/upload"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/uploads"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -2447,14 +2447,14 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 //
 // Get a presigned download URL for an object node.
 //
-// GET /v1/drives/{driveID}/fs/download
+// GET /v1/drives/{driveID}/downloads
 func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("presignDownload"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/download"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/downloads"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)

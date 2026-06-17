@@ -56,14 +56,14 @@ paths:
   /v1/drives/{driveID}/fs/object:
     $ref: "./paths/fs.yaml#/object"
 
-  /v1/drives/{driveID}/fs/upload:
-    $ref: "./paths/fs.yaml#/upload"
+  /v1/drives/{driveID}/uploads:
+    $ref: "./paths/upload.yaml#/upload"
 
-  /v1/drives/{driveID}/fs/upload/{uploadId}/complete:
-    $ref: "./paths/fs.yaml#/uploadComplete"
+  /v1/drives/{driveID}/uploads/{uploadId}/complete:
+    $ref: "./paths/upload.yaml#/uploadComplete"
 
-  /v1/drives/{driveID}/fs/download:
-    $ref: "./paths/fs.yaml#/download"
+  /v1/drives/{driveID}/downloads:
+    $ref: "./paths/upload.yaml#/download"
 
   /v1/users:
     $ref: "./paths/user.yaml#/users"

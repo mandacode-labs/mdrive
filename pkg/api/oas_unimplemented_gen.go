@@ -26,7 +26,7 @@ func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatOK,
 //
 // Complete a presigned upload and create the object node.
 //
-// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (UnimplementedHandler) CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (r CompleteUploadRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
@@ -89,7 +89,7 @@ func (UnimplementedHandler) Health(ctx context.Context) (r *HealthOK, _ error) {
 //
 // Initiate a presigned upload.
 //
-// POST /v1/drives/{driveID}/fs/upload
+// POST /v1/drives/{driveID}/uploads
 func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (r InitiateUploadRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
@@ -134,7 +134,7 @@ func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParam
 //
 // Get a presigned download URL for an object node.
 //
-// GET /v1/drives/{driveID}/fs/download
+// GET /v1/drives/{driveID}/downloads
 func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignDownloadParams) (r PresignDownloadRes, _ error) {
 	return r, ht.ErrNotImplemented
 }

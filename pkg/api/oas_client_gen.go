@@ -38,7 +38,7 @@ type Invoker interface {
 	//
 	// Complete a presigned upload and create the object node.
 	//
-	// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 	CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
 	// CreateDrive invokes createDrive operation.
 	//
@@ -80,7 +80,7 @@ type Invoker interface {
 	//
 	// Initiate a presigned upload.
 	//
-	// POST /v1/drives/{driveID}/fs/upload
+	// POST /v1/drives/{driveID}/uploads
 	InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDrives invokes listDrives operation.
 	//
@@ -110,7 +110,7 @@ type Invoker interface {
 	//
 	// Get a presigned download URL for an object node.
 	//
-	// GET /v1/drives/{driveID}/fs/download
+	// GET /v1/drives/{driveID}/downloads
 	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Rm invokes rm operation.
 	//
@@ -351,7 +351,7 @@ func (c *Client) sendCat(ctx context.Context, params CatParams) (res CatOK, err 
 //
 // Complete a presigned upload and create the object node.
 //
-// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (c *Client) CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error) {
 	res, err := c.sendCompleteUpload(ctx, request, params)
 	return res, err
@@ -361,7 +361,7 @@ func (c *Client) sendCompleteUpload(ctx context.Context, request OptUploadComple
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("completeUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/upload/{uploadId}/complete"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/uploads/{uploadId}/complete"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -414,7 +414,7 @@ func (c *Client) sendCompleteUpload(ctx context.Context, request OptUploadComple
 		}
 		pathParts[1] = encoded
 	}
-	pathParts[2] = "/fs/upload/"
+	pathParts[2] = "/uploads/"
 	{
 		// Encode "uploadId" parameter.
 		e := uri.NewPathEncoder(uri.PathEncoderConfig{
@@ -1168,7 +1168,7 @@ func (c *Client) sendHealth(ctx context.Context) (res *HealthOK, err error) {
 //
 // Initiate a presigned upload.
 //
-// POST /v1/drives/{driveID}/fs/upload
+// POST /v1/drives/{driveID}/uploads
 func (c *Client) InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error) {
 	res, err := c.sendInitiateUpload(ctx, request, params)
 	return res, err
@@ -1178,7 +1178,7 @@ func (c *Client) sendInitiateUpload(ctx context.Context, request OptPresignReque
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("initiateUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/upload"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/uploads"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -1231,7 +1231,7 @@ func (c *Client) sendInitiateUpload(ctx context.Context, request OptPresignReque
 		}
 		pathParts[1] = encoded
 	}
-	pathParts[2] = "/fs/upload"
+	pathParts[2] = "/uploads"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeRequest"
@@ -1806,7 +1806,7 @@ func (c *Client) sendMv(ctx context.Context, request OptMvReq, params MvParams) 
 //
 // Get a presigned download URL for an object node.
 //
-// GET /v1/drives/{driveID}/fs/download
+// GET /v1/drives/{driveID}/downloads
 func (c *Client) PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error) {
 	res, err := c.sendPresignDownload(ctx, params)
 	return res, err
@@ -1816,7 +1816,7 @@ func (c *Client) sendPresignDownload(ctx context.Context, params PresignDownload
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("presignDownload"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/download"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/downloads"),
 	}
 	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
 
@@ -1869,7 +1869,7 @@ func (c *Client) sendPresignDownload(ctx context.Context, params PresignDownload
 		}
 		pathParts[1] = encoded
 	}
-	pathParts[2] = "/fs/download"
+	pathParts[2] = "/downloads"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	stage = "EncodeQueryParams"

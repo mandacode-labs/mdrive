@@ -18,7 +18,7 @@ type Handler interface {
 	//
 	// Complete a presigned upload and create the object node.
 	//
-	// POST /v1/drives/{driveID}/fs/upload/{uploadId}/complete
+	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 	CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
 	// CreateDrive implements createDrive operation.
 	//
@@ -60,7 +60,7 @@ type Handler interface {
 	//
 	// Initiate a presigned upload.
 	//
-	// POST /v1/drives/{driveID}/fs/upload
+	// POST /v1/drives/{driveID}/uploads
 	InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDrives implements listDrives operation.
 	//
@@ -90,7 +90,7 @@ type Handler interface {
 	//
 	// Get a presigned download URL for an object node.
 	//
-	// GET /v1/drives/{driveID}/fs/download
+	// GET /v1/drives/{driveID}/downloads
 	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Rm implements rm operation.
 	//
