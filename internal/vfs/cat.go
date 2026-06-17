@@ -33,7 +33,7 @@ func (s *Service) Cat(ctx context.Context, userID, driveID, path string) ([]byte
 		if err != nil {
 			return nil, err
 		}
-		data, err := s.store.GetObject(ctx, oc.Bucket, oc.Key)
+		data, err := s.Store.GetObject(ctx, oc.Bucket, oc.Key)
 		if err != nil {
 			return nil, fmt.Errorf("cat: store: %w", err)
 		}
@@ -64,12 +64,12 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 		if perr != nil {
 			return fmt.Errorf("write: %w", perr)
 		}
-		f, ferr := s.node.CreateFile(ctx, content)
+		f, ferr := s.Node.CreateFile(ctx, content)
 		if ferr != nil {
 			return ferr
 		}
-		if lerr := s.node.Link(ctx, parent, name, f); lerr != nil {
-			_ = s.node.Delete(ctx, f.ID())
+		if lerr := s.Node.Link(ctx, parent, name, f); lerr != nil {
+			_ = s.Node.Delete(ctx, f.ID())
 			return fmt.Errorf("write: link: %w", lerr)
 		}
 		return nil
@@ -93,12 +93,12 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 	if perr != nil {
 		return fmt.Errorf("write_large: %w", perr)
 	}
-	n, err := s.node.CreateObject(ctx, obj, size)
+	n, err := s.Node.CreateObject(ctx, obj, size)
 	if err != nil {
 		return err
 	}
-	if lerr := s.node.Link(ctx, parent, name, n); lerr != nil {
-		_ = s.node.Delete(ctx, n.ID())
+	if lerr := s.Node.Link(ctx, parent, name, n); lerr != nil {
+		_ = s.Node.Delete(ctx, n.ID())
 		return fmt.Errorf("write_large: link: %w", lerr)
 	}
 	return nil

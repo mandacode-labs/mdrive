@@ -24,12 +24,12 @@ func (s *Service) Mkdir(ctx context.Context, userID, driveID, path string) (*nod
 	if !parent.IsDir() {
 		return nil, ErrNotDirectory
 	}
-	dir, err := s.node.CreateDirectory(ctx)
+	dir, err := s.Node.CreateDirectory(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.node.Link(ctx, parent, name, dir); err != nil {
-		_ = s.node.Delete(ctx, dir.ID())
+	if err := s.Node.Link(ctx, parent, name, dir); err != nil {
+		_ = s.Node.Delete(ctx, dir.ID())
 		return nil, fmt.Errorf("mkdir: link: %w", err)
 	}
 	return dir, nil

@@ -14,15 +14,17 @@ import (
 
 // Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
 var (
-	_ nodeClient = (*node.Service)(nil)
-	_ driveClient = (*drive.Service)(nil)
-	_ userClient = (*user.Service)(nil)
-	_ permClient = (*permission.OpenFGAChecker)(nil)
+	_ NodeClient = (*node.Service)(nil)
+	_ DriveClient = (*drive.Service)(nil)
+	_ UserClient = (*user.Service)(nil)
+	_ PermClient = (*permission.OpenFGAChecker)(nil)
 )
 
 // --------------- Consumer-declared interfaces ---------------
 
-type nodeClient interface {
+// NodeClient is the consumer-declared interface for node-domain operations.
+// The consumer (vfs) declares it so concrete implementations satisfy it implicitly.
+type NodeClient interface {
 	CreateFile(ctx context.Context, content string) (*node.Node, error)
 	CreateDirectory(ctx context.Context) (*node.Node, error)
 	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
@@ -34,7 +36,8 @@ type nodeClient interface {
 	WithTx(ctx context.Context, fn func(tx *node.Service) error) error
 }
 
-type driveClient interface {
+// DriveClient is the consumer-declared interface for drive-domain operations.
+type DriveClient interface {
 	Create(ctx context.Context, name string, desc *string, ownerID string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	GetByID(ctx context.Context, id string) (*drive.Drive, error)
 	GetByPublicID(ctx context.Context, pubID string) (*drive.Drive, error)
@@ -44,7 +47,8 @@ type driveClient interface {
 	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
-type userClient interface {
+// UserClient is the consumer-declared interface for user-domain operations.
+type UserClient interface {
 	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
 	GetByID(ctx context.Context, id string) (*user.User, error)
 	GetByPublicID(ctx context.Context, pubID string) (*user.User, error)
@@ -53,7 +57,8 @@ type userClient interface {
 	Exists(ctx context.Context, id string) (bool, error)
 }
 
-type permClient interface {
+// PermClient is the consumer-declared interface for permission checks.
+type PermClient interface {
 	Check(ctx context.Context, userID, relation, objType, objID string) (bool, error)
 	Grant(ctx context.Context, userID, relation, objType, objID string) error
 }
@@ -62,41 +67,41 @@ type permClient interface {
 
 // Service is the VFS orchestration layer.
 type Service struct {
-	node  nodeClient
-	drive driveClient
-	user  userClient
-	store Storage
-	perm  permClient
+	Node  NodeClient
+	Drive DriveClient
+	User  UserClient
+	Store Store
+	Perm  PermClient
 	path  *resolver
 }
 
 // NewService creates a new VFS Service.
 func NewService(
-	n nodeClient,
-	d driveClient,
-	u userClient,
-	store Storage,
-	checker permClient,
+	n NodeClient,
+	d DriveClient,
+	u UserClient,
+	store Store,
+	checker PermClient,
 ) *Service {
 	return &Service{
-		node:  n,
-		drive: d,
-		user:  u,
-		store: store,
-		perm:  checker,
+		Node:  n,
+		Drive: d,
+		User:  u,
+		Store: store,
+		Perm:  checker,
 		path:  newResolver(n),
 	}
 }
 
 // WithTx executes fn within a node-domain transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error {
-	return s.node.WithTx(ctx, func(txNode *node.Service) error {
+	return s.Node.WithTx(ctx, func(txNode *node.Service) error {
 		return fn(&Service{
-			node:  txNode,
-			drive: s.drive,
-			user:  s.user,
-			store: s.store,
-			perm:  s.perm,
+			Node:  txNode,
+			Drive: s.Drive,
+			User:  s.User,
+			Store: s.Store,
+			Perm:  s.Perm,
 			path:  newResolver(txNode),
 		})
 	})
@@ -104,7 +109,7 @@ func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error 
 
 // rootNodeID resolves the root node UUID for the given drive.
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
-	d, err := s.drive.GetByID(ctx, driveID)
+	d, err := s.Drive.GetByID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("vfs: %w", err)
 	}
@@ -116,7 +121,7 @@ func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, er
 
 // checkAccess returns nil if the user has the given permission on the drive.
 func (s *Service) checkAccess(ctx context.Context, userID, permission, driveID string) error {
-	allowed, err := s.perm.Check(ctx, userID, permission, "drive", driveID)
+	allowed, err := s.Perm.Check(ctx, userID, permission, "drive", driveID)
 	if err != nil {
 		return err
 	}

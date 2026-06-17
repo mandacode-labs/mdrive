@@ -24,12 +24,12 @@ func (s *Service) Touch(ctx context.Context, userID, driveID, path string) (*nod
 	if !parent.IsDir() {
 		return nil, ErrNotDirectory
 	}
-	n, err := s.node.CreateFile(ctx, "")
+	n, err := s.Node.CreateFile(ctx, "")
 	if err != nil {
 		return nil, err
 	}
-	if err := s.node.Link(ctx, parent, name, n); err != nil {
-		_ = s.node.Delete(ctx, n.ID())
+	if err := s.Node.Link(ctx, parent, name, n); err != nil {
+		_ = s.Node.Delete(ctx, n.ID())
 		return nil, fmt.Errorf("touch: link: %w", err)
 	}
 	return n, nil

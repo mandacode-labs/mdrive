@@ -49,13 +49,13 @@ func (s *Service) rmOnePath(ctx context.Context, rootID uuid.UUID, path string, 
 func (s *Service) rmOne(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) error {
 	parent, name, _ := s.path.resolveParent(ctx, rootID, path)
 	if parent != nil && name != "" {
-		_ = s.node.Unlink(ctx, parent, name)
+		_ = s.Node.Unlink(ctx, parent, name)
 	}
 	if n.IsObject() {
 		oc, _ := n.ReadObject()
-		_ = s.store.DeleteObject(ctx, oc.Bucket, oc.Key)
+		_ = s.Store.DeleteObject(ctx, oc.Bucket, oc.Key)
 	}
-	return s.node.Delete(ctx, n.ID())
+	return s.Node.Delete(ctx, n.ID())
 }
 
 func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) error {
@@ -65,7 +65,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 	}
 	for _, e := range dc.Entries {
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
-		child, err := s.node.GetByID(ctx, e.InodeID)
+		child, err := s.Node.GetByID(ctx, e.InodeID)
 		if err != nil {
 			return err
 		}

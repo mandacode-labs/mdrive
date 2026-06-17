@@ -23,7 +23,7 @@ gen-api:
 .PHONY: gen-mock
 gen-mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
-	go run github.com/vektra/mockery/v2/cmd/mockery
+	mockery
 
 # ---------------------------------------------------------------------------
 # Format & Vet

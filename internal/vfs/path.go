@@ -10,10 +10,10 @@ import (
 
 // resolver walks the node tree from a drive root to resolve Unix paths.
 type resolver struct {
-	node nodeClient
+	node NodeClient
 }
 
-func newResolver(n nodeClient) *resolver {
+func newResolver(n NodeClient) *resolver {
 	return &resolver{node: n}
 }
 

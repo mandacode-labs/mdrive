@@ -21,12 +21,12 @@ func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath
 	if err != nil {
 		return nil, fmt.Errorf("symlink: %w", err)
 	}
-	n, err := s.node.CreateSymlink(ctx, target)
+	n, err := s.Node.CreateSymlink(ctx, target)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.node.Link(ctx, parent, name, n); err != nil {
-		_ = s.node.Delete(ctx, n.ID())
+	if err := s.Node.Link(ctx, parent, name, n); err != nil {
+		_ = s.Node.Delete(ctx, n.ID())
 		return nil, fmt.Errorf("symlink: link: %w", err)
 	}
 	return n, nil

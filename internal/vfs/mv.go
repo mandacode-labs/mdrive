@@ -40,11 +40,11 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []
 		}
 		srcParent, srcName, _ := s.path.resolveParent(ctx, rootID, srcPath)
 		if srcParent != nil {
-			_ = s.node.Unlink(ctx, srcParent, srcName)
+			_ = s.Node.Unlink(ctx, srcParent, srcName)
 		}
-		if err := s.node.Link(ctx, dstParent, dstName, src); err != nil {
+		if err := s.Node.Link(ctx, dstParent, dstName, src); err != nil {
 			if srcParent != nil {
-				_ = s.node.Link(ctx, srcParent, srcName, src)
+				_ = s.Node.Link(ctx, srcParent, srcName, src)
 			}
 			return fmt.Errorf("mv: link: %w", err)
 		}
@@ -64,11 +64,11 @@ func (s *Service) mvRename(ctx context.Context, rootID uuid.UUID, srcPath, dstPa
 	}
 	srcParent, srcName, _ := s.path.resolveParent(ctx, rootID, srcPath)
 	if srcParent != nil {
-		_ = s.node.Unlink(ctx, srcParent, srcName)
+		_ = s.Node.Unlink(ctx, srcParent, srcName)
 	}
-	if err := s.node.Link(ctx, dstParent, dstName, src); err != nil {
+	if err := s.Node.Link(ctx, dstParent, dstName, src); err != nil {
 		if srcParent != nil {
-			_ = s.node.Link(ctx, srcParent, srcName, src)
+			_ = s.Node.Link(ctx, srcParent, srcName, src)
 		}
 		return fmt.Errorf("mv: link: %w", err)
 	}

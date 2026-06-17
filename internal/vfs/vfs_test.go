@@ -13,7 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
-// fakeNode is a nodeClient that stores nodes in memory.
+// fakeNode is a NodeClient that stores nodes in memory.
 type fakeNode struct {
 	nodes map[uuid.UUID]*node.Node
 }
@@ -61,7 +61,7 @@ func (f *fakeNode) WithTx(_ context.Context, fn func(tx *node.Service) error) er
 	return fn(nil)
 }
 
-// fakeDrive is a driveClient stub.
+// fakeDrive is a DriveClient stub.
 type fakeDrive struct{ rootID uuid.UUID }
 
 func (d *fakeDrive) Create(_ context.Context, _ string, _ *string, _ string, _ drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
@@ -85,7 +85,7 @@ func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, er
 	return nil, nil
 }
 
-// fakeUser is a userClient stub.
+// fakeUser is a UserClient stub.
 type fakeUser struct{}
 
 func (u *fakeUser) UpsertFromOIDC(_ context.Context, _ *user.CreateCommand) (*user.User, error) {
@@ -103,13 +103,13 @@ func (u *fakeUser) Update(_ context.Context, _ *user.User) (*user.User, error) {
 }
 func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error) { return true, nil }
 
-// fakePerm is a permClient that grants everything.
+// fakePerm is a PermClient that grants everything.
 type fakePerm struct{}
 
 func (p *fakePerm) Check(_ context.Context, _, _, _, _ string) (bool, error) { return true, nil }
 func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
 
-// fakeStore is a Storage stub.
+// fakeStore is a Store stub.
 type fakeStore struct{}
 
 func (s *fakeStore) PutObject(_ context.Context, _, _ string, _ io.Reader, _ int64) error { return nil }

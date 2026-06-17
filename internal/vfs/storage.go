@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// Storage is the consumer-declared interface for S3-like operations.
+// Store is the consumer-declared interface for S3-like operations.
 //
 // Following Go convention, this interface is declared by the consumer
 // (vfs), not by the implementation (internal/storage/s3). Concrete
 // storage backends satisfy this interface implicitly.
-type Storage interface {
+type Store interface {
 	PutObject(ctx context.Context, bucket, key string, reader io.Reader, size int64) error
 	GetObject(ctx context.Context, bucket, key string) ([]byte, error)
 	DeleteObject(ctx context.Context, bucket, key string) error
