@@ -1,0 +1,76 @@
+package e2e
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/mandacode-labs/mdrive/pkg/api"
+)
+
+func TestE2E_DriveLifecycle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
+	env := setupE2E(t)
+
+	// Create drive
+	body := `{"name":"e2e-drive","storage":{"bucket":"e2e-bucket","region":"us-east-1","accessKey":"a","secretKey":"s"}}`
+	req := env.authReq("POST", "/v1/drives", bytes.NewReader([]byte(body)))
+	resp, err := env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	var created api.Drive
+	json.NewDecoder(resp.Body).Decode(&created)
+	driveID := created.ID.Value
+	require.NotEmpty(t, driveID)
+
+	// Get drive
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// List drives
+	req = env.authReq("GET", "/v1/drives", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var drives []api.Drive
+	json.NewDecoder(resp.Body).Decode(&drives)
+	assert.Len(t, drives, 1)
+
+	// Update drive
+	updateBody := `{"name":"e2e-drive-updated"}`
+	req = env.authReq("PUT", "/v1/drives/"+driveID+"/root", bytes.NewReader([]byte(updateBody)))
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var updated api.Drive
+	json.NewDecoder(resp.Body).Decode(&updated)
+	assert.Equal(t, "e2e-drive-updated", updated.Name.Value)
+
+	// Delete drive
+	req = env.authReq("DELETE", "/v1/drives/"+driveID+"/root", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	// Verify deleted
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
