@@ -15,13 +15,13 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 	if r.Description.Set {
 		desc = r.Description.Value
 	}
-	ep := (*string)(nil)
+	endpointPtr := (*string)(nil)
 	if r.Storage.Endpoint.Set {
-		ep = &r.Storage.Endpoint.Value
+		endpointPtr = &r.Storage.Endpoint.Value
 	}
 	cfg := drive.StorageConfig{
 		Bucket:       r.Storage.Bucket,
-		Endpoint:     ep,
+		Endpoint:     endpointPtr,
 		Region:       r.Storage.Region,
 		AccessKey:    r.Storage.AccessKey,
 		SecretKey:    r.Storage.SecretKey,
@@ -44,15 +44,15 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
 	r := req.Value
-	n := (*string)(nil)
-	d := (*string)(nil)
+	namePtr := (*string)(nil)
+	descPtr := (*string)(nil)
 	if r.Name.Set {
-		n = &r.Name.Value
+		namePtr = &r.Name.Value
 	}
 	if r.Description.Set {
-		d = &r.Description.Value
+		descPtr = &r.Description.Value
 	}
-	drv, err := h.vfs.UpdateDrive(ctx, params.DriveID, n, d)
+	drv, err := h.vfs.UpdateDrive(ctx, params.DriveID, namePtr, descPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 		Region:       s.Region(),
 		AccessKey:    s.AccessKey(),
 		SecretKey:    s.SecretKey(),
-		Endpoint:     apistrPtr(s.Endpoint()),
+		Endpoint:     toOptStringPtr(s.Endpoint()),
 		UsePathStyle: optBool(s.UsePathStyle()),
 	}, nil
 }

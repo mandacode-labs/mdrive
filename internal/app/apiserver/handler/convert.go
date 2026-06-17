@@ -17,22 +17,22 @@ func driveToAPI(d *drive.Drive) *api.Drive {
 		rids = rid.String()
 	}
 	return &api.Drive{
-		ID:          apistr(d.ID()),
-		PublicID:    apistr(d.PublicID()),
-		Name:        apistr(d.Name()),
-		Description: apistrPtr(d.Description()),
-		OwnerID:     apistr(d.OwnerID()),
-		RootNodeID:  apistr(rids),
+		ID:          toOptString(d.ID()),
+		PublicID:    toOptString(d.PublicID()),
+		Name:        toOptString(d.Name()),
+		Description: toOptStringPtr(d.Description()),
+		OwnerID:     toOptString(d.OwnerID()),
+		RootNodeID:  toOptString(rids),
 		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
 		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
 	}
 }
 
-func apistr(s string) api.OptString {
+func toOptString(s string) api.OptString {
 	return api.OptString{Value: s, Set: true}
 }
 
-func apistrPtr(s *string) api.OptString {
+func toOptStringPtr(s *string) api.OptString {
 	if s == nil {
 		return api.OptString{}
 	}

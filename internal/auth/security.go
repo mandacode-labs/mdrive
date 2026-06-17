@@ -21,7 +21,7 @@ type SecurityHandler struct {
 }
 
 func NewSecurityHandler(auth *Service) *SecurityHandler {
-	return &SecurityHandler{auth: auth, cookieName: "mdrive_sid"}
+	return &SecurityHandler{auth: auth, cookieName: SessionCookieName}
 }
 
 func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {

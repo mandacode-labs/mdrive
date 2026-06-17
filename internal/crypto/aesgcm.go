@@ -88,7 +88,7 @@ type NoOp struct{}
 func (NoOp) Encrypt(p []byte) ([]byte, error) { return p, nil }
 func (NoOp) Decrypt(c []byte) ([]byte, error) { return c, nil }
 
-// ConstantTimeEq compares two strings in constant time.
-func ConstantTimeEq(a, b string) bool {
+// ConstantTimeEqual compares two strings in constant time.
+func ConstantTimeEqual(a, b string) bool {
 	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }

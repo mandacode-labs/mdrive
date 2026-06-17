@@ -1,5 +1,5 @@
-// Package gccli implements the `mdrive gc` subcommand.
-package gccli
+// Package gc implements the `mdrive gc` subcommand.
+package gc
 
 import (
 	"time"

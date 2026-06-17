@@ -14,9 +14,11 @@ type ValkeyStore struct {
 	prefix string
 }
 
+const keyPrefix = "mdrive:session:"
+
 // NewValkeyStore creates a session store backed by Valkey.
 func NewValkeyStore(client valkey.Client) *ValkeyStore {
-	return &ValkeyStore{client: client, prefix: "mdrive:session:"}
+	return &ValkeyStore{client: client, prefix: keyPrefix}
 }
 
 func (s *ValkeyStore) key(id string) string {

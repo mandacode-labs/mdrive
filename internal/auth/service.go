@@ -61,7 +61,7 @@ func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Toke
 	if err != nil {
 		return nil, err
 	}
-	request := oidc.NewJWTProfileGrantRequest(assertion, "openid", "profile", "email")
+	request := oidc.NewJWTProfileGrantRequest(assertion, scopeOpenID, scopeProfile, scopeEmail)
 	caller := &tokenEndpointCaller{dc: dc, http: a.httpClient}
 
 	token, err := client.CallTokenEndpoint(ctx, request, caller)
@@ -111,7 +111,7 @@ func (a *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state
 	q := make(url.Values)
 	q.Set("client_id", a.cfg.ClientID)
 	q.Set("response_type", "code")
-	q.Set("scope", "openid profile email")
+	q.Set("scope", DefaultOIDCScopes)
 	q.Set("redirect_uri", redirectURI)
 	q.Set("state", state)
 	q.Set("code_challenge_method", "S256")
@@ -138,7 +138,7 @@ func (a *Service) DeleteSession(ctx context.Context, id string) error {
 
 func (a *Service) StorePKCE(ctx context.Context, state, verifier string) error {
 	s := session.New(5 * time.Minute)
-	s.ID = "pkce:" + state
+	s.ID = PKCEPrefix + state
 	s.UserID = verifier
 	return a.store.Create(ctx, s)
 }

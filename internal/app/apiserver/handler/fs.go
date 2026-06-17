@@ -24,11 +24,11 @@ func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.Tou
 
 func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams) error {
 	r := req.Value
-	rec := false
+	recursiveVal := false
 	if r.Recursive.Set {
-		rec = bool(r.Recursive.Value)
+		recursiveVal = bool(r.Recursive.Value)
 	}
-	return h.vfs.Rm(ctx, h.userID(ctx), params.DriveID, r.Paths, rec)
+	return h.vfs.Rm(ctx, h.userID(ctx), params.DriveID, r.Paths, recursiveVal)
 }
 
 func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams) error {
@@ -48,9 +48,9 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 	entries := make([]api.DirEntry, len(dc.Entries))
 	for i, e := range dc.Entries {
 		entries[i] = api.DirEntry{
-			InodeID: apistr(e.InodeID.String()),
-			Name:    apistr(e.Name),
-			Type:    apistr(e.Type.String()),
+			InodeID: toOptString(e.InodeID.String()),
+			Name:    toOptString(e.Name),
+			Type:    toOptString(e.Type.String()),
 		}
 	}
 	return &api.DirContent{Entries: entries}, nil
@@ -103,12 +103,12 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 		return nil, err
 	}
 	return &api.StatOK{
-		Type:     apistr(n.Type().String()),
+		Type:     toOptString(n.Type().String()),
 		Size:     api.OptInt64{Value: n.Size(), Set: true},
 		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
 		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
 		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
-		Flags:    apistr(n.Flags().String()),
-		Revision: apistr(n.Revision().String()),
+		Flags:    toOptString(n.Flags().String()),
+		Revision: toOptString(n.Revision().String()),
 	}, nil
 }

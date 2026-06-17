@@ -85,7 +85,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	w := ctxResponseWriter(ctx)
 	if w != nil {
 		http.SetCookie(w, &http.Cookie{
-			Name:     "mdrive_sid",
+			Name:     auth.SessionCookieName,
 			Value:    sess.ID,
 			Expires:  sess.ExpiresAt,
 			HttpOnly: true,
@@ -105,7 +105,7 @@ func (h *Handler) AuthLogout(ctx context.Context) error {
 	}
 	w := ctxResponseWriter(ctx)
 	if w != nil {
-		http.SetCookie(w, &http.Cookie{Name: "mdrive_sid", Value: "", MaxAge: -1})
+		http.SetCookie(w, &http.Cookie{Name: auth.SessionCookieName, Value: "", MaxAge: -1})
 	}
 	return nil
 }

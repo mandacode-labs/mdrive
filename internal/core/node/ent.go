@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -189,5 +188,3 @@ func entType(nt NodeType) entnode.Type {
 		return entnode.TypeFile
 	}
 }
-
-var now = time.Now

@@ -18,9 +18,11 @@ type ValkeyRegistry struct {
 // KeyFunc returns the storage key for an uploadID.
 type KeyFunc func(uploadID string) string
 
+const DefaultKeyPrefix = "mdrive:upload:"
+
 // DefaultKey prefixes upload IDs to avoid collisions in shared Valkey instances.
 func DefaultKey(uploadID string) string {
-	return "mdrive:upload:" + uploadID
+	return DefaultKeyPrefix + uploadID
 }
 
 // NewValkeyRegistry creates a Registry backed by Valkey.

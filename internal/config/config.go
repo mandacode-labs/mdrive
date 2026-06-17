@@ -2,6 +2,7 @@
 package config
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,16 +48,12 @@ type DatabaseConfig struct {
 func (c DatabaseConfig) DSN() string {
 	return strings.Join([]string{
 		"host=" + c.Host,
-		"port=" + itoa(c.Port),
+		"port=" + strconv.Itoa(c.Port),
 		"user=" + c.User,
 		"password=" + c.Password,
 		"dbname=" + c.Name,
 		"sslmode=" + c.SSLMode,
 	}, " ")
-}
-
-func itoa(i int) string {
-	return strings.TrimSpace(string(rune('0' + i)))
 }
 
 // StorageConfig holds S3/object-storage settings.

@@ -38,10 +38,10 @@ func userToAPI(u *user.User) *api.User {
 		return nil
 	}
 	return &api.User{
-		ID:        apistr(u.ID()),
-		PublicID:  apistr(u.PublicID()),
-		Name:      apistr(u.Name()),
-		Email:     apistrPtr(u.Email()),
+		ID:        toOptString(u.ID()),
+		PublicID:  toOptString(u.PublicID()),
+		Name:      toOptString(u.Name()),
+		Email:     toOptStringPtr(u.Email()),
 		CreatedAt: api.OptDateTime{Value: u.CreatedAt(), Set: true},
 		UpdatedAt: api.OptDateTime{Value: u.UpdatedAt(), Set: true},
 	}

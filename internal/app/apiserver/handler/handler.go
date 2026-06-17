@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,4 +86,3 @@ func (h *Handler) userID(ctx context.Context) string {
 // Compile-time checks.
 var _ api.Handler = (*Handler)(nil)
 var _ AuthClient = (*auth.Service)(nil)
-var _ = fmt.Sprintf

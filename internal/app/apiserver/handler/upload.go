@@ -13,17 +13,17 @@ import (
 
 func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest, params api.InitiateUploadParams) (api.InitiateUploadRes, error) {
 	r := req.Value
-	var ct *string
+	var contentType *string
 	if r.ContentType.Set {
 		s := r.ContentType.Value
-		ct = &s
+		contentType = &s
 	}
-	var cl *int64
+	var contentLength *int64
 	if r.ContentLength.Set {
 		v := r.ContentLength.Value
-		cl = &v
+		contentLength = &v
 	}
-	info, err := h.vfs.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, ct, cl, time.Hour)
+	info, err := h.vfs.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, contentType, contentLength, time.Hour)
 	if err != nil {
 		return nil, err
 	}
