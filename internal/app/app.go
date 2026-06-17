@@ -35,7 +35,7 @@ type App struct {
 	UserEx    user.Exister
 	UploadReg upload.Registry
 	GCClient  vfs.GCClient
-	Auth      *auth.Authenticator
+	Auth      *auth.Service
 	Security  *auth.SecurityHandler
 
 	DB  *sql.DB
@@ -98,14 +98,14 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	gc := newGCClient(entClient)
 
 	var store session.Store = session.NewMemoryStore()
-	var authenticator *auth.Authenticator
+	var authenticator *auth.Service
 	var sec *auth.SecurityHandler
 
 	if cfg.Auth.Issuer != "" && cfg.Auth.ClientID != "" {
 		if vClient != nil {
 			store = session.NewValkeyStore(vClient)
 		}
-		authenticator, err = auth.NewAuthenticator(ctx, auth.Config{
+		authenticator, err = auth.NewService(ctx, auth.Config{
 			Issuer:       cfg.Auth.Issuer,
 			ClientID:     cfg.Auth.ClientID,
 			SessionStore: store,

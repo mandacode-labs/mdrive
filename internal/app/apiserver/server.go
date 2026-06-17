@@ -22,7 +22,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FS) *Server {
+func NewServer(a *app.App, fs handler.FSClient) *Server {
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
 		// Fallback: no user extraction by default (auth handles it via session context)
 		return "", false

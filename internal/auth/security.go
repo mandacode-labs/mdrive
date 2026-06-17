@@ -16,11 +16,11 @@ const sessionKey contextKey = "session"
 
 // SecurityHandler implements ogen's SecurityHandler for cookie and bearer auth.
 type SecurityHandler struct {
-	auth       *Authenticator
+	auth       *Service
 	cookieName string
 }
 
-func NewSecurityHandler(auth *Authenticator) *SecurityHandler {
+func NewSecurityHandler(auth *Service) *SecurityHandler {
 	return &SecurityHandler{auth: auth, cookieName: "mdrive_sid"}
 }
 

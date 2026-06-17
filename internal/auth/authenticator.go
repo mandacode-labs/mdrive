@@ -23,15 +23,15 @@ type Config struct {
 	FrontendURL  string
 }
 
-// Authenticator manages OIDC flows and session lifecycle with Zitadel.
-type Authenticator struct {
+// Service manages OIDC flows and session lifecycle with Zitadel.
+type Service struct {
 	cfg        Config
 	store      session.Store
 	verifier   *rp.IDTokenVerifier
 	httpClient *http.Client
 }
 
-func NewAuthenticator(ctx context.Context, cfg Config) (*Authenticator, error) {
+func NewService(ctx context.Context, cfg Config) (*Service, error) {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
 	dc, err := client.Discover(ctx, cfg.Issuer, httpClient)
@@ -44,7 +44,7 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authenticator, error) {
 		rp.WithIssuedAtMaxAge(1*time.Hour),
 	)
 
-	return &Authenticator{
+	return &Service{
 		cfg:        cfg,
 		store:      cfg.SessionStore,
 		verifier:   verifier,
@@ -52,11 +52,11 @@ func NewAuthenticator(ctx context.Context, cfg Config) (*Authenticator, error) {
 	}, nil
 }
 
-func (a *Authenticator) Discovery(ctx context.Context) (*oidc.DiscoveryConfiguration, error) {
+func (a *Service) Discovery(ctx context.Context) (*oidc.DiscoveryConfiguration, error) {
 	return client.Discover(ctx, a.cfg.Issuer, a.httpClient)
 }
 
-func (a *Authenticator) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
+func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
 	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (a *Authenticator) ExchangeJWT(ctx context.Context, assertion string) (*oid
 	}, nil
 }
 
-func (a *Authenticator) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
+func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
 	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (a *Authenticator) ExchangeCode(ctx context.Context, code, redirectURI, cod
 	}, nil
 }
 
-func (a *Authenticator) AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error) {
+func (a *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error) {
 	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
 	if err != nil {
 		return "", err
@@ -122,7 +122,7 @@ func (a *Authenticator) AuthorizeURL(ctx context.Context, provider, redirectURI,
 	return dc.AuthorizationEndpoint + "?" + q.Encode(), nil
 }
 
-func (a *Authenticator) CreateSession(ctx context.Context, userID, provider string) (*session.Session, error) {
+func (a *Service) CreateSession(ctx context.Context, userID, provider string) (*session.Session, error) {
 	sess := session.New(a.cfg.SessionTTL)
 	sess.UserID = userID
 	sess.Provider = provider
@@ -132,18 +132,18 @@ func (a *Authenticator) CreateSession(ctx context.Context, userID, provider stri
 	return sess, nil
 }
 
-func (a *Authenticator) DeleteSession(ctx context.Context, id string) error {
+func (a *Service) DeleteSession(ctx context.Context, id string) error {
 	return a.store.Delete(ctx, id)
 }
 
-func (a *Authenticator) StorePKCE(ctx context.Context, state, verifier string) error {
+func (a *Service) StorePKCE(ctx context.Context, state, verifier string) error {
 	s := session.New(5 * time.Minute)
 	s.ID = "pkce:" + state
 	s.UserID = verifier
 	return a.store.Create(ctx, s)
 }
 
-func (a *Authenticator) GetPKCE(ctx context.Context, state string) (string, error) {
+func (a *Service) GetPKCE(ctx context.Context, state string) (string, error) {
 	s, err := a.store.Get(ctx, "pkce:"+state)
 	if err != nil {
 		return "", err
@@ -152,11 +152,11 @@ func (a *Authenticator) GetPKCE(ctx context.Context, state string) (string, erro
 	return s.UserID, nil
 }
 
-func (a *Authenticator) VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
+func (a *Service) VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
 	return a.verifyIDToken(ctx, raw)
 }
 
-func (a *Authenticator) verifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
+func (a *Service) verifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("auth: empty id_token")
 	}
