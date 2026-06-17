@@ -79,15 +79,13 @@ run:
 # Migrations
 # ---------------------------------------------------------------------------
 .PHONY: migrate
-migrate: migrate-ent gen-fga
-	@echo "Migrations complete: ent (SQL) + fga (model)"
-
-.PHONY: migrate-ent
-migrate-ent:
+migrate: 
 	go run ariga.io/atlas/cmd/atlas migrate diff $(name) \
 		--dir "file://ent/migrate/migrations" \
 		--to "ent://ent/schema" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
+
+migrate-lint:
 	go run ariga.io/atlas/cmd/atlas migrate lint \
 		--dir "file://ent/migrate/migrations" \
 		--dev-url "docker://postgres/17/dev?search_path=public"

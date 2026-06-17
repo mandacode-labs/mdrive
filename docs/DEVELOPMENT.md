@@ -1,18 +1,16 @@
 # Development Guide
 
-> Quick start for new contributors.
-
 ## Prerequisites
 
-- Go 1.26.1+
+- Go 1.24+
 - Node.js 24+ (for OpenAPI bundling)
 - Docker (for integration tests)
-- kind, kubectl, helm (for kind tests)
+- `fga` CLI (for OpenFGA model transform)
 
 ## Quick Start
 
 ```bash
-# Install lefthook hooks
+# Install hooks
 make install-hooks
 
 # Build
@@ -20,135 +18,122 @@ make build
 
 # Run
 make run
-
-# Or manually
-./bin/mdrive serve --config config.yaml
 ```
 
 ## Code Generation
 
 ```bash
-# Generate all
-make generate
-
-# Or individually
-make gen-ent     # ent schema
-make gen-api     # ogen from OpenAPI
-make gen-mock    # mockery
+make generate    # all: gen-ent + gen-api + gen-mock + gen-fga
+make gen-ent     # ent schema from ent/schema/
+make gen-api     # ogen OpenAPI → pkg/api/
+make gen-mock    # mockery interfaces → mocks/
+make gen-fga     # model.fga → model.json
 ```
 
-## Common Commands
+## Migrations
 
 ```bash
-make fmt            # formatting
-make vet            # go vet
-make lint           # golangci-lint
-make test           # unit tests
-make test-integration
-make test-e2e
-make test-kind
-make migrate-diff name=add_users
-make migrate-apply
-make build
-make clean
+make migrate name=add_users   # ent diff + lint + fga model transform
+make migrate-lint             # atlas lint only
+make migrate-apply            # apply SQL migrations to DB
+```
+
+## Testing
+
+```bash
+make test              # unit tests
+make test-integration  # integration tests
+make test-e2e          # e2e tests
 ```
 
 ## Project Structure
 
 ```
-cmd/mdrive/              — Entry point
+cmd/mdrive/               entry point
+api/                      OpenAPI spec
+  openapi.yaml            top-level spec
+  endpoints/              path definitions (drive, fs, auth, upload, user)
+  schemas/                component schemas
+pkg/api/                  generated ogen code (package api)
+ent/                      generated ent code
 internal/
-  application/            — Use cases
-    vfs/                  — Virtual filesystem
-    storage/              — Storage orchestration
-    gc/                   — Garbage collection
-  core/                   — Domain entities
-    inode/                — POSIX inode
-    object/               — S3 object tracking
-    user/                 — User/group
-  handler/                — HTTP handlers
-  service/sysinit/        — System initialization
-  auth/                   — OIDC
-  session/                — Session management
-  system/                 — System management
-  user/                   — External user
-  config/                 — Configuration
-  errors/                 — Domain errors
-  middleware/             — HTTP middleware
-  telemetry/              — OpenTelemetry
-  utils/                  — Context helpers
-pkg/api/                  — Generated ogen code
-ent/                      — Generated ent code
-test/
-  e2e/                    — E2E tests
-  integration/            — Integration tests
-  kind/                   — Kind cluster tests
+  app/                    application wiring (DI)
+    apiserver/            HTTP server (server.go, handler/, error.go)
+    gc/                   GC runner
+  auth/                   OIDC authentication (Zitadel)
+    authenticator.go      auth.Service, token exchange, PKCE
+    security.go           ogen SecurityHandler, session middleware
+    session/              session.Store, ValkeyStore, MemoryStore
+  cli/                    cobra commands (api-server, gc)
+  config/                 viper-based configuration
+  core/                   domain entities
+    drive/                drive.Service, Repository, Storage
+    node/                 node.Service, Repository, POSIX types
+    user/                 user.Service, Repository
+  crypto/                 AES-256-GCM encryption
+  logging/                structured logging (zerolog)
+  permission/             OpenFGA authorization
+  storage/                external storage
+    s3/                   S3/MinIO client
+  upload/                 presigned upload registry (Valkey/Memory)
+  vfs/                    virtual filesystem orchestration
 ```
 
 ## Conventions
 
-### Package Naming
+### Consumer-declared interfaces
 
-- `core/<entity>/` — domain entity + interface
-- `core/<entity>/repository/` — implementation
-- `mocks/` — auto-generated (co-located with interface)
-
-### Interface Definition
-
-Define interfaces **where they are consumed**, not where they are implemented:
+Interfaces are defined where they are consumed:
 
 ```go
-// core/inode/repository.go
-package inode
+// handler/handler.go — consumer
+type FSClient interface { ... }
+type AuthClient interface { ... }
 
-type Repository interface { ... }
+// vfs/service.go — consumer of downstream services
+type NodeClient interface { ... }
+type DriveClient interface { ... }
 
-// repository/ent_inode.go
-package repository
-func NewRepository(client *ent.Client) inode.Repository { ... }
+// vfs.Service satisfies handler.FSClient
+var _ handler.FSClient = (*vfs.Service)(nil)
 ```
 
-### Error Handling
+### Concrete types = Service / Client suffix
 
-Use domain errors, not `errors.New`:
-
-```go
-// Good
-return errors.NotFound("inode not found")
-
-// Bad
-return errors.New("inode not found")
-
-// Wrap standard errors
-return errors.WrapInternal(err, "failed to create inode")
+```
+drive.Service, node.Service, user.Service, auth.Service
+s3.Client
 ```
 
-### Context
+### Test files
 
-Always pass `context.Context` as the first parameter. Use context helpers:
-
-```go
-userID := utils.GetUserID(ctx)
-ctx = utils.ContextWithUserID(ctx, userID)
-```
+One `*_test.go` per domain file. Uses `testify/assert` + `testify/require`.
 
 ### Configuration
 
 Add new config fields in three places:
-1. `internal/config/config.go` — struct definition
-2. `setDefaults()` in `config.go` — default value
-3. `config.yaml.example` — example
+1. `internal/config/config.go` — struct field + `mapstructure` tag
+2. `setDefaults()` — default value
+3. `config.yaml.example` — example with comments
 
-## Testing
+Environment variables: viper `AutomaticEnv` maps `openfga.api_token` → env `OPENFGA_API_TOKEN`.
 
-See [TESTING.md](TESTING.md).
+## OpenFGA Setup
 
-## Git Workflow
+```bash
+# One-time store creation
+fga store create --name "mdrive"
+# → store_id: "01J..." → put in config.yaml
+```
 
-- Feature branches from `main`
-- PR template checklist: `make fmt`, `make vet`, `make test`
-- All CI checks must pass
+`make gen-fga` transforms `internal/permission/model.fga` (DSL) → `model.json` (API format). On startup with `api_url` configured:
 
-## License
+- `store_id` is required — server fails without it
+- `authorization_model_id` is optional — if empty, writes the embedded model and uses the returned ID
 
-IT
+## Zitadel Auth
+
+- `api_url` + `client_id` + `issuer` must be configured
+- Google OAuth: `GET /auth/google`, `POST /auth/google/native`
+- Sessions stored in Valkey (or memory for dev)
+- PKCE enforced via session-backed code verifier storage
