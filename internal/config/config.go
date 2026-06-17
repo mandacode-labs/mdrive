@@ -114,13 +114,17 @@ func (c AuthConfig) SessionTTLDuration() time.Duration {
 }
 
 // OpenFGAConfig holds OpenFGA settings.
-// Secret fields (api_token) can be set via env vars:
-//   MDRIVE_OPENFGA_API_TOKEN
+// Secret fields can be set via env vars:
+//   OPENFGA_API_TOKEN, OPENFGA_CLIENT_ID, OPENFGA_CLIENT_SECRET
 type OpenFGAConfig struct {
 	APIURL               string `mapstructure:"api_url"`
 	StoreID              string `mapstructure:"store_id"`
 	AuthorizationModelID string `mapstructure:"authorization_model_id"`
 	APIToken             string `mapstructure:"api_token"`
+	ClientID             string `mapstructure:"client_id"`
+	ClientSecret         string `mapstructure:"client_secret"`
+	TokenIssuer          string `mapstructure:"token_issuer"`
+	Audience             string `mapstructure:"audience"`
 }
 
 // Load reads the configuration from the given path.
@@ -178,4 +182,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("openfga.store_id", "")
 	v.SetDefault("openfga.authorization_model_id", "")
 	v.SetDefault("openfga.api_token", "")
+	v.SetDefault("openfga.client_id", "")
+	v.SetDefault("openfga.client_secret", "")
+	v.SetDefault("openfga.token_issuer", "")
+	v.SetDefault("openfga.audience", "")
 }

@@ -43,5 +43,9 @@ auth:
 openfga:
   # api_url: "http://localhost:8081"      # OpenFGA server URL
   # store_id: "01J..."                   # Required. Create with: fga store create --name "mdrive"
-  # authorization_model_id: ""           # Optional. Pins a model version. Empty = use embedded model
-  # api_token: ""                        # Bearer token (or set OPENFGA_API_TOKEN env var)
+  # authorization_model_id: ""           # Optional. Empty = use embedded model
+  # api_token: ""                        # Shared key auth (env: OPENFGA_API_TOKEN)
+  # client_id: ""                        # OIDC client credentials (env: OPENFGA_CLIENT_ID)
+  # client_secret: ""                    # (env: OPENFGA_CLIENT_SECRET)
+  # token_issuer: ""                     # OIDC token issuer URL
+  # audience: ""                         # OIDC audience

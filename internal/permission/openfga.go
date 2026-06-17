@@ -59,6 +59,10 @@ type Config struct {
 	StoreID              string
 	AuthorizationModelID string
 	APIToken             string
+	ClientID             string
+	ClientSecret         string
+	TokenIssuer          string
+	Audience             string
 	Timeout              time.Duration
 }
 
@@ -76,7 +80,21 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	}
 
 	var creds *credentials.Credentials
-	if cfg.APIToken != "" {
+	if cfg.ClientID != "" && cfg.ClientSecret != "" {
+		var err error
+		creds, err = credentials.NewCredentials(credentials.Credentials{
+			Method: credentials.CredentialsMethodClientCredentials,
+			Config: &credentials.Config{
+				ClientCredentialsClientId:       cfg.ClientID,
+				ClientCredentialsClientSecret:   cfg.ClientSecret,
+				ClientCredentialsApiTokenIssuer: cfg.TokenIssuer,
+				ClientCredentialsApiAudience:    cfg.Audience,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("openfga: credentials: %w", err)
+		}
+	} else if cfg.APIToken != "" {
 		var err error
 		creds, err = credentials.NewCredentials(credentials.Credentials{
 			Method: credentials.CredentialsMethodApiToken,
