@@ -8,6 +8,24 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AuthCallback implements authCallback operation.
+	//
+	// OAuth callback from Zitadel.
+	//
+	// GET /auth/callback
+	AuthCallback(ctx context.Context, params AuthCallbackParams) error
+	// AuthLogout implements authLogout operation.
+	//
+	// Destroy the current session.
+	//
+	// POST /auth/logout
+	AuthLogout(ctx context.Context) error
+	// AuthMe implements authMe operation.
+	//
+	// Get the current authenticated user.
+	//
+	// GET /auth/me
+	AuthMe(ctx context.Context) (*User, error)
 	// Cat implements cat operation.
 	//
 	// Read file contents.
@@ -50,6 +68,18 @@ type Handler interface {
 	//
 	// GET /v1/users
 	GetUser(ctx context.Context) (*User, error)
+	// GoogleLogin implements googleLogin operation.
+	//
+	// Initiate Google OAuth login (web).
+	//
+	// GET /auth/google
+	GoogleLogin(ctx context.Context) error
+	// GoogleNativeLogin implements googleNativeLogin operation.
+	//
+	// Exchange a Google id_token for a mdrive session (mobile).
+	//
+	// POST /auth/google/native
+	GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
 	// Health implements health operation.
 	//
 	// Health check.

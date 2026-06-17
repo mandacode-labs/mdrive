@@ -10,6 +10,12 @@ import (
 	"github.com/go-faster/errors"
 )
 
+// AuthCallbackFound is response for AuthCallback operation.
+type AuthCallbackFound struct{}
+
+// AuthLogoutNoContent is response for AuthLogout operation.
+type AuthLogoutNoContent struct{}
+
 type BearerAuth struct {
 	Token string
 	Roles []string
@@ -437,6 +443,48 @@ func (*ErrorStatusCode) initiateUploadRes()  {}
 func (*ErrorStatusCode) presignDownloadRes() {}
 func (*ErrorStatusCode) writeLargeRes()      {}
 
+// GoogleLoginFound is response for GoogleLogin operation.
+type GoogleLoginFound struct{}
+
+type GoogleNativeLoginOK struct {
+	Token OptString `json:"token"`
+	User  OptUser   `json:"user"`
+}
+
+// GetToken returns the value of Token.
+func (s *GoogleNativeLoginOK) GetToken() OptString {
+	return s.Token
+}
+
+// GetUser returns the value of User.
+func (s *GoogleNativeLoginOK) GetUser() OptUser {
+	return s.User
+}
+
+// SetToken sets the value of Token.
+func (s *GoogleNativeLoginOK) SetToken(val OptString) {
+	s.Token = val
+}
+
+// SetUser sets the value of User.
+func (s *GoogleNativeLoginOK) SetUser(val OptUser) {
+	s.User = val
+}
+
+type GoogleNativeLoginReq struct {
+	IdToken string `json:"idToken"`
+}
+
+// GetIdToken returns the value of IdToken.
+func (s *GoogleNativeLoginReq) GetIdToken() string {
+	return s.IdToken
+}
+
+// SetIdToken sets the value of IdToken.
+func (s *GoogleNativeLoginReq) SetIdToken(val string) {
+	s.IdToken = val
+}
+
 type HealthOK struct {
 	Status OptString `json:"status"`
 }
@@ -722,6 +770,52 @@ func (o OptDriveUpdate) Get() (v DriveUpdate, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDriveUpdate) Or(d DriveUpdate) DriveUpdate {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGoogleNativeLoginReq returns new OptGoogleNativeLoginReq with value set to v.
+func NewOptGoogleNativeLoginReq(v GoogleNativeLoginReq) OptGoogleNativeLoginReq {
+	return OptGoogleNativeLoginReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGoogleNativeLoginReq is optional GoogleNativeLoginReq.
+type OptGoogleNativeLoginReq struct {
+	Value GoogleNativeLoginReq
+	Set   bool
+}
+
+// IsSet returns true if OptGoogleNativeLoginReq was set.
+func (o OptGoogleNativeLoginReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGoogleNativeLoginReq) Reset() {
+	var v GoogleNativeLoginReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGoogleNativeLoginReq) SetTo(v GoogleNativeLoginReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGoogleNativeLoginReq) Get() (v GoogleNativeLoginReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGoogleNativeLoginReq) Or(d GoogleNativeLoginReq) GoogleNativeLoginReq {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1228,6 +1322,52 @@ func (o OptUpsertUserReq) Get() (v UpsertUserReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptUpsertUserReq) Or(d UpsertUserReq) UpsertUserReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptUser returns new OptUser with value set to v.
+func NewOptUser(v User) OptUser {
+	return OptUser{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptUser is optional User.
+type OptUser struct {
+	Value User
+	Set   bool
+}
+
+// IsSet returns true if OptUser was set.
+func (o OptUser) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptUser) Reset() {
+	var v User
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptUser) SetTo(v User) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptUser) Get() (v User, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptUser) Or(d User) User {
 	if v, ok := o.Get(); ok {
 		return v
 	}

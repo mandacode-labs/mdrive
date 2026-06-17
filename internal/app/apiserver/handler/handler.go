@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -14,7 +16,6 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// FS is the consumer-declared VFS interface.
 type FS interface {
 	Mkdir(ctx context.Context, userID, driveID, path string) (*node.Node, error)
 	Touch(ctx context.Context, userID, driveID, path string) (*node.Node, error)
@@ -39,21 +40,38 @@ type FS interface {
 	GetUser(ctx context.Context, id string) (*user.User, error)
 }
 
-// Handler implements the ogen Handler interface.
 type Handler struct {
 	vfs     FS
 	getUser func(context.Context) (string, bool)
+	auth    *auth.Authenticator
+	sessions session.Store
+	sessionTTL time.Duration
+	frontendURL string
 }
 
 func New(fs FS, getUser func(context.Context) (string, bool)) *Handler {
 	return &Handler{vfs: fs, getUser: getUser}
 }
 
-func (h *Handler) userID(ctx context.Context) string {
-	id, _ := h.getUser(ctx)
-	return id
+func (h *Handler) WithAuth(a *auth.Authenticator, store session.Store, frontendURL string, ttl time.Duration) {
+	h.auth = a
+	h.sessions = store
+	h.frontendURL = frontendURL
+	h.sessionTTL = ttl
 }
 
-// Compile-time check.
+func (h *Handler) userID(ctx context.Context) string {
+	if id, ok := h.getUser(ctx); ok {
+		return id
+	}
+	if h.auth != nil {
+		sess := auth.SessionFromContext(ctx)
+		if sess != nil {
+			return sess.UserID
+		}
+	}
+	return ""
+}
+
 var _ api.Handler = (*Handler)(nil)
 var _ = fmt.Sprintf

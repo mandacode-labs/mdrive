@@ -68,6 +68,21 @@ paths:
   /v1/users:
     $ref: "./endpoints/user.yaml#/users"
 
+  /auth/google:
+    $ref: "./endpoints/auth.yaml#/google"
+
+  /auth/google/native:
+    $ref: "./endpoints/auth.yaml#/googleNative"
+
+  /auth/callback:
+    $ref: "./endpoints/auth.yaml#/callback"
+
+  /auth/logout:
+    $ref: "./endpoints/auth.yaml#/logout"
+
+  /auth/me:
+    $ref: "./endpoints/auth.yaml#/me"
+
 components:
   securitySchemes:
     bearerAuth:

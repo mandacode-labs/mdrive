@@ -13,6 +13,33 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
+// AuthCallback implements authCallback operation.
+//
+// OAuth callback from Zitadel.
+//
+// GET /auth/callback
+func (UnimplementedHandler) AuthCallback(ctx context.Context, params AuthCallbackParams) error {
+	return ht.ErrNotImplemented
+}
+
+// AuthLogout implements authLogout operation.
+//
+// Destroy the current session.
+//
+// POST /auth/logout
+func (UnimplementedHandler) AuthLogout(ctx context.Context) error {
+	return ht.ErrNotImplemented
+}
+
+// AuthMe implements authMe operation.
+//
+// Get the current authenticated user.
+//
+// GET /auth/me
+func (UnimplementedHandler) AuthMe(ctx context.Context) (r *User, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Cat implements cat operation.
 //
 // Read file contents.
@@ -73,6 +100,24 @@ func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDrive
 //
 // GET /v1/users
 func (UnimplementedHandler) GetUser(ctx context.Context) (r *User, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// GoogleLogin implements googleLogin operation.
+//
+// Initiate Google OAuth login (web).
+//
+// GET /auth/google
+func (UnimplementedHandler) GoogleLogin(ctx context.Context) error {
+	return ht.ErrNotImplemented
+}
+
+// GoogleNativeLogin implements googleNativeLogin operation.
+//
+// Exchange a Google id_token for a mdrive session (mobile).
+//
+// POST /auth/google/native
+func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (r *GoogleNativeLoginOK, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
