@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -41,11 +40,10 @@ type FS interface {
 }
 
 type Handler struct {
-	vfs     FS
-	getUser func(context.Context) (string, bool)
-	auth    *auth.Authenticator
-	sessions session.Store
-	sessionTTL time.Duration
+	vfs         FS
+	getUser     func(context.Context) (string, bool)
+	auth        *auth.Authenticator
+	sessionTTL  time.Duration
 	frontendURL string
 }
 
@@ -53,9 +51,8 @@ func New(fs FS, getUser func(context.Context) (string, bool)) *Handler {
 	return &Handler{vfs: fs, getUser: getUser}
 }
 
-func (h *Handler) WithAuth(a *auth.Authenticator, store session.Store, frontendURL string, ttl time.Duration) {
+func (h *Handler) WithAuth(a *auth.Authenticator, frontendURL string, ttl time.Duration) {
 	h.auth = a
-	h.sessions = store
 	h.frontendURL = frontendURL
 	h.sessionTTL = ttl
 }

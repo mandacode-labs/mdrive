@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -45,14 +44,12 @@ func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNative
 	if err != nil {
 		return nil, err
 	}
-	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, email(claims), "google")
+	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, "google")
 	if err != nil {
 		return nil, err
 	}
-	sess := session.New(h.sessionTTL)
-	sess.UserID = u.ID()
-	sess.Provider = "google"
-	if err := h.sessions.Create(ctx, sess); err != nil {
+	sess, err := h.auth.CreateSession(ctx, u.ID(), "google")
+	if err != nil {
 		return nil, err
 	}
 	return &api.GoogleNativeLoginOK{
@@ -77,10 +74,8 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if err != nil {
 		return err
 	}
-	sess := session.New(h.sessionTTL)
-	sess.UserID = u.ID()
-	sess.Provider = "google"
-	if err := h.sessions.Create(ctx, sess); err != nil {
+	sess, err := h.auth.CreateSession(ctx, u.ID(), "google")
+	if err != nil {
 		return err
 	}
 	w := ctxResponseWriter(ctx)
@@ -101,8 +96,8 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 
 func (h *Handler) AuthLogout(ctx context.Context) error {
 	sess := auth.SessionFromContext(ctx)
-	if sess != nil {
-		_ = h.sessions.Delete(ctx, sess.ID)
+	if sess != nil && h.auth != nil {
+		_ = h.auth.DeleteSession(ctx, sess.ID)
 	}
 	w := ctxResponseWriter(ctx)
 	if w != nil {
@@ -156,7 +151,7 @@ func mustRandomHex(n int) string {
 }
 
 func errNotConfigured() error {
-	return fmt.Errorf("auth not configured")
+	return fmt.Errorf("authentication not configured")
 }
 
 func ctxResponseWriter(ctx context.Context) http.ResponseWriter {
@@ -173,13 +168,4 @@ func ctxRequest(ctx context.Context) *http.Request {
 		return r.Request()
 	}
 	return nil
-}
-
-// claimEmail extracts email from the OIDC claims through the UserInfoEmail interface.
-func email(claims any) string {
-	type emailGetter interface{ GetEmail() string }
-	if eg, ok := claims.(emailGetter); ok {
-		return eg.GetEmail()
-	}
-	return ""
 }

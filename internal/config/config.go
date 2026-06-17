@@ -96,10 +96,21 @@ type ValkeyConfig struct {
 
 // AuthConfig holds authentication settings.
 type AuthConfig struct {
-	Provider string `mapstructure:"provider"` // "zitadel", "keycloak"
-	Issuer   string `mapstructure:"issuer"`
-	ClientID string `mapstructure:"client_id"`
-	JWKSURL  string `mapstructure:"jwks_url"`
+	Provider    string `mapstructure:"provider"` // "zitadel", "keycloak"
+	Issuer      string `mapstructure:"issuer"`
+	ClientID    string `mapstructure:"client_id"`
+	JWKSURL     string `mapstructure:"jwks_url"`
+	SessionTTL  string `mapstructure:"session_ttl"`
+	FrontendURL string `mapstructure:"frontend_url"`
+}
+
+// SessionTTLDuration parses the session TTL string.
+func (c AuthConfig) SessionTTLDuration() time.Duration {
+	if c.SessionTTL == "" {
+		return 24 * time.Hour
+	}
+	d, _ := time.ParseDuration(c.SessionTTL)
+	return d
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -156,5 +167,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("valkey.db", 0)
 	v.SetDefault("valkey.tls", false)
 	v.SetDefault("auth.provider", "zitadel")
+	v.SetDefault("auth.issuer", "")
+	v.SetDefault("auth.client_id", "")
+	v.SetDefault("auth.session_ttl", "24h")
+	v.SetDefault("auth.frontend_url", "http://localhost:3000")
 	v.SetDefault("openfga.api_url", "http://localhost:8081")
 }

@@ -1,8 +1,6 @@
 package apiservercli
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
@@ -35,13 +33,9 @@ func newRunCmd() *cobra.Command {
 				return err
 			}
 			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, nil, a.UploadReg, a.GCClient)
-			return apiserver.NewServer(a, fs, placeholderUser).Run()
+			return apiserver.NewServer(a, fs).Run()
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
 	return cmd
-}
-
-func placeholderUser(_ context.Context) (string, bool) {
-	return "default", true
 }

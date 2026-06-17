@@ -133,6 +133,22 @@ func (a *Authenticator) AuthorizeURL(ctx context.Context, provider, redirectURI,
 	return dc.AuthorizationEndpoint + "?" + q.Encode(), nil
 }
 
+// CreateSession creates a new authenticated session.
+func (a *Authenticator) CreateSession(ctx context.Context, userID, provider string) (*session.Session, error) {
+	sess := session.New(a.cfg.SessionTTL)
+	sess.UserID = userID
+	sess.Provider = provider
+	if err := a.store.Create(ctx, sess); err != nil {
+		return nil, err
+	}
+	return sess, nil
+}
+
+// DeleteSession removes a session.
+func (a *Authenticator) DeleteSession(ctx context.Context, id string) error {
+	return a.store.Delete(ctx, id)
+}
+
 // VerifyIDToken validates an id_token and returns the claims.
 func (a *Authenticator) VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
 	return a.verifyIDToken(ctx, raw)

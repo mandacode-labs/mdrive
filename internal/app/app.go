@@ -9,8 +9,11 @@ import (
 	"github.com/XSAM/otelsql"
 	"github.com/google/uuid"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"github.com/valkey-io/valkey-go"
 
 	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -19,7 +22,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	"github.com/valkey-io/valkey-go"
 )
 
 // App holds all wired components.
@@ -27,12 +29,14 @@ type App struct {
 	Cfg *config.Config
 	Log *logging.Logger
 
-	NodeSvc      *node.Service
-	DriveSvc     *drive.Service
-	UserSvc      *user.Service
-	UserEx       user.Exister
-	UploadReg    upload.Registry
-	GCClient     vfs.GCClient
+	NodeSvc   *node.Service
+	DriveSvc  *drive.Service
+	UserSvc   *user.Service
+	UserEx    user.Exister
+	UploadReg upload.Registry
+	GCClient  vfs.GCClient
+	Auth      *auth.Authenticator
+	Security  *auth.SecurityHandler
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -86,12 +90,33 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	driveRepo := drive.NewRepository(entClient, cipher)
 	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
-	uploadReg, err := newUploadRegistry(ctx, cfg.Valkey)
+	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
 		return nil, err
 	}
 
 	gc := newGCClient(entClient)
+
+	var store session.Store = session.NewMemoryStore()
+	var authenticator *auth.Authenticator
+	var sec *auth.SecurityHandler
+
+	if cfg.Auth.Issuer != "" && cfg.Auth.ClientID != "" {
+		if vClient != nil {
+			store = session.NewValkeyStore(vClient)
+		}
+		authenticator, err = auth.NewAuthenticator(ctx, auth.Config{
+			Issuer:       cfg.Auth.Issuer,
+			ClientID:     cfg.Auth.ClientID,
+			SessionStore: store,
+			SessionTTL:   cfg.Auth.SessionTTLDuration(),
+			FrontendURL:  cfg.Auth.FrontendURL,
+		})
+		if err != nil {
+			return nil, err
+		}
+		sec = auth.NewSecurityHandler(authenticator)
+	}
 
 	return &App{
 		Cfg:       cfg,
@@ -102,6 +127,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserEx:    userEx,
 		UploadReg: uploadReg,
 		GCClient:  gc,
+		Auth:      authenticator,
+		Security:  sec,
 		DB:        db,
 		Ent:       entClient,
 	}, nil
@@ -131,21 +158,20 @@ func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, erro
 	return root.ID(), nil
 }
 
-func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig) (upload.Registry, error) {
+func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Client, upload.Registry, error) {
 	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
-		return upload.NewMemoryRegistry(), nil
+		return nil, upload.NewMemoryRegistry(), nil
 	}
 	client, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: cfg.Addrs,
 		Password:    cfg.Password,
 		SelectDB:    cfg.DB,
-		TLSConfig:   nil, // TODO: set when cfg.TLS is true
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := client.Do(ctx, client.B().Ping().Build()).Error(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return upload.NewValkeyRegistry(client), nil
+	return client, upload.NewValkeyRegistry(client), nil
 }

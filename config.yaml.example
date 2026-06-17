@@ -1,7 +1,6 @@
 app:
-  name: mdrive
-  version: 0.1.0
   env: development
+  log_level: info
 
 http:
   host: 0.0.0.0
@@ -16,26 +15,15 @@ database:
   password: postgres
   sslmode: disable
 
-cache:
-  provider: redis
-  redis:
-    addr: localhost:6379
-    db: 0
-    pool_size: 10
-
 storage:
-  provider: s3          # s3, minio, localstack
   region: us-east-1
-  endpoint: ""          # Leave empty for auto-detection based on provider
-  access_key: ""        # Leave empty for IRSA/IAM role authentication
-  secret_key: ""        # Leave empty for IRSA/IAM role authentication
-  bucket: mdrive-files
-  use_ssl: false        # For MinIO/LocalStack: true = HTTPS, false = HTTP
+  endpoint: ""
+  access_key: ""
+  secret_key: ""
+  use_path_style: false
+  presign_ttl: "1h"
 
 crypto:
-  # 64-character hex-encoded 32-byte AES-256-GCM key.
-  # Generate with: openssl rand -hex 32
-  # If empty, storage credentials are stored in plaintext (development only).
   master_key: ""
 
 valkey:
@@ -46,21 +34,13 @@ valkey:
   tls: false
 
 auth:
-  keycloak:
-    base_url: http://localhost:8081
-    realm: mdrive
-    client_id: mdrive-api
-    client_secret: ""
-    redirect_uri: http://localhost:8080/auth/callback
-  session:
-    ttl: 86400          # Session TTL in seconds (24 hours)
-    secure: false       # Set Secure flag on cookie (true for production)
-    state_ttl: 300      # OAuth state TTL in seconds (5 minutes)
-    redis_key: mdrive # Redis key prefix
+  provider: zitadel
+  issuer: "https://sso.mandacode.com"
+  client_id: "123456789@mdrive"
+  session_ttl: "24h"
+  frontend_url: "http://localhost:3000"
 
-telemetry:
-  enabled: false          # Enable OpenTelemetry tracing and metrics
-  endpoint: "localhost:4317" # OTLP gRPC endpoint
-  insecure: true          # Use insecure gRPC connection (development only)
-  caCert: ""              # Path to CA certificate for TLS (leave empty for system CA)
-  serviceName: "mdrive" # Service name for traces and metrics
+openfga:
+  api_url: "http://localhost:8081"
+  store_id: ""
+  authorization_model_id: ""
