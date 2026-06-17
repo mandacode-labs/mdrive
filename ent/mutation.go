@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/user"
@@ -30,6 +31,7 @@ const (
 	// Node types.
 	TypeDrive        = "Drive"
 	TypeDriveStorage = "DriveStorage"
+	TypeGCTombstone  = "GCTombstone"
 	TypeNode         = "Node"
 	TypeUser         = "User"
 )
@@ -1576,6 +1578,590 @@ func (m *DriveStorageMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown DriveStorage edge %s", name)
+}
+
+// GCTombstoneMutation represents an operation that mutates the GCTombstone nodes in the graph.
+type GCTombstoneMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	create_time   *time.Time
+	update_time   *time.Time
+	bucket        *string
+	key           *string
+	retries       *int
+	addretries    *int
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*GCTombstone, error)
+	predicates    []predicate.GCTombstone
+}
+
+var _ ent.Mutation = (*GCTombstoneMutation)(nil)
+
+// gctombstoneOption allows management of the mutation configuration using functional options.
+type gctombstoneOption func(*GCTombstoneMutation)
+
+// newGCTombstoneMutation creates new mutation for the GCTombstone entity.
+func newGCTombstoneMutation(c config, op Op, opts ...gctombstoneOption) *GCTombstoneMutation {
+	m := &GCTombstoneMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGCTombstone,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withGCTombstoneID sets the ID field of the mutation.
+func withGCTombstoneID(id int) gctombstoneOption {
+	return func(m *GCTombstoneMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *GCTombstone
+		)
+		m.oldValue = func(ctx context.Context) (*GCTombstone, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().GCTombstone.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withGCTombstone sets the old GCTombstone of the mutation.
+func withGCTombstone(node *GCTombstone) gctombstoneOption {
+	return func(m *GCTombstoneMutation) {
+		m.oldValue = func(context.Context) (*GCTombstone, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GCTombstoneMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GCTombstoneMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of GCTombstone entities.
+func (m *GCTombstoneMutation) SetID(id int) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *GCTombstoneMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *GCTombstoneMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().GCTombstone.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateTime sets the "create_time" field.
+func (m *GCTombstoneMutation) SetCreateTime(t time.Time) {
+	m.create_time = &t
+}
+
+// CreateTime returns the value of the "create_time" field in the mutation.
+func (m *GCTombstoneMutation) CreateTime() (r time.Time, exists bool) {
+	v := m.create_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateTime returns the old "create_time" field's value of the GCTombstone entity.
+// If the GCTombstone object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GCTombstoneMutation) OldCreateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateTime: %w", err)
+	}
+	return oldValue.CreateTime, nil
+}
+
+// ResetCreateTime resets all changes to the "create_time" field.
+func (m *GCTombstoneMutation) ResetCreateTime() {
+	m.create_time = nil
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (m *GCTombstoneMutation) SetUpdateTime(t time.Time) {
+	m.update_time = &t
+}
+
+// UpdateTime returns the value of the "update_time" field in the mutation.
+func (m *GCTombstoneMutation) UpdateTime() (r time.Time, exists bool) {
+	v := m.update_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateTime returns the old "update_time" field's value of the GCTombstone entity.
+// If the GCTombstone object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GCTombstoneMutation) OldUpdateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateTime: %w", err)
+	}
+	return oldValue.UpdateTime, nil
+}
+
+// ResetUpdateTime resets all changes to the "update_time" field.
+func (m *GCTombstoneMutation) ResetUpdateTime() {
+	m.update_time = nil
+}
+
+// SetBucket sets the "bucket" field.
+func (m *GCTombstoneMutation) SetBucket(s string) {
+	m.bucket = &s
+}
+
+// Bucket returns the value of the "bucket" field in the mutation.
+func (m *GCTombstoneMutation) Bucket() (r string, exists bool) {
+	v := m.bucket
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBucket returns the old "bucket" field's value of the GCTombstone entity.
+// If the GCTombstone object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GCTombstoneMutation) OldBucket(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBucket is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBucket requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBucket: %w", err)
+	}
+	return oldValue.Bucket, nil
+}
+
+// ResetBucket resets all changes to the "bucket" field.
+func (m *GCTombstoneMutation) ResetBucket() {
+	m.bucket = nil
+}
+
+// SetKey sets the "key" field.
+func (m *GCTombstoneMutation) SetKey(s string) {
+	m.key = &s
+}
+
+// Key returns the value of the "key" field in the mutation.
+func (m *GCTombstoneMutation) Key() (r string, exists bool) {
+	v := m.key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldKey returns the old "key" field's value of the GCTombstone entity.
+// If the GCTombstone object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GCTombstoneMutation) OldKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldKey: %w", err)
+	}
+	return oldValue.Key, nil
+}
+
+// ResetKey resets all changes to the "key" field.
+func (m *GCTombstoneMutation) ResetKey() {
+	m.key = nil
+}
+
+// SetRetries sets the "retries" field.
+func (m *GCTombstoneMutation) SetRetries(i int) {
+	m.retries = &i
+	m.addretries = nil
+}
+
+// Retries returns the value of the "retries" field in the mutation.
+func (m *GCTombstoneMutation) Retries() (r int, exists bool) {
+	v := m.retries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRetries returns the old "retries" field's value of the GCTombstone entity.
+// If the GCTombstone object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GCTombstoneMutation) OldRetries(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRetries is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRetries requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRetries: %w", err)
+	}
+	return oldValue.Retries, nil
+}
+
+// AddRetries adds i to the "retries" field.
+func (m *GCTombstoneMutation) AddRetries(i int) {
+	if m.addretries != nil {
+		*m.addretries += i
+	} else {
+		m.addretries = &i
+	}
+}
+
+// AddedRetries returns the value that was added to the "retries" field in this mutation.
+func (m *GCTombstoneMutation) AddedRetries() (r int, exists bool) {
+	v := m.addretries
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRetries resets all changes to the "retries" field.
+func (m *GCTombstoneMutation) ResetRetries() {
+	m.retries = nil
+	m.addretries = nil
+}
+
+// Where appends a list predicates to the GCTombstoneMutation builder.
+func (m *GCTombstoneMutation) Where(ps ...predicate.GCTombstone) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GCTombstoneMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GCTombstoneMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.GCTombstone, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GCTombstoneMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GCTombstoneMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (GCTombstone).
+func (m *GCTombstoneMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GCTombstoneMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.create_time != nil {
+		fields = append(fields, gctombstone.FieldCreateTime)
+	}
+	if m.update_time != nil {
+		fields = append(fields, gctombstone.FieldUpdateTime)
+	}
+	if m.bucket != nil {
+		fields = append(fields, gctombstone.FieldBucket)
+	}
+	if m.key != nil {
+		fields = append(fields, gctombstone.FieldKey)
+	}
+	if m.retries != nil {
+		fields = append(fields, gctombstone.FieldRetries)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GCTombstoneMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case gctombstone.FieldCreateTime:
+		return m.CreateTime()
+	case gctombstone.FieldUpdateTime:
+		return m.UpdateTime()
+	case gctombstone.FieldBucket:
+		return m.Bucket()
+	case gctombstone.FieldKey:
+		return m.Key()
+	case gctombstone.FieldRetries:
+		return m.Retries()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GCTombstoneMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case gctombstone.FieldCreateTime:
+		return m.OldCreateTime(ctx)
+	case gctombstone.FieldUpdateTime:
+		return m.OldUpdateTime(ctx)
+	case gctombstone.FieldBucket:
+		return m.OldBucket(ctx)
+	case gctombstone.FieldKey:
+		return m.OldKey(ctx)
+	case gctombstone.FieldRetries:
+		return m.OldRetries(ctx)
+	}
+	return nil, fmt.Errorf("unknown GCTombstone field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GCTombstoneMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case gctombstone.FieldCreateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateTime(v)
+		return nil
+	case gctombstone.FieldUpdateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateTime(v)
+		return nil
+	case gctombstone.FieldBucket:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBucket(v)
+		return nil
+	case gctombstone.FieldKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetKey(v)
+		return nil
+	case gctombstone.FieldRetries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRetries(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GCTombstone field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GCTombstoneMutation) AddedFields() []string {
+	var fields []string
+	if m.addretries != nil {
+		fields = append(fields, gctombstone.FieldRetries)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GCTombstoneMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case gctombstone.FieldRetries:
+		return m.AddedRetries()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GCTombstoneMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case gctombstone.FieldRetries:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRetries(v)
+		return nil
+	}
+	return fmt.Errorf("unknown GCTombstone numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GCTombstoneMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GCTombstoneMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GCTombstoneMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown GCTombstone nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GCTombstoneMutation) ResetField(name string) error {
+	switch name {
+	case gctombstone.FieldCreateTime:
+		m.ResetCreateTime()
+		return nil
+	case gctombstone.FieldUpdateTime:
+		m.ResetUpdateTime()
+		return nil
+	case gctombstone.FieldBucket:
+		m.ResetBucket()
+		return nil
+	case gctombstone.FieldKey:
+		m.ResetKey()
+		return nil
+	case gctombstone.FieldRetries:
+		m.ResetRetries()
+		return nil
+	}
+	return fmt.Errorf("unknown GCTombstone field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GCTombstoneMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GCTombstoneMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GCTombstoneMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GCTombstoneMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GCTombstoneMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GCTombstoneMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GCTombstoneMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown GCTombstone unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GCTombstoneMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown GCTombstone edge %s", name)
 }
 
 // NodeMutation represents an operation that mutates the Node nodes in the graph.

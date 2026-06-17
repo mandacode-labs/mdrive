@@ -33,6 +33,18 @@ func (f DriveStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveStorageMutation", m)
 }
 
+// The GCTombstoneFunc type is an adapter to allow the use of ordinary
+// function as GCTombstone mutator.
+type GCTombstoneFunc func(context.Context, *ent.GCTombstoneMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GCTombstoneFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GCTombstoneMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GCTombstoneMutation", m)
+}
+
 // The NodeFunc type is an adapter to allow the use of ordinary
 // function as Node mutator.
 type NodeFunc func(context.Context, *ent.NodeMutation) (ent.Value, error)

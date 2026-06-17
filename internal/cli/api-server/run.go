@@ -34,7 +34,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, nil, a.UploadReg)
+			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, nil, a.UploadReg, a.GCClient)
 			return apiserver.NewServer(a, fs, placeholderUser).Run()
 		},
 	}

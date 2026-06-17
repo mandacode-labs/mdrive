@@ -6,12 +6,14 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
-// Set recursive=true to remove directories and their contents.
+// Node operations execute in a transaction and are atomic: either all paths are
+// removed or none are. S3 cleanup is delegated to the GC worker via tombstone records.
 func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string, recursive bool) error {
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
 		return err
@@ -20,64 +22,101 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 	if err != nil {
 		return err
 	}
-	var errs []error
-	for _, path := range paths {
-		if e := s.rmOnePath(ctx, rootID, path, recursive); e != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", path, e))
+
+	var allRefs []ObjectRef
+
+	if err := s.WithTx(ctx, func(tx *Service) error {
+		for _, p := range paths {
+			refs, err := tx.rmPath(ctx, rootID, p, recursive)
+			if err != nil {
+				return err
+			}
+			allRefs = append(allRefs, refs...)
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf("rm: %v", errs)
+
+	if len(allRefs) > 0 && s.GC != nil {
+		_ = s.GC.InsertTombstones(ctx, allRefs)
 	}
+
 	return nil
 }
 
-func (s *Service) rmOnePath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) error {
+// rmPath resolves the path and dispatches to the appropriate internal handler.
+func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]ObjectRef, error) {
 	n, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
-		return fmt.Errorf("rm: %w", err)
+		return nil, fmt.Errorf("rm: %s: %w", path, err)
 	}
 	if n.IsDir() {
 		if !recursive {
-			return fmt.Errorf("'%s' is a directory (use -r)", path)
+			return nil, fmt.Errorf("rm: %s: is a directory (use -r)", path)
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}
-	return s.rmOne(ctx, rootID, n, path)
+	return s.rm(ctx, rootID, n, path)
 }
 
-func (s *Service) rmOne(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) error {
-	parent, name, _ := s.path.resolveParent(ctx, rootID, path)
+// rm removes a single file node. Returns S3 references that need cleanup.
+func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
+	parent, name, err := s.path.resolveParent(ctx, rootID, path)
+	if err != nil {
+		return nil, fmt.Errorf("rm: resolve parent: %w", err)
+	}
 	if parent != nil && name != "" {
-		_ = s.Node.Unlink(ctx, parent, name)
+		if err := s.Node.Unlink(ctx, parent, name); err != nil {
+			return nil, fmt.Errorf("rm: unlink: %w", err)
+		}
 	}
+
+	var refs []ObjectRef
 	if n.IsObject() {
-		oc, _ := n.ReadObject()
-		_ = s.Store.DeleteObject(ctx, oc.Bucket, oc.Key)
+		oc, err := n.ReadObject()
+		if err != nil {
+			return nil, fmt.Errorf("rm: read object: %w", err)
+		}
+		refs = append(refs, ObjectRef{Bucket: oc.Bucket, Key: oc.Key})
 	}
-	return s.Node.Delete(ctx, n.ID())
+
+	if err := s.Node.Delete(ctx, n.ID()); err != nil {
+		return nil, fmt.Errorf("rm: delete node: %w", err)
+	}
+	return refs, nil
 }
 
-func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) error {
+// rmRecursive removes a directory and all its children. Returns S3 references
+// from all object nodes discovered during the traversal.
+func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
 	dc, err := n.ReadDir()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("rm: read dir: %w", err)
 	}
+
+	var allRefs []ObjectRef
 	for _, e := range dc.Entries {
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
 		child, err := s.Node.GetByID(ctx, e.InodeID)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
 		}
+		var refs []ObjectRef
 		if child.IsDir() {
-			if err := s.rmRecursive(ctx, rootID, child, childPath); err != nil {
-				return err
-			}
+			refs, err = s.rmRecursive(ctx, rootID, child, childPath)
 		} else {
-			if err := s.rmOne(ctx, rootID, child, childPath); err != nil {
-				return err
-			}
+			refs, err = s.rm(ctx, rootID, child, childPath)
 		}
+		if err != nil {
+			return nil, err
+		}
+		allRefs = append(allRefs, refs...)
 	}
-	return s.rmOne(ctx, rootID, n, path)
+
+	refs, err := s.rm(ctx, rootID, n, path)
+	if err != nil {
+		return nil, err
+	}
+	return append(allRefs, refs...), nil
 }

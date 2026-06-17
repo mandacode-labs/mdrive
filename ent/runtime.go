@@ -7,6 +7,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/schema"
 	"github.com/mandacode-labs/mdrive/ent/user"
@@ -81,6 +82,33 @@ func init() {
 	drivestorageDescUsePathStyle := drivestorageFields[6].Descriptor()
 	// drivestorage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
 	drivestorage.DefaultUsePathStyle = drivestorageDescUsePathStyle.Default.(bool)
+	gctombstoneMixin := schema.GCTombstone{}.Mixin()
+	gctombstoneMixinFields0 := gctombstoneMixin[0].Fields()
+	_ = gctombstoneMixinFields0
+	gctombstoneFields := schema.GCTombstone{}.Fields()
+	_ = gctombstoneFields
+	// gctombstoneDescCreateTime is the schema descriptor for create_time field.
+	gctombstoneDescCreateTime := gctombstoneMixinFields0[0].Descriptor()
+	// gctombstone.DefaultCreateTime holds the default value on creation for the create_time field.
+	gctombstone.DefaultCreateTime = gctombstoneDescCreateTime.Default.(func() time.Time)
+	// gctombstoneDescUpdateTime is the schema descriptor for update_time field.
+	gctombstoneDescUpdateTime := gctombstoneMixinFields0[1].Descriptor()
+	// gctombstone.DefaultUpdateTime holds the default value on creation for the update_time field.
+	gctombstone.DefaultUpdateTime = gctombstoneDescUpdateTime.Default.(func() time.Time)
+	// gctombstone.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
+	gctombstone.UpdateDefaultUpdateTime = gctombstoneDescUpdateTime.UpdateDefault.(func() time.Time)
+	// gctombstoneDescBucket is the schema descriptor for bucket field.
+	gctombstoneDescBucket := gctombstoneFields[1].Descriptor()
+	// gctombstone.BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
+	gctombstone.BucketValidator = gctombstoneDescBucket.Validators[0].(func(string) error)
+	// gctombstoneDescKey is the schema descriptor for key field.
+	gctombstoneDescKey := gctombstoneFields[2].Descriptor()
+	// gctombstone.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	gctombstone.KeyValidator = gctombstoneDescKey.Validators[0].(func(string) error)
+	// gctombstoneDescRetries is the schema descriptor for retries field.
+	gctombstoneDescRetries := gctombstoneFields[3].Descriptor()
+	// gctombstone.DefaultRetries holds the default value on creation for the retries field.
+	gctombstone.DefaultRetries = gctombstoneDescRetries.Default.(int)
 	nodeMixin := schema.Node{}.Mixin()
 	nodeMixinFields0 := nodeMixin[0].Fields()
 	_ = nodeMixinFields0

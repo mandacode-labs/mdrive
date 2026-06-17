@@ -12,51 +12,34 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
-type fakeNode struct {
+type fakeRepo struct {
 	nodes map[uuid.UUID]*node.Node
 }
 
-func newFakeNode() *fakeNode { return &fakeNode{nodes: map[uuid.UUID]*node.Node{}} }
+func newFakeRepo() *fakeRepo { return &fakeRepo{nodes: map[uuid.UUID]*node.Node{}} }
 
-func (f *fakeNode) CreateFile(_ context.Context, content string) (*node.Node, error) {
-	n, _ := node.NewFile(content)
-	f.nodes[n.ID()] = n
-	return n, nil
-}
-func (f *fakeNode) CreateDirectory(_ context.Context) (*node.Node, error) {
-	n, _ := node.NewDirectory()
-	f.nodes[n.ID()] = n
-	return n, nil
-}
-func (f *fakeNode) CreateSymlink(_ context.Context, target string) (*node.Node, error) {
-	n, _ := node.NewSymlink(target)
-	f.nodes[n.ID()] = n
-	return n, nil
-}
-func (f *fakeNode) CreateObject(_ context.Context, c node.ObjectContent, s int64) (*node.Node, error) {
-	n, _ := node.NewObject(c, s)
-	f.nodes[n.ID()] = n
-	return n, nil
-}
-func (f *fakeNode) Link(_ context.Context, parent *node.Node, name string, child *node.Node) error {
-	return parent.AddEntry(name, child)
-}
-func (f *fakeNode) Unlink(_ context.Context, parent *node.Node, name string) error {
-	return parent.RemoveEntry(name)
-}
-func (f *fakeNode) GetByID(_ context.Context, id uuid.UUID) (*node.Node, error) {
-	n, ok := f.nodes[id]
+var _ node.Repository = (*fakeRepo)(nil)
+
+func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*node.Node, error) {
+	n, ok := r.nodes[id]
 	if !ok {
 		return nil, node.ErrNotFound
 	}
 	return n, nil
 }
-func (f *fakeNode) Delete(_ context.Context, id uuid.UUID) error {
-	delete(f.nodes, id)
+
+func (r *fakeRepo) Save(_ context.Context, n *node.Node) error {
+	r.nodes[n.ID()] = n
 	return nil
 }
-func (f *fakeNode) WithTx(_ context.Context, fn func(tx *node.Service) error) error {
-	return fn(nil)
+
+func (r *fakeRepo) Delete(_ context.Context, id uuid.UUID) error {
+	delete(r.nodes, id)
+	return nil
+}
+
+func (r *fakeRepo) WithTx(_ context.Context, fn func(node.Repository) error) error {
+	return fn(r)
 }
 
 type fakeDrive struct{ rootID uuid.UUID }
@@ -113,10 +96,11 @@ func (p *fakePerm) Check(_ context.Context, _, _, _, _ string) (bool, error) { r
 func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
 
 func newTestService() *Service {
-	n := newFakeNode()
-	root, _ := n.CreateDirectory(context.Background())
+	repo := newFakeRepo()
+	nodeSvc := node.NewService(repo)
+	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	return NewService(n, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil)
+	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
 }
 
 func strPtr(s string) *string  { return &s }

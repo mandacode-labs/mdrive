@@ -18,6 +18,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -31,6 +32,8 @@ type Client struct {
 	Drive *DriveClient
 	// DriveStorage is the client for interacting with the DriveStorage builders.
 	DriveStorage *DriveStorageClient
+	// GCTombstone is the client for interacting with the GCTombstone builders.
+	GCTombstone *GCTombstoneClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
 	// User is the client for interacting with the User builders.
@@ -48,6 +51,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Drive = NewDriveClient(c.config)
 	c.DriveStorage = NewDriveStorageClient(c.config)
+	c.GCTombstone = NewGCTombstoneClient(c.config)
 	c.Node = NewNodeClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -144,6 +148,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:       cfg,
 		Drive:        NewDriveClient(cfg),
 		DriveStorage: NewDriveStorageClient(cfg),
+		GCTombstone:  NewGCTombstoneClient(cfg),
 		Node:         NewNodeClient(cfg),
 		User:         NewUserClient(cfg),
 	}, nil
@@ -167,6 +172,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:       cfg,
 		Drive:        NewDriveClient(cfg),
 		DriveStorage: NewDriveStorageClient(cfg),
+		GCTombstone:  NewGCTombstoneClient(cfg),
 		Node:         NewNodeClient(cfg),
 		User:         NewUserClient(cfg),
 	}, nil
@@ -199,6 +205,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Drive.Use(hooks...)
 	c.DriveStorage.Use(hooks...)
+	c.GCTombstone.Use(hooks...)
 	c.Node.Use(hooks...)
 	c.User.Use(hooks...)
 }
@@ -208,6 +215,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Drive.Intercept(interceptors...)
 	c.DriveStorage.Intercept(interceptors...)
+	c.GCTombstone.Intercept(interceptors...)
 	c.Node.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
@@ -219,6 +227,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Drive.mutate(ctx, m)
 	case *DriveStorageMutation:
 		return c.DriveStorage.mutate(ctx, m)
+	case *GCTombstoneMutation:
+		return c.GCTombstone.mutate(ctx, m)
 	case *NodeMutation:
 		return c.Node.mutate(ctx, m)
 	case *UserMutation:
@@ -526,6 +536,139 @@ func (c *DriveStorageClient) mutate(ctx context.Context, m *DriveStorageMutation
 	}
 }
 
+// GCTombstoneClient is a client for the GCTombstone schema.
+type GCTombstoneClient struct {
+	config
+}
+
+// NewGCTombstoneClient returns a client for the GCTombstone from the given config.
+func NewGCTombstoneClient(c config) *GCTombstoneClient {
+	return &GCTombstoneClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `gctombstone.Hooks(f(g(h())))`.
+func (c *GCTombstoneClient) Use(hooks ...Hook) {
+	c.hooks.GCTombstone = append(c.hooks.GCTombstone, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `gctombstone.Intercept(f(g(h())))`.
+func (c *GCTombstoneClient) Intercept(interceptors ...Interceptor) {
+	c.inters.GCTombstone = append(c.inters.GCTombstone, interceptors...)
+}
+
+// Create returns a builder for creating a GCTombstone entity.
+func (c *GCTombstoneClient) Create() *GCTombstoneCreate {
+	mutation := newGCTombstoneMutation(c.config, OpCreate)
+	return &GCTombstoneCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of GCTombstone entities.
+func (c *GCTombstoneClient) CreateBulk(builders ...*GCTombstoneCreate) *GCTombstoneCreateBulk {
+	return &GCTombstoneCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GCTombstoneClient) MapCreateBulk(slice any, setFunc func(*GCTombstoneCreate, int)) *GCTombstoneCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GCTombstoneCreateBulk{err: fmt.Errorf("calling to GCTombstoneClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GCTombstoneCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GCTombstoneCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for GCTombstone.
+func (c *GCTombstoneClient) Update() *GCTombstoneUpdate {
+	mutation := newGCTombstoneMutation(c.config, OpUpdate)
+	return &GCTombstoneUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GCTombstoneClient) UpdateOne(_m *GCTombstone) *GCTombstoneUpdateOne {
+	mutation := newGCTombstoneMutation(c.config, OpUpdateOne, withGCTombstone(_m))
+	return &GCTombstoneUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *GCTombstoneClient) UpdateOneID(id int) *GCTombstoneUpdateOne {
+	mutation := newGCTombstoneMutation(c.config, OpUpdateOne, withGCTombstoneID(id))
+	return &GCTombstoneUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for GCTombstone.
+func (c *GCTombstoneClient) Delete() *GCTombstoneDelete {
+	mutation := newGCTombstoneMutation(c.config, OpDelete)
+	return &GCTombstoneDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *GCTombstoneClient) DeleteOne(_m *GCTombstone) *GCTombstoneDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *GCTombstoneClient) DeleteOneID(id int) *GCTombstoneDeleteOne {
+	builder := c.Delete().Where(gctombstone.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &GCTombstoneDeleteOne{builder}
+}
+
+// Query returns a query builder for GCTombstone.
+func (c *GCTombstoneClient) Query() *GCTombstoneQuery {
+	return &GCTombstoneQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGCTombstone},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a GCTombstone entity by its id.
+func (c *GCTombstoneClient) Get(ctx context.Context, id int) (*GCTombstone, error) {
+	return c.Query().Where(gctombstone.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *GCTombstoneClient) GetX(ctx context.Context, id int) *GCTombstone {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *GCTombstoneClient) Hooks() []Hook {
+	return c.hooks.GCTombstone
+}
+
+// Interceptors returns the client interceptors.
+func (c *GCTombstoneClient) Interceptors() []Interceptor {
+	return c.inters.GCTombstone
+}
+
+func (c *GCTombstoneClient) mutate(ctx context.Context, m *GCTombstoneMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GCTombstoneCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GCTombstoneUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GCTombstoneUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GCTombstoneDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown GCTombstone mutation op: %q", m.Op())
+	}
+}
+
 // NodeClient is a client for the Node schema.
 type NodeClient struct {
 	config
@@ -795,9 +938,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Drive, DriveStorage, Node, User []ent.Hook
+		Drive, DriveStorage, GCTombstone, Node, User []ent.Hook
 	}
 	inters struct {
-		Drive, DriveStorage, Node, User []ent.Interceptor
+		Drive, DriveStorage, GCTombstone, Node, User []ent.Interceptor
 	}
 )

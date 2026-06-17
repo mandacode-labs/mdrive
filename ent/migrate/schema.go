@@ -64,6 +64,21 @@ var (
 			},
 		},
 	}
+	// GcTombstonesColumns holds the columns for the "gc_tombstones" table.
+	GcTombstonesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "bucket", Type: field.TypeString, Size: 128},
+		{Name: "key", Type: field.TypeString, Size: 512},
+		{Name: "retries", Type: field.TypeInt, Default: 0},
+	}
+	// GcTombstonesTable holds the schema information for the "gc_tombstones" table.
+	GcTombstonesTable = &schema.Table{
+		Name:       "gc_tombstones",
+		Columns:    GcTombstonesColumns,
+		PrimaryKey: []*schema.Column{GcTombstonesColumns[0]},
+	}
 	// NodesColumns holds the columns for the "nodes" table.
 	NodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -114,6 +129,7 @@ var (
 	Tables = []*schema.Table{
 		DrivesTable,
 		DriveStorageTable,
+		GcTombstonesTable,
 		NodesTable,
 		UsersTable,
 	}
@@ -126,6 +142,9 @@ func init() {
 	DriveStorageTable.ForeignKeys[0].RefTable = DrivesTable
 	DriveStorageTable.Annotation = &entsql.Annotation{
 		Table: "drive_storage",
+	}
+	GcTombstonesTable.Annotation = &entsql.Annotation{
+		Table: "gc_tombstones",
 	}
 	NodesTable.Annotation = &entsql.Annotation{
 		Table: "nodes",

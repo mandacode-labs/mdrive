@@ -64,6 +64,17 @@ type PermClient interface {
 	Grant(ctx context.Context, userID, relation, objType, objID string) error
 }
 
+// GCClient writes tombstone records for S3 objects whose nodes have been deleted.
+type GCClient interface {
+	InsertTombstones(ctx context.Context, refs []ObjectRef) error
+}
+
+// ObjectRef is a reference to an S3 object that needs cleanup.
+type ObjectRef struct {
+	Bucket string
+	Key    string
+}
+
 // --------------- VFS Service ---------------
 
 // Service is the VFS orchestration layer.
@@ -74,6 +85,7 @@ type Service struct {
 	Store Store
 	Perm  PermClient
 	Reg   upload.Registry
+	GC    GCClient
 	path  *resolver
 }
 
@@ -85,6 +97,7 @@ func NewService(
 	store Store,
 	checker PermClient,
 	reg upload.Registry,
+	gc GCClient,
 ) *Service {
 	if reg == nil {
 		reg = upload.NewMemoryRegistry()
@@ -96,6 +109,7 @@ func NewService(
 		Store: store,
 		Perm:  checker,
 		Reg:   reg,
+		GC:    gc,
 		path:  newResolver(n),
 	}
 }
@@ -110,6 +124,7 @@ func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error 
 			Store: s.Store,
 			Perm:  s.Perm,
 			Reg:   s.Reg,
+			GC:    s.GC,
 			path:  newResolver(txNode),
 		})
 	})

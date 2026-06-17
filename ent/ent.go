@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -78,6 +79,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			drive.Table:        drive.ValidColumn,
 			drivestorage.Table: drivestorage.ValidColumn,
+			gctombstone.Table:  gctombstone.ValidColumn,
 			node.Table:         node.ValidColumn,
 			user.Table:         user.ValidColumn,
 		})

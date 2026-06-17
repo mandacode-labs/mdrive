@@ -18,6 +18,7 @@ import (
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/valkey-io/valkey-go"
 )
 
@@ -31,6 +32,7 @@ type App struct {
 	UserSvc      *user.Service
 	UserEx       user.Exister
 	UploadReg    upload.Registry
+	GCClient     vfs.GCClient
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -89,6 +91,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	gc := newGCClient(entClient)
+
 	return &App{
 		Cfg:       cfg,
 		Log:       log,
@@ -97,6 +101,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserSvc:   userSvc,
 		UserEx:    userEx,
 		UploadReg: uploadReg,
+		GCClient:  gc,
 		DB:        db,
 		Ent:       entClient,
 	}, nil
