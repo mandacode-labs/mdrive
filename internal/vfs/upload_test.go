@@ -5,65 +5,51 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/mandacode-labs/mdrive/internal/upload"
 )
 
 func TestInitiateAndCompleteUpload(t *testing.T) {
-	svc := testService()
+	svc := newTestService()
 	ctx := context.Background()
 
 	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/big.bin", strPtr("application/octet-stream"), int64Ptr(42), time.Hour)
-	if err != nil {
-		t.Fatalf("initiate upload: %v", err)
-	}
-	if info.Method != "PUT" {
-		t.Errorf("expected PUT, got %s", info.Method)
-	}
-	if info.UploadID == "" {
-		t.Error("expected uploadID")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "PUT", info.Method)
+	assert.NotEmpty(t, info.UploadID)
 
-	// FakeStore returns empty URLs; just verify the registry round-trip.
 	meta, err := svc.Reg.Get(ctx, info.UploadID)
-	if err != nil {
-		t.Fatalf("registry get: %v", err)
-	}
-	if meta.Path != "/big.bin" {
-		t.Errorf("expected path /big.bin, got %s", meta.Path)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "/big.bin", meta.Path)
 
 	n, err := svc.CompleteUpload(ctx, "user1", "d1", info.UploadID, 42, nil)
-	if err != nil {
-		t.Fatalf("complete upload: %v", err)
-	}
-	if !n.IsObject() {
-		t.Error("expected object node")
-	}
+	require.NoError(t, err)
+	assert.True(t, n.IsObject())
 
-	// Token should be deleted after completion.
-	if _, err := svc.Reg.Get(ctx, info.UploadID); err != upload.ErrNotFound {
-		t.Fatalf("expected token deleted, got %v", err)
-	}
+	_, err = svc.Reg.Get(ctx, info.UploadID)
+	assert.ErrorIs(t, err, upload.ErrNotFound)
 }
 
 func TestCompleteUploadSizeMismatch(t *testing.T) {
-	svc := testService()
+	svc := newTestService()
 	ctx := context.Background()
 
-	info, _ := svc.InitiateUpload(ctx, "user1", "d1", "/big.bin", nil, int64Ptr(42), time.Hour)
-	if _, err := svc.CompleteUpload(ctx, "user1", "d1", info.UploadID, 43, nil); err == nil {
-		t.Fatal("expected size mismatch error")
-	}
+	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/big.bin", nil, int64Ptr(42), time.Hour)
+	require.NoError(t, err)
+
+	_, err = svc.CompleteUpload(ctx, "user1", "d1", info.UploadID, 43, nil)
+	assert.Error(t, err)
 }
 
 func TestPresignDownloadNotObject(t *testing.T) {
-	svc := testService()
+	svc := newTestService()
 	ctx := context.Background()
-	_, _ = svc.Touch(ctx, "user1", "d1", "/plain.txt")
-	if _, err := svc.PresignDownload(ctx, "user1", "d1", "/plain.txt", time.Hour); err == nil {
-		t.Fatal("expected error for non-object node")
-	}
-}
 
-func strPtr(s string) *string  { return &s }
-func int64Ptr(i int64) *int64 { return &i }
+	_, err := svc.Touch(ctx, "user1", "d1", "/plain.txt")
+	require.NoError(t, err)
+
+	_, err = svc.PresignDownload(ctx, "user1", "d1", "/plain.txt", time.Hour)
+	assert.Error(t, err)
+}

@@ -1,0 +1,38 @@
+package node
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewObject(t *testing.T) {
+	oc := NewObjectContent("my-bucket", "path/to/key", "text/plain", "abc123")
+	n, err := NewObject(*oc, 1024)
+	require.NoError(t, err)
+
+	assert.Equal(t, NodeTypeObject, n.Type())
+	assert.Equal(t, int64(1024), n.Size())
+
+	got, err := n.ReadObject()
+	require.NoError(t, err)
+	assert.Equal(t, "my-bucket", got.Bucket)
+	assert.Equal(t, "path/to/key", got.Key)
+	assert.Equal(t, "text/plain", got.Mime)
+	assert.Equal(t, "abc123", got.Checksum)
+}
+
+func TestNewObject_InvalidRef(t *testing.T) {
+	_, err := NewObject(ObjectContent{Bucket: "", Key: "k"}, 100)
+	assert.ErrorIs(t, err, ErrInvalidReference)
+
+	_, err = NewObject(ObjectContent{Bucket: "b", Key: ""}, 100)
+	assert.ErrorIs(t, err, ErrInvalidReference)
+}
+
+func TestNewObject_NegativeSize(t *testing.T) {
+	oc := NewObjectContent("b", "k", "text/plain", "")
+	_, err := NewObject(*oc, -1)
+	assert.ErrorIs(t, err, ErrInvalidSize)
+}
