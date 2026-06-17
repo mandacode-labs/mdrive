@@ -79,7 +79,8 @@ run:
 # Migrations
 # ---------------------------------------------------------------------------
 .PHONY: migrate
-migrate: migrate-ent migrate-fga
+migrate: migrate-ent gen-fga
+	@echo "Migrations complete: ent (SQL) + fga (model)"
 
 .PHONY: migrate-ent
 migrate-ent:
@@ -87,21 +88,13 @@ migrate-ent:
 		--dir "file://ent/migrate/migrations" \
 		--to "ent://ent/schema" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
-
-.PHONY: migrate-fga
-migrate-fga: gen-fga
-	@echo "OpenFGA model transformed to internal/permission/model.json"
-
-migrate-apply:
-	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
-
-migrate-status:
-	go run ariga.io/atlas/cmd/atlas migrate status --dir "file://ent/migrate/migrations"
-
-migrate-lint:
 	go run ariga.io/atlas/cmd/atlas migrate lint \
 		--dir "file://ent/migrate/migrations" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
+
+.PHONY: migrate-apply
+migrate-apply:
+	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
 
 # ---------------------------------------------------------------------------
 # Hooks
