@@ -29,7 +29,7 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	var drives []map[string]interface{}
+	var drives []map[string]any
 	jsonDecode(resp.Body, &drives)
 	resp.Body.Close()
 	require.NotEmpty(t, drives)
@@ -114,6 +114,6 @@ func TestE2E_FSOperations(t *testing.T) {
 	assert.Len(t, lsBody.Entries, 0)
 }
 
-func jsonDecode(r io.Reader, v interface{}) {
+func jsonDecode(r io.Reader, v any) {
 	_ = json.NewDecoder(r).Decode(v)
 }

@@ -35,7 +35,7 @@ type App struct {
 	UserSvc   *user.Service
 	UserEx    user.Exister
 	UploadReg upload.Registry
-	GCClient  vfs.GCClient
+	TombstoneInserter  vfs.TombstoneInserter
 	Auth      *auth.Service
 	Security  *auth.SecurityHandler
 	Perm      permission.Checker
@@ -97,7 +97,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	gc := newGCClient(entClient)
+	gc := newTombstoneInserter(entClient)
 
 	var permClient permission.Checker
 	if cfg.OpenFGA.APIURL != "" {
@@ -145,7 +145,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserSvc:   userSvc,
 		UserEx:    userEx,
 		UploadReg: uploadReg,
-		GCClient:  gc,
+		TombstoneInserter:  gc,
 		Auth:      authenticator,
 		Security:  sec,
 		Perm:      permClient,

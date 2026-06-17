@@ -18,7 +18,7 @@ func TestHealth(t *testing.T) {
 	defer resp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	var body map[string]interface{}
+	var body map[string]any
 	json.NewDecoder(resp.Body).Decode(&body)
 	assert.Equal(t, "ok", body["status"])
 }

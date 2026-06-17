@@ -24,9 +24,6 @@ type DirContent struct {
 
 // NewDirContent creates a DirContent from a list of entries.
 func NewDirContent(entries []DirEntry) *DirContent {
-	if entries == nil {
-		entries = []DirEntry{}
-	}
 	return &DirContent{Entries: entries}
 }
 

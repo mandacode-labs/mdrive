@@ -1,4 +1,4 @@
-package apiservercli
+package apisvr
 
 import (
 	"github.com/spf13/cobra"
@@ -32,7 +32,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, a.Perm, a.UploadReg, a.GCClient)
+			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, a.Perm, a.UploadReg, a.TombstoneInserter)
 			return apiserver.NewServer(a, fs).Run()
 		},
 	}

@@ -106,7 +106,10 @@ func (c AuthConfig) SessionTTLDuration() time.Duration {
 	if c.SessionTTL == "" {
 		return 24 * time.Hour
 	}
-	d, _ := time.ParseDuration(c.SessionTTL)
+	d, err := time.ParseDuration(c.SessionTTL)
+	if err != nil {
+		return 24 * time.Hour
+	}
 	return d
 }
 

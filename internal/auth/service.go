@@ -10,7 +10,6 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/client"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
-	"golang.org/x/oauth2"
 
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 )
@@ -68,8 +67,14 @@ func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Toke
 	if err != nil {
 		return nil, fmt.Errorf("auth: jwt profile: %w", err)
 	}
-	idToken, _ := token.Extra("id_token").(string)
-	claims, _ := a.verifyIDToken(ctx, idToken)
+	idToken, ok := token.Extra("id_token").(string)
+	if !ok || idToken == "" {
+		return nil, fmt.Errorf("auth: jwt profile: id_token not in response")
+	}
+	claims, err := a.verifyIDToken(ctx, idToken)
+	if err != nil {
+		return nil, fmt.Errorf("auth: jwt profile: %w", err)
+	}
 	return &oidc.Tokens[*oidc.IDTokenClaims]{
 		Token:        token,
 		IDTokenClaims: claims,
@@ -94,8 +99,14 @@ func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerif
 	if err != nil {
 		return nil, fmt.Errorf("auth: code exchange: %w", err)
 	}
-	idToken, _ := token.Extra("id_token").(string)
-	claims, _ := a.verifyIDToken(ctx, idToken)
+	idToken, ok := token.Extra("id_token").(string)
+	if !ok || idToken == "" {
+		return nil, fmt.Errorf("auth: code exchange: id_token not in response")
+	}
+	claims, err := a.verifyIDToken(ctx, idToken)
+	if err != nil {
+		return nil, fmt.Errorf("auth: code exchange: %w", err)
+	}
 	return &oidc.Tokens[*oidc.IDTokenClaims]{
 		Token:        token,
 		IDTokenClaims: claims,
@@ -144,11 +155,12 @@ func (a *Service) StorePKCE(ctx context.Context, state, verifier string) error {
 }
 
 func (a *Service) GetPKCE(ctx context.Context, state string) (string, error) {
-	s, err := a.store.Get(ctx, "pkce:"+state)
+	s, err := a.store.Get(ctx, PKCEPrefix+state)
 	if err != nil {
 		return "", err
 	}
-	_ = a.store.Delete(ctx, "pkce:"+state)
+	// Best-effort cleanup; key has short TTL anyway.
+	_ = a.store.Delete(ctx, PKCEPrefix+state)
 	return s.UserID, nil
 }
 
@@ -175,4 +187,3 @@ type tokenEndpointCaller struct {
 func (t *tokenEndpointCaller) TokenEndpoint() string   { return t.dc.TokenEndpoint }
 func (t *tokenEndpointCaller) HttpClient() *http.Client { return t.http }
 
-var _ = oauth2.Token{}

@@ -65,8 +65,8 @@ type PermClient interface {
 	Grant(ctx context.Context, userID, relation, objType, objID string) error
 }
 
-// GCClient writes tombstone records for S3 objects whose nodes have been deleted.
-type GCClient interface {
+// TombstoneInserter records S3 object references for deferred deletion by the GC worker.
+type TombstoneInserter interface {
 	InsertTombstones(ctx context.Context, refs []ObjectRef) error
 }
 
@@ -86,7 +86,7 @@ type Service struct {
 	Store Store
 	Perm  PermClient
 	Reg   upload.Registry
-	GC    GCClient
+	GC    TombstoneInserter
 	path  *resolver
 }
 
@@ -98,7 +98,7 @@ func NewService(
 	store Store,
 	checker PermClient,
 	reg upload.Registry,
-	gc GCClient,
+	gc TombstoneInserter,
 ) *Service {
 	if reg == nil {
 		reg = upload.NewMemoryRegistry()

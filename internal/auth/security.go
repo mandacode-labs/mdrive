@@ -61,7 +61,10 @@ func (s *SecurityHandler) extractSession(r *http.Request) (*session.Session, err
 }
 
 func SessionFromContext(ctx context.Context) *session.Session {
-	sess, _ := ctx.Value(sessionKey).(*session.Session)
+	sess, ok := ctx.Value(sessionKey).(*session.Session)
+	if !ok {
+		return nil
+	}
 	return sess
 }
 

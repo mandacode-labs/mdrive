@@ -14,16 +14,21 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
+const providerGoogle = "google"
+
 func (h *Handler) GoogleLogin(ctx context.Context) error {
 	if h.auth == nil {
 		return errNotConfigured()
 	}
 	state := mustRandomHex(32)
-	verifier, challenge, _ := generatePKCE()
+	verifier, challenge, err := generatePKCE()
+	if err != nil {
+		return fmt.Errorf("generate pkce: %w", err)
+	}
 	if err := h.auth.StorePKCE(ctx, state, verifier); err != nil {
 		return fmt.Errorf("store pkce: %w", err)
 	}
-	authURL, err := h.auth.AuthorizeURL(ctx, "google", h.frontendURL+"/auth/callback", state, challenge)
+	authURL, err := h.auth.AuthorizeURL(ctx, providerGoogle, h.frontendURL+"/auth/callback", state, challenge)
 	if err != nil {
 		return err
 	}
@@ -47,11 +52,11 @@ func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNative
 	if err != nil {
 		return nil, err
 	}
-	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, "google")
+	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, providerGoogle)
 	if err != nil {
 		return nil, err
 	}
-	sess, err := h.auth.CreateSession(ctx, u.ID(), "google")
+	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +70,10 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if h.auth == nil {
 		return errNotConfigured()
 	}
-	verifier, _ := h.auth.GetPKCE(ctx, params.State)
+	verifier, err := h.auth.GetPKCE(ctx, params.State)
+	if err != nil {
+		return fmt.Errorf("pkce verifier: %w", err)
+	}
 	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.frontendURL+"/auth/callback", verifier)
 	if err != nil {
 		return err
@@ -74,11 +82,11 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if err != nil {
 		return err
 	}
-	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, "google")
+	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, providerGoogle)
 	if err != nil {
 		return err
 	}
-	sess, err := h.auth.CreateSession(ctx, u.ID(), "google")
+	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle)
 	if err != nil {
 		return err
 	}

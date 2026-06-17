@@ -44,15 +44,21 @@ func FromError(err error) (int, api.Error) {
 	return http.StatusInternalServerError, api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}
 }
 
+const contentTypeJSON = "application/json"
+
 func WriteError(w http.ResponseWriter, err error) {
 	statusCode, apiErr := FromError(err)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", contentTypeJSON)
 	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(apiErr)
+	if err := json.NewEncoder(w).Encode(apiErr); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }
 
 func WriteJSON(w http.ResponseWriter, statusCode int, body any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", contentTypeJSON)
 	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(body)
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 }

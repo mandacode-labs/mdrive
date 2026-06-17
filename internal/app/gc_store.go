@@ -12,12 +12,12 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// gcClient implements vfs.GCClient using the ent client.
+// gcClient implements vfs.TombstoneInserter using the ent client.
 type gcClient struct {
 	client *ent.Client
 }
 
-func newGCClient(client *ent.Client) vfs.GCClient {
+func newTombstoneInserter(client *ent.Client) vfs.TombstoneInserter {
 	return &gcClient{client: client}
 }
 
