@@ -17,6 +17,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/valkey-io/valkey-go"
 )
 
 // App holds all wired components.
@@ -24,10 +26,11 @@ type App struct {
 	Cfg *config.Config
 	Log *logging.Logger
 
-	NodeSvc  *node.Service
-	DriveSvc *drive.Service
-	UserSvc  *user.Service
-	UserEx   user.Exister
+	NodeSvc      *node.Service
+	DriveSvc     *drive.Service
+	UserSvc      *user.Service
+	UserEx       user.Exister
+	UploadReg    upload.Registry
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -81,15 +84,21 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	driveRepo := drive.NewRepository(entClient, cipher)
 	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
+	uploadReg, err := newUploadRegistry(ctx, cfg.Valkey)
+	if err != nil {
+		return nil, err
+	}
+
 	return &App{
-		Cfg:      cfg,
-		Log:      log,
-		NodeSvc:  nodeSvc,
-		DriveSvc: driveSvc,
-		UserSvc:  userSvc,
-		UserEx:   userEx,
-		DB:       db,
-		Ent:      entClient,
+		Cfg:       cfg,
+		Log:       log,
+		NodeSvc:   nodeSvc,
+		DriveSvc:  driveSvc,
+		UserSvc:   userSvc,
+		UserEx:    userEx,
+		UploadReg: uploadReg,
+		DB:        db,
+		Ent:       entClient,
 	}, nil
 }
 
@@ -115,4 +124,23 @@ func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, erro
 		return uuid.Nil, err
 	}
 	return root.ID(), nil
+}
+
+func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig) (upload.Registry, error) {
+	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
+		return upload.NewMemoryRegistry(), nil
+	}
+	client, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: cfg.Addrs,
+		Password:    cfg.Password,
+		SelectDB:    cfg.DB,
+		TLSConfig:   nil, // TODO: set when cfg.TLS is true
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := client.Do(ctx, client.B().Ping().Build()).Error(); err != nil {
+		return nil, err
+	}
+	return upload.NewValkeyRegistry(client), nil
 }

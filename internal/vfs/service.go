@@ -10,6 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 )
 
 // Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
@@ -72,6 +73,7 @@ type Service struct {
 	User  UserClient
 	Store Store
 	Perm  PermClient
+	Reg   upload.Registry
 	path  *resolver
 }
 
@@ -82,13 +84,18 @@ func NewService(
 	u UserClient,
 	store Store,
 	checker PermClient,
+	reg upload.Registry,
 ) *Service {
+	if reg == nil {
+		reg = upload.NewMemoryRegistry()
+	}
 	return &Service{
 		Node:  n,
 		Drive: d,
 		User:  u,
 		Store: store,
 		Perm:  checker,
+		Reg:   reg,
 		path:  newResolver(n),
 	}
 }
@@ -102,6 +109,7 @@ func (s *Service) WithTx(ctx context.Context, fn func(tx *Service) error) error 
 			User:  s.User,
 			Store: s.Store,
 			Perm:  s.Perm,
+			Reg:   s.Reg,
 			path:  newResolver(txNode),
 		})
 	})

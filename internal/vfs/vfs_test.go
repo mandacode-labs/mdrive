@@ -132,7 +132,7 @@ func testService() *Service {
 	// Create a root directory for drive "d1".
 	root, _ := n.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	return NewService(n, d, &fakeUser{}, &fakeStore{}, &fakePerm{})
+	return NewService(n, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil)
 }
 
 func TestMkdir(t *testing.T) {

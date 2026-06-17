@@ -15,6 +15,7 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	Crypto   CryptoConfig   `mapstructure:"crypto"`
+	Valkey   ValkeyConfig   `mapstructure:"valkey"`
 	Auth     AuthConfig     `mapstructure:"auth"`
 	OpenFGA  OpenFGAConfig  `mapstructure:"openfga"`
 }
@@ -85,6 +86,14 @@ type CryptoConfig struct {
 	MasterKey string `mapstructure:"master_key"`
 }
 
+// ValkeyConfig holds Valkey/Redis connection settings.
+type ValkeyConfig struct {
+	Addrs    []string `mapstructure:"addrs"`
+	Password string   `mapstructure:"password"`
+	DB       int      `mapstructure:"db"`
+	TLS      bool     `mapstructure:"tls"`
+}
+
 // AuthConfig holds authentication settings.
 type AuthConfig struct {
 	Provider string `mapstructure:"provider"` // "zitadel", "keycloak"
@@ -142,6 +151,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.use_path_style", false)
 	v.SetDefault("storage.presign_ttl", "1h")
 	v.SetDefault("crypto.master_key", "")
+	v.SetDefault("valkey.addrs", []string{"localhost:6379"})
+	v.SetDefault("valkey.password", "")
+	v.SetDefault("valkey.db", 0)
+	v.SetDefault("valkey.tls", false)
 	v.SetDefault("auth.provider", "zitadel")
 	v.SetDefault("openfga.api_url", "http://localhost:8081")
 }
