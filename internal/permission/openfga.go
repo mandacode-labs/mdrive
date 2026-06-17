@@ -1,8 +1,8 @@
-// Package permission provides authorization primitives backed by OpenFGA.
 package permission
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -24,22 +24,20 @@ const (
 	permDelete = "can_delete"
 	permManage = "can_manage"
 	permShare  = "can_share"
-
-	storeName = "mdrive"
 )
 
-// Exported permission constants for external use.
+// Exported permission constants.
 const (
-	ObjectTypeDrive   = objectTypeDrive
-	ObjectTypeUser    = objectTypeUser
-	RelationOwner     = relationOwner
-	RelationEditor    = relationEditor
-	RelationViewer    = relationViewer
-	PermissionView    = permView
-	PermissionEdit    = permEdit
-	PermissionDelete  = permDelete
-	PermissionManage  = permManage
-	PermissionShare   = permShare
+	ObjectTypeDrive  = objectTypeDrive
+	ObjectTypeUser   = objectTypeUser
+	RelationOwner    = relationOwner
+	RelationEditor   = relationEditor
+	RelationViewer   = relationViewer
+	PermissionView   = permView
+	PermissionEdit   = permEdit
+	PermissionDelete = permDelete
+	PermissionManage = permManage
+	PermissionShare  = permShare
 )
 
 // Checker grants, revokes, and checks OpenFGA relations.
@@ -65,11 +63,11 @@ type Config struct {
 }
 
 // NewOpenFGAChecker creates a new OpenFGAChecker.
-// StoreID is required. If the store doesn't exist, it is auto-created.
-// APIToken enables bearer token authentication with OpenFGA.
+// StoreID is required. Use fga CLI to create it: fga store create --name "mdrive"
+// AuthorizationModelID is optional. If empty, the embedded model is written and used.
 func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error) {
 	if cfg.StoreID == "" {
-		return nil, fmt.Errorf("openfga: store_id is required when api_url is configured")
+		return nil, fmt.Errorf("openfga: store_id is required; create one with: fga store create --name \"mdrive\"")
 	}
 
 	timeout := cfg.Timeout
@@ -102,12 +100,16 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 		return nil, fmt.Errorf("openfga: create client: %w", err)
 	}
 
-	if err := ensureStore(ctx, c); err != nil {
-		return nil, err
+	if _, err := c.GetStore(ctx).Execute(); err != nil {
+		return nil, fmt.Errorf("openfga: store not found (%s): %w", cfg.StoreID, err)
 	}
 
-	if cfg.AuthorizationModelID != "" {
-		if err := c.SetAuthorizationModelId(cfg.AuthorizationModelID); err != nil {
+	if cfg.AuthorizationModelID == "" {
+		modelID, err := writeModel(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.SetAuthorizationModelId(modelID); err != nil {
 			return nil, fmt.Errorf("openfga: set model id: %w", err)
 		}
 	}
@@ -115,19 +117,17 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	return &OpenFGAChecker{client: c}, nil
 }
 
-// ensureStore verifies the configured store exists, creating it if not.
-func ensureStore(ctx context.Context, c *client.OpenFgaClient) error {
-	_, err := c.GetStore(ctx).Execute()
-	if err == nil {
-		return nil
+// writeModel writes the embedded authorization model and returns the new model ID.
+func writeModel(ctx context.Context, c *client.OpenFgaClient) (string, error) {
+	var req client.ClientWriteAuthorizationModelRequest
+	if err := json.Unmarshal(ModelJSON, &req); err != nil {
+		return "", fmt.Errorf("openfga: decode model: %w", err)
 	}
-	resp, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{
-		Name: storeName,
-	}).Execute()
+	resp, err := c.WriteAuthorizationModel(ctx).Body(req).Execute()
 	if err != nil {
-		return fmt.Errorf("openfga: create store: %w", err)
+		return "", fmt.Errorf("openfga: write model: %w", err)
 	}
-	return fmt.Errorf("openfga: store not found, created new store (id=%s). Update your config with this store_id", resp.Id)
+	return resp.AuthorizationModelId, nil
 }
 
 // Grant creates a (user, relation, object) tuple.
@@ -181,11 +181,11 @@ func (c *OpenFGAChecker) ListObjects(ctx context.Context, user, permission, obje
 }
 
 func userObject(userID string) string {
-	return fmt.Sprintf("%s:%s", objectTypeUser, userID)
+	return objectTypeUser + ":" + userID
 }
 
 func objectRef(objectType, objectID string) string {
-	return fmt.Sprintf("%s:%s", objectType, objectID)
+	return objectType + ":" + objectID
 }
 
 // DriveObjectRef returns the OpenFGA object reference for a drive.

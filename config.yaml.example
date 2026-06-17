@@ -41,7 +41,7 @@ auth:
   frontend_url: "http://localhost:3000"
 
 openfga:
-  # api_url: "http://localhost:8081"      # Set to enable permission checks
-  # store_id: "01J..."                   # OpenFGA store ID (required)
-  # authorization_model_id: "01J..."     # Authorization model ID
-  # api_token: ""                        # OpenFGA API token (or set OPENFGA_API_TOKEN env)
+  # api_url: "http://localhost:8081"      # OpenFGA server URL
+  # store_id: "01J..."                   # Required. Create with: fga store create --name "mdrive"
+  # authorization_model_id: ""           # Optional. Pins a model version. Empty = use embedded model
+  # api_token: ""                        # Bearer token (or set OPENFGA_API_TOKEN env var)

@@ -7,7 +7,7 @@ BUILD_DIR   := bin
 # Code Generation
 # ---------------------------------------------------------------------------
 .PHONY: generate
-generate: gen-ent gen-api gen-mock
+generate: gen-ent gen-api gen-mock gen-fga
 
 .PHONY: gen-ent
 gen-ent:
@@ -24,6 +24,11 @@ gen-api:
 gen-mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
 	mockery
+
+.PHONY: gen-fga
+gen-fga:
+	fga model transform --file=internal/permission/model.fga \
+		> internal/permission/model.json
 
 # ---------------------------------------------------------------------------
 # Format & Vet
@@ -71,24 +76,28 @@ run:
 	go run ./cmd/$(APP_NAME) serve --config config.yaml
 
 # ---------------------------------------------------------------------------
-# Database Migrations
+# Migrations
 # ---------------------------------------------------------------------------
-.PHONY: migrate-diff
-migrate-diff:
+.PHONY: migrate
+migrate: migrate-ent migrate-fga
+
+.PHONY: migrate-ent
+migrate-ent:
 	go run ariga.io/atlas/cmd/atlas migrate diff $(name) \
 		--dir "file://ent/migrate/migrations" \
 		--to "ent://ent/schema" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
-.PHONY: migrate-apply
+.PHONY: migrate-fga
+migrate-fga: gen-fga
+	@echo "OpenFGA model transformed to internal/permission/model.json"
+
 migrate-apply:
 	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
 
-.PHONY: migrate-status
 migrate-status:
 	go run ariga.io/atlas/cmd/atlas migrate status --dir "file://ent/migrate/migrations"
 
-.PHONY: migrate-lint
 migrate-lint:
 	go run ariga.io/atlas/cmd/atlas migrate lint \
 		--dir "file://ent/migrate/migrations" \
