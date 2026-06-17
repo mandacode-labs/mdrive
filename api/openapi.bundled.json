@@ -851,14 +851,7 @@
         },
         "responses": {
           "200": {
-            "description": "User created or updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
+            "description": "User created or updated"
           }
         }
       }

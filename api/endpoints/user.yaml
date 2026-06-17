@@ -27,7 +27,3 @@ users:
     responses:
       "200":
         description: User created or updated
-        content:
-          application/json:
-            schema:
-              $ref: "../openapi.yaml#/components/schemas/User"

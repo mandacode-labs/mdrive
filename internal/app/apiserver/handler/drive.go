@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	api "github.com/mandacode-labs/mdrive/pkg/api"
+	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
 )
 
 // --- Drive handlers ---
 
-func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.CreateDriveRes, error) {
+func (h *Handler) CreateDrive(ctx context.Context, req apiv1.OptDriveCreate) (apiv1.CreateDriveRes, error) {
 	r := req.Value
 	desc := ""
 	if r.Description.Set {
@@ -34,7 +34,7 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 	return driveToAPI(d), nil
 }
 
-func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
+func (h *Handler) GetDrive(ctx context.Context, params apiv1.GetDriveParams) (*apiv1.Drive, error) {
 	d, err := h.vfs.GetDrive(ctx, params.DriveID)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api
 	return driveToAPI(d), nil
 }
 
-func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
+func (h *Handler) UpdateDrive(ctx context.Context, req apiv1.OptDriveUpdate, params apiv1.UpdateDriveParams) (*apiv1.Drive, error) {
 	r := req.Value
 	n := (*string)(nil)
 	d := (*string)(nil)
@@ -59,16 +59,16 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 	return driveToAPI(drv), nil
 }
 
-func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) error {
+func (h *Handler) DeleteDrive(ctx context.Context, params apiv1.DeleteDriveParams) error {
 	return h.vfs.DeleteDrive(ctx, params.DriveID)
 }
 
-func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
+func (h *Handler) GetDriveStorage(ctx context.Context, params apiv1.GetDriveStorageParams) (*apiv1.StorageConfig, error) {
 	s, err := h.vfs.GetDriveStorage(ctx, params.DriveID)
 	if err != nil {
 		return nil, err
 	}
-	return &api.StorageConfig{
+	return &apiv1.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),
 		AccessKey:    s.AccessKey(),
@@ -78,12 +78,12 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	}, nil
 }
 
-func (h *Handler) ListDrives(ctx context.Context) ([]api.Drive, error) {
+func (h *Handler) ListDrives(ctx context.Context) ([]apiv1.Drive, error) {
 	drives, err := h.vfs.ListUserDrives(ctx, h.userID(ctx))
 	if err != nil {
 		return nil, err
 	}
-	result := make([]api.Drive, len(drives))
+	result := make([]apiv1.Drive, len(drives))
 	for i, d := range drives {
 		result[i] = *driveToAPI(d)
 	}

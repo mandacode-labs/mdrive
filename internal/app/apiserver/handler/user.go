@@ -4,31 +4,28 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	api "github.com/mandacode-labs/mdrive/pkg/api"
+	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
 )
 
 // --- User handlers ---
 
-func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) (*api.User, error) {
+func (h *Handler) UpsertUser(ctx context.Context, req apiv1.OptUpsertUserReq) error {
 	r := req.Value
 	var email *string
 	if r.Email.Set {
 		e := r.Email.Value
 		email = &e
 	}
-	u, err := h.vfs.UpsertUser(ctx, &user.CreateCommand{
+	_, err := h.vfs.UpsertUser(ctx, &user.CreateCommand{
 		Name:       r.Name,
 		Email:      email,
 		Provider:   r.Provider,
 		ProviderID: r.ProviderID,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return userToAPI(u), nil
+	return err
 }
 
-func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
+func (h *Handler) GetUser(ctx context.Context) (*apiv1.User, error) {
 	u, err := h.vfs.GetUser(ctx, h.userID(ctx))
 	if err != nil {
 		return nil, err
@@ -36,16 +33,16 @@ func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
 	return userToAPI(u), nil
 }
 
-func userToAPI(u *user.User) *api.User {
+func userToAPI(u *user.User) *apiv1.User {
 	if u == nil {
 		return nil
 	}
-	return &api.User{
+	return &apiv1.User{
 		ID:        apistr(u.ID()),
 		PublicID:  apistr(u.PublicID()),
 		Name:      apistr(u.Name()),
 		Email:     apistrPtr(u.Email()),
-		CreatedAt: api.OptDateTime{Value: u.CreatedAt(), Set: true},
-		UpdatedAt: api.OptDateTime{Value: u.UpdatedAt(), Set: true},
+		CreatedAt: apiv1.OptDateTime{Value: u.CreatedAt(), Set: true},
+		UpdatedAt: apiv1.OptDateTime{Value: u.UpdatedAt(), Set: true},
 	}
 }

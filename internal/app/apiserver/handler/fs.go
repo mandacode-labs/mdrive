@@ -5,24 +5,24 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	api "github.com/mandacode-labs/mdrive/pkg/api"
+	apiv1 "github.com/mandacode-labs/mdrive/pkg/apiv1"
 )
 
 // --- FS (filesystem) handlers ---
 
-func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.MkdirParams) error {
+func (h *Handler) Mkdir(ctx context.Context, req apiv1.OptMkdirReq, params apiv1.MkdirParams) error {
 	r := req.Value
 	_, err := h.vfs.Mkdir(ctx, h.userID(ctx), params.DriveID, r.Path)
 	return err
 }
 
-func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.TouchParams) error {
+func (h *Handler) Touch(ctx context.Context, req apiv1.OptTouchReq, params apiv1.TouchParams) error {
 	r := req.Value
 	_, err := h.vfs.Touch(ctx, h.userID(ctx), params.DriveID, r.Path)
 	return err
 }
 
-func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams) error {
+func (h *Handler) Rm(ctx context.Context, req apiv1.OptRmReq, params apiv1.RmParams) error {
 	r := req.Value
 	rec := false
 	if r.Recursive.Set {
@@ -31,12 +31,12 @@ func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams)
 	return h.vfs.Rm(ctx, h.userID(ctx), params.DriveID, r.Paths, rec)
 }
 
-func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams) error {
+func (h *Handler) Mv(ctx context.Context, req apiv1.OptMvReq, params apiv1.MvParams) error {
 	r := req.Value
 	return h.vfs.Mv(ctx, h.userID(ctx), params.DriveID, r.Sources, params.DriveID, r.Destination)
 }
 
-func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent, error) {
+func (h *Handler) Ls(ctx context.Context, params apiv1.LsParams) (*apiv1.DirContent, error) {
 	path := params.Path
 	if path == "" {
 		path = "/"
@@ -45,31 +45,31 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 	if err != nil {
 		return nil, err
 	}
-	entries := make([]api.DirEntry, len(dc.Entries))
+	entries := make([]apiv1.DirEntry, len(dc.Entries))
 	for i, e := range dc.Entries {
-		entries[i] = api.DirEntry{
+		entries[i] = apiv1.DirEntry{
 			InodeID: apistr(e.InodeID.String()),
 			Name:    apistr(e.Name),
 			Type:    apistr(e.Type.String()),
 		}
 	}
-	return &api.DirContent{Entries: entries}, nil
+	return &apiv1.DirContent{Entries: entries}, nil
 }
 
-func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatOK, error) {
+func (h *Handler) Cat(ctx context.Context, params apiv1.CatParams) (apiv1.CatOK, error) {
 	data, err := h.vfs.Cat(ctx, h.userID(ctx), params.DriveID, params.Path)
 	if err != nil {
-		return api.CatOK{}, err
+		return apiv1.CatOK{}, err
 	}
-	return api.CatOK{Data: bytes.NewReader(data)}, nil
+	return apiv1.CatOK{Data: bytes.NewReader(data)}, nil
 }
 
-func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.WriteParams) error {
+func (h *Handler) Write(ctx context.Context, req apiv1.OptWriteReq, params apiv1.WriteParams) error {
 	r := req.Value
 	return h.vfs.Write(ctx, h.userID(ctx), params.DriveID, r.Path, r.Content)
 }
 
-func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) (api.WriteLargeRes, error) {
+func (h *Handler) WriteLarge(ctx context.Context, req apiv1.OptWriteLargeReq, params apiv1.WriteLargeParams) (apiv1.WriteLargeRes, error) {
 	r := req.Value
 	ct := ""
 	if r.Object.ContentType.Set {
@@ -88,26 +88,26 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 	if err := h.vfs.WriteLarge(ctx, h.userID(ctx), params.DriveID, r.Path, obj, r.Size); err != nil {
 		return nil, err
 	}
-	return &api.WriteLargeCreated{}, nil
+	return &apiv1.WriteLargeCreated{}, nil
 }
 
-func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {
+func (h *Handler) Symlink(ctx context.Context, req apiv1.OptSymlinkReq, params apiv1.SymlinkParams) error {
 	r := req.Value
 	_, err := h.vfs.Symlink(ctx, h.userID(ctx), params.DriveID, r.Target, r.LinkPath)
 	return err
 }
 
-func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK, error) {
+func (h *Handler) Stat(ctx context.Context, params apiv1.StatParams) (*apiv1.StatOK, error) {
 	n, err := h.vfs.Stat(ctx, h.userID(ctx), params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	return &api.StatOK{
+	return &apiv1.StatOK{
 		Type:     apistr(n.Type().String()),
-		Size:     api.OptInt64{Value: n.Size(), Set: true},
-		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
-		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
-		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
+		Size:     apiv1.OptInt64{Value: n.Size(), Set: true},
+		Atime:    apiv1.OptDateTime{Value: n.ATime(), Set: true},
+		Mtime:    apiv1.OptDateTime{Value: n.MTime(), Set: true},
+		Ctime:    apiv1.OptDateTime{Value: n.CTime(), Set: true},
 		Flags:    apistr(n.Flags().String()),
 		Revision: apistr(n.Revision().String()),
 	}, nil
