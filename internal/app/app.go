@@ -20,6 +20,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/logging"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
@@ -37,6 +38,7 @@ type App struct {
 	GCClient  vfs.GCClient
 	Auth      *auth.Service
 	Security  *auth.SecurityHandler
+	Perm      permission.Checker
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -97,6 +99,18 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	gc := newGCClient(entClient)
 
+	var permClient permission.Checker
+	if cfg.OpenFGA.APIURL != "" {
+		permClient, err = permission.NewOpenFGAChecker(ctx, permission.Config{
+			APIURL:               cfg.OpenFGA.APIURL,
+			StoreID:              cfg.OpenFGA.StoreID,
+			AuthorizationModelID: cfg.OpenFGA.AuthorizationModelID,
+		})
+		if err != nil {
+			log.Warn().Err(err).Msg("openfga: initialization failed, permission checks disabled")
+		}
+	}
+
 	var store session.Store = session.NewMemoryStore()
 	var authenticator *auth.Service
 	var sec *auth.SecurityHandler
@@ -129,6 +143,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		GCClient:  gc,
 		Auth:      authenticator,
 		Security:  sec,
+		Perm:      permClient,
 		DB:        db,
 		Ent:       entClient,
 	}, nil

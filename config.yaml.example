@@ -41,6 +41,6 @@ auth:
   frontend_url: "http://localhost:3000"
 
 openfga:
-  api_url: "http://localhost:8081"
-  store_id: ""
-  authorization_model_id: ""
+  # api_url: "http://localhost:8081"    # Set to enable permission checks
+  # store_id: ""                        # Empty = auto-create store on startup
+  # authorization_model_id: ""           # Pre-configured model ID (required)

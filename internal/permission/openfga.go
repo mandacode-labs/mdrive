@@ -54,7 +54,9 @@ type Config struct {
 }
 
 // NewOpenFGAChecker creates a new OpenFGAChecker.
-func NewOpenFGAChecker(_ context.Context, cfg Config) (*OpenFGAChecker, error) {
+// If StoreID is empty, a new store named "mdrive" is auto-created.
+// AuthorizationModelID must be pre-configured or set after store creation.
+func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error) {
 	timeout := cfg.Timeout
 	if timeout == 0 {
 		timeout = 10 * time.Second
@@ -68,7 +70,42 @@ func NewOpenFGAChecker(_ context.Context, cfg Config) (*OpenFGAChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("openfga: create client: %w", err)
 	}
+
+	if cfg.StoreID == "" {
+		storeID, err := ensureStore(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.SetStoreId(storeID); err != nil {
+			return nil, fmt.Errorf("openfga: set store id: %w", err)
+		}
+	}
+
+	if cfg.AuthorizationModelID != "" {
+		if err := c.SetAuthorizationModelId(cfg.AuthorizationModelID); err != nil {
+			return nil, fmt.Errorf("openfga: set model id: %w", err)
+		}
+	}
+
 	return &OpenFGAChecker{client: c}, nil
+}
+
+// ensureStore returns an existing store or creates a new one named "mdrive".
+func ensureStore(ctx context.Context, c *client.OpenFgaClient) (string, error) {
+	resp, err := c.ListStores(ctx).Execute()
+	if err != nil {
+		return "", fmt.Errorf("openfga: list stores: %w", err)
+	}
+	if len(resp.Stores) > 0 {
+		return resp.Stores[0].Id, nil
+	}
+	createResp, err := c.CreateStore(ctx).Body(client.ClientCreateStoreRequest{
+		Name: "mdrive",
+	}).Execute()
+	if err != nil {
+		return "", fmt.Errorf("openfga: create store: %w", err)
+	}
+	return createResp.Id, nil
 }
 
 // Grant creates a (user, relation, object) tuple.
