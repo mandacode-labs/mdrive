@@ -1,9 +1,7 @@
 package integration
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
@@ -123,127 +120,4 @@ func authReq(method, url string, body io.Reader) *http.Request {
 	req.Header.Set("Authorization", "Bearer test-token")
 	req.Header.Set("Content-Type", "application/json")
 	return req
-}
-
-func TestHealth(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-
-	resp, err := http.Get(srv.URL + "/health")
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	var body map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&body)
-	assert.Equal(t, "ok", body["status"])
-}
-
-func TestCreateDrive(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("POST", srv.URL+"/v1/drives", bytes.NewReader([]byte(
-		`{"name":"my-drive","storage":{"bucket":"b","region":"us-east-1","accessKey":"a","secretKey":"s"}}`)))
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-}
-
-func TestGetDrive(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("GET", srv.URL+"/v1/drives/d1/root", nil)
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-}
-
-func TestListDrives(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("GET", srv.URL+"/v1/drives", nil)
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-}
-
-func TestMkdir(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/mkdir", bytes.NewReader([]byte(`{"path":"/foo"}`)))
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-}
-
-func TestTouch(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/touch", bytes.NewReader([]byte(`{"path":"/hello.txt"}`)))
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-}
-
-func TestWriteAndCat(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-
-	req := authReq("PUT", srv.URL+"/v1/drives/d1/fs/write", bytes.NewReader([]byte(`{"path":"/data.txt","content":"hello"}`)))
-	resp, _ := http.DefaultClient.Do(req)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	req2 := authReq("GET", srv.URL+"/v1/drives/d1/fs/cat?path=%2Fdata.txt", nil)
-	resp2, err := http.DefaultClient.Do(req2)
-	require.NoError(t, err)
-	defer resp2.Body.Close()
-	assert.Equal(t, http.StatusOK, resp2.StatusCode)
-	got, _ := io.ReadAll(resp2.Body)
-	assert.Equal(t, "hello", string(got))
-}
-
-func TestRm(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("DELETE", srv.URL+"/v1/drives/d1/fs", bytes.NewReader([]byte(`{"paths":["/x"]}`)))
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-}
-
-func TestStat(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("GET", srv.URL+"/v1/drives/d1/fs/stat?path=%2Fhello.txt", nil)
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-}
-
-func TestSymlink(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/symlink", bytes.NewReader([]byte(`{"target":"/target","linkPath":"/link"}`)))
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
-}
-
-func TestAuthMe_NoAuthConfigured(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	req := authReq("GET", srv.URL+"/auth/me", nil)
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
