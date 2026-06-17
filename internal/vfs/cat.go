@@ -79,7 +79,10 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 	if !n.IsFile() {
 		return fmt.Errorf("write: cannot write to %s", n.Type())
 	}
-	return n.WriteFile(content)
+	if err := n.WriteFile(content); err != nil {
+		return fmt.Errorf("write: %w", err)
+	}
+	return s.Node.Save(ctx, n)
 }
 
 // WriteLarge creates an object (S3-backed) node at path.

@@ -64,6 +64,7 @@ func TestE2E_FSOperations(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	got, _ := io.ReadAll(resp.Body)
+	t.Logf("cat content: %q", string(got))
 	assert.Equal(t, "# Hello E2E", string(got))
 
 	// Ls
@@ -93,7 +94,7 @@ func TestE2E_FSOperations(t *testing.T) {
 	}
 	jsonDecode(resp.Body, &statBody)
 	assert.Equal(t, "file", statBody.Type)
-	assert.Equal(t, int64(0), statBody.Size)
+	assert.Equal(t, int64(11), statBody.Size)
 
 	// Rm
 	req = env.authReq("DELETE", "/v1/drives/"+driveID+"/fs", bytes.NewReader([]byte(`{"paths":["/docs/readme.md"]}`)))

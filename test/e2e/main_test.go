@@ -10,6 +10,7 @@ import (
 
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -17,6 +18,7 @@ import (
 	"github.com/valkey-io/valkey-go"
 
 	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/ent/migrate"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -27,13 +29,14 @@ import (
 )
 
 type e2eEnv struct {
-	pg    *postgres.PostgresContainer
-	vk    testcontainers.Container
-	pgURL string
-	vkURL string
-	ent   *ent.Client
-	vClient valkey.Client
-	server  *httptest.Server
+	pg        *postgres.PostgresContainer
+	vk        testcontainers.Container
+	pgURL     string
+	vkURL     string
+	ent       *ent.Client
+	vClient   valkey.Client
+	userID    string
+	server    *httptest.Server
 	apiClient *http.Client
 	baseURL   string
 }
@@ -42,7 +45,6 @@ func setupE2E(t *testing.T) *e2eEnv {
 	t.Helper()
 	ctx := context.Background()
 
-	// Postgres
 	pg, err := postgres.Run(ctx, "postgres:17-alpine",
 		postgres.WithDatabase("mdrive"),
 		postgres.WithUsername("mdrive"),
@@ -54,7 +56,6 @@ func setupE2E(t *testing.T) *e2eEnv {
 	pgURL, err := pg.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
-	// Valkey
 	vkReq := testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "valkey/valkey:8-alpine",
@@ -68,23 +69,20 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	vkHost, err := vk.Host(ctx)
 	require.NoError(t, err)
-	vkPort, err := vk.MappedPort(ctx, "6379")
+	vkPort, err := vk.MappedPort(ctx, "6379/tcp")
 	require.NoError(t, err)
-	vkURL := vkHost + ":" + vkPort.Port()
 
 	vClient, err := valkey.NewClient(valkey.ClientOption{
-		InitAddress: []string{vkURL},
+		InitAddress: []string{vkHost + ":" + vkPort.Port()},
 	})
 	require.NoError(t, err)
 
-	// Ent client + migration
 	drv, err := entsql.Open("postgres", pgURL)
 	require.NoError(t, err)
 	entClient := ent.NewClient(ent.Driver(drv))
-	err = entClient.Schema.Create(ctx)
+	err = migrate.Create(ctx, entClient.Schema, migrate.Tables)
 	require.NoError(t, err)
 
-	// Core services
 	nodeRepo := node.NewEntRepository(entClient)
 	nodeSvc := node.NewService(nodeRepo)
 
@@ -92,22 +90,28 @@ func setupE2E(t *testing.T) *e2eEnv {
 	userSvc := user.NewService(userRepo)
 	userEx := user.NewExisterAdapter(userRepo)
 
+	u, err := userSvc.UpsertFromOIDC(ctx, &user.CreateCommand{
+		Name:       "Test User",
+		Provider:   "google",
+		ProviderID: "test-user",
+	})
+	require.NoError(t, err)
+
 	rootDir, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
-	rootCreator := &rootNodeCreator{rootID: rootDir.ID()}
 
 	driveRepo := drive.NewRepository(entClient, nil)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
+	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
 
 	fs := vfs.NewService(nodeSvc, driveSvc, userSvc, nil, nil, nil, nil)
 
-	// Handler + ogen server
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
-		return "default", true
+		return u.ID(), true
 	})
 
 	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(
 		func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+			t.Logf("e2e error: %s %s -> %v", r.Method, r.URL.Path, err)
 			apiserver.WriteError(w, err)
 		},
 	))
@@ -116,15 +120,16 @@ func setupE2E(t *testing.T) *e2eEnv {
 	srv := httptest.NewServer(ogenServer)
 
 	env := &e2eEnv{
-		pg:       pg,
-		vk:       vk,
-		pgURL:    pgURL,
-		vkURL:    vkURL,
-		ent:      entClient,
-		vClient:  vClient,
-		server:   srv,
+		pg:        pg,
+		vk:        vk,
+		pgURL:     pgURL,
+		vkURL:     vkHost + ":" + vkPort.Port(),
+		ent:       entClient,
+		vClient:   vClient,
+		userID:    u.ID(),
+		server:    srv,
 		apiClient: &http.Client{Timeout: 10 * time.Second},
-		baseURL:  srv.URL,
+		baseURL:   srv.URL,
 	}
 	t.Cleanup(func() {
 		srv.Close()

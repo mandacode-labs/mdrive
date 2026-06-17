@@ -57,7 +57,7 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 func (r *entRepository) insert(ctx context.Context, n *Node, content Content) error {
 	_, err := r.client.Node.Create().
 		SetID(n.id).
-		SetType(entnode.Type(n.typ)).
+		SetType(entType(n.typ)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
 		SetAtime(n.atime).
@@ -74,7 +74,7 @@ func (r *entRepository) insert(ctx context.Context, n *Node, content Content) er
 func (r *entRepository) update(ctx context.Context, n *Node, content Content) error {
 	affected, err := r.client.Node.Update().
 		Where(entnode.IDEQ(n.id), entnode.RevisionEQ(string(n.staleRev))).
-		SetType(entnode.Type(n.typ)).
+		SetType(entType(n.typ)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
 		SetAtime(n.atime).
@@ -170,6 +170,23 @@ func parseNodeType(s string) NodeType {
 		return NodeTypeDevice
 	default:
 		return NodeType(0)
+	}
+}
+
+func entType(nt NodeType) entnode.Type {
+	switch nt {
+	case NodeTypeFile:
+		return entnode.TypeFile
+	case NodeTypeDirectory:
+		return entnode.TypeDirectory
+	case NodeTypeSymlink:
+		return entnode.TypeSymlink
+	case NodeTypeObject:
+		return entnode.TypeObject
+	case NodeTypeDevice:
+		return entnode.TypeDevice
+	default:
+		return entnode.TypeFile
 	}
 }
 

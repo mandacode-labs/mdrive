@@ -124,6 +124,11 @@ func (r *EntRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 }
 
 func (r *EntRepository) Delete(ctx context.Context, id string) error {
+	if _, err := r.client.DriveStorage.Delete().Where(entdrivestorage.DriveIDEQ(id)).Exec(ctx); err != nil {
+		if !ent.IsNotFound(err) {
+			return err
+		}
+	}
 	return r.client.Drive.DeleteOneID(id).Exec(ctx)
 }
 

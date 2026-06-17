@@ -505,6 +505,63 @@ func (_c *NodeClientMock_Link_Call) RunAndReturn(run func(ctx context.Context, p
 	return _c
 }
 
+// Save provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) Save(ctx context.Context, n *node.Node) error {
+	ret := _mock.Called(ctx, n)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Save")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node) error); ok {
+		r0 = returnFunc(ctx, n)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// NodeClientMock_Save_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Save'
+type NodeClientMock_Save_Call struct {
+	*mock.Call
+}
+
+// Save is a helper method to define mock.On call
+//   - ctx context.Context
+//   - n *node.Node
+func (_e *NodeClientMock_Expecter) Save(ctx interface{}, n interface{}) *NodeClientMock_Save_Call {
+	return &NodeClientMock_Save_Call{Call: _e.mock.On("Save", ctx, n)}
+}
+
+func (_c *NodeClientMock_Save_Call) Run(run func(ctx context.Context, n *node.Node)) *NodeClientMock_Save_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *node.Node
+		if args[1] != nil {
+			arg1 = args[1].(*node.Node)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_Save_Call) Return(err error) *NodeClientMock_Save_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *NodeClientMock_Save_Call) RunAndReturn(run func(ctx context.Context, n *node.Node) error) *NodeClientMock_Save_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unlink provides a mock function for the type NodeClientMock
 func (_mock *NodeClientMock) Unlink(ctx context.Context, parent *node.Node, name string) error {
 	ret := _mock.Called(ctx, parent, name)

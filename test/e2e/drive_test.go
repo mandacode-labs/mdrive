@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -66,11 +67,15 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+	if resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		t.Logf("delete response: %s", body)
+	}
 
 	// Verify deleted
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
 	resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }

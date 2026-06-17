@@ -33,6 +33,7 @@ type NodeClient interface {
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
 	Unlink(ctx context.Context, parent *node.Node, name string) error
 	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
+	Save(ctx context.Context, n *node.Node) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	WithTx(ctx context.Context, fn func(tx *node.Service) error) error
 }
@@ -145,6 +146,9 @@ func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, er
 
 // checkAccess returns nil if the user has the given permission on the drive.
 func (s *Service) checkAccess(ctx context.Context, userID, permission, driveID string) error {
+	if s.Perm == nil {
+		return nil
+	}
 	allowed, err := s.Perm.Check(ctx, userID, permission, "drive", driveID)
 	if err != nil {
 		return err

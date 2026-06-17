@@ -107,6 +107,11 @@ func (s *Service) Update(ctx context.Context, n *Node) error {
 	return s.repo.Save(ctx, n)
 }
 
+// Save persists the node (alias for Update).
+func (s *Service) Save(ctx context.Context, n *Node) error {
+	return s.repo.Save(ctx, n)
+}
+
 // Delete removes a node by its ID.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
