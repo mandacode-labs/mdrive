@@ -210,21 +210,76 @@ migration:
   backoffLimit: 3
   activeDeadlineSeconds: 300
 
-# Garbage collector CronJob settings
+# Garbage collector CronJob settings.
 gc:
   enabled: true
-  schedule: "0 3 * * *"
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 1
-  ttlSecondsAfterFinished: 300
-  backoffLimit: 3
-  activeDeadlineSeconds: 600
-  annotations: {}
-  resources:
-    limits:
-      cpu: 200m
-      memory: 128Mi
-    requests:
-      cpu: 50m
-      memory: 64Mi
+  jobs:
+    tombstones:
+      enabled: true
+      schedule: "0 */6 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    purgeDrives:
+      enabled: true
+      schedule: "0 3 * * *"
+      retention: "168h"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    expireUploads:
+      enabled: true
+      schedule: "0 */4 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    expireSessions:
+      enabled: true
+      schedule: "0 */2 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
