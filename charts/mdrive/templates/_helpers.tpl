@@ -42,12 +42,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "mdrive.image" -}}
-{{- $registryName := .Values.image.registry | default "" -}}
-{{- $repositoryName := .Values.image.repository -}}
 {{- $tag := .Values.image.tag | default .Chart.AppVersion | toString -}}
-{{- if $registryName }}
-{{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-{{- else }}
-{{- printf "%s:%s" $repositoryName $tag -}}
+{{- printf "%s:%s" .Values.image.repository $tag -}}
 {{- end }}
+
+{{- define "mdrive.configSecretName" -}}
+{{- default (include "mdrive.fullname" .) .Values.secrets.existingSecret -}}
 {{- end }}

@@ -100,6 +100,17 @@ migrate-apply:
 	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
 
 # ---------------------------------------------------------------------------
+# Helm
+# ---------------------------------------------------------------------------
+.PHONY: helm-lint
+helm-lint:
+	helm lint charts/mdrive
+
+.PHONY: helm-template
+helm-template:
+	helm template mdrive charts/mdrive
+
+# ---------------------------------------------------------------------------
 # Hooks
 # ---------------------------------------------------------------------------
 .PHONY: install-hooks

@@ -13,6 +13,7 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -30,57 +31,100 @@ spec:
       automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.migration.enabled }}
+        - name: migrate
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "mdrive.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mdrive
+          args:
+            - migrate
+            - apply
+            - --config
+            - /app/config/config.yaml
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "mdrive.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mdrive
           args:
-            - serve
+            - api-server
+            - run
             - --config
             - /app/config/config.yaml
           env:
-            # Database password override (from secret)
-            {{- if or .Values.secrets.database.password .Values.secrets.database.existingSecret }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
-            {{- end }}
-            # Valkey password override (from secret)
-            {{- if or .Values.secrets.cache.valkey.password .Values.secrets.cache.valkey.existingSecret }}
-            - name: CACHE_VALKEY_PASSWORD
+            {{- if or .Values.secrets.valkey.password .Values.secrets.valkey.existingSecret }}
+            - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.cache.valkey.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.cache.valkey.existingSecretKey | default "valkey-password" }}
+                  name: {{ .Values.secrets.valkey.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.valkey.existingSecretKey | default "valkey-password" }}
             {{- end }}
-            # Storage secrets
-            {{- if or .Values.secrets.storage.accessKey .Values.secrets.storage.existingSecret }}
+            {{- if or .Values.secrets.storage.access_key .Values.secrets.storage.existingSecret }}
             - name: STORAGE_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: storage-access-key
-            {{- end }}
-            {{- if or .Values.secrets.storage.secretKey .Values.secrets.storage.existingSecret }}
+                  key: {{ .Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key" }}
             - name: STORAGE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: storage-secret-key
+                  key: {{ .Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key" }}
             {{- end }}
-            # Keycloak client secret (from secret)
-            {{- if .Values.config.auth.keycloak.baseURL }}
-            {{- if or .Values.secrets.keycloak.clientSecret .Values.secrets.keycloak.existingSecret }}
-            - name: AUTH_KEYCLOAK_CLIENT_SECRET
+            {{- if or .Values.secrets.crypto.master_key .Values.secrets.crypto.existingSecret }}
+            - name: CRYPTO_MASTER_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.keycloak.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.keycloak.existingSecretKey | default "keycloak-client-secret" }}
+                  name: {{ .Values.secrets.crypto.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.crypto.existingSecretKey | default "crypto-master-key" }}
             {{- end }}
+            {{- if or .Values.secrets.openfga.api_token .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyApiToken | default "openfga-api-token" }}
+            {{- end }}
+            {{- if or .Values.secrets.openfga.client_id .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyClientID | default "openfga-client-id" }}
+            {{- end }}
+            {{- if or .Values.secrets.openfga.client_secret .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret" }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}

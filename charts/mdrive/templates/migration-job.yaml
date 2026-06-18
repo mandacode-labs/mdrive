@@ -5,13 +5,14 @@ metadata:
   name: {{ include "mdrive.fullname" . }}-migration-{{ .Release.Revision }}
   labels:
     {{- include "mdrive.labels" . | nindent 4 }}
+  {{- with .Values.migration.annotations }}
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
-  ttlSecondsAfterFinished: 300
-  backoffLimit: 3
-  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
   template:
     metadata:
       labels:
@@ -32,37 +33,27 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "mdrive.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mdrive
           args:
             - migrate
             - apply
             - --config
             - /app/config/config.yaml
-            - --mode
-            - {{ .Values.migration.mode | default "versioned" | quote }}
-            {{- if .Values.migration.baseline }}
-            - --baseline
-            - {{ .Values.migration.baseline | quote }}
-            {{- end }}
-            {{- if .Values.migration.clean }}
-            - --clean
-            {{- end }}
-            {{- if .Values.migration.allowDirty }}
-            - --allow-dirty
-            {{- end }}
           env:
-            {{- if or .Values.secrets.database.password .Values.secrets.database.existingSecret }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
-            {{- end }}
           volumeMounts:
             - name: config
               mountPath: /app/config
               readOnly: true
             - name: tmp
               mountPath: /tmp
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:
