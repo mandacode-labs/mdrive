@@ -3,6 +3,7 @@ package drive
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entdrive "github.com/mandacode-labs/mdrive/ent/drive"
@@ -116,11 +117,27 @@ func (r *EntRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 		SetName(d.Name()).
 		SetNillableDescription(d.Description()).
 		SetNillableRootNodeID(d.RootNodeID()).
+		SetNillableDeletedAt(d.DeletedAt()).
 		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return driveFromEnt(updated), nil
+}
+
+func (r *EntRepository) SoftDelete(ctx context.Context, id string) error {
+	now := time.Now()
+	_, err := r.client.Drive.UpdateOneID(id).
+		SetDeletedAt(now).
+		Save(ctx)
+	return err
+}
+
+func (r *EntRepository) Restore(ctx context.Context, id string) error {
+	_, err := r.client.Drive.UpdateOneID(id).
+		ClearDeletedAt().
+		Save(ctx)
+	return err
 }
 
 func (r *EntRepository) Delete(ctx context.Context, id string) error {
@@ -133,7 +150,38 @@ func (r *EntRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *EntRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
-	drives, err := r.client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).All(ctx)
+	drives, err := r.client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).Where(entdrive.DeletedAtIsNil()).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*Drive, len(drives))
+	for i, d := range drives {
+		result[i] = driveFromEnt(d)
+	}
+	return result, nil
+}
+
+func (r *EntRepository) FindDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error) {
+	drives, err := r.client.Drive.Query().
+		Where(entdrive.DeletedAtNotNil()).
+		Where(entdrive.DeletedAtLTE(before)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*Drive, len(drives))
+	for i, d := range drives {
+		result[i] = driveFromEnt(d)
+	}
+	return result, nil
+}
+
+func (r *EntRepository) FindDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
+	drives, err := r.client.Drive.Query().
+		Where(entdrive.OwnerIDEQ(ownerID)).
+		Where(entdrive.DeletedAtNotNil()).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}

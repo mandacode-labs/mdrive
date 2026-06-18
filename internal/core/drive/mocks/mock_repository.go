@@ -6,6 +6,7 @@ package driveMocks
 
 import (
 	"context"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	mock "github.com/stretchr/testify/mock"
@@ -226,6 +227,148 @@ func (_c *RepositoryMock_FindByOwner_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// FindDeleted provides a mock function for the type RepositoryMock
+func (_mock *RepositoryMock) FindDeleted(ctx context.Context, before time.Time, limit int) ([]*drive.Drive, error) {
+	ret := _mock.Called(ctx, before, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindDeleted")
+	}
+
+	var r0 []*drive.Drive
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, int) ([]*drive.Drive, error)); ok {
+		return returnFunc(ctx, before, limit)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time, int) []*drive.Drive); ok {
+		r0 = returnFunc(ctx, before, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*drive.Drive)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time, int) error); ok {
+		r1 = returnFunc(ctx, before, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// RepositoryMock_FindDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDeleted'
+type RepositoryMock_FindDeleted_Call struct {
+	*mock.Call
+}
+
+// FindDeleted is a helper method to define mock.On call
+//   - ctx context.Context
+//   - before time.Time
+//   - limit int
+func (_e *RepositoryMock_Expecter) FindDeleted(ctx interface{}, before interface{}, limit interface{}) *RepositoryMock_FindDeleted_Call {
+	return &RepositoryMock_FindDeleted_Call{Call: _e.mock.On("FindDeleted", ctx, before, limit)}
+}
+
+func (_c *RepositoryMock_FindDeleted_Call) Run(run func(ctx context.Context, before time.Time, limit int)) *RepositoryMock_FindDeleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *RepositoryMock_FindDeleted_Call) Return(drives []*drive.Drive, err error) *RepositoryMock_FindDeleted_Call {
+	_c.Call.Return(drives, err)
+	return _c
+}
+
+func (_c *RepositoryMock_FindDeleted_Call) RunAndReturn(run func(ctx context.Context, before time.Time, limit int) ([]*drive.Drive, error)) *RepositoryMock_FindDeleted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindDeletedByOwner provides a mock function for the type RepositoryMock
+func (_mock *RepositoryMock) FindDeletedByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error) {
+	ret := _mock.Called(ctx, ownerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindDeletedByOwner")
+	}
+
+	var r0 []*drive.Drive
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]*drive.Drive, error)); ok {
+		return returnFunc(ctx, ownerID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []*drive.Drive); ok {
+		r0 = returnFunc(ctx, ownerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*drive.Drive)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, ownerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// RepositoryMock_FindDeletedByOwner_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDeletedByOwner'
+type RepositoryMock_FindDeletedByOwner_Call struct {
+	*mock.Call
+}
+
+// FindDeletedByOwner is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ownerID string
+func (_e *RepositoryMock_Expecter) FindDeletedByOwner(ctx interface{}, ownerID interface{}) *RepositoryMock_FindDeletedByOwner_Call {
+	return &RepositoryMock_FindDeletedByOwner_Call{Call: _e.mock.On("FindDeletedByOwner", ctx, ownerID)}
+}
+
+func (_c *RepositoryMock_FindDeletedByOwner_Call) Run(run func(ctx context.Context, ownerID string)) *RepositoryMock_FindDeletedByOwner_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *RepositoryMock_FindDeletedByOwner_Call) Return(drives []*drive.Drive, err error) *RepositoryMock_FindDeletedByOwner_Call {
+	_c.Call.Return(drives, err)
+	return _c
+}
+
+func (_c *RepositoryMock_FindDeletedByOwner_Call) RunAndReturn(run func(ctx context.Context, ownerID string) ([]*drive.Drive, error)) *RepositoryMock_FindDeletedByOwner_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetByID provides a mock function for the type RepositoryMock
 func (_mock *RepositoryMock) GetByID(ctx context.Context, id string) (*drive.Drive, error) {
 	ret := _mock.Called(ctx, id)
@@ -426,6 +569,120 @@ func (_c *RepositoryMock_GetStorage_Call) Return(storage *drive.Storage, err err
 }
 
 func (_c *RepositoryMock_GetStorage_Call) RunAndReturn(run func(ctx context.Context, driveID string) (*drive.Storage, error)) *RepositoryMock_GetStorage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Restore provides a mock function for the type RepositoryMock
+func (_mock *RepositoryMock) Restore(ctx context.Context, id string) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Restore")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// RepositoryMock_Restore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Restore'
+type RepositoryMock_Restore_Call struct {
+	*mock.Call
+}
+
+// Restore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *RepositoryMock_Expecter) Restore(ctx interface{}, id interface{}) *RepositoryMock_Restore_Call {
+	return &RepositoryMock_Restore_Call{Call: _e.mock.On("Restore", ctx, id)}
+}
+
+func (_c *RepositoryMock_Restore_Call) Run(run func(ctx context.Context, id string)) *RepositoryMock_Restore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *RepositoryMock_Restore_Call) Return(err error) *RepositoryMock_Restore_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *RepositoryMock_Restore_Call) RunAndReturn(run func(ctx context.Context, id string) error) *RepositoryMock_Restore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SoftDelete provides a mock function for the type RepositoryMock
+func (_mock *RepositoryMock) SoftDelete(ctx context.Context, id string) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SoftDelete")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// RepositoryMock_SoftDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SoftDelete'
+type RepositoryMock_SoftDelete_Call struct {
+	*mock.Call
+}
+
+// SoftDelete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *RepositoryMock_Expecter) SoftDelete(ctx interface{}, id interface{}) *RepositoryMock_SoftDelete_Call {
+	return &RepositoryMock_SoftDelete_Call{Call: _e.mock.On("SoftDelete", ctx, id)}
+}
+
+func (_c *RepositoryMock_SoftDelete_Call) Run(run func(ctx context.Context, id string)) *RepositoryMock_SoftDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *RepositoryMock_SoftDelete_Call) Return(err error) *RepositoryMock_SoftDelete_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *RepositoryMock_SoftDelete_Call) RunAndReturn(run func(ctx context.Context, id string) error) *RepositoryMock_SoftDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }
