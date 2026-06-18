@@ -56,7 +56,7 @@ func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNative
 	if err != nil {
 		return nil, err
 	}
-	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle)
+	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle, auth.IsAdminClaim(claims))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if err != nil {
 		return err
 	}
-	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle)
+	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle, auth.IsAdminClaim(claims))
 	if err != nil {
 		return err
 	}

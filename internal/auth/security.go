@@ -80,6 +80,15 @@ func UserIDFromContext(ctx context.Context) string {
 	return sess.UserID
 }
 
+// IsAdmin returns true if the session belongs to an admin user.
+func IsAdmin(ctx context.Context) bool {
+	sess := SessionFromContext(ctx)
+	if sess == nil {
+		return false
+	}
+	return sess.IsAdmin
+}
+
 func ContextWithSession(ctx context.Context, s *session.Session) context.Context {
 	return context.WithValue(ctx, sessionKey, s)
 }

@@ -48,7 +48,7 @@ type AuthClient interface {
 	ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error)
 	AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error)
 	VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error)
-	CreateSession(ctx context.Context, userID, provider string) (*session.Session, error)
+	CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error)
 	DeleteSession(ctx context.Context, id string) error
 	StorePKCE(ctx context.Context, state, verifier string) error
 	GetPKCE(ctx context.Context, state string) (string, error)

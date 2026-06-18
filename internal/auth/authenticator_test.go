@@ -84,10 +84,11 @@ func TestCreateAndDeleteSession(t *testing.T) {
 	defer srv.Close()
 	a := newTestService(t, srv)
 
-	sess, err := a.CreateSession(context.Background(), "user123", "google")
+	sess, err := a.CreateSession(context.Background(), "user123", "google", false)
 	require.NoError(t, err)
 	assert.Equal(t, "user123", sess.UserID)
 	assert.Equal(t, "google", sess.Provider)
+	assert.False(t, sess.IsAdmin)
 	assert.WithinDuration(t, time.Now().Add(1*time.Hour), sess.ExpiresAt, 5*time.Second)
 
 	err = a.DeleteSession(context.Background(), sess.ID)

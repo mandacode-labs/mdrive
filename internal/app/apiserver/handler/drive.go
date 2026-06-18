@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -52,6 +54,9 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 }
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
+	if !auth.IsAdmin(ctx) {
+		return nil, vfs.ErrPermission
+	}
 	d, err := h.vfs.RestoreDrive(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
@@ -60,6 +65,9 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 }
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
+	if !auth.IsAdmin(ctx) {
+		return nil, vfs.ErrPermission
+	}
 	drives, err := h.vfs.ListDeletedDrives(ctx)
 	if err != nil {
 		return nil, err

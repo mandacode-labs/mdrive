@@ -124,8 +124,8 @@ func (_c *AuthClientMock_AuthorizeURL_Call) RunAndReturn(run func(ctx context.Co
 }
 
 // CreateSession provides a mock function for the type AuthClientMock
-func (_mock *AuthClientMock) CreateSession(ctx context.Context, userID string, provider string) (*session.Session, error) {
-	ret := _mock.Called(ctx, userID, provider)
+func (_mock *AuthClientMock) CreateSession(ctx context.Context, userID string, provider string, isAdmin bool) (*session.Session, error) {
+	ret := _mock.Called(ctx, userID, provider, isAdmin)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateSession")
@@ -133,18 +133,18 @@ func (_mock *AuthClientMock) CreateSession(ctx context.Context, userID string, p
 
 	var r0 *session.Session
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*session.Session, error)); ok {
-		return returnFunc(ctx, userID, provider)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, bool) (*session.Session, error)); ok {
+		return returnFunc(ctx, userID, provider, isAdmin)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *session.Session); ok {
-		r0 = returnFunc(ctx, userID, provider)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, bool) *session.Session); ok {
+		r0 = returnFunc(ctx, userID, provider, isAdmin)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*session.Session)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, provider)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, bool) error); ok {
+		r1 = returnFunc(ctx, userID, provider, isAdmin)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -160,11 +160,12 @@ type AuthClientMock_CreateSession_Call struct {
 //   - ctx context.Context
 //   - userID string
 //   - provider string
-func (_e *AuthClientMock_Expecter) CreateSession(ctx interface{}, userID interface{}, provider interface{}) *AuthClientMock_CreateSession_Call {
-	return &AuthClientMock_CreateSession_Call{Call: _e.mock.On("CreateSession", ctx, userID, provider)}
+//   - isAdmin bool
+func (_e *AuthClientMock_Expecter) CreateSession(ctx interface{}, userID interface{}, provider interface{}, isAdmin interface{}) *AuthClientMock_CreateSession_Call {
+	return &AuthClientMock_CreateSession_Call{Call: _e.mock.On("CreateSession", ctx, userID, provider, isAdmin)}
 }
 
-func (_c *AuthClientMock_CreateSession_Call) Run(run func(ctx context.Context, userID string, provider string)) *AuthClientMock_CreateSession_Call {
+func (_c *AuthClientMock_CreateSession_Call) Run(run func(ctx context.Context, userID string, provider string, isAdmin bool)) *AuthClientMock_CreateSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -178,10 +179,15 @@ func (_c *AuthClientMock_CreateSession_Call) Run(run func(ctx context.Context, u
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
+		var arg3 bool
+		if args[3] != nil {
+			arg3 = args[3].(bool)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -192,7 +198,7 @@ func (_c *AuthClientMock_CreateSession_Call) Return(session1 *session.Session, e
 	return _c
 }
 
-func (_c *AuthClientMock_CreateSession_Call) RunAndReturn(run func(ctx context.Context, userID string, provider string) (*session.Session, error)) *AuthClientMock_CreateSession_Call {
+func (_c *AuthClientMock_CreateSession_Call) RunAndReturn(run func(ctx context.Context, userID string, provider string, isAdmin bool) (*session.Session, error)) *AuthClientMock_CreateSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

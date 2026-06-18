@@ -133,14 +133,32 @@ func (a *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state
 	return dc.AuthorizationEndpoint + "?" + q.Encode(), nil
 }
 
-func (a *Service) CreateSession(ctx context.Context, userID, provider string) (*session.Session, error) {
+func (a *Service) CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error) {
 	sess := session.New(a.cfg.SessionTTL)
 	sess.UserID = userID
 	sess.Provider = provider
+	sess.IsAdmin = isAdmin
 	if err := a.store.Create(ctx, sess); err != nil {
 		return nil, err
 	}
 	return sess, nil
+}
+
+// IsAdminClaim returns true if the claims contain the configured admin role.
+func IsAdminClaim(claims *oidc.IDTokenClaims) bool {
+	if claims == nil {
+		return false
+	}
+	raw, ok := claims.Claims[AdminRoleClaim]
+	if !ok {
+		return false
+	}
+	roles, ok := raw.(map[string]any)
+	if !ok {
+		return false
+	}
+	_, ok = roles[AdminRole]
+	return ok
 }
 
 func (a *Service) DeleteSession(ctx context.Context, id string) error {
