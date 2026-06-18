@@ -12,7 +12,7 @@ func TestNewDrive(t *testing.T) {
 	desc := "test drive"
 	now := time.Now()
 	rootID := uuid.New()
-	d := NewDrive("01H8X", "01H8Y", "MyDrive", &desc, ProviderS3, "user123", &rootID, now, now)
+	d := NewDrive("01H8X", "01H8Y", "MyDrive", &desc, ProviderS3, "user123", &rootID, nil, now, now)
 
 	assert.Equal(t, "01H8X", d.ID())
 	assert.Equal(t, "01H8Y", d.PublicID())
@@ -23,11 +23,12 @@ func TestNewDrive(t *testing.T) {
 	assert.Equal(t, "user123", d.OwnerID())
 	assert.NotNil(t, d.RootNodeID())
 	assert.Equal(t, rootID, *d.RootNodeID())
+	assert.Nil(t, d.DeletedAt())
 }
 
 func TestSetRootNodeID(t *testing.T) {
 	now := time.Now()
-	d := NewDrive("id", "pid", "Name", nil, ProviderS3, "user", nil, now, now)
+	d := NewDrive("id", "pid", "Name", nil, ProviderS3, "user", nil, nil, now, now)
 	assert.Nil(t, d.RootNodeID())
 
 	newRoot := uuid.New()

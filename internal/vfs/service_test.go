@@ -48,7 +48,7 @@ func (d *fakeDrive) Create(_ context.Context, _ string, _ *string, _ string, _ d
 	return nil, uuid.Nil, nil
 }
 func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
-	return drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, d.now(), d.now()), nil
+	return drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, nil, d.now(), d.now()), nil
 }
 func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return d.GetByID(context.Background(), "")

@@ -46,7 +46,7 @@ func (s *Service) Create(ctx context.Context, name string, desc *string, ownerID
 
 	id := ulid.Make().String()
 	now := time.Now()
-	d := NewDrive(id, id, name, desc, ProviderS3, ownerID, nil, now, now)
+	d := NewDrive(id, id, name, desc, ProviderS3, ownerID, nil, nil, now, now)
 
 	s2 := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
@@ -124,7 +124,7 @@ func (s *Service) Update(ctx context.Context, id string, name, description *stri
 	}
 	updated := NewDrive(
 		d.ID(), d.PublicID(), newName, newDesc,
-		d.Provider(), d.OwnerID(), d.RootNodeID(),
+		d.Provider(), d.OwnerID(), d.RootNodeID(), d.DeletedAt(),
 		d.CreatedAt(), time.Now(),
 	)
 	return s.repo.Update(ctx, updated)

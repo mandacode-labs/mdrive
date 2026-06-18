@@ -171,6 +171,7 @@ func driveFromEnt(e *ent.Drive) *Drive {
 		parseProvider(string(e.Provider)),
 		e.OwnerID,
 		e.RootNodeID,
+		e.DeletedAt,
 		e.CreateTime,
 		e.UpdateTime,
 	)

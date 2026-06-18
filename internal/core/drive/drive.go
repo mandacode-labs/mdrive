@@ -25,6 +25,7 @@ type Drive struct {
 	provider    Provider
 	ownerID     string
 	rootNodeID  *uuid.UUID
+	deletedAt   *time.Time
 	createdAt   time.Time
 	updatedAt   time.Time
 }
@@ -38,6 +39,7 @@ func NewDrive(
 	provider Provider,
 	ownerID string,
 	rootNodeID *uuid.UUID,
+	deletedAt *time.Time,
 	createdAt time.Time,
 	updatedAt time.Time,
 ) *Drive {
@@ -49,6 +51,7 @@ func NewDrive(
 		provider:    provider,
 		ownerID:     ownerID,
 		rootNodeID:  rootNodeID,
+		deletedAt:   deletedAt,
 		createdAt:   createdAt,
 		updatedAt:   updatedAt,
 	}
@@ -62,6 +65,7 @@ func (d *Drive) Description() *string   { return d.description }
 func (d *Drive) Provider() Provider     { return d.provider }
 func (d *Drive) OwnerID() string        { return d.ownerID }
 func (d *Drive) RootNodeID() *uuid.UUID { return d.rootNodeID }
+func (d *Drive) DeletedAt() *time.Time  { return d.deletedAt }
 func (d *Drive) CreatedAt() time.Time   { return d.createdAt }
 func (d *Drive) UpdatedAt() time.Time   { return d.updatedAt }
 
@@ -69,5 +73,11 @@ func (d *Drive) UpdatedAt() time.Time   { return d.updatedAt }
 // Called once during drive creation, after the root directory node is created.
 func (d *Drive) SetRootNodeID(id uuid.UUID) {
 	d.rootNodeID = &id
+	d.updatedAt = time.Now()
+}
+
+// SetDeletedAt records the soft-delete timestamp.
+func (d *Drive) SetDeletedAt(t *time.Time) {
+	d.deletedAt = t
 	d.updatedAt = time.Now()
 }

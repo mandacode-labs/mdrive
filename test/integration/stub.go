@@ -64,12 +64,12 @@ func (s *stubFS) PresignDownload(context.Context, string, string, string, time.D
 }
 func (s *stubFS) CreateDrive(ctx context.Context, actorID, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
 	rootID := uuid.New()
-	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, time.Now(), time.Now())
+	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
 	return d, rootID, nil
 }
 func (s *stubFS) GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
 	rootID := uuid.New()
-	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, time.Now(), time.Now()), nil
+	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
 func (s *stubFS) GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
 	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
@@ -80,12 +80,12 @@ func (s *stubFS) UpdateDrive(ctx context.Context, actorID, id string, name, desc
 		n = *name
 	}
 	rootID := uuid.New()
-	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, time.Now(), time.Now()), nil
+	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
 func (s *stubFS) DeleteDrive(ctx context.Context, actorID, id string) error { return nil }
 func (s *stubFS) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
 	rootID := uuid.New()
-	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, time.Now(), time.Now())
+	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
 	return []*drive.Drive{d}, nil
 }
 func (s *stubFS) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
