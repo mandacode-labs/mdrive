@@ -57,7 +57,7 @@ jobs:
       - name: Dockerfile Lint
         uses: hadolint/hadolint-action@v3.3.0
         with:
-          dockerfile: build/docker/server.Dockerfile
+          dockerfile: Dockerfile
       - name: Read ATLAS_VERSION
         id: atlas_version
         run: echo "value=$(cat ATLAS_VERSION)" >> "$GITHUB_OUTPUT"
