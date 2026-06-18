@@ -1,10 +1,10 @@
-package apisvr
+package apiserver
 
 import (
 	"github.com/spf13/cobra"
 
+	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app"
-	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
@@ -33,7 +33,7 @@ func newRunCmd() *cobra.Command {
 				return err
 			}
 			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, a.Perm, a.UploadReg, a.TombstoneInserter)
-			return apiserver.NewServer(a, fs).Run()
+			return server.NewServer(a, fs).Run()
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")

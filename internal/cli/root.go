@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	apisvr "github.com/mandacode-labs/mdrive/internal/cli/apisvr"
+	"github.com/mandacode-labs/mdrive/internal/cli/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/cli/gc"
 	"github.com/mandacode-labs/mdrive/internal/cli/migrate"
 )
@@ -22,7 +22,7 @@ func NewRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	root.AddCommand(apisvr.NewCmd())
+	root.AddCommand(apiserver.NewCmd())
 	root.AddCommand(gc.NewCmd())
 	root.AddCommand(migrate.NewCmd())
 	return root
