@@ -3,10 +3,39 @@ package handler
 import (
 	"context"
 
+	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
+
+// driveToAPI converts a domain drive to an API drive.
+func driveToAPI(d *drive.Drive) *api.Drive {
+	if d == nil {
+		return nil
+	}
+	rid := d.RootNodeID()
+	var rids string
+	if rid != nil {
+		rids = rid.String()
+	}
+	deletedAt := api.OptDateTime{}
+	if d.DeletedAt() != nil {
+		deletedAt = api.OptDateTime{Value: *d.DeletedAt(), Set: true}
+	}
+	return &api.Drive{
+		ID:          apputils.OptString(d.ID()),
+		PublicID:    apputils.OptString(d.PublicID()),
+		Name:        apputils.OptString(d.Name()),
+		Description: apputils.OptStringPtr(d.Description()),
+		OwnerID:     apputils.OptString(d.OwnerID()),
+		RootNodeID:  apputils.OptString(rids),
+		DeletedAt:   deletedAt,
+		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
+		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
+	}
+}
 
 // --- Drive handlers ---
 
@@ -87,8 +116,8 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	return &api.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),
-		Endpoint:     toOptStringPtr(s.Endpoint()),
-		UsePathStyle: optBool(s.UsePathStyle()),
+		Endpoint:     apputils.OptStringPtr(s.Endpoint()),
+		UsePathStyle: apputils.OptBool(s.UsePathStyle()),
 	}, nil
 }
 

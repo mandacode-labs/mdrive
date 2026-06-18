@@ -43,7 +43,7 @@ spec:
                 - /app/mdrive
               args:
                 - gc
-                - run
+                - run-all
                 - --config
                 - /app/config/config.yaml
               env:

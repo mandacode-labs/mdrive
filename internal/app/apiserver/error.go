@@ -64,6 +64,7 @@ func FromError(err error) (int, api.Error) {
 
 const contentTypeJSON = "application/json"
 
+// WriteError writes an error response to w.
 func WriteError(w http.ResponseWriter, err error) {
 	statusCode, apiErr := FromError(err)
 	w.Header().Set("Content-Type", contentTypeJSON)
@@ -73,6 +74,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	}
 }
 
+// WriteJSON writes a JSON response to w.
 func WriteJSON(w http.ResponseWriter, statusCode int, body any) {
 	w.Header().Set("Content-Type", contentTypeJSON)
 	w.WriteHeader(statusCode)

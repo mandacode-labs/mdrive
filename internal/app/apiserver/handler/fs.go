@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -48,9 +49,9 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 	entries := make([]api.DirEntry, len(dc.Entries))
 	for i, e := range dc.Entries {
 		entries[i] = api.DirEntry{
-			InodeID: toOptString(e.InodeID.String()),
-			Name:    toOptString(e.Name),
-			Type:    toOptString(e.Type.String()),
+			InodeID: apputils.OptString(e.InodeID.String()),
+			Name:    apputils.OptString(e.Name),
+			Type:    apputils.OptString(e.Type.String()),
 		}
 	}
 	return &api.DirContent{Entries: entries}, nil
@@ -103,12 +104,12 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 		return nil, err
 	}
 	return &api.StatOK{
-		Type:     toOptString(n.Type().String()),
+		Type:     apputils.OptString(n.Type().String()),
 		Size:     api.OptInt64{Value: n.Size(), Set: true},
 		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
 		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
 		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
-		Flags:    toOptString(n.Flags().String()),
-		Revision: toOptString(n.Revision().String()),
+		Flags:    apputils.OptString(n.Flags().String()),
+		Revision: apputils.OptString(n.Revision().String()),
 	}, nil
 }
