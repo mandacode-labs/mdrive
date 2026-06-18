@@ -2,6 +2,7 @@
 
 APP_NAME    := mdrive
 BUILD_DIR   := bin
+ATLAS_VERSION := $(shell cat ATLAS_VERSION)
 
 # ---------------------------------------------------------------------------
 # Code Generation
@@ -79,15 +80,19 @@ run:
 # Migrations
 # ---------------------------------------------------------------------------
 .PHONY: migrate
-migrate: 
-	go run ariga.io/atlas/cmd/atlas migrate diff $(name) \
-		--dir "file://ent/migrate/migrations" \
+migrate:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate diff $(name) \
+		--dir "file://internal/cli/migrate/migrations" \
 		--to "ent://ent/schema" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
-migrate-lint:
-	go run ariga.io/atlas/cmd/atlas migrate lint \
-		--dir "file://ent/migrate/migrations" \
+migrate-hash:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate hash \
+		--dir "file://internal/cli/migrate/migrations"
+
+migrate-validate:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate validate \
+		--dir "file://internal/cli/migrate/migrations" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
 .PHONY: migrate-apply

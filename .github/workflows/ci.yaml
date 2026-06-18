@@ -58,6 +58,9 @@ jobs:
         uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: build/docker/server.Dockerfile
+      - name: Read ATLAS_VERSION
+        id: atlas_version
+        run: echo "value=$(cat ATLAS_VERSION)" >> "$GITHUB_OUTPUT"
       - name: Set up Helm
         uses: azure/setup-helm@v5.0.0
       - name: Lint Helm chart
@@ -176,6 +179,8 @@ jobs:
           tags: mdrive:test
           cache-from: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/cache:main
           cache-to: type=registry,ref=${{ vars.REGISTRY }}/${{ vars.REPOSITORY }}/cache:main,mode=max
+          build-args: |
+            ATLAS_VERSION=${{ steps.atlas_version.outputs.value }}
 
   kind-test:
     name: Kind Tests

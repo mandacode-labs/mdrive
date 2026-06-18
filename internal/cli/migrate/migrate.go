@@ -3,8 +3,9 @@ package migrate
 
 import (
 	"context"
+	"embed"
 	"fmt"
-	"os"
+	"io/fs"
 
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/spf13/cobra"
@@ -12,8 +13,10 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
-// migrationsDir is the embedded Atlas migration directory.
-var migrationsDir = os.DirFS("ent/migrate/migrations")
+//go:embed migrations/*.sql migrations/atlas.sum
+var defaultMigrations embed.FS
+
+const defaultAtlasBin = "atlas"
 
 // NewCmd creates the `migrate` subcommand.
 func NewCmd() *cobra.Command {
@@ -43,15 +46,21 @@ func newApplyCmd() *cobra.Command {
 }
 
 func apply(ctx context.Context, dsn string) error {
-	workDir, err := atlasexec.NewWorkingDir(
-		atlasexec.WithMigrations(migrationsDir),
-	)
+	migrations, err := fs.Sub(defaultMigrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("migrations subdir: %w", err)
+	}
+	return applyWith(ctx, dsn, migrations, defaultAtlasBin)
+}
+
+func applyWith(ctx context.Context, dsn string, migrations fs.FS, atlasBin string) error {
+	workDir, err := atlasexec.NewWorkingDir(atlasexec.WithMigrations(migrations))
 	if err != nil {
 		return fmt.Errorf("atlas working dir: %w", err)
 	}
 	defer func() { _ = workDir.Close() }()
 
-	client, err := atlasexec.NewClient(workDir.Path(), "atlas")
+	client, err := atlasexec.NewClient(workDir.Path(), atlasBin)
 	if err != nil {
 		return fmt.Errorf("atlas client: %w", err)
 	}

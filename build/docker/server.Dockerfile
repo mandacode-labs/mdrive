@@ -64,8 +64,8 @@ RUN apk add --no-cache \
       tzdata \
       curl
 
-# Install atlas CLI for versioned migrations (v1.1.0)
-ARG ATLAS_VERSION=v1.1.0
+# Install atlas CLI for versioned migrations
+ARG ATLAS_VERSION=v1.2.2
 RUN curl -sSfLo /usr/local/bin/atlas \
       "https://release.ariga.io/atlas/atlas-linux-amd64-${ATLAS_VERSION}" && \
     chmod +x /usr/local/bin/atlas
