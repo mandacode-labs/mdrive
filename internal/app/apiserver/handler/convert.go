@@ -16,6 +16,10 @@ func driveToAPI(d *drive.Drive) *api.Drive {
 	if rid != nil {
 		rids = rid.String()
 	}
+	deletedAt := api.OptDateTime{}
+	if d.DeletedAt() != nil {
+		deletedAt = api.OptDateTime{Value: *d.DeletedAt(), Set: true}
+	}
 	return &api.Drive{
 		ID:          toOptString(d.ID()),
 		PublicID:    toOptString(d.PublicID()),
@@ -23,6 +27,7 @@ func driveToAPI(d *drive.Drive) *api.Drive {
 		Description: toOptStringPtr(d.Description()),
 		OwnerID:     toOptString(d.OwnerID()),
 		RootNodeID:  toOptString(rids),
+		DeletedAt:   deletedAt,
 		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
 		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
 	}

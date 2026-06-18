@@ -35,6 +35,8 @@ type FSClient interface {
 	GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
 	UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error)
 	DeleteDrive(ctx context.Context, actorID, id string) error
+	RestoreDrive(ctx context.Context, actorID, id string) (*drive.Drive, error)
+	ListDeletedDrives(ctx context.Context) ([]*drive.Drive, error)
 	ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error)
 	UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)
 	GetUser(ctx context.Context, actorID, id string) (*user.User, error)

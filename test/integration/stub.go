@@ -83,6 +83,15 @@ func (s *stubFS) UpdateDrive(ctx context.Context, actorID, id string, name, desc
 	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
 func (s *stubFS) DeleteDrive(ctx context.Context, actorID, id string) error { return nil }
+func (s *stubFS) RestoreDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+	rootID := uuid.New()
+	return drive.NewDrive(id, "pub1", "restored", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
+}
+func (s *stubFS) ListDeletedDrives(ctx context.Context) ([]*drive.Drive, error) {
+	rootID := uuid.New()
+	d := drive.NewDrive("d1", "pub1", "deleted-drive", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now())
+	return []*drive.Drive{d}, nil
+}
 func (s *stubFS) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
 	rootID := uuid.New()
 	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())

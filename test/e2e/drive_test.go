@@ -72,10 +72,20 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 		t.Logf("delete response: %s", body)
 	}
 
-	// Verify deleted
+	// Verify deleted (soft-delete: GET still returns the drive but with deletedAt)
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// Verify it no longer appears in the drive list
+	req = env.authReq("GET", "/v1/drives", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	var listAfter []api.Drive
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&listAfter))
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Empty(t, listAfter)
 }

@@ -130,12 +130,42 @@ func (s *Service) Update(ctx context.Context, id string, name, description *stri
 	return s.repo.Update(ctx, updated)
 }
 
-// Delete removes a drive. Caller is responsible for cleaning up nodes and S3 objects.
+// Delete soft-deletes a drive.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if _, err := s.GetByID(ctx, id); err != nil {
 		return err
 	}
+	return s.repo.SoftDelete(ctx, id)
+}
+
+// Restore reactivates a soft-deleted drive.
+func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
+	d, err := s.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if d.DeletedAt() == nil {
+		return nil, fmt.Errorf("drive: not deleted")
+	}
+	if err := s.repo.Restore(ctx, id); err != nil {
+		return nil, err
+	}
+	return s.GetByID(ctx, id)
+}
+
+// Purge permanently removes a soft-deleted drive and its storage record.
+func (s *Service) Purge(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
+}
+
+// ListDeleted returns drives soft-deleted before the given time.
+func (s *Service) ListDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error) {
+	return s.repo.FindDeleted(ctx, before, limit)
+}
+
+// ListDeletedByOwner returns soft-deleted drives for a specific owner.
+func (s *Service) ListDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
+	return s.repo.FindDeletedByOwner(ctx, ownerID)
 }
 
 // ListByOwner returns all drives owned by ownerID.

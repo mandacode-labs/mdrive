@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -53,11 +52,23 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 }
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
-	return nil, fmt.Errorf("restore drive: not implemented")
+	d, err := h.vfs.RestoreDrive(ctx, h.userID(ctx), params.DriveID)
+	if err != nil {
+		return nil, err
+	}
+	return driveToAPI(d), nil
 }
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
-	return nil, fmt.Errorf("list deleted drives: not implemented")
+	drives, err := h.vfs.ListDeletedDrives(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]api.Drive, len(drives))
+	for i, d := range drives {
+		result[i] = *driveToAPI(d)
+	}
+	return result, nil
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {

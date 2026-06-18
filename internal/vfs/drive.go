@@ -2,6 +2,7 @@ package vfs
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -57,7 +58,7 @@ func (s *Service) UpdateDrive(ctx context.Context, actorID, id string, name, des
 	return s.Drive.Update(ctx, id, name, description)
 }
 
-// DeleteDrive removes a drive.
+// DeleteDrive soft-deletes a drive.
 func (s *Service) DeleteDrive(ctx context.Context, actorID, id string) error {
 	if err := s.checkAccess(ctx, actorID, permDelete, id); err != nil {
 		return err
@@ -65,7 +66,20 @@ func (s *Service) DeleteDrive(ctx context.Context, actorID, id string) error {
 	return s.Drive.Delete(ctx, id)
 }
 
-// ListUserDrives returns all drives owned by actorID.
+// RestoreDrive reactivates a soft-deleted drive.
+func (s *Service) RestoreDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+	if err := s.checkAccess(ctx, actorID, permManage, id); err != nil {
+		return nil, err
+	}
+	return s.Drive.Restore(ctx, id)
+}
+
+// ListUserDrives returns all active drives owned by actorID.
 func (s *Service) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
 	return s.Drive.ListByOwner(ctx, actorID)
+}
+
+// ListDeletedDrives returns soft-deleted drives (admin only).
+func (s *Service) ListDeletedDrives(ctx context.Context) ([]*drive.Drive, error) {
+	return s.Drive.ListDeleted(ctx, time.Now(), 1000)
 }

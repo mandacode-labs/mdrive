@@ -3,6 +3,7 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -46,6 +47,8 @@ type DriveClient interface {
 	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
 	Update(ctx context.Context, id string, name, description *string) (*drive.Drive, error)
 	Delete(ctx context.Context, id string) error
+	Restore(ctx context.Context, id string) (*drive.Drive, error)
+	ListDeleted(ctx context.Context, before time.Time, limit int) ([]*drive.Drive, error)
 	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
