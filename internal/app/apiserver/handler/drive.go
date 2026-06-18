@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 
-	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -15,19 +14,8 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 	if r.Description.Set {
 		desc = r.Description.Value
 	}
-	endpointPtr := (*string)(nil)
-	if r.Storage.Endpoint.Set {
-		endpointPtr = &r.Storage.Endpoint.Value
-	}
-	cfg := drive.StorageConfig{
-		Bucket:       r.Storage.Bucket,
-		Endpoint:     endpointPtr,
-		Region:       r.Storage.Region,
-		AccessKey:    r.Storage.AccessKey,
-		SecretKey:    r.Storage.SecretKey,
-		UsePathStyle: r.Storage.UsePathStyle.Value && r.Storage.UsePathStyle.Set,
-	}
-	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, cfg)
+	// Custom drive storage is disabled; always use the platform default storage.
+	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, h.defaultStorage)
 	if err != nil {
 		return nil, err
 	}

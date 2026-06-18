@@ -18,6 +18,7 @@ database:
 storage:
   region: us-east-1
   endpoint: ""
+  bucket: mdrive
   access_key: ""
   secret_key: ""
   use_path_style: false

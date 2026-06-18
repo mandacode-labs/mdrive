@@ -53,15 +53,28 @@ type AuthClient interface {
 }
 
 type Handler struct {
-	vfs          FSClient
-	getUser      func(context.Context) (string, bool)
-	auth         AuthClient
-	frontendURL  string
-	secureCookie bool
+	vfs           FSClient
+	getUser       func(context.Context) (string, bool)
+	auth          AuthClient
+	frontendURL   string
+	secureCookie  bool
+	defaultStorage drive.StorageConfig
 }
 
-func New(fs FSClient, getUser func(context.Context) (string, bool)) *Handler {
-	return &Handler{vfs: fs, getUser: getUser}
+func New(fs FSClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
+	h := &Handler{vfs: fs, getUser: getUser}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
+}
+
+type Option func(*Handler)
+
+func WithDefaultStorage(cfg drive.StorageConfig) Option {
+	return func(h *Handler) {
+		h.defaultStorage = cfg
+	}
 }
 
 func (h *Handler) WithAuth(a AuthClient, frontendURL string, secureCookie bool) {

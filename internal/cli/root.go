@@ -8,6 +8,7 @@ import (
 
 	apisvr "github.com/mandacode-labs/mdrive/internal/cli/apisvr"
 	"github.com/mandacode-labs/mdrive/internal/cli/gc"
+	"github.com/mandacode-labs/mdrive/internal/cli/migrate"
 )
 
 var Version = "dev"
@@ -23,6 +24,7 @@ func NewRootCmd() *cobra.Command {
 	}
 	root.AddCommand(apisvr.NewCmd())
 	root.AddCommand(gc.NewCmd())
+	root.AddCommand(migrate.NewCmd())
 	return root
 }
 

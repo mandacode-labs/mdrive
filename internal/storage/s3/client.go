@@ -35,19 +35,22 @@ type Client struct {
 }
 
 // NewClient creates a new S3 client.
+// If AccessKey and SecretKey are provided they take precedence;
+// otherwise the AWS default credential chain is used (IRSA, EC2 role, etc.).
 func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	if cfg.Region == "" {
 		return nil, errors.New("s3: region is required")
 	}
-	if cfg.AccessKey == "" || cfg.SecretKey == "" {
-		return nil, errors.New("s3: access_key and secret_key are required")
-	}
-	creds := credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, "")
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+	loadOpts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(cfg.Region),
-		awsconfig.WithCredentialsProvider(creds),
-	)
+	}
+	if cfg.AccessKey != "" && cfg.SecretKey != "" {
+		creds := credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, "")
+		loadOpts = append(loadOpts, awsconfig.WithCredentialsProvider(creds))
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("s3: load aws config: %w", err)
 	}

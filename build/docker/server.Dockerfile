@@ -97,4 +97,4 @@ ENV PORT=8080 \
 
 # Run
 ENTRYPOINT ["/app/mdrive"]
-CMD ["serve"]
+# No default CMD: the same image is used for api-server, gc, and migrate.

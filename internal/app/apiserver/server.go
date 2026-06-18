@@ -13,6 +13,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -26,7 +27,14 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
 		// Fallback: no user extraction by default (auth handles it via session context)
 		return "", false
-	})
+	}, handler.WithDefaultStorage(drive.StorageConfig{
+		Bucket:       a.Cfg.Storage.Bucket,
+		Endpoint:     nil,
+		Region:       a.Cfg.Storage.Region,
+		AccessKey:    a.Cfg.Storage.AccessKey,
+		SecretKey:    a.Cfg.Storage.SecretKey,
+		UsePathStyle: a.Cfg.Storage.UsePathStyle,
+	}))
 
 	if a.Auth != nil && a.Security != nil {
 		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL, a.Cfg.App.Env != "development")

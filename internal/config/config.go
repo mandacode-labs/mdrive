@@ -60,6 +60,7 @@ func (c DatabaseConfig) DSN() string {
 type StorageConfig struct {
 	Region       string `mapstructure:"region"`
 	Endpoint     string `mapstructure:"endpoint"`
+	Bucket       string `mapstructure:"bucket"`
 	AccessKey    string `mapstructure:"access_key"`
 	SecretKey    string `mapstructure:"secret_key"`
 	UsePathStyle bool   `mapstructure:"use_path_style"`
@@ -167,6 +168,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.region", "us-east-1")
 	v.SetDefault("storage.endpoint", "")
 	v.SetDefault("storage.use_path_style", false)
+	v.SetDefault("storage.bucket", "mdrive")
 	v.SetDefault("storage.presign_ttl", "1h")
 	v.SetDefault("crypto.master_key", "")
 	v.SetDefault("valkey.addrs", []string{"localhost:6379"})
