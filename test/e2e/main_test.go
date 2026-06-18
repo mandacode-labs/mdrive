@@ -107,7 +107,13 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
 		return u.ID(), true
-	})
+	}, handler.WithDefaultStorage(drive.StorageConfig{
+		Bucket:       "e2e-bucket",
+		Region:       "us-east-1",
+		AccessKey:    "a",
+		SecretKey:    "s",
+		UsePathStyle: false,
+	}))
 
 	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(
 		func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
@@ -133,10 +139,10 @@ func setupE2E(t *testing.T) *e2eEnv {
 	}
 	t.Cleanup(func() {
 		srv.Close()
-		entClient.Close()
+		_ = entClient.Close()
 		vClient.Close()
-		pg.Terminate(ctx)
-		vk.Terminate(ctx)
+		_ = pg.Terminate(ctx)
+		_ = vk.Terminate(ctx)
 	})
 	return env
 }

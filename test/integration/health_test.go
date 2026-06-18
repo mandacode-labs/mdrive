@@ -15,10 +15,10 @@ func TestHealth(t *testing.T) {
 
 	resp, err := http.Get(srv.URL + "/health")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	var body map[string]any
-	json.NewDecoder(resp.Body).Decode(&body)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 	assert.Equal(t, "ok", body["status"])
 }

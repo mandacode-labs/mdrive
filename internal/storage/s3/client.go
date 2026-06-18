@@ -137,7 +137,7 @@ func (c *Client) GetObject(ctx context.Context, bucket, key string) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	defer out.Body.Close()
+	defer func() { _ = out.Body.Close() }()
 	return io.ReadAll(out.Body)
 }
 

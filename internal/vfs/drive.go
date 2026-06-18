@@ -9,6 +9,13 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
+const (
+	permView   = permission.PermissionView
+	permEdit   = permission.PermissionEdit
+	permDelete = permission.PermissionDelete
+	permManage = permission.PermissionManage
+)
+
 // CreateDrive creates a drive with storage config and root node. Grants owner in OpenFGA.
 func (s *Service) CreateDrive(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
 	d, rootID, err := s.Drive.Create(ctx, name, &description, actorID, cfg)
@@ -22,7 +29,10 @@ func (s *Service) CreateDrive(ctx context.Context, actorID string, name, descrip
 }
 
 // GetDrive returns a drive by private ID.
-func (s *Service) GetDrive(ctx context.Context, id string) (*drive.Drive, error) {
+func (s *Service) GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+	if err := s.checkAccess(ctx, actorID, permView, id); err != nil {
+		return nil, err
+	}
 	return s.Drive.GetByID(ctx, id)
 }
 
@@ -32,17 +42,26 @@ func (s *Service) GetDriveByPublicID(ctx context.Context, pubID string) (*drive.
 }
 
 // GetDriveStorage returns the storage config for a drive.
-func (s *Service) GetDriveStorage(ctx context.Context, driveID string) (*drive.Storage, error) {
+func (s *Service) GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
+	if err := s.checkAccess(ctx, actorID, permView, driveID); err != nil {
+		return nil, err
+	}
 	return s.Drive.GetStorage(ctx, driveID)
 }
 
 // UpdateDrive updates drive fields.
-func (s *Service) UpdateDrive(ctx context.Context, id string, name, description *string) (*drive.Drive, error) {
+func (s *Service) UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error) {
+	if err := s.checkAccess(ctx, actorID, permEdit, id); err != nil {
+		return nil, err
+	}
 	return s.Drive.Update(ctx, id, name, description)
 }
 
 // DeleteDrive removes a drive.
-func (s *Service) DeleteDrive(ctx context.Context, id string) error {
+func (s *Service) DeleteDrive(ctx context.Context, actorID, id string) error {
+	if err := s.checkAccess(ctx, actorID, permDelete, id); err != nil {
+		return err
+	}
 	return s.Drive.Delete(ctx, id)
 }
 

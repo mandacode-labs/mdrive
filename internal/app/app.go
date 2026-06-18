@@ -3,13 +3,15 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/XSAM/otelsql"
 	"github.com/google/uuid"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"github.com/valkey-io/valkey-go"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/auth"
@@ -21,6 +23,7 @@ import (
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/storage/s3"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
@@ -30,15 +33,16 @@ type App struct {
 	Cfg *config.Config
 	Log *logging.Logger
 
-	NodeSvc   *node.Service
-	DriveSvc  *drive.Service
-	UserSvc   *user.Service
-	UserEx    user.Exister
-	UploadReg upload.Registry
-	TombstoneInserter  vfs.TombstoneInserter
-	Auth      *auth.Service
-	Security  *auth.SecurityHandler
-	Perm      permission.Checker
+	NodeSvc           *node.Service
+	DriveSvc          *drive.Service
+	UserSvc           *user.Service
+	UserEx            user.Exister
+	UploadReg         upload.Registry
+	Store             vfs.Store
+	TombstoneInserter vfs.TombstoneInserter
+	Auth              *auth.Service
+	Security          *auth.SecurityHandler
+	Perm              permission.Checker
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -85,8 +89,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		var err error
 		cipher, err = cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
 		}
+	} else if cfg.App.Env != "development" {
+		return nil, errors.New("crypto.master_key is required in production")
 	}
 
 	driveRepo := drive.NewRepository(entClient, cipher)
@@ -99,8 +105,17 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	gc := newTombstoneInserter(entClient)
 
+	storageStore, err := newStore(ctx, cfg.Storage)
+	if err != nil {
+		return nil, err
+	}
+
 	var permClient permission.Checker
-	if cfg.OpenFGA.APIURL != "" {
+	openFGAConfigured := cfg.OpenFGA.APIURL != ""
+	if openFGAConfigured || cfg.App.Env != "development" {
+		if cfg.OpenFGA.APIURL == "" {
+			return nil, errors.New("openfga.api_url is required in production")
+		}
 		permClient, err = permission.NewOpenFGAChecker(ctx, permission.Config{
 			APIURL:               cfg.OpenFGA.APIURL,
 			StoreID:              cfg.OpenFGA.StoreID,
@@ -112,7 +127,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 			Audience:             cfg.OpenFGA.Audience,
 		})
 		if err != nil {
-			log.Warn().Err(err).Msg("openfga: initialization failed, permission checks disabled")
+			return nil, fmt.Errorf("openfga: initialize: %w", err)
 		}
 	}
 
@@ -138,19 +153,20 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	return &App{
-		Cfg:       cfg,
-		Log:       log,
-		NodeSvc:   nodeSvc,
-		DriveSvc:  driveSvc,
-		UserSvc:   userSvc,
-		UserEx:    userEx,
-		UploadReg: uploadReg,
-		TombstoneInserter:  gc,
-		Auth:      authenticator,
-		Security:  sec,
-		Perm:      permClient,
-		DB:        db,
-		Ent:       entClient,
+		Cfg:               cfg,
+		Log:               log,
+		NodeSvc:           nodeSvc,
+		DriveSvc:          driveSvc,
+		UserSvc:           userSvc,
+		UserEx:            userEx,
+		UploadReg:         uploadReg,
+		Store:             storageStore,
+		TombstoneInserter: gc,
+		Auth:              authenticator,
+		Security:          sec,
+		Perm:              permClient,
+		DB:                db,
+		Ent:               entClient,
 	}, nil
 }
 
@@ -176,6 +192,20 @@ func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, erro
 		return uuid.Nil, err
 	}
 	return root.ID(), nil
+}
+
+func newStore(ctx context.Context, cfg config.StorageConfig) (vfs.Store, error) {
+	endpoint := (*string)(nil)
+	if cfg.Endpoint != "" {
+		endpoint = &cfg.Endpoint
+	}
+	return s3.NewClient(ctx, s3.Config{
+		Region:       cfg.Region,
+		Endpoint:     endpoint,
+		AccessKey:    cfg.AccessKey,
+		SecretKey:    cfg.SecretKey,
+		UsePathStyle: cfg.UsePathStyle,
+	})
 }
 
 func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Client, upload.Registry, error) {

@@ -51,15 +51,17 @@ func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
 	return drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, d.now(), d.now()), nil
 }
 func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
-	return d.GetByID(nil, "")
+	return d.GetByID(context.Background(), "")
 }
 func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
 	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false), nil
 }
-func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) { return nil, nil }
-func (d *fakeDrive) Delete(_ context.Context, _ string) error                               { return nil }
-func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error)         { return nil, nil }
-func (d *fakeDrive) now() time.Time                                                          { return time.Now() }
+func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
+	return nil, nil
+}
+func (d *fakeDrive) Delete(_ context.Context, _ string) error                        { return nil }
+func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error) { return nil, nil }
+func (d *fakeDrive) now() time.Time                                                  { return time.Now() }
 
 type fakeUser struct{}
 
@@ -72,7 +74,7 @@ func (u *fakeUser) GetByProviderID(_ context.Context, _, _ string) (*user.User, 
 	return nil, nil
 }
 func (u *fakeUser) Update(_ context.Context, _ *user.User) (*user.User, error) { return nil, nil }
-func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error)            { return true, nil }
+func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error)           { return true, nil }
 
 type fakeStore struct{}
 
@@ -103,5 +105,5 @@ func newTestService() *Service {
 	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
 }
 
-func strPtr(s string) *string  { return &s }
+func strPtr(s string) *string { return &s }
 func int64Ptr(i int64) *int64 { return &i }

@@ -310,16 +310,16 @@ func (_c *FSClientMock_CreateDrive_Call) RunAndReturn(run func(ctx context.Conte
 }
 
 // DeleteDrive provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) DeleteDrive(ctx context.Context, id string) error {
-	ret := _mock.Called(ctx, id)
+func (_mock *FSClientMock) DeleteDrive(ctx context.Context, actorID string, id string) error {
+	ret := _mock.Called(ctx, actorID, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteDrive")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = returnFunc(ctx, actorID, id)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -333,12 +333,13 @@ type FSClientMock_DeleteDrive_Call struct {
 
 // DeleteDrive is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - id string
-func (_e *FSClientMock_Expecter) DeleteDrive(ctx interface{}, id interface{}) *FSClientMock_DeleteDrive_Call {
-	return &FSClientMock_DeleteDrive_Call{Call: _e.mock.On("DeleteDrive", ctx, id)}
+func (_e *FSClientMock_Expecter) DeleteDrive(ctx interface{}, actorID interface{}, id interface{}) *FSClientMock_DeleteDrive_Call {
+	return &FSClientMock_DeleteDrive_Call{Call: _e.mock.On("DeleteDrive", ctx, actorID, id)}
 }
 
-func (_c *FSClientMock_DeleteDrive_Call) Run(run func(ctx context.Context, id string)) *FSClientMock_DeleteDrive_Call {
+func (_c *FSClientMock_DeleteDrive_Call) Run(run func(ctx context.Context, actorID string, id string)) *FSClientMock_DeleteDrive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -348,9 +349,14 @@ func (_c *FSClientMock_DeleteDrive_Call) Run(run func(ctx context.Context, id st
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -361,14 +367,14 @@ func (_c *FSClientMock_DeleteDrive_Call) Return(err error) *FSClientMock_DeleteD
 	return _c
 }
 
-func (_c *FSClientMock_DeleteDrive_Call) RunAndReturn(run func(ctx context.Context, id string) error) *FSClientMock_DeleteDrive_Call {
+func (_c *FSClientMock_DeleteDrive_Call) RunAndReturn(run func(ctx context.Context, actorID string, id string) error) *FSClientMock_DeleteDrive_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetDrive provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) GetDrive(ctx context.Context, id string) (*drive.Drive, error) {
-	ret := _mock.Called(ctx, id)
+func (_mock *FSClientMock) GetDrive(ctx context.Context, actorID string, id string) (*drive.Drive, error) {
+	ret := _mock.Called(ctx, actorID, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDrive")
@@ -376,18 +382,18 @@ func (_mock *FSClientMock) GetDrive(ctx context.Context, id string) (*drive.Driv
 
 	var r0 *drive.Drive
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*drive.Drive, error)); ok {
-		return returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*drive.Drive, error)); ok {
+		return returnFunc(ctx, actorID, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *drive.Drive); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *drive.Drive); ok {
+		r0 = returnFunc(ctx, actorID, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*drive.Drive)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, actorID, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -401,12 +407,13 @@ type FSClientMock_GetDrive_Call struct {
 
 // GetDrive is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - id string
-func (_e *FSClientMock_Expecter) GetDrive(ctx interface{}, id interface{}) *FSClientMock_GetDrive_Call {
-	return &FSClientMock_GetDrive_Call{Call: _e.mock.On("GetDrive", ctx, id)}
+func (_e *FSClientMock_Expecter) GetDrive(ctx interface{}, actorID interface{}, id interface{}) *FSClientMock_GetDrive_Call {
+	return &FSClientMock_GetDrive_Call{Call: _e.mock.On("GetDrive", ctx, actorID, id)}
 }
 
-func (_c *FSClientMock_GetDrive_Call) Run(run func(ctx context.Context, id string)) *FSClientMock_GetDrive_Call {
+func (_c *FSClientMock_GetDrive_Call) Run(run func(ctx context.Context, actorID string, id string)) *FSClientMock_GetDrive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -416,9 +423,14 @@ func (_c *FSClientMock_GetDrive_Call) Run(run func(ctx context.Context, id strin
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -429,14 +441,14 @@ func (_c *FSClientMock_GetDrive_Call) Return(drive1 *drive.Drive, err error) *FS
 	return _c
 }
 
-func (_c *FSClientMock_GetDrive_Call) RunAndReturn(run func(ctx context.Context, id string) (*drive.Drive, error)) *FSClientMock_GetDrive_Call {
+func (_c *FSClientMock_GetDrive_Call) RunAndReturn(run func(ctx context.Context, actorID string, id string) (*drive.Drive, error)) *FSClientMock_GetDrive_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetDriveStorage provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) GetDriveStorage(ctx context.Context, driveID string) (*drive.Storage, error) {
-	ret := _mock.Called(ctx, driveID)
+func (_mock *FSClientMock) GetDriveStorage(ctx context.Context, actorID string, driveID string) (*drive.Storage, error) {
+	ret := _mock.Called(ctx, actorID, driveID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetDriveStorage")
@@ -444,18 +456,18 @@ func (_mock *FSClientMock) GetDriveStorage(ctx context.Context, driveID string) 
 
 	var r0 *drive.Storage
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*drive.Storage, error)); ok {
-		return returnFunc(ctx, driveID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*drive.Storage, error)); ok {
+		return returnFunc(ctx, actorID, driveID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *drive.Storage); ok {
-		r0 = returnFunc(ctx, driveID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *drive.Storage); ok {
+		r0 = returnFunc(ctx, actorID, driveID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*drive.Storage)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, driveID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, actorID, driveID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -469,12 +481,13 @@ type FSClientMock_GetDriveStorage_Call struct {
 
 // GetDriveStorage is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - driveID string
-func (_e *FSClientMock_Expecter) GetDriveStorage(ctx interface{}, driveID interface{}) *FSClientMock_GetDriveStorage_Call {
-	return &FSClientMock_GetDriveStorage_Call{Call: _e.mock.On("GetDriveStorage", ctx, driveID)}
+func (_e *FSClientMock_Expecter) GetDriveStorage(ctx interface{}, actorID interface{}, driveID interface{}) *FSClientMock_GetDriveStorage_Call {
+	return &FSClientMock_GetDriveStorage_Call{Call: _e.mock.On("GetDriveStorage", ctx, actorID, driveID)}
 }
 
-func (_c *FSClientMock_GetDriveStorage_Call) Run(run func(ctx context.Context, driveID string)) *FSClientMock_GetDriveStorage_Call {
+func (_c *FSClientMock_GetDriveStorage_Call) Run(run func(ctx context.Context, actorID string, driveID string)) *FSClientMock_GetDriveStorage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -484,9 +497,14 @@ func (_c *FSClientMock_GetDriveStorage_Call) Run(run func(ctx context.Context, d
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -497,14 +515,14 @@ func (_c *FSClientMock_GetDriveStorage_Call) Return(storage *drive.Storage, err 
 	return _c
 }
 
-func (_c *FSClientMock_GetDriveStorage_Call) RunAndReturn(run func(ctx context.Context, driveID string) (*drive.Storage, error)) *FSClientMock_GetDriveStorage_Call {
+func (_c *FSClientMock_GetDriveStorage_Call) RunAndReturn(run func(ctx context.Context, actorID string, driveID string) (*drive.Storage, error)) *FSClientMock_GetDriveStorage_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetUser provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) GetUser(ctx context.Context, id string) (*user.User, error) {
-	ret := _mock.Called(ctx, id)
+func (_mock *FSClientMock) GetUser(ctx context.Context, actorID string, id string) (*user.User, error) {
+	ret := _mock.Called(ctx, actorID, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetUser")
@@ -512,18 +530,18 @@ func (_mock *FSClientMock) GetUser(ctx context.Context, id string) (*user.User, 
 
 	var r0 *user.User
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*user.User, error)); ok {
-		return returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*user.User, error)); ok {
+		return returnFunc(ctx, actorID, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *user.User); ok {
-		r0 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *user.User); ok {
+		r0 = returnFunc(ctx, actorID, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*user.User)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, id)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, actorID, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -537,12 +555,13 @@ type FSClientMock_GetUser_Call struct {
 
 // GetUser is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - id string
-func (_e *FSClientMock_Expecter) GetUser(ctx interface{}, id interface{}) *FSClientMock_GetUser_Call {
-	return &FSClientMock_GetUser_Call{Call: _e.mock.On("GetUser", ctx, id)}
+func (_e *FSClientMock_Expecter) GetUser(ctx interface{}, actorID interface{}, id interface{}) *FSClientMock_GetUser_Call {
+	return &FSClientMock_GetUser_Call{Call: _e.mock.On("GetUser", ctx, actorID, id)}
 }
 
-func (_c *FSClientMock_GetUser_Call) Run(run func(ctx context.Context, id string)) *FSClientMock_GetUser_Call {
+func (_c *FSClientMock_GetUser_Call) Run(run func(ctx context.Context, actorID string, id string)) *FSClientMock_GetUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -552,9 +571,14 @@ func (_c *FSClientMock_GetUser_Call) Run(run func(ctx context.Context, id string
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -565,7 +589,7 @@ func (_c *FSClientMock_GetUser_Call) Return(user1 *user.User, err error) *FSClie
 	return _c
 }
 
-func (_c *FSClientMock_GetUser_Call) RunAndReturn(run func(ctx context.Context, id string) (*user.User, error)) *FSClientMock_GetUser_Call {
+func (_c *FSClientMock_GetUser_Call) RunAndReturn(run func(ctx context.Context, actorID string, id string) (*user.User, error)) *FSClientMock_GetUser_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1379,8 +1403,8 @@ func (_c *FSClientMock_Touch_Call) RunAndReturn(run func(ctx context.Context, us
 }
 
 // UpdateDrive provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) UpdateDrive(ctx context.Context, id string, name *string, description *string) (*drive.Drive, error) {
-	ret := _mock.Called(ctx, id, name, description)
+func (_mock *FSClientMock) UpdateDrive(ctx context.Context, actorID string, id string, name *string, description *string) (*drive.Drive, error) {
+	ret := _mock.Called(ctx, actorID, id, name, description)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateDrive")
@@ -1388,18 +1412,18 @@ func (_mock *FSClientMock) UpdateDrive(ctx context.Context, id string, name *str
 
 	var r0 *drive.Drive
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *string, *string) (*drive.Drive, error)); ok {
-		return returnFunc(ctx, id, name, description)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, *string, *string) (*drive.Drive, error)); ok {
+		return returnFunc(ctx, actorID, id, name, description)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *string, *string) *drive.Drive); ok {
-		r0 = returnFunc(ctx, id, name, description)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, *string, *string) *drive.Drive); ok {
+		r0 = returnFunc(ctx, actorID, id, name, description)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*drive.Drive)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *string, *string) error); ok {
-		r1 = returnFunc(ctx, id, name, description)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, *string, *string) error); ok {
+		r1 = returnFunc(ctx, actorID, id, name, description)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1413,14 +1437,15 @@ type FSClientMock_UpdateDrive_Call struct {
 
 // UpdateDrive is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - id string
 //   - name *string
 //   - description *string
-func (_e *FSClientMock_Expecter) UpdateDrive(ctx interface{}, id interface{}, name interface{}, description interface{}) *FSClientMock_UpdateDrive_Call {
-	return &FSClientMock_UpdateDrive_Call{Call: _e.mock.On("UpdateDrive", ctx, id, name, description)}
+func (_e *FSClientMock_Expecter) UpdateDrive(ctx interface{}, actorID interface{}, id interface{}, name interface{}, description interface{}) *FSClientMock_UpdateDrive_Call {
+	return &FSClientMock_UpdateDrive_Call{Call: _e.mock.On("UpdateDrive", ctx, actorID, id, name, description)}
 }
 
-func (_c *FSClientMock_UpdateDrive_Call) Run(run func(ctx context.Context, id string, name *string, description *string)) *FSClientMock_UpdateDrive_Call {
+func (_c *FSClientMock_UpdateDrive_Call) Run(run func(ctx context.Context, actorID string, id string, name *string, description *string)) *FSClientMock_UpdateDrive_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1430,19 +1455,24 @@ func (_c *FSClientMock_UpdateDrive_Call) Run(run func(ctx context.Context, id st
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 *string
+		var arg2 string
 		if args[2] != nil {
-			arg2 = args[2].(*string)
+			arg2 = args[2].(string)
 		}
 		var arg3 *string
 		if args[3] != nil {
 			arg3 = args[3].(*string)
+		}
+		var arg4 *string
+		if args[4] != nil {
+			arg4 = args[4].(*string)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
+			arg4,
 		)
 	})
 	return _c
@@ -1453,14 +1483,14 @@ func (_c *FSClientMock_UpdateDrive_Call) Return(drive1 *drive.Drive, err error) 
 	return _c
 }
 
-func (_c *FSClientMock_UpdateDrive_Call) RunAndReturn(run func(ctx context.Context, id string, name *string, description *string) (*drive.Drive, error)) *FSClientMock_UpdateDrive_Call {
+func (_c *FSClientMock_UpdateDrive_Call) RunAndReturn(run func(ctx context.Context, actorID string, id string, name *string, description *string) (*drive.Drive, error)) *FSClientMock_UpdateDrive_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpsertUser provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) UpsertUser(ctx context.Context, cmd *user.CreateCommand) (*user.User, error) {
-	ret := _mock.Called(ctx, cmd)
+func (_mock *FSClientMock) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
+	ret := _mock.Called(ctx, actorID, cmd)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpsertUser")
@@ -1468,18 +1498,18 @@ func (_mock *FSClientMock) UpsertUser(ctx context.Context, cmd *user.CreateComma
 
 	var r0 *user.User
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *user.CreateCommand) (*user.User, error)); ok {
-		return returnFunc(ctx, cmd)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *user.CreateCommand) (*user.User, error)); ok {
+		return returnFunc(ctx, actorID, cmd)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *user.CreateCommand) *user.User); ok {
-		r0 = returnFunc(ctx, cmd)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *user.CreateCommand) *user.User); ok {
+		r0 = returnFunc(ctx, actorID, cmd)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*user.User)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *user.CreateCommand) error); ok {
-		r1 = returnFunc(ctx, cmd)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *user.CreateCommand) error); ok {
+		r1 = returnFunc(ctx, actorID, cmd)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1493,24 +1523,30 @@ type FSClientMock_UpsertUser_Call struct {
 
 // UpsertUser is a helper method to define mock.On call
 //   - ctx context.Context
+//   - actorID string
 //   - cmd *user.CreateCommand
-func (_e *FSClientMock_Expecter) UpsertUser(ctx interface{}, cmd interface{}) *FSClientMock_UpsertUser_Call {
-	return &FSClientMock_UpsertUser_Call{Call: _e.mock.On("UpsertUser", ctx, cmd)}
+func (_e *FSClientMock_Expecter) UpsertUser(ctx interface{}, actorID interface{}, cmd interface{}) *FSClientMock_UpsertUser_Call {
+	return &FSClientMock_UpsertUser_Call{Call: _e.mock.On("UpsertUser", ctx, actorID, cmd)}
 }
 
-func (_c *FSClientMock_UpsertUser_Call) Run(run func(ctx context.Context, cmd *user.CreateCommand)) *FSClientMock_UpsertUser_Call {
+func (_c *FSClientMock_UpsertUser_Call) Run(run func(ctx context.Context, actorID string, cmd *user.CreateCommand)) *FSClientMock_UpsertUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *user.CreateCommand
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(*user.CreateCommand)
+			arg1 = args[1].(string)
+		}
+		var arg2 *user.CreateCommand
+		if args[2] != nil {
+			arg2 = args[2].(*user.CreateCommand)
 		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -1521,7 +1557,7 @@ func (_c *FSClientMock_UpsertUser_Call) Return(user1 *user.User, err error) *FSC
 	return _c
 }
 
-func (_c *FSClientMock_UpsertUser_Call) RunAndReturn(run func(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)) *FSClientMock_UpsertUser_Call {
+func (_c *FSClientMock_UpsertUser_Call) RunAndReturn(run func(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)) *FSClientMock_UpsertUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

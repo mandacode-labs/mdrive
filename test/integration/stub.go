@@ -67,14 +67,14 @@ func (s *stubFS) CreateDrive(ctx context.Context, actorID, name, description str
 	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, time.Now(), time.Now())
 	return d, rootID, nil
 }
-func (s *stubFS) GetDrive(ctx context.Context, id string) (*drive.Drive, error) {
+func (s *stubFS) GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
 	rootID := uuid.New()
 	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, time.Now(), time.Now()), nil
 }
-func (s *stubFS) GetDriveStorage(ctx context.Context, driveID string) (*drive.Storage, error) {
+func (s *stubFS) GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
 	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
 }
-func (s *stubFS) UpdateDrive(ctx context.Context, id string, name, description *string) (*drive.Drive, error) {
+func (s *stubFS) UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error) {
 	n := ""
 	if name != nil {
 		n = *name
@@ -82,16 +82,16 @@ func (s *stubFS) UpdateDrive(ctx context.Context, id string, name, description *
 	rootID := uuid.New()
 	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, time.Now(), time.Now()), nil
 }
-func (s *stubFS) DeleteDrive(ctx context.Context, id string) error { return nil }
+func (s *stubFS) DeleteDrive(ctx context.Context, actorID, id string) error { return nil }
 func (s *stubFS) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
 	rootID := uuid.New()
 	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, time.Now(), time.Now())
 	return []*drive.Drive{d}, nil
 }
-func (s *stubFS) UpsertUser(ctx context.Context, cmd *user.CreateCommand) (*user.User, error) {
+func (s *stubFS) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
 	return user.NewUser("u1", "pub1", cmd.Name, cmd.Email, cmd.Provider, cmd.ProviderID, time.Now(), time.Now()), nil
 }
-func (s *stubFS) GetUser(ctx context.Context, id string) (*user.User, error) {
+func (s *stubFS) GetUser(ctx context.Context, actorID, id string) (*user.User, error) {
 	return user.NewUser(id, "pub1", "Tester", nil, "google", "g123", time.Now(), time.Now()), nil
 }
 

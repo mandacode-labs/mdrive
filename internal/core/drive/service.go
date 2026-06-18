@@ -151,6 +151,5 @@ func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 }
 
 func storageCfgValid(cfg *StorageConfig) bool {
-	return cfg.Bucket != "" && cfg.Region != "" &&
-		cfg.AccessKey != "" && cfg.SecretKey != ""
+	return cfg.Bucket != "" && cfg.Region != ""
 }

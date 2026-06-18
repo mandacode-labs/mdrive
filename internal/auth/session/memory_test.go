@@ -38,7 +38,7 @@ func TestMemoryStore_GetNotFound(t *testing.T) {
 func TestMemoryStore_GetExpired(t *testing.T) {
 	s := NewMemoryStore()
 	sess := New(-1 * time.Hour) // already expired
-	s.Create(context.Background(), sess)
+	require.NoError(t, s.Create(context.Background(), sess))
 
 	_, err := s.Get(context.Background(), sess.ID)
 	assert.ErrorIs(t, err, ErrExpired)

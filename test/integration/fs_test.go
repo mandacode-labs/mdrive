@@ -16,7 +16,7 @@ func TestMkdir(t *testing.T) {
 	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/mkdir", bytes.NewReader([]byte(`{"path":"/foo"}`)))
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
@@ -26,7 +26,7 @@ func TestTouch(t *testing.T) {
 	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/touch", bytes.NewReader([]byte(`{"path":"/hello.txt"}`)))
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }
 
@@ -35,16 +35,18 @@ func TestWriteAndCat(t *testing.T) {
 	defer srv.Close()
 
 	req := authReq("PUT", srv.URL+"/v1/drives/d1/fs/write", bytes.NewReader([]byte(`{"path":"/data.txt","content":"hello"}`)))
-	resp, _ := http.DefaultClient.Do(req)
-	resp.Body.Close()
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	req2 := authReq("GET", srv.URL+"/v1/drives/d1/fs/cat?path=%2Fdata.txt", nil)
 	resp2, err := http.DefaultClient.Do(req2)
 	require.NoError(t, err)
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp2.StatusCode)
-	got, _ := io.ReadAll(resp2.Body)
+	got, err := io.ReadAll(resp2.Body)
+	require.NoError(t, err)
 	assert.Equal(t, "hello", string(got))
 }
 
@@ -54,7 +56,7 @@ func TestRm(t *testing.T) {
 	req := authReq("DELETE", srv.URL+"/v1/drives/d1/fs", bytes.NewReader([]byte(`{"paths":["/x"]}`)))
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
 
@@ -64,7 +66,7 @@ func TestStat(t *testing.T) {
 	req := authReq("GET", srv.URL+"/v1/drives/d1/fs/stat?path=%2Fhello.txt", nil)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
@@ -74,6 +76,6 @@ func TestSymlink(t *testing.T) {
 	req := authReq("POST", srv.URL+"/v1/drives/d1/fs/symlink", bytes.NewReader([]byte(`{"target":"/target","linkPath":"/link"}`)))
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 }

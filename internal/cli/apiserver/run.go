@@ -3,8 +3,8 @@ package apiserver
 import (
 	"github.com/spf13/cobra"
 
-	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app"
+	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
@@ -32,7 +32,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, nil, a.Perm, a.UploadReg, a.TombstoneInserter)
+			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, a.Store, a.Perm, a.UploadReg, a.TombstoneInserter)
 			return server.NewServer(a, fs).Run()
 		},
 	}

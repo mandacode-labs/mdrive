@@ -22,7 +22,7 @@ func TestE2E_FSOperations(t *testing.T) {
 	req := env.authReq("POST", "/v1/drives", bytes.NewReader([]byte(createBody)))
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// The drive ID format is ULID. We get it from the list.
@@ -30,8 +30,8 @@ func TestE2E_FSOperations(t *testing.T) {
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
 	var drives []map[string]any
-	jsonDecode(resp.Body, &drives)
-	resp.Body.Close()
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&drives))
+	require.NoError(t, resp.Body.Close())
 	require.NotEmpty(t, drives)
 	driveID := drives[0]["id"].(string)
 
@@ -39,21 +39,21 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("POST", "/v1/drives/"+driveID+"/fs/mkdir", bytes.NewReader([]byte(`{"path":"/docs"}`)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Touch
 	req = env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"/docs/readme.md"}`)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	// Write
 	req = env.authReq("PUT", "/v1/drives/"+driveID+"/fs/write", bytes.NewReader([]byte(`{"path":"/docs/readme.md","content":"# Hello E2E"}`)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Cat
@@ -61,9 +61,10 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/cat?path=%2Fdocs%2Freadme.md", bytes.NewReader([]byte(catBody)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	got, _ := io.ReadAll(resp.Body)
+	got, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 	t.Logf("cat content: %q", string(got))
 	assert.Equal(t, "# Hello E2E", string(got))
 
@@ -71,14 +72,14 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/ls?path=%2Fdocs", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	var lsBody struct {
 		Entries []struct {
 			Name string `json:"name"`
 		} `json:"entries"`
 	}
-	jsonDecode(resp.Body, &lsBody)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&lsBody))
 	assert.Len(t, lsBody.Entries, 1)
 	assert.Equal(t, "readme.md", lsBody.Entries[0].Name)
 
@@ -86,13 +87,13 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Fdocs%2Freadme.md", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	var statBody struct {
 		Type string `json:"type"`
 		Size int64  `json:"size"`
 	}
-	jsonDecode(resp.Body, &statBody)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&statBody))
 	assert.Equal(t, "file", statBody.Type)
 	assert.Equal(t, int64(11), statBody.Size)
 
@@ -100,20 +101,16 @@ func TestE2E_FSOperations(t *testing.T) {
 	req = env.authReq("DELETE", "/v1/drives/"+driveID+"/fs", bytes.NewReader([]byte(`{"paths":["/docs/readme.md"]}`)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Verify removed
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/ls?path=%2Fdocs", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	lsBody.Entries = nil
-	jsonDecode(resp.Body, &lsBody)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&lsBody))
 	assert.Len(t, lsBody.Entries, 0)
-}
-
-func jsonDecode(r io.Reader, v any) {
-	_ = json.NewDecoder(r).Decode(v)
 }

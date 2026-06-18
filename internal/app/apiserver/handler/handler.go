@@ -31,13 +31,13 @@ type FSClient interface {
 	CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error)
 	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (vfs.PresignInfo, error)
 	CreateDrive(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
-	GetDrive(ctx context.Context, id string) (*drive.Drive, error)
-	GetDriveStorage(ctx context.Context, driveID string) (*drive.Storage, error)
-	UpdateDrive(ctx context.Context, id string, name, description *string) (*drive.Drive, error)
-	DeleteDrive(ctx context.Context, id string) error
+	GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error)
+	GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
+	UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error)
+	DeleteDrive(ctx context.Context, actorID, id string) error
 	ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error)
-	UpsertUser(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
-	GetUser(ctx context.Context, id string) (*user.User, error)
+	UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)
+	GetUser(ctx context.Context, actorID, id string) (*user.User, error)
 }
 
 // AuthClient is the consumer-declared interface for authentication operations.
@@ -53,11 +53,11 @@ type AuthClient interface {
 }
 
 type Handler struct {
-	vfs           FSClient
-	getUser       func(context.Context) (string, bool)
-	auth          AuthClient
-	frontendURL   string
-	secureCookie  bool
+	vfs            FSClient
+	getUser        func(context.Context) (string, bool)
+	auth           AuthClient
+	frontendURL    string
+	secureCookie   bool
 	defaultStorage drive.StorageConfig
 }
 

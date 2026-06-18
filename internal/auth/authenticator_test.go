@@ -19,7 +19,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, ".well-known") {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"issuer":"http://` + r.Host + `",
 				"authorization_endpoint":"http://` + r.Host + `/authorize",
 				"token_endpoint":"http://` + r.Host + `/token",

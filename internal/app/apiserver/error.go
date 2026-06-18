@@ -5,20 +5,30 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/mandacode-labs/mdrive/pkg/api"
+	"github.com/ogen-go/ogen/ogenerrors"
+
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // FromError converts a domain error to (HTTP status code, api.Error).
 func FromError(err error) (int, api.Error) {
 	switch {
+	case errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied):
+		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthorized"}
+
+	case errors.Is(err, vfs.ErrPermission):
+		return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}
+
 	case errors.Is(err, node.ErrNotFound),
 		errors.Is(err, drive.ErrNotFound),
 		errors.Is(err, user.ErrNotFound),
 		errors.Is(err, node.ErrEntryNotFound),
-		errors.Is(err, node.ErrNoContent):
+		errors.Is(err, node.ErrNoContent),
+		errors.Is(err, vfs.ErrObjectNotUploaded):
 		return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
 
 	case errors.Is(err, node.ErrEntryExists),
@@ -37,8 +47,16 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, drive.ErrInvalidCredentials),
 		errors.Is(err, user.ErrProviderRequired),
 		errors.Is(err, user.ErrProviderIDRequired),
-		errors.Is(err, user.ErrNameRequired):
+		errors.Is(err, user.ErrNameRequired),
+		errors.Is(err, vfs.ErrInvalidPath),
+		errors.Is(err, vfs.ErrCrossDrive),
+		errors.Is(err, vfs.ErrUploadMismatch):
 		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
+	}
+
+	var secErr *ogenerrors.SecurityError
+	if errors.As(err, &secErr) {
+		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthorized"}
 	}
 
 	return http.StatusInternalServerError, api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}

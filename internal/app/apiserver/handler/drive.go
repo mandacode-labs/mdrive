@@ -23,7 +23,7 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
-	d, err := h.vfs.GetDrive(ctx, params.DriveID)
+	d, err := h.vfs.GetDrive(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 	if r.Description.Set {
 		descPtr = &r.Description.Value
 	}
-	drv, err := h.vfs.UpdateDrive(ctx, params.DriveID, namePtr, descPtr)
+	drv, err := h.vfs.UpdateDrive(ctx, h.userID(ctx), params.DriveID, namePtr, descPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -48,19 +48,17 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 }
 
 func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) error {
-	return h.vfs.DeleteDrive(ctx, params.DriveID)
+	return h.vfs.DeleteDrive(ctx, h.userID(ctx), params.DriveID)
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
-	s, err := h.vfs.GetDriveStorage(ctx, params.DriveID)
+	s, err := h.vfs.GetDriveStorage(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
 	return &api.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),
-		AccessKey:    s.AccessKey(),
-		SecretKey:    s.SecretKey(),
 		Endpoint:     toOptStringPtr(s.Endpoint()),
 		UsePathStyle: optBool(s.UsePathStyle()),
 	}, nil

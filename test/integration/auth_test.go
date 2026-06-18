@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAuthMe_NoAuthConfigured(t *testing.T) {
@@ -12,7 +13,7 @@ func TestAuthMe_NoAuthConfigured(t *testing.T) {
 	defer srv.Close()
 	req := authReq("GET", srv.URL+"/auth/me", nil)
 	resp, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }

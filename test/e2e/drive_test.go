@@ -24,11 +24,11 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	req := env.authReq("POST", "/v1/drives", bytes.NewReader([]byte(body)))
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
 	var created api.Drive
-	json.NewDecoder(resp.Body).Decode(&created)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
 	driveID := created.ID.Value
 	require.NotEmpty(t, driveID)
 
@@ -36,18 +36,18 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// List drives
 	req = env.authReq("GET", "/v1/drives", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var drives []api.Drive
-	json.NewDecoder(resp.Body).Decode(&drives)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&drives))
 	assert.Len(t, drives, 1)
 
 	// Update drive
@@ -55,17 +55,17 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	req = env.authReq("PUT", "/v1/drives/"+driveID+"/root", bytes.NewReader([]byte(updateBody)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	var updated api.Drive
-	json.NewDecoder(resp.Body).Decode(&updated)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&updated))
 	assert.Equal(t, "e2e-drive-updated", updated.Name.Value)
 
 	// Delete drive
 	req = env.authReq("DELETE", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
@@ -76,6 +76,6 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
-	resp.Body.Close()
+	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }

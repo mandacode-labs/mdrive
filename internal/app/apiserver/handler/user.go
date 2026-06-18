@@ -16,7 +16,8 @@ func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) erro
 		e := r.Email.Value
 		email = &e
 	}
-	_, err := h.vfs.UpsertUser(ctx, &user.CreateCommand{
+	uid := h.userID(ctx)
+	_, err := h.vfs.UpsertUser(ctx, uid, &user.CreateCommand{
 		Name:       r.Name,
 		Email:      email,
 		Provider:   r.Provider,
@@ -26,7 +27,7 @@ func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) erro
 }
 
 func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
-	u, err := h.vfs.GetUser(ctx, h.userID(ctx))
+	u, err := h.vfs.GetUser(ctx, h.userID(ctx), h.userID(ctx))
 	if err != nil {
 		return nil, err
 	}

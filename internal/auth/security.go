@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -37,27 +36,32 @@ func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationN
 
 func (s *SecurityHandler) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sess, err := s.extractSession(r)
-		if err == nil {
-			r = r.WithContext(ContextWithSession(r.Context(), sess))
+		// Skip if the request already presents a bearer token; ogen will handle it.
+		if r.Header.Get("Authorization") != "" {
+			next.ServeHTTP(w, r)
+			return
 		}
+
+		sess, err := s.extractSessionFromCookie(r)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Make the session available in context and synthesize an Authorization
+		// header so the generated ogen security handler validates it normally.
+		r = r.WithContext(ContextWithSession(r.Context(), sess))
+		r.Header.Set("Authorization", "Bearer "+sess.ID)
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (s *SecurityHandler) extractSession(r *http.Request) (*session.Session, error) {
-	if cookie, err := r.Cookie(s.cookieName); err == nil && cookie.Value != "" {
-		return s.auth.store.Get(r.Context(), cookie.Value)
+func (s *SecurityHandler) extractSessionFromCookie(r *http.Request) (*session.Session, error) {
+	cookie, err := r.Cookie(s.cookieName)
+	if err != nil || cookie.Value == "" {
+		return nil, fmt.Errorf("no session cookie")
 	}
-	header := r.Header.Get("Authorization")
-	if header != "" {
-		token, ok := strings.CutPrefix(header, "Bearer ")
-		if !ok {
-			return nil, fmt.Errorf("invalid authorization header")
-		}
-		return s.auth.store.Get(r.Context(), token)
-	}
-	return nil, fmt.Errorf("no session found")
+	return s.auth.store.Get(r.Context(), cookie.Value)
 }
 
 func SessionFromContext(ctx context.Context) *session.Session {

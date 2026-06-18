@@ -176,21 +176,6 @@ func driveFromEnt(e *ent.Drive) *Drive {
 	)
 }
 
-func storageFromEnt(e *ent.DriveStorage) *Storage {
-	if e == nil {
-		return nil
-	}
-	return NewStorage(
-		e.DriveID,
-		e.Bucket,
-		e.Endpoint,
-		e.Region,
-		e.AccessKey,
-		e.SecretKey,
-		e.UsePathStyle,
-	)
-}
-
 func parseProvider(s string) Provider {
 	switch s {
 	case "s3":
