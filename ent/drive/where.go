@@ -101,6 +101,11 @@ func RootNodeID(v uuid.UUID) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldRootNodeID, v))
 }
 
+// DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
+func DeletedAt(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldEQ(FieldDeletedAt, v))
+}
+
 // CreateTimeEQ applies the EQ predicate on the "create_time" field.
 func CreateTimeEQ(v time.Time) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldCreateTime, v))
@@ -519,6 +524,56 @@ func RootNodeIDIsNil() predicate.Drive {
 // RootNodeIDNotNil applies the NotNil predicate on the "root_node_id" field.
 func RootNodeIDNotNil() predicate.Drive {
 	return predicate.Drive(sql.FieldNotNull(FieldRootNodeID))
+}
+
+// DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
+func DeletedAtEQ(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtNEQ applies the NEQ predicate on the "deleted_at" field.
+func DeletedAtNEQ(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldNEQ(FieldDeletedAt, v))
+}
+
+// DeletedAtIn applies the In predicate on the "deleted_at" field.
+func DeletedAtIn(vs ...time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtNotIn applies the NotIn predicate on the "deleted_at" field.
+func DeletedAtNotIn(vs ...time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldNotIn(FieldDeletedAt, vs...))
+}
+
+// DeletedAtGT applies the GT predicate on the "deleted_at" field.
+func DeletedAtGT(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldGT(FieldDeletedAt, v))
+}
+
+// DeletedAtGTE applies the GTE predicate on the "deleted_at" field.
+func DeletedAtGTE(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldGTE(FieldDeletedAt, v))
+}
+
+// DeletedAtLT applies the LT predicate on the "deleted_at" field.
+func DeletedAtLT(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldLT(FieldDeletedAt, v))
+}
+
+// DeletedAtLTE applies the LTE predicate on the "deleted_at" field.
+func DeletedAtLTE(v time.Time) predicate.Drive {
+	return predicate.Drive(sql.FieldLTE(FieldDeletedAt, v))
+}
+
+// DeletedAtIsNil applies the IsNil predicate on the "deleted_at" field.
+func DeletedAtIsNil() predicate.Drive {
+	return predicate.Drive(sql.FieldIsNull(FieldDeletedAt))
+}
+
+// DeletedAtNotNil applies the NotNil predicate on the "deleted_at" field.
+func DeletedAtNotNil() predicate.Drive {
+	return predicate.Drive(sql.FieldNotNull(FieldDeletedAt))
 }
 
 // HasStorage applies the HasEdge predicate on the "storage" edge.

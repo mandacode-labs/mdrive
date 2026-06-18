@@ -110,6 +110,20 @@ func (_c *DriveCreate) SetNillableRootNodeID(v *uuid.UUID) *DriveCreate {
 	return _c
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_c *DriveCreate) SetDeletedAt(v time.Time) *DriveCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_c *DriveCreate) SetNillableDeletedAt(v *time.Time) *DriveCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *DriveCreate) SetID(v string) *DriveCreate {
 	_c.mutation.SetID(v)
@@ -300,6 +314,10 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RootNodeID(); ok {
 		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
 		_node.RootNodeID = &value
+	}
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
+		_node.DeletedAt = &value
 	}
 	if nodes := _c.mutation.StorageIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

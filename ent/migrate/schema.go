@@ -20,6 +20,7 @@ var (
 		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
 		{Name: "owner_id", Type: field.TypeString, Size: 32},
 		{Name: "root_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// DrivesTable holds the schema information for the "drives" table.
 	DrivesTable = &schema.Table{
@@ -36,6 +37,11 @@ var (
 				Name:    "drive_owner_id",
 				Unique:  false,
 				Columns: []*schema.Column{DrivesColumns[7]},
+			},
+			{
+				Name:    "drive_deleted_at",
+				Unique:  false,
+				Columns: []*schema.Column{DrivesColumns[9]},
 			},
 		},
 	}

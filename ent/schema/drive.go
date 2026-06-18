@@ -71,6 +71,10 @@ func (Drive) Fields() []ent.Field {
 		field.UUID("root_node_id", uuid.UUID{}).
 			Optional().
 			Nillable(),
+		// Soft-delete timestamp. Null means active.
+		field.Time("deleted_at").
+			Optional().
+			Nillable(),
 	}
 }
 
@@ -79,6 +83,7 @@ func (Drive) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("public_id"),
 		index.Fields("owner_id"),
+		index.Fields("deleted_at"),
 	}
 }
 

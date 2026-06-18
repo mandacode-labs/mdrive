@@ -35,6 +35,8 @@ type Drive struct {
 	OwnerID string `json:"owner_id,omitempty"`
 	// RootNodeID holds the value of the "root_node_id" field.
 	RootNodeID *uuid.UUID `json:"root_node_id,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DriveQuery when eager-loading is set.
 	Edges        DriveEdges `json:"edges"`
@@ -70,7 +72,7 @@ func (*Drive) scanValues(columns []string) ([]any, error) {
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
 		case drive.FieldID, drive.FieldPublicID, drive.FieldName, drive.FieldDescription, drive.FieldProvider, drive.FieldOwnerID:
 			values[i] = new(sql.NullString)
-		case drive.FieldCreateTime, drive.FieldUpdateTime:
+		case drive.FieldCreateTime, drive.FieldUpdateTime, drive.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -143,6 +145,13 @@ func (_m *Drive) assignValues(columns []string, values []any) error {
 				_m.RootNodeID = new(uuid.UUID)
 				*_m.RootNodeID = *value.S.(*uuid.UUID)
 			}
+		case drive.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = new(time.Time)
+				*_m.DeletedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -210,6 +219,11 @@ func (_m *Drive) String() string {
 	if v := _m.RootNodeID; v != nil {
 		builder.WriteString("root_node_id=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteByte(')')
 	return builder.String()

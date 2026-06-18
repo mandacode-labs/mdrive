@@ -31,6 +31,8 @@ const (
 	FieldOwnerID = "owner_id"
 	// FieldRootNodeID holds the string denoting the root_node_id field in the database.
 	FieldRootNodeID = "root_node_id"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// EdgeStorage holds the string denoting the storage edge name in mutations.
 	EdgeStorage = "storage"
 	// Table holds the table name of the drive in the database.
@@ -55,6 +57,7 @@ var Columns = []string{
 	FieldProvider,
 	FieldOwnerID,
 	FieldRootNodeID,
+	FieldDeletedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -158,6 +161,11 @@ func ByOwnerID(opts ...sql.OrderTermOption) OrderOption {
 // ByRootNodeID orders the results by the root_node_id field.
 func ByRootNodeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRootNodeID, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByStorageField orders the results by storage field.

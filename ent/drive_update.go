@@ -132,6 +132,26 @@ func (_u *DriveUpdate) ClearRootNodeID() *DriveUpdate {
 	return _u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *DriveUpdate) SetDeletedAt(v time.Time) *DriveUpdate {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *DriveUpdate) SetNillableDeletedAt(v *time.Time) *DriveUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *DriveUpdate) ClearDeletedAt() *DriveUpdate {
+	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
 // SetStorageID sets the "storage" edge to the DriveStorage entity by ID.
 func (_u *DriveUpdate) SetStorageID(id int) *DriveUpdate {
 	_u.mutation.SetStorageID(id)
@@ -266,6 +286,12 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RootNodeIDCleared() {
 		_spec.ClearField(drive.FieldRootNodeID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(drive.FieldDeletedAt, field.TypeTime)
 	}
 	if _u.mutation.StorageCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -415,6 +441,26 @@ func (_u *DriveUpdateOne) SetNillableRootNodeID(v *uuid.UUID) *DriveUpdateOne {
 // ClearRootNodeID clears the value of the "root_node_id" field.
 func (_u *DriveUpdateOne) ClearRootNodeID() *DriveUpdateOne {
 	_u.mutation.ClearRootNodeID()
+	return _u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *DriveUpdateOne) SetDeletedAt(v time.Time) *DriveUpdateOne {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *DriveUpdateOne) SetNillableDeletedAt(v *time.Time) *DriveUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *DriveUpdateOne) ClearDeletedAt() *DriveUpdateOne {
+	_u.mutation.ClearDeletedAt()
 	return _u
 }
 
@@ -582,6 +628,12 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	}
 	if _u.mutation.RootNodeIDCleared() {
 		_spec.ClearField(drive.FieldRootNodeID, field.TypeUUID)
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(drive.FieldDeletedAt, field.TypeTime)
 	}
 	if _u.mutation.StorageCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -50,6 +50,7 @@ type DriveMutation struct {
 	provider       *drive.Provider
 	owner_id       *string
 	root_node_id   *uuid.UUID
+	deleted_at     *time.Time
 	clearedFields  map[string]struct{}
 	storage        *int
 	clearedstorage bool
@@ -476,6 +477,55 @@ func (m *DriveMutation) ResetRootNodeID() {
 	delete(m.clearedFields, drive.FieldRootNodeID)
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (m *DriveMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *DriveMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Drive entity.
+// If the Drive object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DriveMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *DriveMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[drive.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *DriveMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[drive.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *DriveMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, drive.FieldDeletedAt)
+}
+
 // SetStorageID sets the "storage" edge to the DriveStorage entity by id.
 func (m *DriveMutation) SetStorageID(id int) {
 	m.storage = &id
@@ -549,7 +599,7 @@ func (m *DriveMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DriveMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.create_time != nil {
 		fields = append(fields, drive.FieldCreateTime)
 	}
@@ -573,6 +623,9 @@ func (m *DriveMutation) Fields() []string {
 	}
 	if m.root_node_id != nil {
 		fields = append(fields, drive.FieldRootNodeID)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, drive.FieldDeletedAt)
 	}
 	return fields
 }
@@ -598,6 +651,8 @@ func (m *DriveMutation) Field(name string) (ent.Value, bool) {
 		return m.OwnerID()
 	case drive.FieldRootNodeID:
 		return m.RootNodeID()
+	case drive.FieldDeletedAt:
+		return m.DeletedAt()
 	}
 	return nil, false
 }
@@ -623,6 +678,8 @@ func (m *DriveMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldOwnerID(ctx)
 	case drive.FieldRootNodeID:
 		return m.OldRootNodeID(ctx)
+	case drive.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Drive field %s", name)
 }
@@ -688,6 +745,13 @@ func (m *DriveMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRootNodeID(v)
 		return nil
+	case drive.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Drive field %s", name)
 }
@@ -724,6 +788,9 @@ func (m *DriveMutation) ClearedFields() []string {
 	if m.FieldCleared(drive.FieldRootNodeID) {
 		fields = append(fields, drive.FieldRootNodeID)
 	}
+	if m.FieldCleared(drive.FieldDeletedAt) {
+		fields = append(fields, drive.FieldDeletedAt)
+	}
 	return fields
 }
 
@@ -743,6 +810,9 @@ func (m *DriveMutation) ClearField(name string) error {
 		return nil
 	case drive.FieldRootNodeID:
 		m.ClearRootNodeID()
+		return nil
+	case drive.FieldDeletedAt:
+		m.ClearDeletedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Drive nullable field %s", name)
@@ -775,6 +845,9 @@ func (m *DriveMutation) ResetField(name string) error {
 		return nil
 	case drive.FieldRootNodeID:
 		m.ResetRootNodeID()
+		return nil
+	case drive.FieldDeletedAt:
+		m.ResetDeletedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Drive field %s", name)
