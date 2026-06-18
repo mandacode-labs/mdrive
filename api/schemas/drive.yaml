@@ -13,6 +13,9 @@ Drive:
       type: string
     rootNodeID:
       type: string
+    deletedAt:
+      type: string
+      format: date-time
     createdAt:
       type: string
       format: date-time
@@ -22,7 +25,7 @@ Drive:
 
 DriveCreate:
   type: object
-  required: [name, storage]
+  required: [name]
   properties:
     name:
       type: string
@@ -41,7 +44,7 @@ DriveUpdate:
 
 StorageConfig:
   type: object
-  required: [bucket, region, accessKey, secretKey]
+  required: [bucket, region]
   properties:
     bucket:
       type: string

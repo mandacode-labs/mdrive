@@ -23,6 +23,12 @@ paths:
   /v1/drives/{driveID}/root:
     $ref: "./endpoints/drive.yaml#/drive"
 
+  /v1/drives/{driveID}/restore:
+    $ref: "./endpoints/drive.yaml#/restoreDrive"
+
+  /v1/admin/drives/deleted:
+    $ref: "./endpoints/drive.yaml#/adminDrives"
+
   /v1/drives/{driveID}/storage:
     $ref: "./endpoints/drive.yaml#/storage"
 

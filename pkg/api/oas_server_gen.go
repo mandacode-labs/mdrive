@@ -46,7 +46,7 @@ type Handler interface {
 	CreateDrive(ctx context.Context, req OptDriveCreate) (CreateDriveRes, error)
 	// DeleteDrive implements deleteDrive operation.
 	//
-	// Delete a drive and all its nodes.
+	// Soft-delete a drive.
 	//
 	// DELETE /v1/drives/{driveID}/root
 	DeleteDrive(ctx context.Context, params DeleteDriveParams) error
@@ -92,6 +92,12 @@ type Handler interface {
 	//
 	// POST /v1/drives/{driveID}/uploads
 	InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
+	// ListDeletedDrives implements listDeletedDrives operation.
+	//
+	// List soft-deleted drives (admin only).
+	//
+	// GET /v1/admin/drives/deleted
+	ListDeletedDrives(ctx context.Context) ([]Drive, error)
 	// ListDrives implements listDrives operation.
 	//
 	// List drives owned by the authenticated user.
@@ -122,6 +128,12 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/downloads
 	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
+	// RestoreDrive implements restoreDrive operation.
+	//
+	// Restore a soft-deleted drive.
+	//
+	// POST /v1/drives/{driveID}/restore
+	RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error)
 	// Rm implements rm operation.
 	//
 	// Remove files or directories.

@@ -69,7 +69,7 @@ func (UnimplementedHandler) CreateDrive(ctx context.Context, req OptDriveCreate)
 
 // DeleteDrive implements deleteDrive operation.
 //
-// Delete a drive and all its nodes.
+// Soft-delete a drive.
 //
 // DELETE /v1/drives/{driveID}/root
 func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveParams) error {
@@ -139,6 +139,15 @@ func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRe
 	return r, ht.ErrNotImplemented
 }
 
+// ListDeletedDrives implements listDeletedDrives operation.
+//
+// List soft-deleted drives (admin only).
+//
+// GET /v1/admin/drives/deleted
+func (UnimplementedHandler) ListDeletedDrives(ctx context.Context) (r []Drive, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListDrives implements listDrives operation.
 //
 // List drives owned by the authenticated user.
@@ -181,6 +190,15 @@ func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParam
 //
 // GET /v1/drives/{driveID}/downloads
 func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignDownloadParams) (r PresignDownloadRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// RestoreDrive implements restoreDrive operation.
+//
+// Restore a soft-deleted drive.
+//
+// POST /v1/drives/{driveID}/restore
+func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriveParams) (r *Drive, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

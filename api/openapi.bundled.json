@@ -165,7 +165,7 @@
       },
       "delete": {
         "operationId": "deleteDrive",
-        "summary": "Delete a drive and all its nodes",
+        "summary": "Soft-delete a drive",
         "parameters": [
           {
             "name": "driveID",
@@ -179,6 +179,55 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/restore": {
+      "post": {
+        "operationId": "restoreDrive",
+        "summary": "Restore a soft-deleted drive",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Restored drive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drive"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/drives/deleted": {
+      "get": {
+        "operationId": "listDeletedDrives",
+        "summary": "List soft-deleted drives (admin only)",
+        "responses": {
+          "200": {
+            "description": "List of deleted drives",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Drive"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1028,6 +1077,10 @@
           "rootNodeID": {
             "type": "string"
           },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1041,8 +1094,7 @@
       "DriveCreate": {
         "type": "object",
         "required": [
-          "name",
-          "storage"
+          "name"
         ],
         "properties": {
           "name": {
@@ -1071,9 +1123,7 @@
         "type": "object",
         "required": [
           "bucket",
-          "region",
-          "accessKey",
-          "secretKey"
+          "region"
         ],
         "properties": {
           "bucket": {

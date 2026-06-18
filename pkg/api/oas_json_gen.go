@@ -360,6 +360,12 @@ func (s *Drive) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.DeletedAt.Set {
+			e.FieldStart("deletedAt")
+			s.DeletedAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
 		if s.CreatedAt.Set {
 			e.FieldStart("createdAt")
 			s.CreatedAt.Encode(e, json.EncodeDateTime)
@@ -373,15 +379,16 @@ func (s *Drive) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfDrive = [8]string{
+var jsonFieldsNameOfDrive = [9]string{
 	0: "id",
 	1: "publicID",
 	2: "name",
 	3: "description",
 	4: "ownerID",
 	5: "rootNodeID",
-	6: "createdAt",
-	7: "updatedAt",
+	6: "deletedAt",
+	7: "createdAt",
+	8: "updatedAt",
 }
 
 // Decode decodes Drive from json.
@@ -452,6 +459,16 @@ func (s *Drive) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rootNodeID\"")
 			}
+		case "deletedAt":
+			if err := func() error {
+				s.DeletedAt.Reset()
+				if err := s.DeletedAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"deletedAt\"")
+			}
 		case "createdAt":
 			if err := func() error {
 				s.CreatedAt.Reset()
@@ -516,8 +533,10 @@ func (s *DriveCreate) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		e.FieldStart("storage")
-		s.Storage.Encode(e)
+		if s.Storage.Set {
+			e.FieldStart("storage")
+			s.Storage.Encode(e)
+		}
 	}
 }
 
@@ -559,8 +578,8 @@ func (s *DriveCreate) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"description\"")
 			}
 		case "storage":
-			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
+				s.Storage.Reset()
 				if err := s.Storage.Decode(d); err != nil {
 					return err
 				}
@@ -578,7 +597,7 @@ func (s *DriveCreate) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000101,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -1842,6 +1861,39 @@ func (s *OptRmReq) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes StorageConfig as json.
+func (o OptStorageConfig) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes StorageConfig from json.
+func (o *OptStorageConfig) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptStorageConfig to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptStorageConfig) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptStorageConfig) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes string as json.
 func (o OptString) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -2789,12 +2841,16 @@ func (s *StorageConfig) encodeFields(e *jx.Encoder) {
 		e.Str(s.Region)
 	}
 	{
-		e.FieldStart("accessKey")
-		e.Str(s.AccessKey)
+		if s.AccessKey.Set {
+			e.FieldStart("accessKey")
+			s.AccessKey.Encode(e)
+		}
 	}
 	{
-		e.FieldStart("secretKey")
-		e.Str(s.SecretKey)
+		if s.SecretKey.Set {
+			e.FieldStart("secretKey")
+			s.SecretKey.Encode(e)
+		}
 	}
 	{
 		if s.UsePathStyle.Set {
@@ -2857,11 +2913,9 @@ func (s *StorageConfig) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"region\"")
 			}
 		case "accessKey":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Str()
-				s.AccessKey = string(v)
-				if err != nil {
+				s.AccessKey.Reset()
+				if err := s.AccessKey.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -2869,11 +2923,9 @@ func (s *StorageConfig) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"accessKey\"")
 			}
 		case "secretKey":
-			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				v, err := d.Str()
-				s.SecretKey = string(v)
-				if err != nil {
+				s.SecretKey.Reset()
+				if err := s.SecretKey.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -2900,7 +2952,7 @@ func (s *StorageConfig) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00011101,
+		0b00000101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

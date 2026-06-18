@@ -157,6 +157,7 @@ type Drive struct {
 	Description OptString   `json:"description"`
 	OwnerID     OptString   `json:"ownerID"`
 	RootNodeID  OptString   `json:"rootNodeID"`
+	DeletedAt   OptDateTime `json:"deletedAt"`
 	CreatedAt   OptDateTime `json:"createdAt"`
 	UpdatedAt   OptDateTime `json:"updatedAt"`
 }
@@ -189,6 +190,11 @@ func (s *Drive) GetOwnerID() OptString {
 // GetRootNodeID returns the value of RootNodeID.
 func (s *Drive) GetRootNodeID() OptString {
 	return s.RootNodeID
+}
+
+// GetDeletedAt returns the value of DeletedAt.
+func (s *Drive) GetDeletedAt() OptDateTime {
+	return s.DeletedAt
 }
 
 // GetCreatedAt returns the value of CreatedAt.
@@ -231,6 +237,11 @@ func (s *Drive) SetRootNodeID(val OptString) {
 	s.RootNodeID = val
 }
 
+// SetDeletedAt sets the value of DeletedAt.
+func (s *Drive) SetDeletedAt(val OptDateTime) {
+	s.DeletedAt = val
+}
+
 // SetCreatedAt sets the value of CreatedAt.
 func (s *Drive) SetCreatedAt(val OptDateTime) {
 	s.CreatedAt = val
@@ -245,9 +256,9 @@ func (*Drive) createDriveRes() {}
 
 // Ref: #/components/schemas/DriveCreate
 type DriveCreate struct {
-	Name        string        `json:"name"`
-	Description OptString     `json:"description"`
-	Storage     StorageConfig `json:"storage"`
+	Name        string           `json:"name"`
+	Description OptString        `json:"description"`
+	Storage     OptStorageConfig `json:"storage"`
 }
 
 // GetName returns the value of Name.
@@ -261,7 +272,7 @@ func (s *DriveCreate) GetDescription() OptString {
 }
 
 // GetStorage returns the value of Storage.
-func (s *DriveCreate) GetStorage() StorageConfig {
+func (s *DriveCreate) GetStorage() OptStorageConfig {
 	return s.Storage
 }
 
@@ -276,7 +287,7 @@ func (s *DriveCreate) SetDescription(val OptString) {
 }
 
 // SetStorage sets the value of Storage.
-func (s *DriveCreate) SetStorage(val StorageConfig) {
+func (s *DriveCreate) SetStorage(val OptStorageConfig) {
 	s.Storage = val
 }
 
@@ -1098,6 +1109,52 @@ func (o OptRmReq) Or(d RmReq) RmReq {
 	return d
 }
 
+// NewOptStorageConfig returns new OptStorageConfig with value set to v.
+func NewOptStorageConfig(v StorageConfig) OptStorageConfig {
+	return OptStorageConfig{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStorageConfig is optional StorageConfig.
+type OptStorageConfig struct {
+	Value StorageConfig
+	Set   bool
+}
+
+// IsSet returns true if OptStorageConfig was set.
+func (o OptStorageConfig) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStorageConfig) Reset() {
+	var v StorageConfig
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStorageConfig) SetTo(v StorageConfig) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStorageConfig) Get() (v StorageConfig, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStorageConfig) Or(d StorageConfig) StorageConfig {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -1707,8 +1764,8 @@ type StorageConfig struct {
 	Bucket       string    `json:"bucket"`
 	Endpoint     OptString `json:"endpoint"`
 	Region       string    `json:"region"`
-	AccessKey    string    `json:"accessKey"`
-	SecretKey    string    `json:"secretKey"`
+	AccessKey    OptString `json:"accessKey"`
+	SecretKey    OptString `json:"secretKey"`
 	UsePathStyle OptBool   `json:"usePathStyle"`
 }
 
@@ -1728,12 +1785,12 @@ func (s *StorageConfig) GetRegion() string {
 }
 
 // GetAccessKey returns the value of AccessKey.
-func (s *StorageConfig) GetAccessKey() string {
+func (s *StorageConfig) GetAccessKey() OptString {
 	return s.AccessKey
 }
 
 // GetSecretKey returns the value of SecretKey.
-func (s *StorageConfig) GetSecretKey() string {
+func (s *StorageConfig) GetSecretKey() OptString {
 	return s.SecretKey
 }
 
@@ -1758,12 +1815,12 @@ func (s *StorageConfig) SetRegion(val string) {
 }
 
 // SetAccessKey sets the value of AccessKey.
-func (s *StorageConfig) SetAccessKey(val string) {
+func (s *StorageConfig) SetAccessKey(val OptString) {
 	s.AccessKey = val
 }
 
 // SetSecretKey sets the value of SecretKey.
-func (s *StorageConfig) SetSecretKey(val string) {
+func (s *StorageConfig) SetSecretKey(val OptString) {
 	s.SecretKey = val
 }
 
