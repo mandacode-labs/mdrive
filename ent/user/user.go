@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -18,32 +17,18 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
-	// FieldUsername holds the string denoting the username field in the database.
-	FieldUsername = "username"
+	// FieldPublicID holds the string denoting the public_id field in the database.
+	FieldPublicID = "public_id"
+	// FieldName holds the string denoting the name field in the database.
+	FieldName = "name"
+	// FieldEmail holds the string denoting the email field in the database.
+	FieldEmail = "email"
 	// FieldProvider holds the string denoting the provider field in the database.
 	FieldProvider = "provider"
 	// FieldProviderID holds the string denoting the provider_id field in the database.
 	FieldProviderID = "provider_id"
-	// FieldJoinDate holds the string denoting the join_date field in the database.
-	FieldJoinDate = "join_date"
-	// EdgeSystems holds the string denoting the systems edge name in mutations.
-	EdgeSystems = "systems"
-	// EdgeUserSystems holds the string denoting the user_systems edge name in mutations.
-	EdgeUserSystems = "user_systems"
 	// Table holds the table name of the user in the database.
 	Table = "users"
-	// SystemsTable is the table that holds the systems relation/edge. The primary key declared below.
-	SystemsTable = "user_systems"
-	// SystemsInverseTable is the table name for the System entity.
-	// It exists in this package in order to avoid circular dependency with the "system" package.
-	SystemsInverseTable = "systems"
-	// UserSystemsTable is the table that holds the user_systems relation/edge.
-	UserSystemsTable = "user_systems"
-	// UserSystemsInverseTable is the table name for the UserSystem entity.
-	// It exists in this package in order to avoid circular dependency with the "usersystem" package.
-	UserSystemsInverseTable = "user_systems"
-	// UserSystemsColumn is the table column denoting the user_systems relation/edge.
-	UserSystemsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -51,17 +36,12 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
-	FieldUsername,
+	FieldPublicID,
+	FieldName,
+	FieldEmail,
 	FieldProvider,
 	FieldProviderID,
-	FieldJoinDate,
 }
-
-var (
-	// SystemsPrimaryKey and SystemsColumn2 are the table columns denoting the
-	// primary key for the systems relation (M2M).
-	SystemsPrimaryKey = []string{"user_id", "system_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -80,14 +60,18 @@ var (
 	DefaultUpdateTime func() time.Time
 	// UpdateDefaultUpdateTime holds the default value on update for the "update_time" field.
 	UpdateDefaultUpdateTime func() time.Time
-	// UsernameValidator is a validator for the "username" field. It is called by the builders before save.
-	UsernameValidator func(string) error
+	// PublicIDValidator is a validator for the "public_id" field. It is called by the builders before save.
+	PublicIDValidator func(string) error
+	// NameValidator is a validator for the "name" field. It is called by the builders before save.
+	NameValidator func(string) error
+	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	EmailValidator func(string) error
 	// ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
 	ProviderValidator func(string) error
 	// ProviderIDValidator is a validator for the "provider_id" field. It is called by the builders before save.
 	ProviderIDValidator func(string) error
-	// DefaultJoinDate holds the default value on creation for the "join_date" field.
-	DefaultJoinDate func() time.Time
+	// IDValidator is a validator for the "id" field. It is called by the builders before save.
+	IDValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -108,9 +92,19 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
-// ByUsername orders the results by the username field.
-func ByUsername(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUsername, opts...).ToFunc()
+// ByPublicID orders the results by the public_id field.
+func ByPublicID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPublicID, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByEmail orders the results by the email field.
+func ByEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmail, opts...).ToFunc()
 }
 
 // ByProvider orders the results by the provider field.
@@ -121,51 +115,4 @@ func ByProvider(opts ...sql.OrderTermOption) OrderOption {
 // ByProviderID orders the results by the provider_id field.
 func ByProviderID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProviderID, opts...).ToFunc()
-}
-
-// ByJoinDate orders the results by the join_date field.
-func ByJoinDate(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldJoinDate, opts...).ToFunc()
-}
-
-// BySystemsCount orders the results by systems count.
-func BySystemsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newSystemsStep(), opts...)
-	}
-}
-
-// BySystems orders the results by systems terms.
-func BySystems(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newSystemsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
-// ByUserSystemsCount orders the results by user_systems count.
-func ByUserSystemsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newUserSystemsStep(), opts...)
-	}
-}
-
-// ByUserSystems orders the results by user_systems terms.
-func ByUserSystems(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newUserSystemsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-func newSystemsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(SystemsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, SystemsTable, SystemsPrimaryKey...),
-	)
-}
-func newUserSystemsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(UserSystemsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, true, UserSystemsTable, UserSystemsColumn),
-	)
 }

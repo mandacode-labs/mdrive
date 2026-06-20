@@ -12,13 +12,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/mandacode-labs/mdrive/ent/inode"
-	"github.com/mandacode-labs/mdrive/ent/object"
-	"github.com/mandacode-labs/mdrive/ent/system"
-	"github.com/mandacode-labs/mdrive/ent/systemgroup"
+	"github.com/mandacode-labs/mdrive/ent/drive"
+	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/gctombstone"
+	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/user"
-	"github.com/mandacode-labs/mdrive/ent/usergroup"
-	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -79,13 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			inode.Table:       inode.ValidColumn,
-			object.Table:      object.ValidColumn,
-			system.Table:      system.ValidColumn,
-			systemgroup.Table: systemgroup.ValidColumn,
-			user.Table:        user.ValidColumn,
-			usergroup.Table:   usergroup.ValidColumn,
-			usersystem.Table:  usersystem.ValidColumn,
+			drive.Table:        drive.ValidColumn,
+			drivestorage.Table: drivestorage.ValidColumn,
+			gctombstone.Table:  gctombstone.ValidColumn,
+			node.Table:         node.ValidColumn,
+			user.Table:         user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

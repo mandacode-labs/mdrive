@@ -9,52 +9,52 @@ import (
 	"github.com/mandacode-labs/mdrive/ent"
 )
 
-// The InodeFunc type is an adapter to allow the use of ordinary
-// function as Inode mutator.
-type InodeFunc func(context.Context, *ent.InodeMutation) (ent.Value, error)
+// The DriveFunc type is an adapter to allow the use of ordinary
+// function as Drive mutator.
+type DriveFunc func(context.Context, *ent.DriveMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f InodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.InodeMutation); ok {
+func (f DriveFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DriveMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InodeMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveMutation", m)
 }
 
-// The ObjectFunc type is an adapter to allow the use of ordinary
-// function as Object mutator.
-type ObjectFunc func(context.Context, *ent.ObjectMutation) (ent.Value, error)
+// The DriveStorageFunc type is an adapter to allow the use of ordinary
+// function as DriveStorage mutator.
+type DriveStorageFunc func(context.Context, *ent.DriveStorageMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f ObjectFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ObjectMutation); ok {
+func (f DriveStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DriveStorageMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ObjectMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveStorageMutation", m)
 }
 
-// The SystemFunc type is an adapter to allow the use of ordinary
-// function as System mutator.
-type SystemFunc func(context.Context, *ent.SystemMutation) (ent.Value, error)
+// The GCTombstoneFunc type is an adapter to allow the use of ordinary
+// function as GCTombstone mutator.
+type GCTombstoneFunc func(context.Context, *ent.GCTombstoneMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f SystemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SystemMutation); ok {
+func (f GCTombstoneFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GCTombstoneMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SystemMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GCTombstoneMutation", m)
 }
 
-// The SystemGroupFunc type is an adapter to allow the use of ordinary
-// function as SystemGroup mutator.
-type SystemGroupFunc func(context.Context, *ent.SystemGroupMutation) (ent.Value, error)
+// The NodeFunc type is an adapter to allow the use of ordinary
+// function as Node mutator.
+type NodeFunc func(context.Context, *ent.NodeMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f SystemGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SystemGroupMutation); ok {
+func (f NodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NodeMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SystemGroupMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NodeMutation", m)
 }
 
 // The UserFunc type is an adapter to allow the use of ordinary
@@ -67,30 +67,6 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
-}
-
-// The UserGroupFunc type is an adapter to allow the use of ordinary
-// function as UserGroup mutator.
-type UserGroupFunc func(context.Context, *ent.UserGroupMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f UserGroupFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.UserGroupMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserGroupMutation", m)
-}
-
-// The UserSystemFunc type is an adapter to allow the use of ordinary
-// function as UserSystem mutator.
-type UserSystemFunc func(context.Context, *ent.UserSystemMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f UserSystemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.UserSystemMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserSystemMutation", m)
 }
 
 // Condition is a hook condition function.

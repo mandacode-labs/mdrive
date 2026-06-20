@@ -1,86 +1,82 @@
-InitiateUploadRequest:
+PresignRequest:
   type: object
-  required:
-    - path
-    - size
+  required: [path]
   properties:
     path:
       type: string
-      description: Target file path (e.g., /home/user/file.txt)
+      description: Destination path inside the drive
     contentType:
       type: string
-      description: MIME content type
+      description: MIME type of the object (optional, included in the signed URL)
+    contentLength:
+      type: integer
+      format: int64
+      description: Expected object size in bytes (optional)
+
+PresignResponse:
+  type: object
+  required: [uploadId, method, url, key, expiresAt]
+  properties:
+    uploadId:
+      type: string
+      description: Opaque token to pass to the complete endpoint
+    method:
+      type: string
+      example: PUT
+    url:
+      type: string
+      format: uri
+      description: Presigned URL the client PUTs the bytes to
+    headers:
+      type: object
+      additionalProperties:
+        type: string
+      description: Headers that must be included with the PUT request
+    key:
+      type: string
+      description: S3 object key that will be created
+    expiresAt:
+      type: string
+      format: date-time
+
+UploadCompleteRequest:
+  type: object
+  required: [contentLength]
+  properties:
+    contentLength:
+      type: integer
+      format: int64
+      description: Actual object size in bytes
+    checksum:
+      type: string
+      description: ETag or checksum of the uploaded object (optional)
+
+UploadCompleteResponse:
+  type: object
+  required: [inodeID, size]
+  properties:
+    inodeID:
+      type: string
     size:
       type: integer
       format: int64
-      minimum: 0
-      description: File size in bytes
-    checksum:
+    mtime:
       type: string
-      description: Base64-encoded MD5 checksum of the file content. Required for integrity verification during upload completion.
-    idempotencyKey:
+      format: date-time
+    atime:
       type: string
-      description: Client-generated idempotency key (UUID) to ensure duplicate initiation requests return the same upload session.
+      format: date-time
 
-UploadSession:
+DownloadResponse:
   type: object
-  required:
-    - objectId
-    - uploadUrl
-    - expiresAt
+  required: [method, url, expiresAt]
   properties:
-    objectId:
+    method:
       type: string
-      description: Object ID for tracking
-    uploadUrl:
+      example: GET
+    url:
       type: string
       format: uri
-      description: Presigned S3 upload URL
     expiresAt:
-      $ref: './common.yaml#/Timestamp'
-
-UploadSessionResponse:
-  type: object
-  required:
-    - uploadSession
-  properties:
-    uploadSession:
-      $ref: '#/UploadSession'
-
-CompleteUploadRequest:
-  type: object
-  required:
-    - objectId
-    - path
-  properties:
-    objectId:
       type: string
-      description: Object ID from upload initiation
-    path:
-      type: string
-      description: Final file path
-    mode:
-      type: integer
-      format: int32
-      description: Optional file permissions
-
-DownloadURL:
-  type: object
-  required:
-    - downloadUrl
-    - expiresAt
-  properties:
-    downloadUrl:
-      type: string
-      format: uri
-      description: Presigned S3 download URL
-    expiresAt:
-      $ref: './common.yaml#/Timestamp'
-
-DownloadURLResponse:
-  type: object
-  required:
-    - downloadUrl
-  properties:
-    downloadUrl:
-      $ref: '#/DownloadURL'
+      format: date-time

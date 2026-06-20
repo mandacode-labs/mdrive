@@ -1,40 +1,11 @@
 Error:
   type: object
-  required:
-    - error
+  required: [code, message]
   properties:
-    error:
-      type: object
-      required:
-        - type
-        - message
-      properties:
-        type:
-          type: string
-          description: Error type
-        message:
-          type: string
-          description: Error message
-
-UUID:
-  type: string
-  format: uuid
-  description: UUID format string
-
-Timestamp:
-  type: string
-  format: date-time
-  description: ISO 8601 timestamp
-
-HealthStatus:
-  type: object
-  required:
-    - status
-  properties:
-    status:
+    code:
       type: string
-      enum: [healthy, unhealthy]
-      description: Health status
-    version:
+      description: Machine-readable error code
+      enum: [not_found, conflict, bad_request, forbidden, unauthorized, internal, revision_conflict]
+    message:
       type: string
-      description: Application version
+      description: Human-readable error message

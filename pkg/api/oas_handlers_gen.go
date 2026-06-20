@@ -33,24 +33,24 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 	return c.ResponseWriter
 }
 
-// handleAddGroupMemberRequest handles addGroupMember operation.
+// handleAuthCallbackRequest handles authCallback operation.
 //
-// Add a user to a group.
+// OAuth callback from Zitadel.
 //
-// POST /systems/{systemId}/groups/{gid}/members/{uid}
-func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /auth/callback
+func (s *Server) handleAuthCallbackRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("addGroupMember"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups/{gid}/members/{uid}"),
+		otelogen.OperationID("authCallback"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/auth/callback"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), AddGroupMemberOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), AuthCallbackOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -105,55 +105,11 @@ func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: AddGroupMemberOperation,
-			ID:   "addGroupMember",
+			Name: AuthCallbackOperation,
+			ID:   "authCallback",
 		}
 	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, AddGroupMemberOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeAddGroupMemberParams(args, argsEscaped, r)
+	params, err := decodeAuthCallbackParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -166,36 +122,32 @@ func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w
 
 	var rawBody []byte
 
-	var response AddGroupMemberRes
+	var response *AuthCallbackFound
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    AddGroupMemberOperation,
-			OperationSummary: "Add user to group",
-			OperationID:      "addGroupMember",
+			OperationName:    AuthCallbackOperation,
+			OperationSummary: "OAuth callback from Zitadel",
+			OperationID:      "authCallback",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
+					Name: "code",
+					In:   "query",
+				}: params.Code,
 				{
-					Name: "gid",
-					In:   "path",
-				}: params.Gid,
-				{
-					Name: "uid",
-					In:   "path",
-				}: params.UID,
+					Name: "state",
+					In:   "query",
+				}: params.State,
 			},
 			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = AddGroupMemberParams
-			Response = AddGroupMemberRes
+			Params   = AuthCallbackParams
+			Response = *AuthCallbackFound
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -204,14 +156,14 @@ func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w
 		](
 			m,
 			mreq,
-			unpackAddGroupMemberParams,
+			unpackAuthCallbackParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.AddGroupMember(ctx, params)
+				err = s.h.AuthCallback(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.AddGroupMember(ctx, params)
+		err = s.h.AuthCallback(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -219,7 +171,7 @@ func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w
 		return
 	}
 
-	if err := encodeAddGroupMemberResponse(response, w, span); err != nil {
+	if err := encodeAuthCallbackResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -228,24 +180,24 @@ func (s *Server) handleAddGroupMemberRequest(args [3]string, argsEscaped bool, w
 	}
 }
 
-// handleChmodRequest handles chmod operation.
+// handleAuthLogoutRequest handles authLogout operation.
 //
-// Change permissions of a file or directory.
+// Destroy the current session.
 //
-// PATCH /fs/{systemId}/chmod
-func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /auth/logout
+func (s *Server) handleAuthLogoutRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("chmod"),
-		semconv.HTTPRequestMethodKey.String("PATCH"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/chmod"),
+		otelogen.OperationID("authLogout"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/auth/logout"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), ChmodOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), AuthLogoutOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -300,22 +252,22 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: ChmodOperation,
-			ID:   "chmod",
+			Name: AuthLogoutOperation,
+			ID:   "authLogout",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, ChmodOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, AuthLogoutOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -348,7 +300,351 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 			return
 		}
 	}
-	params, err := decodeChmodParams(args, argsEscaped, r)
+
+	var rawBody []byte
+
+	var response *AuthLogoutNoContent
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    AuthLogoutOperation,
+			OperationSummary: "Destroy the current session",
+			OperationID:      "authLogout",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *AuthLogoutNoContent
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				err = s.h.AuthLogout(ctx)
+				return response, err
+			},
+		)
+	} else {
+		err = s.h.AuthLogout(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeAuthLogoutResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleAuthMeRequest handles authMe operation.
+//
+// Get the current authenticated user.
+//
+// GET /auth/me
+func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("authMe"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/auth/me"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), AuthMeOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: AuthMeOperation,
+			ID:   "authMe",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, AuthMeOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+
+	var rawBody []byte
+
+	var response *User
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    AuthMeOperation,
+			OperationSummary: "Get the current authenticated user",
+			OperationID:      "authMe",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *User
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.AuthMe(ctx)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.AuthMe(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeAuthMeResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleCatRequest handles cat operation.
+//
+// Read file contents.
+//
+// GET /v1/drives/{driveID}/fs/cat
+func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("cat"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/cat"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), CatOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: CatOperation,
+			ID:   "cat",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, CatOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeCatParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -360,44 +656,33 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 	}
 
 	var rawBody []byte
-	request, rawBody, close, err := s.decodeChmodRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
 
-	var response ChmodRes
+	var response CatOK
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    ChmodOperation,
-			OperationSummary: "Change file permissions",
-			OperationID:      "chmod",
-			Body:             request,
+			OperationName:    CatOperation,
+			OperationSummary: "Read file contents",
+			OperationID:      "cat",
+			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
+				{
+					Name: "path",
+					In:   "query",
+				}: params.Path,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *ChmodRequest
-			Params   = ChmodParams
-			Response = ChmodRes
+			Request  = struct{}
+			Params   = CatParams
+			Response = CatOK
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -406,14 +691,14 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 		](
 			m,
 			mreq,
-			unpackChmodParams,
+			unpackCatParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Chmod(ctx, request, params)
+				response, err = s.h.Cat(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Chmod(ctx, request, params)
+		response, err = s.h.Cat(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -421,7 +706,7 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 		return
 	}
 
-	if err := encodeChmodResponse(response, w, span); err != nil {
+	if err := encodeCatResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -432,16 +717,16 @@ func (s *Server) handleChmodRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleCompleteUploadRequest handles completeUpload operation.
 //
-// Mark upload as complete and create inode.
+// Complete a presigned upload and create the object node.
 //
-// POST /fs/{systemId}/upload/complete
-func (s *Server) handleCompleteUploadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
+func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("completeUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/upload/complete"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/uploads/{uploadId}/complete"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -510,14 +795,14 @@ func (s *Server) handleCompleteUploadRequest(args [1]string, argsEscaped bool, w
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, CompleteUploadOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, CompleteUploadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -583,21 +868,25 @@ func (s *Server) handleCompleteUploadRequest(args [1]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CompleteUploadOperation,
-			OperationSummary: "Complete file upload",
+			OperationSummary: "Complete a presigned upload and create the object node",
 			OperationID:      "completeUpload",
 			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
+				{
+					Name: "uploadId",
+					In:   "path",
+				}: params.UploadId,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *CompleteUploadRequest
+			Request  = OptUploadCompleteRequest
 			Params   = CompleteUploadParams
 			Response = CompleteUploadRes
 		)
@@ -632,24 +921,24 @@ func (s *Server) handleCompleteUploadRequest(args [1]string, argsEscaped bool, w
 	}
 }
 
-// handleCreateSystemRequest handles createSystem operation.
+// handleCreateDriveRequest handles createDrive operation.
 //
-// Create a new system with root user and directories.
+// Create a new drive.
 //
-// POST /systems
-func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /v1/drives
+func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("createSystem"),
+		otelogen.OperationID("createDrive"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/systems"),
+		semconv.HTTPRouteKey.String("/v1/drives"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), CreateSystemOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), CreateDriveOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -704,22 +993,22 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: CreateSystemOperation,
-			ID:   "createSystem",
+			Name: CreateDriveOperation,
+			ID:   "createDrive",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, CreateSystemOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, CreateDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -754,7 +1043,7 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 	}
 
 	var rawBody []byte
-	request, rawBody, close, err := s.decodeCreateSystemRequest(r)
+	request, rawBody, close, err := s.decodeCreateDriveRequest(r)
 	if err != nil {
 		err = &ogenerrors.DecodeRequestError{
 			OperationContext: opErrContext,
@@ -770,13 +1059,13 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 		}
 	}()
 
-	var response CreateSystemRes
+	var response CreateDriveRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    CreateSystemOperation,
-			OperationSummary: "Create a new system",
-			OperationID:      "createSystem",
+			OperationName:    CreateDriveOperation,
+			OperationSummary: "Create a new drive",
+			OperationID:      "createDrive",
 			Body:             request,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -784,9 +1073,9 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 		}
 
 		type (
-			Request  = *CreateSystemRequest
+			Request  = OptDriveCreate
 			Params   = struct{}
-			Response = CreateSystemRes
+			Response = CreateDriveRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -797,12 +1086,12 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.CreateSystem(ctx, request)
+				response, err = s.h.CreateDrive(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.CreateSystem(ctx, request)
+		response, err = s.h.CreateDrive(ctx, request)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -810,7 +1099,7 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 		return
 	}
 
-	if err := encodeCreateSystemResponse(response, w, span); err != nil {
+	if err := encodeCreateDriveResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -819,434 +1108,24 @@ func (s *Server) handleCreateSystemRequest(args [0]string, argsEscaped bool, w h
 	}
 }
 
-// handleCreateSystemGroupRequest handles createSystemGroup operation.
+// handleDeleteDriveRequest handles deleteDrive operation.
 //
-// Create a new group in a system.
+// Soft-delete a drive.
 //
-// POST /systems/{systemId}/groups
-func (s *Server) handleCreateSystemGroupRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// DELETE /v1/drives/{driveID}/root
+func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("createSystemGroup"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), CreateSystemGroupOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: CreateSystemGroupOperation,
-			ID:   "createSystemGroup",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, CreateSystemGroupOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeCreateSystemGroupParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-	request, rawBody, close, err := s.decodeCreateSystemGroupRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
-
-	var response CreateSystemGroupRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    CreateSystemGroupOperation,
-			OperationSummary: "Create a group",
-			OperationID:      "createSystemGroup",
-			Body:             request,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = *CreateSystemGroupRequest
-			Params   = CreateSystemGroupParams
-			Response = CreateSystemGroupRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackCreateSystemGroupParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.CreateSystemGroup(ctx, request, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.CreateSystemGroup(ctx, request, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeCreateSystemGroupResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleCreateSystemUserRequest handles createSystemUser operation.
-//
-// Add a user to a system.
-// UID assignment:
-// - If uid is -1 or not provided: Auto-assigned starting from 1000
-// - If uid is 0: Creates root user (superuser) - typically only for system initialization
-// - If uid is 1-999: Reserved for system users (e.g., daemon accounts)
-// - If uid is 1000+: Regular user with explicit UID
-// A private group with the same GID as UID is automatically created.
-//
-// POST /systems/{systemId}/users
-func (s *Server) handleCreateSystemUserRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("createSystemUser"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/users"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), CreateSystemUserOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: CreateSystemUserOperation,
-			ID:   "createSystemUser",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, CreateSystemUserOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeCreateSystemUserParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-	request, rawBody, close, err := s.decodeCreateSystemUserRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
-
-	var response CreateSystemUserRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    CreateSystemUserOperation,
-			OperationSummary: "Add user to system",
-			OperationID:      "createSystemUser",
-			Body:             request,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = *CreateSystemUserRequest
-			Params   = CreateSystemUserParams
-			Response = CreateSystemUserRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackCreateSystemUserParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.CreateSystemUser(ctx, request, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.CreateSystemUser(ctx, request, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeCreateSystemUserResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleDeleteSystemRequest handles deleteSystem operation.
-//
-// Delete a system and all associated data (inodes, objects, users, groups).
-//
-// DELETE /systems/{systemId}
-func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("deleteSystem"),
+		otelogen.OperationID("deleteDrive"),
 		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/root"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), DeleteSystemOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), DeleteDriveOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -1301,22 +1180,22 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: DeleteSystemOperation,
-			ID:   "deleteSystem",
+			Name: DeleteDriveOperation,
+			ID:   "deleteDrive",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, DeleteSystemOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, DeleteDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -1349,7 +1228,7 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 			return
 		}
 	}
-	params, err := decodeDeleteSystemParams(args, argsEscaped, r)
+	params, err := decodeDeleteDriveParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -1362,28 +1241,28 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 
 	var rawBody []byte
 
-	var response DeleteSystemRes
+	var response *DeleteDriveNoContent
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    DeleteSystemOperation,
-			OperationSummary: "Delete a system",
-			OperationID:      "deleteSystem",
+			OperationName:    DeleteDriveOperation,
+			OperationSummary: "Soft-delete a drive",
+			OperationID:      "deleteDrive",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = DeleteSystemParams
-			Response = DeleteSystemRes
+			Params   = DeleteDriveParams
+			Response = *DeleteDriveNoContent
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1392,14 +1271,14 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 		](
 			m,
 			mreq,
-			unpackDeleteSystemParams,
+			unpackDeleteDriveParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.DeleteSystem(ctx, params)
+				err = s.h.DeleteDrive(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.DeleteSystem(ctx, params)
+		err = s.h.DeleteDrive(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -1407,7 +1286,7 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 		return
 	}
 
-	if err := encodeDeleteSystemResponse(response, w, span); err != nil {
+	if err := encodeDeleteDriveResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -1416,578 +1295,24 @@ func (s *Server) handleDeleteSystemRequest(args [1]string, argsEscaped bool, w h
 	}
 }
 
-// handleDeleteSystemGroupRequest handles deleteSystemGroup operation.
+// handleGetDriveRequest handles getDrive operation.
 //
-// Delete a group from a system.
+// Get a drive by ID.
 //
-// DELETE /systems/{systemId}/groups/{gid}
-func (s *Server) handleDeleteSystemGroupRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/drives/{driveID}/root
+func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("deleteSystemGroup"),
-		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups/{gid}"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), DeleteSystemGroupOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: DeleteSystemGroupOperation,
-			ID:   "deleteSystemGroup",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, DeleteSystemGroupOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeDeleteSystemGroupParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response DeleteSystemGroupRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    DeleteSystemGroupOperation,
-			OperationSummary: "Delete a group",
-			OperationID:      "deleteSystemGroup",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "gid",
-					In:   "path",
-				}: params.Gid,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = DeleteSystemGroupParams
-			Response = DeleteSystemGroupRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackDeleteSystemGroupParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.DeleteSystemGroup(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.DeleteSystemGroup(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeDeleteSystemGroupResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleDeleteSystemUserRequest handles deleteSystemUser operation.
-//
-// Remove a user from a system.
-//
-// DELETE /systems/{systemId}/users/{uid}
-func (s *Server) handleDeleteSystemUserRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("deleteSystemUser"),
-		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/users/{uid}"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), DeleteSystemUserOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: DeleteSystemUserOperation,
-			ID:   "deleteSystemUser",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, DeleteSystemUserOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeDeleteSystemUserParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response DeleteSystemUserRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    DeleteSystemUserOperation,
-			OperationSummary: "Remove user from system",
-			OperationID:      "deleteSystemUser",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "uid",
-					In:   "path",
-				}: params.UID,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = DeleteSystemUserParams
-			Response = DeleteSystemUserRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackDeleteSystemUserParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.DeleteSystemUser(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.DeleteSystemUser(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeDeleteSystemUserResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleDeleteUserRequest handles deleteUser operation.
-//
-// Delete the current user.
-//
-// DELETE /user
-func (s *Server) handleDeleteUserRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("deleteUser"),
-		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/user"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), DeleteUserOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: DeleteUserOperation,
-			ID:   "deleteUser",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, DeleteUserOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-
-	var rawBody []byte
-
-	var response DeleteUserRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    DeleteUserOperation,
-			OperationSummary: "Delete user",
-			OperationID:      "deleteUser",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = struct{}
-			Response = DeleteUserRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.DeleteUser(ctx)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.DeleteUser(ctx)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeDeleteUserResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetDownloadUrlRequest handles getDownloadUrl operation.
-//
-// Get presigned download URL for a file.
-//
-// GET /fs/{systemId}/download
-func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getDownloadUrl"),
+		otelogen.OperationID("getDrive"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/download"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/root"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetDownloadUrlOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetDriveOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -2042,22 +1367,22 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: GetDownloadUrlOperation,
-			ID:   "getDownloadUrl",
+			Name: GetDriveOperation,
+			ID:   "getDrive",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetDownloadUrlOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, GetDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -2090,7 +1415,7 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 			return
 		}
 	}
-	params, err := decodeGetDownloadUrlParams(args, argsEscaped, r)
+	params, err := decodeGetDriveParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -2103,32 +1428,28 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 
 	var rawBody []byte
 
-	var response GetDownloadUrlRes
+	var response *Drive
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    GetDownloadUrlOperation,
-			OperationSummary: "Get download URL",
-			OperationID:      "getDownloadUrl",
+			OperationName:    GetDriveOperation,
+			OperationSummary: "Get a drive by ID",
+			OperationID:      "getDrive",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "path",
-					In:   "query",
-				}: params.Path,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = GetDownloadUrlParams
-			Response = GetDownloadUrlRes
+			Params   = GetDriveParams
+			Response = *Drive
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2137,14 +1458,14 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 		](
 			m,
 			mreq,
-			unpackGetDownloadUrlParams,
+			unpackGetDriveParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetDownloadUrl(ctx, params)
+				response, err = s.h.GetDrive(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetDownloadUrl(ctx, params)
+		response, err = s.h.GetDrive(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -2152,7 +1473,7 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 		return
 	}
 
-	if err := encodeGetDownloadUrlResponse(response, w, span); err != nil {
+	if err := encodeGetDriveResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -2161,148 +1482,24 @@ func (s *Server) handleGetDownloadUrlRequest(args [1]string, argsEscaped bool, w
 	}
 }
 
-// handleGetHealthRequest handles getHealth operation.
+// handleGetDriveStorageRequest handles getDriveStorage operation.
 //
-// Check if the service is healthy.
+// Get a drive's storage configuration.
 //
-// GET /health
-func (s *Server) handleGetHealthRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/drives/{driveID}/storage
+func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getHealth"),
+		otelogen.OperationID("getDriveStorage"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/health"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/storage"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetHealthOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err error
-	)
-
-	var rawBody []byte
-
-	var response GetHealthRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GetHealthOperation,
-			OperationSummary: "Health check",
-			OperationID:      "getHealth",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = struct{}
-			Response = GetHealthRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetHealth(ctx)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GetHealth(ctx)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGetHealthResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetRootDirectoryRequest handles getRootDirectory operation.
-//
-// Get the root directory inode for a system.
-//
-// GET /fs/{systemId}/root
-func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getRootDirectory"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/root"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetRootDirectoryOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetDriveStorageOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -2357,22 +1554,22 @@ func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool,
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: GetRootDirectoryOperation,
-			ID:   "getRootDirectory",
+			Name: GetDriveStorageOperation,
+			ID:   "getDriveStorage",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetRootDirectoryOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, GetDriveStorageOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -2405,7 +1602,7 @@ func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool,
 			return
 		}
 	}
-	params, err := decodeGetRootDirectoryParams(args, argsEscaped, r)
+	params, err := decodeGetDriveStorageParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -2418,28 +1615,28 @@ func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool,
 
 	var rawBody []byte
 
-	var response GetRootDirectoryRes
+	var response *StorageConfig
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    GetRootDirectoryOperation,
-			OperationSummary: "Get root directory",
-			OperationID:      "getRootDirectory",
+			OperationName:    GetDriveStorageOperation,
+			OperationSummary: "Get a drive's storage configuration",
+			OperationID:      "getDriveStorage",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = GetRootDirectoryParams
-			Response = GetRootDirectoryRes
+			Params   = GetDriveStorageParams
+			Response = *StorageConfig
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2448,14 +1645,14 @@ func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool,
 		](
 			m,
 			mreq,
-			unpackGetRootDirectoryParams,
+			unpackGetDriveStorageParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetRootDirectory(ctx, params)
+				response, err = s.h.GetDriveStorage(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.GetRootDirectory(ctx, params)
+		response, err = s.h.GetDriveStorage(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -2463,576 +1660,7 @@ func (s *Server) handleGetRootDirectoryRequest(args [1]string, argsEscaped bool,
 		return
 	}
 
-	if err := encodeGetRootDirectoryResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetSystemRequest handles getSystem operation.
-//
-// Get detailed information about a system.
-//
-// GET /systems/{systemId}
-func (s *Server) handleGetSystemRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getSystem"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetSystemOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: GetSystemOperation,
-			ID:   "getSystem",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetSystemOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeGetSystemParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response GetSystemRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GetSystemOperation,
-			OperationSummary: "Get system by ID",
-			OperationID:      "getSystem",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = GetSystemParams
-			Response = GetSystemRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackGetSystemParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetSystem(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GetSystem(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGetSystemResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetSystemGroupRequest handles getSystemGroup operation.
-//
-// Get detailed information about a system group.
-//
-// GET /systems/{systemId}/groups/{gid}
-func (s *Server) handleGetSystemGroupRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getSystemGroup"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups/{gid}"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetSystemGroupOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: GetSystemGroupOperation,
-			ID:   "getSystemGroup",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetSystemGroupOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeGetSystemGroupParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response GetSystemGroupRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GetSystemGroupOperation,
-			OperationSummary: "Get system group by GID",
-			OperationID:      "getSystemGroup",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "gid",
-					In:   "path",
-				}: params.Gid,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = GetSystemGroupParams
-			Response = GetSystemGroupRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackGetSystemGroupParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetSystemGroup(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GetSystemGroup(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGetSystemGroupResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGetSystemUserRequest handles getSystemUser operation.
-//
-// Get detailed information about a system user.
-//
-// GET /systems/{systemId}/users/{uid}
-func (s *Server) handleGetSystemUserRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("getSystemUser"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/users/{uid}"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GetSystemUserOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: GetSystemUserOperation,
-			ID:   "getSystemUser",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetSystemUserOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeGetSystemUserParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response GetSystemUserRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GetSystemUserOperation,
-			OperationSummary: "Get system user by UID",
-			OperationID:      "getSystemUser",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "uid",
-					In:   "path",
-				}: params.UID,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = GetSystemUserParams
-			Response = GetSystemUserRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackGetSystemUserParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GetSystemUser(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GetSystemUser(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGetSystemUserResponse(response, w, span); err != nil {
+	if err := encodeGetDriveStorageResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -3043,16 +1671,16 @@ func (s *Server) handleGetSystemUserRequest(args [2]string, argsEscaped bool, w 
 
 // handleGetUserRequest handles getUser operation.
 //
-// Get the current user information.
+// Get current user.
 //
-// GET /user
+// GET /v1/users
 func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getUser"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/user"),
+		semconv.HTTPRouteKey.String("/v1/users"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -3121,14 +1749,14 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, GetUserOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, GetUserOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -3164,7 +1792,7 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 
 	var rawBody []byte
 
-	var response GetUserRes
+	var response *User
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -3180,7 +1808,7 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = GetUserRes
+			Response = *User
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3213,179 +1841,24 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 	}
 }
 
-// handleHandleCallbackRequest handles handleCallback operation.
+// handleGoogleLoginRequest handles googleLogin operation.
 //
-// Handle OAuth callback from Keycloak.
+// Initiate Google OAuth login (web).
 //
-// GET /auth/callback
-func (s *Server) handleHandleCallbackRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /auth/google
+func (s *Server) handleGoogleLoginRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("handleCallback"),
+		otelogen.OperationID("googleLogin"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/auth/callback"),
+		semconv.HTTPRouteKey.String("/auth/google"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), HandleCallbackOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: HandleCallbackOperation,
-			ID:   "handleCallback",
-		}
-	)
-	params, err := decodeHandleCallbackParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response HandleCallbackRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    HandleCallbackOperation,
-			OperationSummary: "Handle OAuth callback",
-			OperationID:      "handleCallback",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "code",
-					In:   "query",
-				}: params.Code,
-				{
-					Name: "state",
-					In:   "query",
-				}: params.State,
-				{
-					Name: "session_state",
-					In:   "query",
-				}: params.SessionState,
-				{
-					Name: "iss",
-					In:   "query",
-				}: params.Iss,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = HandleCallbackParams
-			Response = HandleCallbackRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackHandleCallbackParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.HandleCallback(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.HandleCallback(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeHandleCallbackResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleInitiateLoginRequest handles initiateLogin operation.
-//
-// Start OIDC login flow and return authorization URL.
-//
-// GET /auth/login
-func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("initiateLogin"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/auth/login"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), InitiateLoginOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GoogleLoginOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -3443,13 +1916,13 @@ func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w 
 
 	var rawBody []byte
 
-	var response InitiateLoginRes
+	var response *GoogleLoginFound
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    InitiateLoginOperation,
-			OperationSummary: "Initiate login",
-			OperationID:      "initiateLogin",
+			OperationName:    GoogleLoginOperation,
+			OperationSummary: "Initiate Google OAuth login (web)",
+			OperationID:      "googleLogin",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -3459,7 +1932,7 @@ func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w 
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = InitiateLoginRes
+			Response = *GoogleLoginFound
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3470,12 +1943,12 @@ func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w 
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.InitiateLogin(ctx)
+				err = s.h.GoogleLogin(ctx)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.InitiateLogin(ctx)
+		err = s.h.GoogleLogin(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -3483,7 +1956,274 @@ func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w 
 		return
 	}
 
-	if err := encodeInitiateLoginResponse(response, w, span); err != nil {
+	if err := encodeGoogleLoginResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleGoogleNativeLoginRequest handles googleNativeLogin operation.
+//
+// Exchange a Google id_token for a mdrive session (mobile).
+//
+// POST /auth/google/native
+func (s *Server) handleGoogleNativeLoginRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("googleNativeLogin"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/auth/google/native"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GoogleNativeLoginOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: GoogleNativeLoginOperation,
+			ID:   "googleNativeLogin",
+		}
+	)
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeGoogleNativeLoginRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *GoogleNativeLoginOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GoogleNativeLoginOperation,
+			OperationSummary: "Exchange a Google id_token for a mdrive session (mobile)",
+			OperationID:      "googleNativeLogin",
+			Body:             request,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = OptGoogleNativeLoginReq
+			Params   = struct{}
+			Response = *GoogleNativeLoginOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GoogleNativeLogin(ctx, request)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GoogleNativeLogin(ctx, request)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeGoogleNativeLoginResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleHealthRequest handles health operation.
+//
+// Health check.
+//
+// GET /health
+func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("health"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/health"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), HealthOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err error
+	)
+
+	var rawBody []byte
+
+	var response *HealthOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    HealthOperation,
+			OperationSummary: "Health check",
+			OperationID:      "health",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *HealthOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.Health(ctx)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.Health(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeHealthResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -3494,16 +2234,16 @@ func (s *Server) handleInitiateLoginRequest(args [0]string, argsEscaped bool, w 
 
 // handleInitiateUploadRequest handles initiateUpload operation.
 //
-// Start an upload session and get presigned URL.
+// Initiate a presigned upload.
 //
-// POST /fs/{systemId}/upload/initiate
+// POST /v1/drives/{driveID}/uploads
 func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("initiateUpload"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/upload/initiate"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/uploads"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -3572,14 +2312,14 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, InitiateUploadOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, InitiateUploadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -3645,21 +2385,21 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    InitiateUploadOperation,
-			OperationSummary: "Initiate file upload",
+			OperationSummary: "Initiate a presigned upload",
 			OperationID:      "initiateUpload",
 			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *InitiateUploadRequest
+			Request  = OptPresignRequest
 			Params   = InitiateUploadParams
 			Response = InitiateUploadRes
 		)
@@ -3694,24 +2434,24 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 	}
 }
 
-// handleListSystemGroupsRequest handles listSystemGroups operation.
+// handleListDeletedDrivesRequest handles listDeletedDrives operation.
 //
-// Get all groups in a system.
+// List soft-deleted drives (admin only).
 //
-// GET /systems/{systemId}/groups
-func (s *Server) handleListSystemGroupsRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/admin/drives/deleted
+func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("listSystemGroups"),
+		otelogen.OperationID("listDeletedDrives"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups"),
+		semconv.HTTPRouteKey.String("/v1/admin/drives/deleted"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), ListSystemGroupsOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), ListDeletedDrivesOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -3766,396 +2506,22 @@ func (s *Server) handleListSystemGroupsRequest(args [1]string, argsEscaped bool,
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: ListSystemGroupsOperation,
-			ID:   "listSystemGroups",
+			Name: ListDeletedDrivesOperation,
+			ID:   "listDeletedDrives",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, ListSystemGroupsOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, ListDeletedDrivesOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeListSystemGroupsParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response ListSystemGroupsRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    ListSystemGroupsOperation,
-			OperationSummary: "List groups in system",
-			OperationID:      "listSystemGroups",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = ListSystemGroupsParams
-			Response = ListSystemGroupsRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackListSystemGroupsParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.ListSystemGroups(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.ListSystemGroups(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeListSystemGroupsResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleListSystemUsersRequest handles listSystemUsers operation.
-//
-// Get all users in a system.
-//
-// GET /systems/{systemId}/users
-func (s *Server) handleListSystemUsersRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("listSystemUsers"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/users"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), ListSystemUsersOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: ListSystemUsersOperation,
-			ID:   "listSystemUsers",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, ListSystemUsersOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-	params, err := decodeListSystemUsersParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response ListSystemUsersRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    ListSystemUsersOperation,
-			OperationSummary: "List users in system",
-			OperationID:      "listSystemUsers",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = ListSystemUsersParams
-			Response = ListSystemUsersRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackListSystemUsersParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.ListSystemUsers(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.ListSystemUsers(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeListSystemUsersResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleListSystemsRequest handles listSystems operation.
-//
-// Get a list of all systems.
-//
-// GET /systems
-func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("listSystems"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/systems"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), ListSystemsOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: ListSystemsOperation,
-			ID:   "listSystems",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securitySessionAuth(ctx, ListSystemsOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "SessionAuth",
-					Err:              err,
-				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -4191,13 +2557,13 @@ func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w ht
 
 	var rawBody []byte
 
-	var response ListSystemsRes
+	var response []Drive
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    ListSystemsOperation,
-			OperationSummary: "List all systems",
-			OperationID:      "listSystems",
+			OperationName:    ListDeletedDrivesOperation,
+			OperationSummary: "List soft-deleted drives (admin only)",
+			OperationID:      "listDeletedDrives",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -4207,7 +2573,7 @@ func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w ht
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = ListSystemsRes
+			Response = []Drive
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4218,12 +2584,12 @@ func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w ht
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.ListSystems(ctx)
+				response, err = s.h.ListDeletedDrives(ctx)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.ListSystems(ctx)
+		response, err = s.h.ListDeletedDrives(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -4231,7 +2597,7 @@ func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w ht
 		return
 	}
 
-	if err := encodeListSystemsResponse(response, w, span); err != nil {
+	if err := encodeListDeletedDrivesResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -4240,24 +2606,24 @@ func (s *Server) handleListSystemsRequest(args [0]string, argsEscaped bool, w ht
 	}
 }
 
-// handleLnRequest handles ln operation.
+// handleListDrivesRequest handles listDrives operation.
 //
-// Create a symbolic link (symlinkat).
+// List drives owned by the authenticated user.
 //
-// POST /syscall/{systemId}/ln
-func (s *Server) handleLnRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/drives
+func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("ln"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/ln"),
+		otelogen.OperationID("listDrives"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/drives"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), LnOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), ListDrivesOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -4312,22 +2678,22 @@ func (s *Server) handleLnRequest(args [1]string, argsEscaped bool, w http.Respon
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: LnOperation,
-			ID:   "ln",
+			Name: ListDrivesOperation,
+			ID:   "listDrives",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, LnOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, ListDrivesOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -4360,170 +2726,16 @@ func (s *Server) handleLnRequest(args [1]string, argsEscaped bool, w http.Respon
 			return
 		}
 	}
-	params, err := decodeLnParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-	request, rawBody, close, err := s.decodeLnRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
-
-	var response LnRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    LnOperation,
-			OperationSummary: "Create link",
-			OperationID:      "ln",
-			Body:             request,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "systemId",
-					In:   "path",
-				}: params.SystemId,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = *SymlinkRequest
-			Params   = LnParams
-			Response = LnRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackLnParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Ln(ctx, request, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.Ln(ctx, request, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeLnResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleLogoutRequest handles logout operation.
-//
-// Logout and delete session. Returns Keycloak logout URL for RP-initiated logout.
-//
-// POST /auth/logout
-func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("logout"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/auth/logout"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), LogoutOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err error
-	)
 
 	var rawBody []byte
 
-	var response *LogoutResponse
+	var response []Drive
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    LogoutOperation,
-			OperationSummary: "Logout",
-			OperationID:      "logout",
+			OperationName:    ListDrivesOperation,
+			OperationSummary: "List drives owned by the authenticated user",
+			OperationID:      "listDrives",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params:           middleware.Parameters{},
@@ -4533,7 +2745,7 @@ func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.Re
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *LogoutResponse
+			Response = []Drive
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4544,12 +2756,12 @@ func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.Re
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Logout(ctx)
+				response, err = s.h.ListDrives(ctx)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Logout(ctx)
+		response, err = s.h.ListDrives(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -4557,7 +2769,7 @@ func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.Re
 		return
 	}
 
-	if err := encodeLogoutResponse(response, w, span); err != nil {
+	if err := encodeListDrivesResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -4568,16 +2780,16 @@ func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.Re
 
 // handleLsRequest handles ls operation.
 //
-// List contents of a directory (like Unix ls command, getdents64).
+// List directory contents.
 //
-// GET /syscall/{systemId}/ls
+// GET /v1/drives/{driveID}/fs/ls
 func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("ls"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/ls"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/ls"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -4646,14 +2858,14 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, LsOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, LsOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -4699,7 +2911,7 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 
 	var rawBody []byte
 
-	var response LsRes
+	var response *DirContent
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4710,9 +2922,9 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 				{
 					Name: "path",
 					In:   "query",
@@ -4724,7 +2936,7 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 		type (
 			Request  = struct{}
 			Params   = LsParams
-			Response = LsRes
+			Response = *DirContent
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4759,16 +2971,16 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 
 // handleMkdirRequest handles mkdir operation.
 //
-// Create a new directory at the specified path (mkdirat).
+// Create a directory.
 //
-// POST /syscall/{systemId}/mkdir
+// POST /v1/drives/{driveID}/fs/mkdir
 func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("mkdir"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/mkdir"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/mkdir"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -4837,14 +3049,14 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, MkdirOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, MkdirOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -4905,28 +3117,28 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		}
 	}()
 
-	var response MkdirRes
+	var response *MkdirCreated
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    MkdirOperation,
-			OperationSummary: "Create directory",
+			OperationSummary: "Create a directory",
 			OperationID:      "mkdir",
 			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *MkdirRequest
+			Request  = OptMkdirReq
 			Params   = MkdirParams
-			Response = MkdirRes
+			Response = *MkdirCreated
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4937,12 +3149,12 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 			mreq,
 			unpackMkdirParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Mkdir(ctx, request, params)
+				err = s.h.Mkdir(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Mkdir(ctx, request, params)
+		err = s.h.Mkdir(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -4961,18 +3173,16 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMvRequest handles mv operation.
 //
-// Move files or directories (like Unix mv). Accepts multiple sources with a single destination.
-// If destination is a directory, all sources are moved into it.
-// If destination is a new path, source is renamed/moved.
+// Move files or directories.
 //
-// POST /syscall/{systemId}/mv
+// POST /v1/drives/{driveID}/fs/mv
 func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("mv"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/mv"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/mv"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -5041,14 +3251,14 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, MvOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, MvOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -5109,28 +3319,28 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		}
 	}()
 
-	var response MvRes
+	var response *MvOK
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    MvOperation,
-			OperationSummary: "Move paths",
+			OperationSummary: "Move files or directories",
 			OperationID:      "mv",
 			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *MvRequest
+			Request  = OptMvReq
 			Params   = MvParams
-			Response = MvRes
+			Response = *MvOK
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5141,12 +3351,12 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 			mreq,
 			unpackMvParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Mv(ctx, request, params)
+				err = s.h.Mv(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Mv(ctx, request, params)
+		err = s.h.Mv(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -5163,24 +3373,24 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 	}
 }
 
-// handleRemoveGroupMemberRequest handles removeGroupMember operation.
+// handlePresignDownloadRequest handles presignDownload operation.
 //
-// Remove a user from a group.
+// Get a presigned download URL for an object node.
 //
-// DELETE /systems/{systemId}/groups/{gid}/members/{uid}
-func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/drives/{driveID}/downloads
+func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("removeGroupMember"),
-		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/systems/{systemId}/groups/{gid}/members/{uid}"),
+		otelogen.OperationID("presignDownload"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/downloads"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), RemoveGroupMemberOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), PresignDownloadOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -5235,22 +3445,22 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: RemoveGroupMemberOperation,
-			ID:   "removeGroupMember",
+			Name: PresignDownloadOperation,
+			ID:   "presignDownload",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, RemoveGroupMemberOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, PresignDownloadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -5283,7 +3493,7 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 			return
 		}
 	}
-	params, err := decodeRemoveGroupMemberParams(args, argsEscaped, r)
+	params, err := decodePresignDownloadParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -5296,36 +3506,32 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 
 	var rawBody []byte
 
-	var response RemoveGroupMemberRes
+	var response PresignDownloadRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    RemoveGroupMemberOperation,
-			OperationSummary: "Remove user from group",
-			OperationID:      "removeGroupMember",
+			OperationName:    PresignDownloadOperation,
+			OperationSummary: "Get a presigned download URL for an object node",
+			OperationID:      "presignDownload",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 				{
-					Name: "gid",
-					In:   "path",
-				}: params.Gid,
-				{
-					Name: "uid",
-					In:   "path",
-				}: params.UID,
+					Name: "path",
+					In:   "query",
+				}: params.Path,
 			},
 			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = RemoveGroupMemberParams
-			Response = RemoveGroupMemberRes
+			Params   = PresignDownloadParams
+			Response = PresignDownloadRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5334,14 +3540,14 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 		](
 			m,
 			mreq,
-			unpackRemoveGroupMemberParams,
+			unpackPresignDownloadParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.RemoveGroupMember(ctx, params)
+				response, err = s.h.PresignDownload(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.RemoveGroupMember(ctx, params)
+		response, err = s.h.PresignDownload(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -5349,7 +3555,7 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 		return
 	}
 
-	if err := encodeRemoveGroupMemberResponse(response, w, span); err != nil {
+	if err := encodePresignDownloadResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -5358,24 +3564,24 @@ func (s *Server) handleRemoveGroupMemberRequest(args [3]string, argsEscaped bool
 	}
 }
 
-// handleRenameRequest handles rename operation.
+// handleRestoreDriveRequest handles restoreDrive operation.
 //
-// Rename a file or directory within the same parent directory (renameat).
+// Restore a soft-deleted drive.
 //
-// POST /syscall/{systemId}/rename
-func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /v1/drives/{driveID}/restore
+func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("rename"),
+		otelogen.OperationID("restoreDrive"),
 		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/rename"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/restore"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), RenameOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), RestoreDriveOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -5430,22 +3636,22 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: RenameOperation,
-			ID:   "rename",
+			Name: RestoreDriveOperation,
+			ID:   "restoreDrive",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, RenameOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, RestoreDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -5478,7 +3684,7 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 			return
 		}
 	}
-	params, err := decodeRenameParams(args, argsEscaped, r)
+	params, err := decodeRestoreDriveParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -5490,44 +3696,29 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 	}
 
 	var rawBody []byte
-	request, rawBody, close, err := s.decodeRenameRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
 
-	var response RenameRes
+	var response *Drive
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    RenameOperation,
-			OperationSummary: "Rename file or directory",
-			OperationID:      "rename",
-			Body:             request,
+			OperationName:    RestoreDriveOperation,
+			OperationSummary: "Restore a soft-deleted drive",
+			OperationID:      "restoreDrive",
+			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *RenameRequest
-			Params   = RenameParams
-			Response = RenameRes
+			Request  = struct{}
+			Params   = RestoreDriveParams
+			Response = *Drive
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5536,14 +3727,14 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 		](
 			m,
 			mreq,
-			unpackRenameParams,
+			unpackRestoreDriveParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Rename(ctx, request, params)
+				response, err = s.h.RestoreDrive(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Rename(ctx, request, params)
+		response, err = s.h.RestoreDrive(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -5551,7 +3742,7 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 		return
 	}
 
-	if err := encodeRenameResponse(response, w, span); err != nil {
+	if err := encodeRestoreDriveResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -5562,16 +3753,16 @@ func (s *Server) handleRenameRequest(args [1]string, argsEscaped bool, w http.Re
 
 // handleRmRequest handles rm operation.
 //
-// Remove files or directories (like Unix rm). Accepts multiple paths for bulk deletion.
+// Remove files or directories.
 //
-// POST /syscall/{systemId}/rm
+// DELETE /v1/drives/{driveID}/fs
 func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("rm"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/rm"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
@@ -5640,14 +3831,14 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, RmOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, RmOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -5708,28 +3899,28 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		}
 	}()
 
-	var response RmRes
+	var response *RmNoContent
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    RmOperation,
-			OperationSummary: "Remove multiple paths",
+			OperationSummary: "Remove files or directories",
 			OperationID:      "rm",
 			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = *RmRequest
+			Request  = OptRmReq
 			Params   = RmParams
-			Response = RmRes
+			Response = *RmNoContent
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5740,12 +3931,12 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 			mreq,
 			unpackRmParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Rm(ctx, request, params)
+				err = s.h.Rm(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Rm(ctx, request, params)
+		err = s.h.Rm(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -5762,24 +3953,24 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 	}
 }
 
-// handleStatPathRequest handles statPath operation.
+// handleStatRequest handles stat operation.
 //
-// Get inode metadata for a given path.
+// Get file metadata.
 //
-// GET /fs/{systemId}/stat
-func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// GET /v1/drives/{driveID}/fs/stat
+func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("statPath"),
+		otelogen.OperationID("stat"),
 		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/fs/{systemId}/stat"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/stat"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), StatPathOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), StatOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -5834,22 +4025,22 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: StatPathOperation,
-			ID:   "statPath",
+			Name: StatOperation,
+			ID:   "stat",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, StatPathOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, StatOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -5882,7 +4073,7 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 			return
 		}
 	}
-	params, err := decodeStatPathParams(args, argsEscaped, r)
+	params, err := decodeStatParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -5895,20 +4086,20 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 
 	var rawBody []byte
 
-	var response StatPathRes
+	var response *StatOK
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    StatPathOperation,
-			OperationSummary: "Get inode by path",
-			OperationID:      "statPath",
+			OperationName:    StatOperation,
+			OperationSummary: "Get file metadata",
+			OperationID:      "stat",
 			Body:             nil,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
+				}: params.DriveID,
 				{
 					Name: "path",
 					In:   "query",
@@ -5919,8 +4110,8 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 
 		type (
 			Request  = struct{}
-			Params   = StatPathParams
-			Response = StatPathRes
+			Params   = StatParams
+			Response = *StatOK
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5929,14 +4120,14 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 		](
 			m,
 			mreq,
-			unpackStatPathParams,
+			unpackStatParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.StatPath(ctx, params)
+				response, err = s.h.Stat(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.StatPath(ctx, params)
+		response, err = s.h.Stat(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -5944,7 +4135,7 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 		return
 	}
 
-	if err := encodeStatPathResponse(response, w, span); err != nil {
+	if err := encodeStatResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -5953,24 +4144,24 @@ func (s *Server) handleStatPathRequest(args [1]string, argsEscaped bool, w http.
 	}
 }
 
-// handleUnlinkRequest handles unlink operation.
+// handleSymlinkRequest handles symlink operation.
 //
-// Delete a file or directory at the specified path (unlinkat).
+// Create a symbolic link.
 //
-// DELETE /syscall/{systemId}/unlink
-func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+// POST /v1/drives/{driveID}/fs/symlink
+func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
 	w = statusWriter
 	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("unlink"),
-		semconv.HTTPRequestMethodKey.String("DELETE"),
-		semconv.HTTPRouteKey.String("/syscall/{systemId}/unlink"),
+		otelogen.OperationID("symlink"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/symlink"),
 	}
 	// Add attributes from config.
 	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
 
 	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), UnlinkOperation,
+	ctx, span := s.cfg.Tracer.Start(r.Context(), SymlinkOperation,
 		trace.WithAttributes(otelAttrs...),
 		serverSpanKind,
 	)
@@ -6025,22 +4216,22 @@ func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.Re
 		}
 		err          error
 		opErrContext = ogenerrors.OperationContext{
-			Name: UnlinkOperation,
-			ID:   "unlink",
+			Name: SymlinkOperation,
+			ID:   "symlink",
 		}
 	)
 	{
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securitySessionAuth(ctx, UnlinkOperation, r)
+			sctx, ok, err := s.securityBearerAuth(ctx, SymlinkOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "SessionAuth",
+					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:SessionAuth", err)
+				defer recordError("Security:BearerAuth", err)
 				s.cfg.ErrorHandler(ctx, w, r, err)
 				return
 			}
@@ -6073,7 +4264,7 @@ func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.Re
 			return
 		}
 	}
-	params, err := decodeUnlinkParams(args, argsEscaped, r)
+	params, err := decodeSymlinkParams(args, argsEscaped, r)
 	if err != nil {
 		err = &ogenerrors.DecodeParamsError{
 			OperationContext: opErrContext,
@@ -6085,33 +4276,44 @@ func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.Re
 	}
 
 	var rawBody []byte
+	request, rawBody, close, err := s.decodeSymlinkRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
 
-	var response UnlinkRes
+	var response *SymlinkCreated
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
-			OperationName:    UnlinkOperation,
-			OperationSummary: "Delete file or directory",
-			OperationID:      "unlink",
-			Body:             nil,
+			OperationName:    SymlinkOperation,
+			OperationSummary: "Create a symbolic link",
+			OperationID:      "symlink",
+			Body:             request,
 			RawBody:          rawBody,
 			Params: middleware.Parameters{
 				{
-					Name: "systemId",
+					Name: "driveID",
 					In:   "path",
-				}: params.SystemId,
-				{
-					Name: "path",
-					In:   "query",
-				}: params.Path,
+				}: params.DriveID,
 			},
 			Raw: r,
 		}
 
 		type (
-			Request  = struct{}
-			Params   = UnlinkParams
-			Response = UnlinkRes
+			Request  = OptSymlinkReq
+			Params   = SymlinkParams
+			Response = *SymlinkCreated
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -6120,14 +4322,14 @@ func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.Re
 		](
 			m,
 			mreq,
-			unpackUnlinkParams,
+			unpackSymlinkParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.Unlink(ctx, params)
+				err = s.h.Symlink(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.Unlink(ctx, params)
+		err = s.h.Symlink(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -6135,7 +4337,1002 @@ func (s *Server) handleUnlinkRequest(args [1]string, argsEscaped bool, w http.Re
 		return
 	}
 
-	if err := encodeUnlinkResponse(response, w, span); err != nil {
+	if err := encodeSymlinkResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleTouchRequest handles touch operation.
+//
+// Create an empty file.
+//
+// POST /v1/drives/{driveID}/fs/touch
+func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("touch"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/touch"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), TouchOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: TouchOperation,
+			ID:   "touch",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, TouchOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeTouchParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeTouchRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *TouchCreated
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    TouchOperation,
+			OperationSummary: "Create an empty file",
+			OperationID:      "touch",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "driveID",
+					In:   "path",
+				}: params.DriveID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = OptTouchReq
+			Params   = TouchParams
+			Response = *TouchCreated
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackTouchParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				err = s.h.Touch(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		err = s.h.Touch(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeTouchResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleUpdateDriveRequest handles updateDrive operation.
+//
+// Update a drive.
+//
+// PUT /v1/drives/{driveID}/root
+func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("updateDrive"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/root"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), UpdateDriveOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: UpdateDriveOperation,
+			ID:   "updateDrive",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, UpdateDriveOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeUpdateDriveParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeUpdateDriveRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *Drive
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    UpdateDriveOperation,
+			OperationSummary: "Update a drive",
+			OperationID:      "updateDrive",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "driveID",
+					In:   "path",
+				}: params.DriveID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = OptDriveUpdate
+			Params   = UpdateDriveParams
+			Response = *Drive
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackUpdateDriveParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.UpdateDrive(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.UpdateDrive(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeUpdateDriveResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleUpsertUserRequest handles upsertUser operation.
+//
+// Upsert a user from OIDC claims.
+//
+// POST /v1/users
+func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("upsertUser"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/users"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), UpsertUserOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: UpsertUserOperation,
+			ID:   "upsertUser",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, UpsertUserOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeUpsertUserRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *UpsertUserOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    UpsertUserOperation,
+			OperationSummary: "Upsert a user from OIDC claims",
+			OperationID:      "upsertUser",
+			Body:             request,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = OptUpsertUserReq
+			Params   = struct{}
+			Response = *UpsertUserOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				err = s.h.UpsertUser(ctx, request)
+				return response, err
+			},
+		)
+	} else {
+		err = s.h.UpsertUser(ctx, request)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeUpsertUserResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleWriteRequest handles write operation.
+//
+// Write inline content to a file.
+//
+// PUT /v1/drives/{driveID}/fs/write
+func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("write"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/write"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), WriteOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: WriteOperation,
+			ID:   "write",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, WriteOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeWriteParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeWriteRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response *WriteOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    WriteOperation,
+			OperationSummary: "Write inline content to a file",
+			OperationID:      "write",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "driveID",
+					In:   "path",
+				}: params.DriveID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = OptWriteReq
+			Params   = WriteParams
+			Response = *WriteOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackWriteParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				err = s.h.Write(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		err = s.h.Write(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeWriteResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleWriteLargeRequest handles writeLarge operation.
+//
+// Create an S3-backed object node.
+//
+// POST /v1/drives/{driveID}/fs/object
+func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("writeLarge"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/object"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), WriteLargeOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: WriteLargeOperation,
+			ID:   "writeLarge",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, WriteLargeOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeWriteLargeParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeWriteLargeRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response WriteLargeRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    WriteLargeOperation,
+			OperationSummary: "Create an S3-backed object node",
+			OperationID:      "writeLarge",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "driveID",
+					In:   "path",
+				}: params.DriveID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = OptWriteLargeReq
+			Params   = WriteLargeParams
+			Response = WriteLargeRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackWriteLargeParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.WriteLarge(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.WriteLarge(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeWriteLargeResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)

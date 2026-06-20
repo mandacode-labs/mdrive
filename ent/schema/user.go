@@ -1,23 +1,21 @@
 package schema
 
 import (
-	"time"
-
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
-	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"entgo.io/ent/schema/mixin"
 )
 
-// User holds the schema definition for the User entity.
+// User holds the schema definition for an externally-authenticated user.
+// Identity is (provider, provider_id) which maps to the OIDC `sub` claim.
 type User struct {
 	ent.Schema
 }
 
-// Annotations of the User.
+// Annotations of the User (table name: users).
 func (User) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entsql.Annotation{Table: "users"},
@@ -34,39 +32,41 @@ func (User) Mixin() []ent.Mixin {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
+		// Primary identifier (ULID, 26 chars).
 		field.String("id").
+			MaxLen(32).
+			Unique().
+			Immutable(),
+
+		// Public ID (also ULID) for external exposure.
+		field.String("public_id").
+			MaxLen(32).
 			Unique(),
 
-		// Username for display
-		field.String("username").
-			Unique().
-			MaxLen(32),
-
-		// OIDC provider info
-		field.String("provider").
-			MaxLen(32),
-		field.String("provider_id").
+		// Display name (from OIDC).
+		field.String("name").
 			MaxLen(255),
 
-		// Join date
-		field.Time("join_date").
-			Default(time.Now),
+		// Email (from OIDC, optional).
+		field.String("email").
+			Optional().
+			Nillable().
+			MaxLen(255),
+
+		// OIDC provider (e.g., "zitadel", "keycloak", "google").
+		field.String("provider").
+			MaxLen(32),
+
+		// OIDC provider's user ID (the `sub` claim).
+		field.String("provider_id").
+			MaxLen(255),
 	}
 }
 
 // Indexes of the User.
 func (User) Indexes() []ent.Index {
 	return []ent.Index{
+		// For OIDC upsert lookup.
 		index.Fields("provider", "provider_id").Unique(),
-		index.Fields("username"),
-	}
-}
-
-// Edges of the User.
-func (User) Edges() []ent.Edge {
-	return []ent.Edge{
-		// User has access to many systems (M2M through user_systems)
-		edge.To("systems", System.Type).
-			Through("user_systems", UserSystem.Type),
 	}
 }

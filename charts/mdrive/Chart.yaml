@@ -1,0 +1,18 @@
+apiVersion: v2
+name: mdrive
+description: A Helm chart for Mandacode Drive - POSIX-like filesystem API over S3
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - mdrive
+  - api
+  - server
+  - file-storage
+  - s3
+maintainers:
+  - name: sauce
+    email: sauce@mandacode-labs.com
+home: https://github.com/mandacode-labs/mdrive
+sources:
+  - https://github.com/mandacode-labs/mdrive

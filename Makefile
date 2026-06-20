@@ -2,12 +2,13 @@
 
 APP_NAME    := mdrive
 BUILD_DIR   := bin
+ATLAS_VERSION := $(shell cat ATLAS_VERSION)
 
 # ---------------------------------------------------------------------------
 # Code Generation
 # ---------------------------------------------------------------------------
 .PHONY: generate
-generate: gen-ent gen-api gen-mock
+generate: gen-ent gen-api gen-mock gen-fga
 
 .PHONY: gen-ent
 gen-ent:
@@ -23,7 +24,12 @@ gen-api:
 .PHONY: gen-mock
 gen-mock:
 	@find ./internal -type d -name "mocks" -exec rm -rf {} + 2>/dev/null || true
-	go run github.com/vektra/mockery/v2/cmd/mockery
+	mockery
+
+.PHONY: gen-fga
+gen-fga:
+	fga model transform --file=internal/permission/model.fga \
+		> internal/permission/model.json
 
 # ---------------------------------------------------------------------------
 # Format & Vet
@@ -71,28 +77,38 @@ run:
 	go run ./cmd/$(APP_NAME) serve --config config.yaml
 
 # ---------------------------------------------------------------------------
-# Database Migrations
+# Migrations
 # ---------------------------------------------------------------------------
-.PHONY: migrate-diff
-migrate-diff:
-	go run ariga.io/atlas/cmd/atlas migrate diff $(name) \
-		--dir "file://ent/migrate/migrations" \
+.PHONY: migrate
+migrate:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate diff $(name) \
+		--dir "file://internal/cli/migrate/migrations" \
 		--to "ent://ent/schema" \
+		--dev-url "docker://postgres/17/dev?search_path=public"
+
+migrate-hash:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate hash \
+		--dir "file://internal/cli/migrate/migrations"
+
+migrate-validate:
+	go run ariga.io/atlas/cmd/atlas@$(ATLAS_VERSION) migrate validate \
+		--dir "file://internal/cli/migrate/migrations" \
 		--dev-url "docker://postgres/17/dev?search_path=public"
 
 .PHONY: migrate-apply
 migrate-apply:
 	go run ./cmd/$(APP_NAME) migrate apply --config config.yaml
 
-.PHONY: migrate-status
-migrate-status:
-	go run ariga.io/atlas/cmd/atlas migrate status --dir "file://ent/migrate/migrations"
+# ---------------------------------------------------------------------------
+# Helm
+# ---------------------------------------------------------------------------
+.PHONY: helm-lint
+helm-lint:
+	helm lint charts/mdrive
 
-.PHONY: migrate-lint
-migrate-lint:
-	go run ariga.io/atlas/cmd/atlas migrate lint \
-		--dir "file://ent/migrate/migrations" \
-		--dev-url "docker://postgres/17/dev?search_path=public"
+.PHONY: helm-template
+helm-template:
+	helm template mdrive charts/mdrive
 
 # ---------------------------------------------------------------------------
 # Hooks

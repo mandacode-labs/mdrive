@@ -1,0 +1,239 @@
+mkdir:
+  post:
+    operationId: mkdir
+    summary: Create a directory
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [path]
+            properties:
+              path:
+                type: string
+    responses:
+      "201":
+        description: Directory created
+
+touch:
+  post:
+    operationId: touch
+    summary: Create an empty file
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [path]
+            properties:
+              path:
+                type: string
+    responses:
+      "201":
+        description: File created
+
+rm:
+  delete:
+    operationId: rm
+    summary: Remove files or directories
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [paths]
+            properties:
+              paths:
+                type: array
+                items: { type: string }
+              recursive:
+                type: boolean
+    responses:
+      "204":
+        description: Deleted
+
+mv:
+  post:
+    operationId: mv
+    summary: Move files or directories
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [sources, destination]
+            properties:
+              sources:
+                type: array
+                items: { type: string }
+              destination:
+                type: string
+    responses:
+      "200":
+        description: Moved
+
+ls:
+  get:
+    operationId: ls
+    summary: List directory contents
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: path
+        in: query
+        required: true
+        schema:
+          type: string
+          default: "/"
+    responses:
+      "200":
+        description: Directory listing
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/DirContent"
+
+cat:
+  get:
+    operationId: cat
+    summary: Read file contents
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: path
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: File content
+        content:
+          text/plain:
+            schema: { type: string }
+
+write:
+  put:
+    operationId: write
+    summary: Write inline content to a file
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [path, content]
+            properties:
+              path: { type: string }
+              content: { type: string }
+    responses:
+      "200":
+        description: Written
+
+symlink:
+  post:
+    operationId: symlink
+    summary: Create a symbolic link
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [target, linkPath]
+            properties:
+              target: { type: string }
+              linkPath: { type: string }
+    responses:
+      "201":
+        description: Symlink created
+
+stat:
+  get:
+    operationId: stat
+    summary: Get file metadata
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: path
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: File metadata
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type: { type: string }
+                size: { type: integer, format: int64 }
+                atime: { type: string, format: date-time }
+                mtime: { type: string, format: date-time }
+                ctime: { type: string, format: date-time }
+                flags: { type: string }
+                revision: { type: string }
+
+object:
+  post:
+    operationId: writeLarge
+    summary: Create an S3-backed object node
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [path, object, size]
+            properties:
+              path: { type: string }
+              size: { type: integer, format: int64 }
+              object:
+                $ref: "../openapi.yaml#/components/schemas/ObjectContent"
+    responses:
+      "201":
+        description: Object node created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

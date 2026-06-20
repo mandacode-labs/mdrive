@@ -12,20 +12,16 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
-	// Inode is the client for interacting with the Inode builders.
-	Inode *InodeClient
-	// Object is the client for interacting with the Object builders.
-	Object *ObjectClient
-	// System is the client for interacting with the System builders.
-	System *SystemClient
-	// SystemGroup is the client for interacting with the SystemGroup builders.
-	SystemGroup *SystemGroupClient
+	// Drive is the client for interacting with the Drive builders.
+	Drive *DriveClient
+	// DriveStorage is the client for interacting with the DriveStorage builders.
+	DriveStorage *DriveStorageClient
+	// GCTombstone is the client for interacting with the GCTombstone builders.
+	GCTombstone *GCTombstoneClient
+	// Node is the client for interacting with the Node builders.
+	Node *NodeClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
-	// UserGroup is the client for interacting with the UserGroup builders.
-	UserGroup *UserGroupClient
-	// UserSystem is the client for interacting with the UserSystem builders.
-	UserSystem *UserSystemClient
 
 	// lazily loaded.
 	client     *Client
@@ -157,13 +153,11 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
-	tx.Inode = NewInodeClient(tx.config)
-	tx.Object = NewObjectClient(tx.config)
-	tx.System = NewSystemClient(tx.config)
-	tx.SystemGroup = NewSystemGroupClient(tx.config)
+	tx.Drive = NewDriveClient(tx.config)
+	tx.DriveStorage = NewDriveStorageClient(tx.config)
+	tx.GCTombstone = NewGCTombstoneClient(tx.config)
+	tx.Node = NewNodeClient(tx.config)
 	tx.User = NewUserClient(tx.config)
-	tx.UserGroup = NewUserGroupClient(tx.config)
-	tx.UserSystem = NewUserSystemClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.
@@ -173,7 +167,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Inode.QueryXXX(), the query will be executed
+// applies a query, for example: Drive.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

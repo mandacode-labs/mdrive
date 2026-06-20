@@ -10,9 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/mdrive/ent/system"
 	"github.com/mandacode-labs/mdrive/ent/user"
-	"github.com/mandacode-labs/mdrive/ent/usersystem"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -50,9 +48,29 @@ func (_c *UserCreate) SetNillableUpdateTime(v *time.Time) *UserCreate {
 	return _c
 }
 
-// SetUsername sets the "username" field.
-func (_c *UserCreate) SetUsername(v string) *UserCreate {
-	_c.mutation.SetUsername(v)
+// SetPublicID sets the "public_id" field.
+func (_c *UserCreate) SetPublicID(v string) *UserCreate {
+	_c.mutation.SetPublicID(v)
+	return _c
+}
+
+// SetName sets the "name" field.
+func (_c *UserCreate) SetName(v string) *UserCreate {
+	_c.mutation.SetName(v)
+	return _c
+}
+
+// SetEmail sets the "email" field.
+func (_c *UserCreate) SetEmail(v string) *UserCreate {
+	_c.mutation.SetEmail(v)
+	return _c
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmail(v *string) *UserCreate {
+	if v != nil {
+		_c.SetEmail(*v)
+	}
 	return _c
 }
 
@@ -68,54 +86,10 @@ func (_c *UserCreate) SetProviderID(v string) *UserCreate {
 	return _c
 }
 
-// SetJoinDate sets the "join_date" field.
-func (_c *UserCreate) SetJoinDate(v time.Time) *UserCreate {
-	_c.mutation.SetJoinDate(v)
-	return _c
-}
-
-// SetNillableJoinDate sets the "join_date" field if the given value is not nil.
-func (_c *UserCreate) SetNillableJoinDate(v *time.Time) *UserCreate {
-	if v != nil {
-		_c.SetJoinDate(*v)
-	}
-	return _c
-}
-
 // SetID sets the "id" field.
 func (_c *UserCreate) SetID(v string) *UserCreate {
 	_c.mutation.SetID(v)
 	return _c
-}
-
-// AddSystemIDs adds the "systems" edge to the System entity by IDs.
-func (_c *UserCreate) AddSystemIDs(ids ...string) *UserCreate {
-	_c.mutation.AddSystemIDs(ids...)
-	return _c
-}
-
-// AddSystems adds the "systems" edges to the System entity.
-func (_c *UserCreate) AddSystems(v ...*System) *UserCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddSystemIDs(ids...)
-}
-
-// AddUserSystemIDs adds the "user_systems" edge to the UserSystem entity by IDs.
-func (_c *UserCreate) AddUserSystemIDs(ids ...int) *UserCreate {
-	_c.mutation.AddUserSystemIDs(ids...)
-	return _c
-}
-
-// AddUserSystems adds the "user_systems" edges to the UserSystem entity.
-func (_c *UserCreate) AddUserSystems(v ...*UserSystem) *UserCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddUserSystemIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -161,10 +135,6 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultUpdateTime()
 		_c.mutation.SetUpdateTime(v)
 	}
-	if _, ok := _c.mutation.JoinDate(); !ok {
-		v := user.DefaultJoinDate()
-		_c.mutation.SetJoinDate(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -175,12 +145,25 @@ func (_c *UserCreate) check() error {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "User.update_time"`)}
 	}
-	if _, ok := _c.mutation.Username(); !ok {
-		return &ValidationError{Name: "username", err: errors.New(`ent: missing required field "User.username"`)}
+	if _, ok := _c.mutation.PublicID(); !ok {
+		return &ValidationError{Name: "public_id", err: errors.New(`ent: missing required field "User.public_id"`)}
 	}
-	if v, ok := _c.mutation.Username(); ok {
-		if err := user.UsernameValidator(v); err != nil {
-			return &ValidationError{Name: "username", err: fmt.Errorf(`ent: validator failed for field "User.username": %w`, err)}
+	if v, ok := _c.mutation.PublicID(); ok {
+		if err := user.PublicIDValidator(v); err != nil {
+			return &ValidationError{Name: "public_id", err: fmt.Errorf(`ent: validator failed for field "User.public_id": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Name(); !ok {
+		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "User.name"`)}
+	}
+	if v, ok := _c.mutation.Name(); ok {
+		if err := user.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "User.name": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.Email(); ok {
+		if err := user.EmailValidator(v); err != nil {
+			return &ValidationError{Name: "email", err: fmt.Errorf(`ent: validator failed for field "User.email": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Provider(); !ok {
@@ -199,8 +182,10 @@ func (_c *UserCreate) check() error {
 			return &ValidationError{Name: "provider_id", err: fmt.Errorf(`ent: validator failed for field "User.provider_id": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.JoinDate(); !ok {
-		return &ValidationError{Name: "join_date", err: errors.New(`ent: missing required field "User.join_date"`)}
+	if v, ok := _c.mutation.ID(); ok {
+		if err := user.IDValidator(v); err != nil {
+			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "User.id": %w`, err)}
+		}
 	}
 	return nil
 }
@@ -245,9 +230,17 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldUpdateTime, field.TypeTime, value)
 		_node.UpdateTime = value
 	}
-	if value, ok := _c.mutation.Username(); ok {
-		_spec.SetField(user.FieldUsername, field.TypeString, value)
-		_node.Username = value
+	if value, ok := _c.mutation.PublicID(); ok {
+		_spec.SetField(user.FieldPublicID, field.TypeString, value)
+		_node.PublicID = value
+	}
+	if value, ok := _c.mutation.Name(); ok {
+		_spec.SetField(user.FieldName, field.TypeString, value)
+		_node.Name = value
+	}
+	if value, ok := _c.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+		_node.Email = &value
 	}
 	if value, ok := _c.mutation.Provider(); ok {
 		_spec.SetField(user.FieldProvider, field.TypeString, value)
@@ -256,46 +249,6 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ProviderID(); ok {
 		_spec.SetField(user.FieldProviderID, field.TypeString, value)
 		_node.ProviderID = value
-	}
-	if value, ok := _c.mutation.JoinDate(); ok {
-		_spec.SetField(user.FieldJoinDate, field.TypeTime, value)
-		_node.JoinDate = value
-	}
-	if nodes := _c.mutation.SystemsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   user.SystemsTable,
-			Columns: user.SystemsPrimaryKey,
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(system.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		createE := &UserSystemCreate{config: _c.config, mutation: newUserSystemMutation(_c.config, OpCreate)}
-		createE.defaults()
-		_, specE := createE.createSpec()
-		edge.Target.Fields = specE.Fields
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.UserSystemsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: true,
-			Table:   user.UserSystemsTable,
-			Columns: []string{user.UserSystemsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(usersystem.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

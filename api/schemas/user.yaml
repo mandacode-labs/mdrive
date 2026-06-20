@@ -1,36 +1,21 @@
-Provider:
-  type: string
-  enum:
-    - keycloak
-    - google
-  description: Authentication provider
-
 User:
   type: object
-  required:
-    - id
-    - provider
-    - providerId
   properties:
     id:
       type: string
-      description: User ID
-    provider:
-      $ref: '#/Provider'
-    providerId:
+    publicID:
       type: string
-      description: User ID from the authentication provider
-    joinDate:
-      $ref: './common.yaml#/Timestamp'
+    name:
+      type: string
+    email:
+      type: string
+    provider:
+      type: string
+    providerID:
+      type: string
     createdAt:
-      $ref: './common.yaml#/Timestamp'
+      type: string
+      format: date-time
     updatedAt:
-      $ref: './common.yaml#/Timestamp'
-
-UserResponse:
-  type: object
-  required:
-    - user
-  properties:
-    user:
-      $ref: '#/User'
+      type: string
+      format: date-time

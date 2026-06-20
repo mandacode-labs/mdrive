@@ -1,0 +1,315 @@
+# Default values for mdrive.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/mandacode-labs/mdrive
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1001
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mdrive.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Server configuration. Maps directly to the config.yaml consumed by the binary.
+config:
+  app:
+    env: production
+    log_level: info
+
+  http:
+    host: "0.0.0.0"
+    port: 8080
+    read_timeout: "30s"
+    write_timeout: "30s"
+    idle_timeout: "120s"
+    shutdown_timeout: "30s"
+    cors:
+      enabled: true
+      allowed_origins:
+        - "*"
+      allowed_methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      allowed_headers:
+        - Authorization
+        - Content-Type
+        - X-Requested-With
+      exposed_headers:
+        - Content-Length
+      allow_credentials: true
+      max_age: 86400
+    cookie:
+      name: mdrive_session
+      path: /
+      secure: true
+      http_only: true
+      same_site: lax
+      ttl: "24h"
+
+  database:
+    driver: postgres
+    host: ""
+    port: 5432
+    name: mdrive
+    user: mdrive
+    sslmode: require
+
+  storage:
+    region: ""
+    endpoint: ""
+    bucket: mdrive
+    access_key: ""
+    secret_key: ""
+    use_path_style: false
+    presign_ttl: "1h"
+
+  crypto:
+    master_key: ""
+
+  valkey:
+    addrs:
+      - valkey:6379
+    password: ""
+    db: 0
+    tls: false
+
+  auth:
+    provider: zitadel
+    issuer: ""
+    client_id: ""
+    session_ttl: "24h"
+    frontend_url: ""
+
+  openfga:
+    api_url: ""
+    store_id: ""
+    authorization_model_id: ""
+    api_token: ""
+    client_id: ""
+    client_secret: ""
+    token_issuer: ""
+    audience: ""
+
+# Secrets (passed as environment variables, overriding config values).
+secrets:
+  database:
+    password: ""
+    existingSecret: ""
+    existingSecretKey: database-password
+  valkey:
+    password: ""
+    existingSecret: ""
+    existingSecretKey: valkey-password
+  storage:
+    access_key: ""
+    secret_key: ""
+    existingSecret: ""
+    existingSecretKeyAccess: storage-access-key
+    existingSecretKeySecret: storage-secret-key
+  crypto:
+    master_key: ""
+    existingSecret: ""
+    existingSecretKey: crypto-master-key
+  openfga:
+    api_token: ""
+    client_id: ""
+    client_secret: ""
+    existingSecret: ""
+    existingSecretKeyApiToken: openfga-api-token
+    existingSecretKeyClientID: openfga-client-id
+    existingSecretKeyClientSecret: openfga-client-secret
+
+# Additional environment variables
+extraEnv: []
+
+# Additional environment variables from ConfigMap or Secret
+extraEnvFrom: []
+
+# Additional volume mounts (e.g. for CA certificates)
+extraVolumeMounts: []
+#  - name: otel-ca
+#    mountPath: /etc/otel/certificates
+#    readOnly: true
+
+# Additional volumes (e.g. ConfigMap with CA certificate)
+extraVolumes: []
+#  - name: otel-ca
+#    configMap:
+#      name: starship-root-ca
+
+# Migration job settings (ArgoCD PreSync hook)
+migration:
+  enabled: true
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-1"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+
+# Garbage collector CronJob settings.
+gc:
+  enabled: true
+  jobs:
+    tombstones:
+      enabled: true
+      schedule: "0 */6 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    purgeDrives:
+      enabled: true
+      schedule: "0 3 * * *"
+      retention: "168h"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    expireUploads:
+      enabled: true
+      schedule: "0 */4 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    expireSessions:
+      enabled: true
+      schedule: "0 */2 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+      activeDeadlineSeconds: 600
+      annotations: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi

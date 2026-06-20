@@ -1,233 +1,250 @@
+// Package config provides application configuration loading.
 package config
 
 import (
-	"fmt"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
 
-// Config holds all configuration for the application.
+// Config is the root configuration struct.
 type Config struct {
-	App       AppConfig       `mapstructure:"app" yaml:"app"`
-	HTTP      HTTPConfig      `mapstructure:"http" yaml:"http"`
-	Database  DatabaseConfig  `mapstructure:"database" yaml:"database"`
-	Cache     CacheConfig     `mapstructure:"cache" yaml:"cache"`
-	Storage   StorageConfig   `mapstructure:"storage" yaml:"storage"`
-	Auth      AuthConfig      `mapstructure:"auth" yaml:"auth"`
-	CORS      CORSConfig      `mapstructure:"cors" yaml:"cors"`
-	Telemetry TelemetryConfig `mapstructure:"telemetry" yaml:"telemetry"`
+	App      AppConfig      `mapstructure:"app"`
+	HTTP     HTTPConfig     `mapstructure:"http"`
+	Database DatabaseConfig `mapstructure:"database"`
+	Storage  StorageConfig  `mapstructure:"storage"`
+	Crypto   CryptoConfig   `mapstructure:"crypto"`
+	Valkey   ValkeyConfig   `mapstructure:"valkey"`
+	Auth     AuthConfig     `mapstructure:"auth"`
+	OpenFGA  OpenFGAConfig  `mapstructure:"openfga"`
 }
 
-// AppConfig holds application-level configuration.
+// AppConfig holds application-level settings.
 type AppConfig struct {
-	Name     string `mapstructure:"name" yaml:"name"`
-	Version  string `mapstructure:"version" yaml:"version"`
-	Env      string `mapstructure:"env" yaml:"env"`
-	LogLevel string `mapstructure:"logLevel" yaml:"logLevel"`
+	Env      string `mapstructure:"env"`
+	LogLevel string `mapstructure:"log_level"`
 }
 
-// HTTPConfig holds HTTP server configuration.
+// HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
-	Host string `mapstructure:"host" yaml:"host"`
-	Port int    `mapstructure:"port" yaml:"port"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout     time.Duration `mapstructure:"idle_timeout"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
+	CORS            CORSConfig    `mapstructure:"cors"`
+	Cookie          CookieConfig  `mapstructure:"cookie"`
 }
 
-// DatabaseConfig holds database connection configuration.
-type DatabaseConfig struct {
-	Driver   string `mapstructure:"driver" yaml:"driver"`
-	Host     string `mapstructure:"host" yaml:"host"`
-	Port     int    `mapstructure:"port" yaml:"port"`
-	Name     string `mapstructure:"name" yaml:"name"`
-	User     string `mapstructure:"user" yaml:"user"`
-	Password string `mapstructure:"password" yaml:"password"`
-	SSLMode  string `mapstructure:"sslMode" yaml:"sslMode"`
-}
-
-// DSN returns the database connection string.
-func (c DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.Name, c.SSLMode,
-	)
-}
-
-// CacheConfig holds cache configuration.
-type CacheConfig struct {
-	Provider string       `mapstructure:"provider" yaml:"provider"`
-	Valkey   ValkeyConfig `mapstructure:"valkey" yaml:"valkey"`
-}
-
-// ValkeyConfig holds Valkey connection configuration.
-type ValkeyConfig struct {
-	Addr     string `mapstructure:"addr" yaml:"addr"`
-	DB       int    `mapstructure:"db" yaml:"db"`
-	PoolSize int    `mapstructure:"poolSize" yaml:"poolSize"`
-	Username string `mapstructure:"username" yaml:"username"`
-	Password string `mapstructure:"password" yaml:"password"`
-}
-
-// StorageConfig holds storage backend configuration.
-type StorageConfig struct {
-	Provider  string `mapstructure:"provider" yaml:"provider"`
-	Region    string `mapstructure:"region" yaml:"region"`
-	Endpoint  string `mapstructure:"endpoint" yaml:"endpoint"`
-	AccessKey string `mapstructure:"accessKey" yaml:"accessKey"`
-	SecretKey string `mapstructure:"secretKey" yaml:"secretKey"`
-	Bucket    string `mapstructure:"bucket" yaml:"bucket"`
-	Prefix    string `mapstructure:"prefix" yaml:"prefix"`
-	UseSSL    bool   `mapstructure:"useSSL" yaml:"useSSL"`
-}
-
-// StorageKeyPrefix returns the configured prefix with trailing slash, or empty string.
-func (s *StorageConfig) StorageKeyPrefix() string {
-	if s.Prefix == "" {
-		return ""
-	}
-	return strings.TrimRight(s.Prefix, "/") + "/"
-}
-
-// AuthConfig holds authentication configuration.
-type AuthConfig struct {
-	Keycloak KeycloakConfig `mapstructure:"keycloak" yaml:"keycloak"`
-	Session  SessionConfig  `mapstructure:"session" yaml:"session"`
-}
-
-// KeycloakConfig holds Keycloak configuration.
-type KeycloakConfig struct {
-	BaseURL      string `mapstructure:"baseURL" yaml:"baseURL"`
-	Realm        string `mapstructure:"realm" yaml:"realm"`
-	ClientID     string `mapstructure:"clientID" yaml:"clientID"`
-	ClientSecret string `mapstructure:"clientSecret" yaml:"clientSecret"`
-	RedirectURI  string `mapstructure:"redirectURI" yaml:"redirectURI"`
-}
-
-// SessionConfig holds session configuration.
-type SessionConfig struct {
-	TTL         int    `mapstructure:"ttl" yaml:"ttl"`                 // Session TTL in seconds
-	Secure      bool   `mapstructure:"secure" yaml:"secure"`           // Set Secure flag on cookie
-	StateTTL    int    `mapstructure:"stateTTL" yaml:"stateTTL"`       // OAuth state TTL in seconds
-	RedisKey    string `mapstructure:"redisKey" yaml:"redisKey"`       // Redis key prefix
-	CookieName  string `mapstructure:"cookieName" yaml:"cookieName"`   // Session cookie name
-	FrontendURL string `mapstructure:"frontendURL" yaml:"frontendURL"` // Frontend URL for redirect after login
-	Domain      string `mapstructure:"domain" yaml:"domain"`           // Cookie domain (e.g., ".mandacode.com" for cross-subdomain)
-	SameSite    string `mapstructure:"sameSite" yaml:"sameSite"`       // SameSite policy: "lax", "strict", "none"
-}
-
-// TelemetryConfig holds OpenTelemetry configuration.
-type TelemetryConfig struct {
-	Enabled     bool   `mapstructure:"enabled" yaml:"enabled"`
-	Endpoint    string `mapstructure:"endpoint" yaml:"endpoint"`
-	Insecure    bool   `mapstructure:"insecure" yaml:"insecure"`
-	CACert      string `mapstructure:"caCert" yaml:"caCert"`
-	ServiceName string `mapstructure:"serviceName" yaml:"serviceName"`
-}
-
-// CORSConfig holds CORS configuration.
+// CORSConfig holds Cross-Origin Resource Sharing settings.
 type CORSConfig struct {
-	Enabled          bool     `mapstructure:"enabled" yaml:"enabled"`
-	AllowedOrigins   []string `mapstructure:"allowedOrigins" yaml:"allowedOrigins"`
-	AllowedMethods   []string `mapstructure:"allowedMethods" yaml:"allowedMethods"`
-	AllowedHeaders   []string `mapstructure:"allowedHeaders" yaml:"allowedHeaders"`
-	ExposedHeaders   []string `mapstructure:"exposedHeaders" yaml:"exposedHeaders"`
-	AllowCredentials bool     `mapstructure:"allowCredentials" yaml:"allowCredentials"`
-	MaxAge           int      `mapstructure:"maxAge" yaml:"maxAge"` // in seconds
+	Enabled          bool     `mapstructure:"enabled"`
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	AllowedMethods   []string `mapstructure:"allowed_methods"`
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`
+	ExposedHeaders   []string `mapstructure:"exposed_headers"`
+	AllowCredentials bool     `mapstructure:"allow_credentials"`
+	MaxAge           int      `mapstructure:"max_age"`
 }
 
-// OIDCRedirectURI returns the OIDC redirect URI.
-func (c *KeycloakConfig) OIDCRedirectURI(baseURL string) string {
-	return baseURL + "/auth/callback"
+// CookieConfig holds session cookie settings.
+type CookieConfig struct {
+	Name     string        `mapstructure:"name"`
+	Path     string        `mapstructure:"path"`
+	Secure   bool          `mapstructure:"secure"`
+	HttpOnly bool          `mapstructure:"http_only"`
+	SameSite string        `mapstructure:"same_site"`
+	TTL      time.Duration `mapstructure:"ttl"`
 }
 
-// DSN returns the database connection string.
-func (c *Config) DSN() string {
-	return c.Database.DSN()
+// SameSiteMode returns the http.SameSite value for the configured same_site string.
+func (c CookieConfig) SameSiteMode() http.SameSite {
+	switch strings.ToLower(c.SameSite) {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "lax":
+		return http.SameSiteLaxMode
+	case "none":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
 
-// IsDevelopment returns true if running in development mode.
-func (c *Config) IsDevelopment() bool {
-	return strings.ToLower(c.App.Env) == "development"
+// DatabaseConfig holds PostgreSQL settings.
+type DatabaseConfig struct {
+	Driver   string `mapstructure:"driver"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Name     string `mapstructure:"name"`
+	SSLMode  string `mapstructure:"sslmode"`
 }
 
-// IsProduction returns true if running in production mode.
-func (c *Config) IsProduction() bool {
-	return strings.ToLower(c.App.Env) == "production"
+// DSN returns the PostgreSQL connection string.
+func (c DatabaseConfig) DSN() string {
+	return strings.Join([]string{
+		"host=" + c.Host,
+		"port=" + strconv.Itoa(c.Port),
+		"user=" + c.User,
+		"password=" + c.Password,
+		"dbname=" + c.Name,
+		"sslmode=" + c.SSLMode,
+	}, " ")
 }
 
-// Load reads configuration from file and environment variables.
-func Load(configPath string) (*Config, error) {
+// StorageConfig holds S3/object-storage settings.
+type StorageConfig struct {
+	Region       string `mapstructure:"region"`
+	Endpoint     string `mapstructure:"endpoint"`
+	Bucket       string `mapstructure:"bucket"`
+	AccessKey    string `mapstructure:"access_key"`
+	SecretKey    string `mapstructure:"secret_key"`
+	UsePathStyle bool   `mapstructure:"use_path_style"`
+	PresignTTL   string `mapstructure:"presign_ttl"`
+}
+
+// PresignTTL returns the presigned URL TTL as a time.Duration.
+func (c StorageConfig) PresignTTLDuration() time.Duration {
+	if c.PresignTTL == "" {
+		return time.Hour
+	}
+	d, err := time.ParseDuration(c.PresignTTL)
+	if err != nil {
+		return time.Hour
+	}
+	return d
+}
+
+// CryptoConfig holds at-rest encryption settings.
+type CryptoConfig struct {
+	MasterKey string `mapstructure:"master_key"`
+}
+
+// ValkeyConfig holds Valkey/Redis connection settings.
+type ValkeyConfig struct {
+	Addrs    []string `mapstructure:"addrs"`
+	Password string   `mapstructure:"password"`
+	DB       int      `mapstructure:"db"`
+	TLS      bool     `mapstructure:"tls"`
+}
+
+// AuthConfig holds authentication settings.
+type AuthConfig struct {
+	Provider    string `mapstructure:"provider"` // "zitadel", "keycloak"
+	Issuer      string `mapstructure:"issuer"`
+	ClientID    string `mapstructure:"client_id"`
+	JWKSURL     string `mapstructure:"jwks_url"`
+	SessionTTL  string `mapstructure:"session_ttl"`
+	FrontendURL string `mapstructure:"frontend_url"`
+}
+
+// SessionTTLDuration parses the session TTL string.
+func (c AuthConfig) SessionTTLDuration() time.Duration {
+	if c.SessionTTL == "" {
+		return 24 * time.Hour
+	}
+	d, err := time.ParseDuration(c.SessionTTL)
+	if err != nil {
+		return 24 * time.Hour
+	}
+	return d
+}
+
+// OpenFGAConfig holds OpenFGA settings.
+// Secret fields can be set via env vars:
+//   OPENFGA_API_TOKEN, OPENFGA_CLIENT_ID, OPENFGA_CLIENT_SECRET
+type OpenFGAConfig struct {
+	APIURL               string `mapstructure:"api_url"`
+	StoreID              string `mapstructure:"store_id"`
+	AuthorizationModelID string `mapstructure:"authorization_model_id"`
+	APIToken             string `mapstructure:"api_token"`
+	ClientID             string `mapstructure:"client_id"`
+	ClientSecret         string `mapstructure:"client_secret"`
+	TokenIssuer          string `mapstructure:"token_issuer"`
+	Audience             string `mapstructure:"audience"`
+}
+
+// Load reads the configuration from the given path.
+func Load(path string) (*Config, error) {
+	return LoadFromPath(path)
+}
+
+// LoadFromPath reads the configuration from the given file path.
+func LoadFromPath(path string) (*Config, error) {
 	v := viper.New()
-
-	setDefaults(v)
-	bindEnvVars(v)
-
-	v.SetConfigFile(configPath)
+	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
-
-	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
-	}
-
-	return &cfg, nil
-}
-
-// LoadFromPath reads configuration from a specific path.
-func LoadFromPath(configPath string) (*Config, error) {
-	return Load(configPath)
-}
-
-func setDefaults(v *viper.Viper) {
-	v.SetDefault("app.name", "mdrive")
-	v.SetDefault("app.version", "0.1.0")
-	v.SetDefault("app.env", "development")
-	v.SetDefault("app.logLevel", "info")
-	v.SetDefault("http.host", "0.0.0.0")
-	v.SetDefault("http.port", 8080)
-	v.SetDefault("database.driver", "postgres")
-	v.SetDefault("database.sslMode", "disable")
-	v.SetDefault("cache.provider", "valkey")
-	v.SetDefault("cache.valkey.addr", "localhost:6379")
-	v.SetDefault("cache.valkey.db", 0)
-	v.SetDefault("cache.valkey.poolSize", 10)
-	v.SetDefault("cache.valkey.password", "")
-	v.SetDefault("storage.provider", "s3")
-	v.SetDefault("storage.region", "us-east-1")
-	v.SetDefault("storage.useSSL", false)
-	v.SetDefault("auth.session.ttl", 86400) // 24 hours
-	v.SetDefault("auth.session.secure", false)
-	v.SetDefault("auth.session.stateTTL", 300) // 5 minutes
-	v.SetDefault("auth.session.redisKey", "mdrive")
-	v.SetDefault("auth.session.cookieName", "session_id")
-	v.SetDefault("auth.session.frontendURL", "http://localhost:5173")
-	v.SetDefault("auth.session.domain", "")      // Empty means current host only
-	v.SetDefault("auth.session.sameSite", "lax") // lax, strict, or none
-	v.SetDefault("auth.keycloak.redirectURI", "http://localhost:8080/auth/callback")
-	v.SetDefault("telemetry.enabled", false)
-	v.SetDefault("telemetry.endpoint", "localhost:4317")
-	v.SetDefault("telemetry.insecure", true)
-	v.SetDefault("telemetry.serviceName", "mdrive")
-}
-
-func bindEnvVars(v *viper.Viper) {
-	// Support nested env vars like DATABASE_PASSWORD, CACHE_VALKEY_PASSWORD
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// Explicitly bind common secrets (camelCase config keys)
-	_ = v.BindEnv("database.password", "DATABASE_PASSWORD")
-	_ = v.BindEnv("cache.valkey.password", "CACHE_VALKEY_PASSWORD")
-	_ = v.BindEnv("storage.accessKey", "STORAGE_ACCESS_KEY")
-	_ = v.BindEnv("storage.secretKey", "STORAGE_SECRET_KEY")
-	_ = v.BindEnv("auth.keycloak.clientSecret", "AUTH_KEYCLOAK_CLIENT_SECRET")
-	_ = v.BindEnv("telemetry.enabled", "TELEMETRY_ENABLED")
-	_ = v.BindEnv("telemetry.endpoint", "TELEMETRY_ENDPOINT")
+	setDefaults(v)
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func setDefaults(v *viper.Viper) {
+	v.SetDefault("app.env", "development")
+	v.SetDefault("app.log_level", "info")
+	v.SetDefault("http.host", "0.0.0.0")
+	v.SetDefault("http.port", 8080)
+	v.SetDefault("http.read_timeout", "30s")
+	v.SetDefault("http.write_timeout", "30s")
+	v.SetDefault("http.idle_timeout", "120s")
+	v.SetDefault("http.shutdown_timeout", "30s")
+	v.SetDefault("http.cors.enabled", true)
+	v.SetDefault("http.cors.allowed_origins", []string{"*"})
+	v.SetDefault("http.cors.allowed_methods", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+	v.SetDefault("http.cors.allowed_headers", []string{"Authorization", "Content-Type", "X-Requested-With"})
+	v.SetDefault("http.cors.exposed_headers", []string{"Content-Length"})
+	v.SetDefault("http.cors.allow_credentials", true)
+	v.SetDefault("http.cors.max_age", 86400)
+	v.SetDefault("http.cookie.name", "mdrive_session")
+	v.SetDefault("http.cookie.path", "/")
+	v.SetDefault("http.cookie.secure", false)
+	v.SetDefault("http.cookie.http_only", true)
+	v.SetDefault("http.cookie.same_site", "lax")
+	v.SetDefault("http.cookie.ttl", "24h")
+	v.SetDefault("database.driver", "postgres")
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", 5432)
+	v.SetDefault("database.user", "mdrive")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.name", "mdrive")
+	v.SetDefault("database.sslmode", "disable")
+	v.SetDefault("storage.region", "us-east-1")
+	v.SetDefault("storage.endpoint", "")
+	v.SetDefault("storage.use_path_style", false)
+	v.SetDefault("storage.bucket", "mdrive")
+	v.SetDefault("storage.presign_ttl", "1h")
+	v.SetDefault("crypto.master_key", "")
+	v.SetDefault("valkey.addrs", []string{"localhost:6379"})
+	v.SetDefault("valkey.password", "")
+	v.SetDefault("valkey.db", 0)
+	v.SetDefault("valkey.tls", false)
+	v.SetDefault("auth.provider", "zitadel")
+	v.SetDefault("auth.issuer", "")
+	v.SetDefault("auth.client_id", "")
+	v.SetDefault("auth.session_ttl", "24h")
+	v.SetDefault("auth.frontend_url", "http://localhost:3000")
+	v.SetDefault("openfga.api_url", "")
+	v.SetDefault("openfga.store_id", "")
+	v.SetDefault("openfga.authorization_model_id", "")
+	v.SetDefault("openfga.api_token", "")
+	v.SetDefault("openfga.client_id", "")
+	v.SetDefault("openfga.client_secret", "")
+	v.SetDefault("openfga.token_issuer", "")
+	v.SetDefault("openfga.audience", "")
 }

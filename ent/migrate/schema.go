@@ -9,172 +9,114 @@ import (
 )
 
 var (
-	// InodesColumns holds the columns for the "inodes" table.
-	InodesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString},
+	// DrivesColumns holds the columns for the "drives" table.
+	DrivesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true, Size: 32},
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
-		{Name: "mode", Type: field.TypeInt},
-		{Name: "uid", Type: field.TypeInt, Default: 0},
-		{Name: "gid", Type: field.TypeInt, Default: 0},
+		{Name: "public_id", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "name", Type: field.TypeString, Size: 64},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
+		{Name: "owner_id", Type: field.TypeString, Size: 32},
+		{Name: "root_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+	}
+	// DrivesTable holds the schema information for the "drives" table.
+	DrivesTable = &schema.Table{
+		Name:       "drives",
+		Columns:    DrivesColumns,
+		PrimaryKey: []*schema.Column{DrivesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "drive_public_id",
+				Unique:  false,
+				Columns: []*schema.Column{DrivesColumns[3]},
+			},
+			{
+				Name:    "drive_owner_id",
+				Unique:  false,
+				Columns: []*schema.Column{DrivesColumns[7]},
+			},
+			{
+				Name:    "drive_deleted_at",
+				Unique:  false,
+				Columns: []*schema.Column{DrivesColumns[9]},
+			},
+		},
+	}
+	// DriveStorageColumns holds the columns for the "drive_storage" table.
+	DriveStorageColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "bucket", Type: field.TypeString, Size: 128},
+		{Name: "endpoint", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "region", Type: field.TypeString, Size: 32},
+		{Name: "access_key", Type: field.TypeString, Size: 255},
+		{Name: "secret_key", Type: field.TypeString, Size: 255},
+		{Name: "use_path_style", Type: field.TypeBool, Default: false},
+		{Name: "drive_id", Type: field.TypeString, Unique: true, Size: 32},
+	}
+	// DriveStorageTable holds the schema information for the "drive_storage" table.
+	DriveStorageTable = &schema.Table{
+		Name:       "drive_storage",
+		Columns:    DriveStorageColumns,
+		PrimaryKey: []*schema.Column{DriveStorageColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "drive_storage_drives_storage",
+				Columns:    []*schema.Column{DriveStorageColumns[7]},
+				RefColumns: []*schema.Column{DrivesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// GcTombstonesColumns holds the columns for the "gc_tombstones" table.
+	GcTombstonesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "bucket", Type: field.TypeString, Size: 128},
+		{Name: "key", Type: field.TypeString, Size: 512},
+		{Name: "retries", Type: field.TypeInt, Default: 0},
+	}
+	// GcTombstonesTable holds the schema information for the "gc_tombstones" table.
+	GcTombstonesTable = &schema.Table{
+		Name:       "gc_tombstones",
+		Columns:    GcTombstonesColumns,
+		PrimaryKey: []*schema.Column{GcTombstonesColumns[0]},
+	}
+	// NodesColumns holds the columns for the "nodes" table.
+	NodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"file", "directory", "symlink", "object", "device"}, Default: "file"},
 		{Name: "size", Type: field.TypeInt64, Default: 0},
-		{Name: "link_count", Type: field.TypeInt, Default: 1},
-		{Name: "flags", Type: field.TypeInt},
+		{Name: "nlink", Type: field.TypeUint32, Default: 1},
+		{Name: "content", Type: field.TypeBytes, Nullable: true, Size: 4096},
 		{Name: "atime", Type: field.TypeTime},
 		{Name: "mtime", Type: field.TypeTime},
 		{Name: "ctime", Type: field.TypeTime},
-		{Name: "content", Type: field.TypeBytes, Nullable: true},
-		{Name: "system_id", Type: field.TypeString},
+		{Name: "crtime", Type: field.TypeTime},
+		{Name: "flags", Type: field.TypeUint32, Default: 0},
+		{Name: "revision", Type: field.TypeString, Size: 26},
 	}
-	// InodesTable holds the schema information for the "inodes" table.
-	InodesTable = &schema.Table{
-		Name:       "inodes",
-		Columns:    InodesColumns,
-		PrimaryKey: []*schema.Column{InodesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "inodes_systems_inodes",
-				Columns:    []*schema.Column{InodesColumns[13]},
-				RefColumns: []*schema.Column{SystemsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "inode_system_id",
-				Unique:  false,
-				Columns: []*schema.Column{InodesColumns[13]},
-			},
-		},
-	}
-	// ObjectsColumns holds the columns for the "objects" table.
-	ObjectsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString},
-		{Name: "create_time", Type: field.TypeTime},
-		{Name: "update_time", Type: field.TypeTime},
-		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3"}, Default: "s3"},
-		{Name: "bucket", Type: field.TypeString},
-		{Name: "storage_key", Type: field.TypeString},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "active"}, Default: "active"},
-		{Name: "checksum", Type: field.TypeString, Nullable: true},
-		{Name: "idempotency_key", Type: field.TypeString, Nullable: true},
-		{Name: "system_id", Type: field.TypeString},
-	}
-	// ObjectsTable holds the schema information for the "objects" table.
-	ObjectsTable = &schema.Table{
-		Name:       "objects",
-		Columns:    ObjectsColumns,
-		PrimaryKey: []*schema.Column{ObjectsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "objects_systems_objects",
-				Columns:    []*schema.Column{ObjectsColumns[9]},
-				RefColumns: []*schema.Column{SystemsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "object_system_id_provider_bucket_storage_key",
-				Unique:  true,
-				Columns: []*schema.Column{ObjectsColumns[9], ObjectsColumns[3], ObjectsColumns[4], ObjectsColumns[5]},
-			},
-			{
-				Name:    "object_system_id",
-				Unique:  false,
-				Columns: []*schema.Column{ObjectsColumns[9]},
-			},
-			{
-				Name:    "object_provider_bucket",
-				Unique:  false,
-				Columns: []*schema.Column{ObjectsColumns[3], ObjectsColumns[4]},
-			},
-			{
-				Name:    "object_status_update_time",
-				Unique:  false,
-				Columns: []*schema.Column{ObjectsColumns[6], ObjectsColumns[2]},
-			},
-			{
-				Name:    "object_system_id_idempotency_key",
-				Unique:  true,
-				Columns: []*schema.Column{ObjectsColumns[9], ObjectsColumns[8]},
-			},
-		},
-	}
-	// SystemsColumns holds the columns for the "systems" table.
-	SystemsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString},
-		{Name: "create_time", Type: field.TypeTime},
-		{Name: "update_time", Type: field.TypeTime},
-		{Name: "name", Type: field.TypeString, Size: 64},
-		{Name: "description", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "inactive", "maintenance"}, Default: "active"},
-	}
-	// SystemsTable holds the schema information for the "systems" table.
-	SystemsTable = &schema.Table{
-		Name:       "systems",
-		Columns:    SystemsColumns,
-		PrimaryKey: []*schema.Column{SystemsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "system_name",
-				Unique:  false,
-				Columns: []*schema.Column{SystemsColumns[3]},
-			},
-			{
-				Name:    "system_status",
-				Unique:  false,
-				Columns: []*schema.Column{SystemsColumns[5]},
-			},
-		},
-	}
-	// SystemGroupsColumns holds the columns for the "system_groups" table.
-	SystemGroupsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "name", Type: field.TypeString, Size: 32},
-		{Name: "gid", Type: field.TypeInt, Default: 0},
-		{Name: "system_id", Type: field.TypeString},
-	}
-	// SystemGroupsTable holds the schema information for the "system_groups" table.
-	SystemGroupsTable = &schema.Table{
-		Name:       "system_groups",
-		Columns:    SystemGroupsColumns,
-		PrimaryKey: []*schema.Column{SystemGroupsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "system_groups_systems_system",
-				Columns:    []*schema.Column{SystemGroupsColumns[3]},
-				RefColumns: []*schema.Column{SystemsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "systemgroup_system_id_name",
-				Unique:  true,
-				Columns: []*schema.Column{SystemGroupsColumns[3], SystemGroupsColumns[1]},
-			},
-			{
-				Name:    "systemgroup_system_id_gid",
-				Unique:  true,
-				Columns: []*schema.Column{SystemGroupsColumns[3], SystemGroupsColumns[2]},
-			},
-			{
-				Name:    "systemgroup_system_id",
-				Unique:  false,
-				Columns: []*schema.Column{SystemGroupsColumns[3]},
-			},
-		},
+	// NodesTable holds the schema information for the "nodes" table.
+	NodesTable = &schema.Table{
+		Name:       "nodes",
+		Columns:    NodesColumns,
+		PrimaryKey: []*schema.Column{NodesColumns[0]},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "id", Type: field.TypeString, Unique: true, Size: 32},
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
-		{Name: "username", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "public_id", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "name", Type: field.TypeString, Size: 255},
+		{Name: "email", Type: field.TypeString, Nullable: true, Size: 255},
 		{Name: "provider", Type: field.TypeString, Size: 32},
 		{Name: "provider_id", Type: field.TypeString, Size: 255},
-		{Name: "join_date", Type: field.TypeTime},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -185,138 +127,35 @@ var (
 			{
 				Name:    "user_provider_provider_id",
 				Unique:  true,
-				Columns: []*schema.Column{UsersColumns[4], UsersColumns[5]},
-			},
-			{
-				Name:    "user_username",
-				Unique:  false,
-				Columns: []*schema.Column{UsersColumns[3]},
-			},
-		},
-	}
-	// UserGroupsColumns holds the columns for the "user_groups" table.
-	UserGroupsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "user_system_id", Type: field.TypeInt},
-		{Name: "system_group_id", Type: field.TypeInt},
-	}
-	// UserGroupsTable holds the schema information for the "user_groups" table.
-	UserGroupsTable = &schema.Table{
-		Name:       "user_groups",
-		Columns:    UserGroupsColumns,
-		PrimaryKey: []*schema.Column{UserGroupsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "user_groups_user_systems_user_system",
-				Columns:    []*schema.Column{UserGroupsColumns[1]},
-				RefColumns: []*schema.Column{UserSystemsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
-				Symbol:     "user_groups_system_groups_system_group",
-				Columns:    []*schema.Column{UserGroupsColumns[2]},
-				RefColumns: []*schema.Column{SystemGroupsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "usergroup_user_system_id_system_group_id",
-				Unique:  true,
-				Columns: []*schema.Column{UserGroupsColumns[1], UserGroupsColumns[2]},
-			},
-		},
-	}
-	// UserSystemsColumns holds the columns for the "user_systems" table.
-	UserSystemsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "uid", Type: field.TypeInt, Default: 0},
-		{Name: "gid", Type: field.TypeInt, Default: 0},
-		{Name: "username", Type: field.TypeString, Size: 32},
-		{Name: "user_id", Type: field.TypeString},
-		{Name: "system_id", Type: field.TypeString},
-	}
-	// UserSystemsTable holds the schema information for the "user_systems" table.
-	UserSystemsTable = &schema.Table{
-		Name:       "user_systems",
-		Columns:    UserSystemsColumns,
-		PrimaryKey: []*schema.Column{UserSystemsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "user_systems_users_user",
-				Columns:    []*schema.Column{UserSystemsColumns[4]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
-				Symbol:     "user_systems_systems_system",
-				Columns:    []*schema.Column{UserSystemsColumns[5]},
-				RefColumns: []*schema.Column{SystemsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "usersystem_user_id_system_id",
-				Unique:  true,
-				Columns: []*schema.Column{UserSystemsColumns[4], UserSystemsColumns[5]},
-			},
-			{
-				Name:    "usersystem_system_id_uid",
-				Unique:  true,
-				Columns: []*schema.Column{UserSystemsColumns[5], UserSystemsColumns[1]},
-			},
-			{
-				Name:    "usersystem_system_id_username",
-				Unique:  true,
-				Columns: []*schema.Column{UserSystemsColumns[5], UserSystemsColumns[3]},
-			},
-			{
-				Name:    "usersystem_system_id",
-				Unique:  false,
-				Columns: []*schema.Column{UserSystemsColumns[5]},
+				Columns: []*schema.Column{UsersColumns[6], UsersColumns[7]},
 			},
 		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		InodesTable,
-		ObjectsTable,
-		SystemsTable,
-		SystemGroupsTable,
+		DrivesTable,
+		DriveStorageTable,
+		GcTombstonesTable,
+		NodesTable,
 		UsersTable,
-		UserGroupsTable,
-		UserSystemsTable,
 	}
 )
 
 func init() {
-	InodesTable.ForeignKeys[0].RefTable = SystemsTable
-	InodesTable.Annotation = &entsql.Annotation{
-		Table: "inodes",
+	DrivesTable.Annotation = &entsql.Annotation{
+		Table: "drives",
 	}
-	ObjectsTable.ForeignKeys[0].RefTable = SystemsTable
-	ObjectsTable.Annotation = &entsql.Annotation{
-		Table: "objects",
+	DriveStorageTable.ForeignKeys[0].RefTable = DrivesTable
+	DriveStorageTable.Annotation = &entsql.Annotation{
+		Table: "drive_storage",
 	}
-	SystemsTable.Annotation = &entsql.Annotation{
-		Table: "systems",
+	GcTombstonesTable.Annotation = &entsql.Annotation{
+		Table: "gc_tombstones",
 	}
-	SystemGroupsTable.ForeignKeys[0].RefTable = SystemsTable
-	SystemGroupsTable.Annotation = &entsql.Annotation{
-		Table: "system_groups",
+	NodesTable.Annotation = &entsql.Annotation{
+		Table: "nodes",
 	}
 	UsersTable.Annotation = &entsql.Annotation{
 		Table: "users",
-	}
-	UserGroupsTable.ForeignKeys[0].RefTable = UserSystemsTable
-	UserGroupsTable.ForeignKeys[1].RefTable = SystemGroupsTable
-	UserGroupsTable.Annotation = &entsql.Annotation{
-		Table: "user_groups",
-	}
-	UserSystemsTable.ForeignKeys[0].RefTable = UsersTable
-	UserSystemsTable.ForeignKeys[1].RefTable = SystemsTable
-	UserSystemsTable.Annotation = &entsql.Annotation{
-		Table: "user_systems",
 	}
 }

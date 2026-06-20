@@ -1,0 +1,60 @@
+Drive:
+  type: object
+  properties:
+    id:
+      type: string
+    publicID:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+    ownerID:
+      type: string
+    rootNodeID:
+      type: string
+    deletedAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+DriveCreate:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    storage:
+      $ref: "#/StorageConfig"
+
+DriveUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+
+StorageConfig:
+  type: object
+  required: [bucket, region]
+  properties:
+    bucket:
+      type: string
+    endpoint:
+      type: string
+    region:
+      type: string
+    accessKey:
+      type: string
+    secretKey:
+      type: string
+    usePathStyle:
+      type: boolean

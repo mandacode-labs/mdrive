@@ -13,9 +13,8 @@ import (
 
 // SecurityHandler is handler for security parameters.
 type SecurityHandler interface {
-	// HandleSessionAuth handles sessionAuth security.
-	// Session-based authentication via cookie.
-	HandleSessionAuth(ctx context.Context, operationName OperationName, t SessionAuth) (context.Context, error)
+	// HandleBearerAuth handles bearerAuth security.
+	HandleBearerAuth(ctx context.Context, operationName OperationName, t BearerAuth) (context.Context, error)
 }
 
 func findAuthorization(h http.Header, prefix string) (string, bool) {
@@ -33,51 +32,47 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 	return "", false
 }
 
-// operationRolesSessionAuth is a private map storing roles per operation.
-var operationRolesSessionAuth = map[string][]string{
-	AddGroupMemberOperation:    []string{},
-	ChmodOperation:             []string{},
+// operationRolesBearerAuth is a private map storing roles per operation.
+var operationRolesBearerAuth = map[string][]string{
+	AuthLogoutOperation:        []string{},
+	AuthMeOperation:            []string{},
+	CatOperation:               []string{},
 	CompleteUploadOperation:    []string{},
-	CreateSystemOperation:      []string{},
-	CreateSystemGroupOperation: []string{},
-	CreateSystemUserOperation:  []string{},
-	DeleteSystemOperation:      []string{},
-	DeleteSystemGroupOperation: []string{},
-	DeleteSystemUserOperation:  []string{},
-	DeleteUserOperation:        []string{},
-	GetDownloadUrlOperation:    []string{},
-	GetRootDirectoryOperation:  []string{},
-	GetSystemOperation:         []string{},
-	GetSystemGroupOperation:    []string{},
-	GetSystemUserOperation:     []string{},
+	CreateDriveOperation:       []string{},
+	DeleteDriveOperation:       []string{},
+	GetDriveOperation:          []string{},
+	GetDriveStorageOperation:   []string{},
 	GetUserOperation:           []string{},
 	InitiateUploadOperation:    []string{},
-	ListSystemGroupsOperation:  []string{},
-	ListSystemUsersOperation:   []string{},
-	ListSystemsOperation:       []string{},
-	LnOperation:                []string{},
+	ListDeletedDrivesOperation: []string{},
+	ListDrivesOperation:        []string{},
 	LsOperation:                []string{},
 	MkdirOperation:             []string{},
 	MvOperation:                []string{},
-	RemoveGroupMemberOperation: []string{},
-	RenameOperation:            []string{},
+	PresignDownloadOperation:   []string{},
+	RestoreDriveOperation:      []string{},
 	RmOperation:                []string{},
-	StatPathOperation:          []string{},
-	UnlinkOperation:            []string{},
+	StatOperation:              []string{},
+	SymlinkOperation:           []string{},
+	TouchOperation:             []string{},
+	UpdateDriveOperation:       []string{},
+	UpsertUserOperation:        []string{},
+	WriteOperation:             []string{},
+	WriteLargeOperation:        []string{},
 }
 
-// GetRolesForSessionAuth returns the required roles for the given operation.
+// GetRolesForBearerAuth returns the required roles for the given operation.
 //
 // This is useful for authorization scenarios where you need to know which roles
 // are required for an operation.
 //
 // Example:
 //
-//	requiredRoles := GetRolesForSessionAuth(AddPetOperation)
+//	requiredRoles := GetRolesForBearerAuth(AddPetOperation)
 //
 // Returns nil if the operation has no role requirements or if the operation is unknown.
-func GetRolesForSessionAuth(operation string) []string {
-	roles, ok := operationRolesSessionAuth[operation]
+func GetRolesForBearerAuth(operation string) []string {
+	roles, ok := operationRolesBearerAuth[operation]
 	if !ok {
 		return nil
 	}
@@ -87,21 +82,15 @@ func GetRolesForSessionAuth(operation string) []string {
 	return result
 }
 
-func (s *Server) securitySessionAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
-	var t SessionAuth
-	const parameterName = "session_id"
-	var value string
-	switch cookie, err := req.Cookie(parameterName); {
-	case err == nil: // if NO error
-		value = cookie.Value
-	case errors.Is(err, http.ErrNoCookie):
+func (s *Server) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
+	var t BearerAuth
+	token, ok := findAuthorization(req.Header, "Bearer")
+	if !ok {
 		return ctx, false, nil
-	default:
-		return nil, false, errors.Wrap(err, "get cookie value")
 	}
-	t.APIKey = value
-	t.Roles = operationRolesSessionAuth[operationName]
-	rctx, err := s.sec.HandleSessionAuth(ctx, operationName, t)
+	t.Token = token
+	t.Roles = operationRolesBearerAuth[operationName]
+	rctx, err := s.sec.HandleBearerAuth(ctx, operationName, t)
 	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
 		return nil, false, nil
 	} else if err != nil {
@@ -112,24 +101,15 @@ func (s *Server) securitySessionAuth(ctx context.Context, operationName Operatio
 
 // SecuritySource is provider of security values (tokens, passwords, etc.).
 type SecuritySource interface {
-	// SessionAuth provides sessionAuth security value.
-	// Session-based authentication via cookie.
-	SessionAuth(ctx context.Context, operationName OperationName) (SessionAuth, error)
+	// BearerAuth provides bearerAuth security value.
+	BearerAuth(ctx context.Context, operationName OperationName) (BearerAuth, error)
 }
 
-func (s *Client) securitySessionAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
-	t, err := s.sec.SessionAuth(ctx, operationName)
+func (s *Client) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
+	t, err := s.sec.BearerAuth(ctx, operationName)
 	if err != nil {
-		return errors.Wrap(err, "security source \"SessionAuth\"")
+		return errors.Wrap(err, "security source \"BearerAuth\"")
 	}
-	// #nosec G124 — test client cookie, not production server cookie
-	req.AddCookie(&http.Cookie{
-		Name:     "session_id",
-		Value:    t.APIKey,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-	})
+	req.Header.Set("Authorization", "Bearer "+t.Token)
 	return nil
 }

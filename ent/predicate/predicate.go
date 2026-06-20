@@ -6,23 +6,17 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
-// Inode is the predicate function for inode builders.
-type Inode func(*sql.Selector)
+// Drive is the predicate function for drive builders.
+type Drive func(*sql.Selector)
 
-// Object is the predicate function for object builders.
-type Object func(*sql.Selector)
+// DriveStorage is the predicate function for drivestorage builders.
+type DriveStorage func(*sql.Selector)
 
-// System is the predicate function for system builders.
-type System func(*sql.Selector)
+// GCTombstone is the predicate function for gctombstone builders.
+type GCTombstone func(*sql.Selector)
 
-// SystemGroup is the predicate function for systemgroup builders.
-type SystemGroup func(*sql.Selector)
+// Node is the predicate function for node builders.
+type Node func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
-
-// UserGroup is the predicate function for usergroup builders.
-type UserGroup func(*sql.Selector)
-
-// UserSystem is the predicate function for usersystem builders.
-type UserSystem func(*sql.Selector)

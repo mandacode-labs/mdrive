@@ -1,0 +1,134 @@
+package handler
+
+import (
+	"context"
+
+	"github.com/mandacode-labs/mdrive/internal/app/apputils"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/pkg/api"
+)
+
+// driveToAPI converts a domain drive to an API drive.
+func driveToAPI(d *drive.Drive) *api.Drive {
+	if d == nil {
+		return nil
+	}
+	rid := d.RootNodeID()
+	var rids string
+	if rid != nil {
+		rids = rid.String()
+	}
+	deletedAt := api.OptDateTime{}
+	if d.DeletedAt() != nil {
+		deletedAt = api.OptDateTime{Value: *d.DeletedAt(), Set: true}
+	}
+	return &api.Drive{
+		ID:          apputils.OptString(d.ID()),
+		PublicID:    apputils.OptString(d.PublicID()),
+		Name:        apputils.OptString(d.Name()),
+		Description: apputils.OptStringPtr(d.Description()),
+		OwnerID:     apputils.OptString(d.OwnerID()),
+		RootNodeID:  apputils.OptString(rids),
+		DeletedAt:   deletedAt,
+		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
+		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
+	}
+}
+
+// --- Drive handlers ---
+
+func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.CreateDriveRes, error) {
+	r := req.Value
+	desc := ""
+	if r.Description.Set {
+		desc = r.Description.Value
+	}
+	// Custom drive storage is disabled; always use the platform default storage.
+	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, h.defaultStorage)
+	if err != nil {
+		return nil, err
+	}
+	return driveToAPI(d), nil
+}
+
+func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
+	d, err := h.vfs.GetDrive(ctx, h.userID(ctx), params.DriveID)
+	if err != nil {
+		return nil, err
+	}
+	return driveToAPI(d), nil
+}
+
+func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
+	r := req.Value
+	namePtr := (*string)(nil)
+	descPtr := (*string)(nil)
+	if r.Name.Set {
+		namePtr = &r.Name.Value
+	}
+	if r.Description.Set {
+		descPtr = &r.Description.Value
+	}
+	drv, err := h.vfs.UpdateDrive(ctx, h.userID(ctx), params.DriveID, namePtr, descPtr)
+	if err != nil {
+		return nil, err
+	}
+	return driveToAPI(drv), nil
+}
+
+func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) error {
+	return h.vfs.DeleteDrive(ctx, h.userID(ctx), params.DriveID)
+}
+
+func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
+	if !auth.IsAdmin(ctx) {
+		return nil, vfs.ErrPermission
+	}
+	d, err := h.vfs.RestoreDrive(ctx, h.userID(ctx), params.DriveID)
+	if err != nil {
+		return nil, err
+	}
+	return driveToAPI(d), nil
+}
+
+func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
+	if !auth.IsAdmin(ctx) {
+		return nil, vfs.ErrPermission
+	}
+	drives, err := h.vfs.ListDeletedDrives(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]api.Drive, len(drives))
+	for i, d := range drives {
+		result[i] = *driveToAPI(d)
+	}
+	return result, nil
+}
+
+func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
+	s, err := h.vfs.GetDriveStorage(ctx, h.userID(ctx), params.DriveID)
+	if err != nil {
+		return nil, err
+	}
+	return &api.StorageConfig{
+		Bucket:       s.Bucket(),
+		Region:       s.Region(),
+		Endpoint:     apputils.OptStringPtr(s.Endpoint()),
+		UsePathStyle: apputils.OptBool(s.UsePathStyle()),
+	}, nil
+}
+
+func (h *Handler) ListDrives(ctx context.Context) ([]api.Drive, error) {
+	drives, err := h.vfs.ListUserDrives(ctx, h.userID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]api.Drive, len(drives))
+	for i, d := range drives {
+		result[i] = *driveToAPI(d)
+	}
+	return result, nil
+}

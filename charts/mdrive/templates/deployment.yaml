@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mdrive.fullname" . }}
+  labels:
+    {{- include "mdrive.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mdrive.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "mdrive.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mdrive.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.migration.enabled }}
+        - name: migrate
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "mdrive.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mdrive
+          args:
+            - migrate
+            - apply
+            - --config
+            - /app/config/config.yaml
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "mdrive.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mdrive
+          args:
+            - api-server
+            - run
+            - --config
+            - /app/config/config.yaml
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
+            {{- if or .Values.secrets.valkey.password .Values.secrets.valkey.existingSecret }}
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.valkey.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.valkey.existingSecretKey | default "valkey-password" }}
+            {{- end }}
+            {{- if or .Values.secrets.storage.access_key .Values.secrets.storage.existingSecret }}
+            - name: STORAGE_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key" }}
+            - name: STORAGE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key" }}
+            {{- end }}
+            {{- if or .Values.secrets.crypto.master_key .Values.secrets.crypto.existingSecret }}
+            - name: CRYPTO_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.crypto.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.crypto.existingSecretKey | default "crypto-master-key" }}
+            {{- end }}
+            {{- if or .Values.secrets.openfga.api_token .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyApiToken | default "openfga-api-token" }}
+            {{- end }}
+            {{- if or .Values.secrets.openfga.client_id .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyClientID | default "openfga-client-id" }}
+            {{- end }}
+            {{- if or .Values.secrets.openfga.client_secret .Values.secrets.openfga.existingSecret }}
+            - name: OPENFGA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
+                  key: {{ .Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret" }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.http.port }}
+              protocol: TCP
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "mdrive.fullname" . }}
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
