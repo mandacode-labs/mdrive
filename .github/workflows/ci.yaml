@@ -105,7 +105,10 @@ jobs:
         id: atlas_version
         run: echo "value=$(cat ATLAS_VERSION)" >> "$GITHUB_OUTPUT"
       - name: Install atlas
-        run: curl -sSf https://atlasgo.sh | CI=true ATLAS_VERSION=${{ steps.atlas_version.outputs.value }} sh -s -- -o /usr/local/bin/atlas
+        run: |
+          curl -sL "https://release.ariga.io/atlas/atlas-linux-amd64-${{ steps.atlas_version.outputs.value }}" -o /usr/local/bin/atlas
+          chmod +x /usr/local/bin/atlas
+          atlas version
       - name: Run unit tests
         run: make test
       - name: Upload coverage
@@ -142,8 +145,14 @@ jobs:
       GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v6.0.3
+      - name: Read ATLAS_VERSION
+        id: atlas_version
+        run: echo "value=$(cat ATLAS_VERSION)" >> "$GITHUB_OUTPUT"
       - name: Install atlas
-        run: curl -sSf https://atlasgo.sh | sh
+        run: |
+          curl -sL "https://release.ariga.io/atlas/atlas-linux-amd64-${{ steps.atlas_version.outputs.value }}" -o /usr/local/bin/atlas
+          chmod +x /usr/local/bin/atlas
+          atlas version
       - name: Run e2e tests
         run: make test-e2e
       - name: Upload coverage
