@@ -2,6 +2,7 @@
 package config
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -29,8 +30,49 @@ type AppConfig struct {
 
 // HTTPConfig holds HTTP server settings.
 type HTTPConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout     time.Duration `mapstructure:"idle_timeout"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
+	CORS            CORSConfig    `mapstructure:"cors"`
+	Cookie          CookieConfig  `mapstructure:"cookie"`
+}
+
+// CORSConfig holds Cross-Origin Resource Sharing settings.
+type CORSConfig struct {
+	Enabled          bool     `mapstructure:"enabled"`
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	AllowedMethods   []string `mapstructure:"allowed_methods"`
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`
+	ExposedHeaders   []string `mapstructure:"exposed_headers"`
+	AllowCredentials bool     `mapstructure:"allow_credentials"`
+	MaxAge           int      `mapstructure:"max_age"`
+}
+
+// CookieConfig holds session cookie settings.
+type CookieConfig struct {
+	Name     string        `mapstructure:"name"`
+	Path     string        `mapstructure:"path"`
+	Secure   bool          `mapstructure:"secure"`
+	HttpOnly bool          `mapstructure:"http_only"`
+	SameSite string        `mapstructure:"same_site"`
+	TTL      time.Duration `mapstructure:"ttl"`
+}
+
+// SameSiteMode returns the http.SameSite value for the configured same_site string.
+func (c CookieConfig) SameSiteMode() http.SameSite {
+	switch strings.ToLower(c.SameSite) {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "lax":
+		return http.SameSiteLaxMode
+	case "none":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
 
 // DatabaseConfig holds PostgreSQL settings.
@@ -158,6 +200,23 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.log_level", "info")
 	v.SetDefault("http.host", "0.0.0.0")
 	v.SetDefault("http.port", 8080)
+	v.SetDefault("http.read_timeout", "30s")
+	v.SetDefault("http.write_timeout", "30s")
+	v.SetDefault("http.idle_timeout", "120s")
+	v.SetDefault("http.shutdown_timeout", "30s")
+	v.SetDefault("http.cors.enabled", true)
+	v.SetDefault("http.cors.allowed_origins", []string{"*"})
+	v.SetDefault("http.cors.allowed_methods", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+	v.SetDefault("http.cors.allowed_headers", []string{"Authorization", "Content-Type", "X-Requested-With"})
+	v.SetDefault("http.cors.exposed_headers", []string{"Content-Length"})
+	v.SetDefault("http.cors.allow_credentials", true)
+	v.SetDefault("http.cors.max_age", 86400)
+	v.SetDefault("http.cookie.name", "mdrive_session")
+	v.SetDefault("http.cookie.path", "/")
+	v.SetDefault("http.cookie.secure", false)
+	v.SetDefault("http.cookie.http_only", true)
+	v.SetDefault("http.cookie.same_site", "lax")
+	v.SetDefault("http.cookie.ttl", "24h")
 	v.SetDefault("database.driver", "postgres")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", 5432)

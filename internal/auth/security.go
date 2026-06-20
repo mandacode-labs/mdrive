@@ -19,8 +19,11 @@ type SecurityHandler struct {
 	cookieName string
 }
 
-func NewSecurityHandler(auth *Service) *SecurityHandler {
-	return &SecurityHandler{auth: auth, cookieName: SessionCookieName}
+func NewSecurityHandler(auth *Service, cookieName string) *SecurityHandler {
+	if cookieName == "" {
+		cookieName = SessionCookieName
+	}
+	return &SecurityHandler{auth: auth, cookieName: cookieName}
 }
 
 func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {

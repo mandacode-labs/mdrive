@@ -149,7 +149,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		if err != nil {
 			return nil, err
 		}
-		sec = auth.NewSecurityHandler(authenticator)
+		sec = auth.NewSecurityHandler(authenticator, cfg.HTTP.Cookie.Name)
 	}
 
 	return &App{

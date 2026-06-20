@@ -86,7 +86,7 @@ jobs:
       - name: Go Security Scan
         uses: securego/gosec@master
         with:
-          args: "./..."
+          args: "-conf gosec.json ./..."
       - name: Trivy Filesystem Scan
         uses: aquasecurity/trivy-action@master
         with:

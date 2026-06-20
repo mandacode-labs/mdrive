@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,8 +60,16 @@ type Handler struct {
 	getUser        func(context.Context) (string, bool)
 	auth           AuthClient
 	frontendURL    string
-	secureCookie   bool
+	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
+}
+
+type CookieConfig struct {
+	Name     string
+	Path     string
+	Secure   bool
+	HttpOnly bool
+	SameSite http.SameSite
 }
 
 func New(fs FSClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
@@ -79,10 +88,15 @@ func WithDefaultStorage(cfg drive.StorageConfig) Option {
 	}
 }
 
-func (h *Handler) WithAuth(a AuthClient, frontendURL string, secureCookie bool) {
+func WithCookie(cfg CookieConfig) Option {
+	return func(h *Handler) {
+		h.cookieConfig = cfg
+	}
+}
+
+func (h *Handler) WithAuth(a AuthClient, frontendURL string) {
 	h.auth = a
 	h.frontendURL = frontendURL
-	h.secureCookie = secureCookie
 }
 
 func (h *Handler) userID(ctx context.Context) string {

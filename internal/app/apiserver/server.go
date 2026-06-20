@@ -8,11 +8,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -24,8 +27,14 @@ type Server struct {
 }
 
 func NewServer(a *app.App, fs handler.FSClient) *Server {
+	cookieCfg := handler.CookieConfig{
+		Name:     a.Cfg.HTTP.Cookie.Name,
+		Path:     a.Cfg.HTTP.Cookie.Path,
+		Secure:   a.Cfg.HTTP.Cookie.Secure,
+		HttpOnly: a.Cfg.HTTP.Cookie.HttpOnly,
+		SameSite: a.Cfg.HTTP.Cookie.SameSiteMode(),
+	}
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
-		// Fallback: no user extraction by default (auth handles it via session context)
 		return "", false
 	}, handler.WithDefaultStorage(drive.StorageConfig{
 		Bucket:       a.Cfg.Storage.Bucket,
@@ -34,10 +43,10 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 		AccessKey:    a.Cfg.Storage.AccessKey,
 		SecretKey:    a.Cfg.Storage.SecretKey,
 		UsePathStyle: a.Cfg.Storage.UsePathStyle,
-	}))
+	}), handler.WithCookie(cookieCfg))
 
 	if a.Auth != nil && a.Security != nil {
-		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL, a.Cfg.App.Env != "development")
+		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL)
 	}
 
 	var securityHandler api.SecurityHandler = &noopSecurity{}
@@ -54,11 +63,15 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 	if a.Security != nil {
 		finalHandler = a.Security.Middleware(ogenServer)
 	}
+	finalHandler = withCORS(finalHandler, a.Cfg.HTTP.CORS)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Cfg.HTTP.Host, a.Cfg.HTTP.Port),
 		Handler:           finalHandler,
-		ReadHeaderTimeout: 30 * time.Second,
+		ReadHeaderTimeout: a.Cfg.HTTP.ReadTimeout,
+		ReadTimeout:       a.Cfg.HTTP.ReadTimeout,
+		WriteTimeout:      a.Cfg.HTTP.WriteTimeout,
+		IdleTimeout:       a.Cfg.HTTP.IdleTimeout,
 	}
 	return &Server{
 		app:  a,
@@ -108,4 +121,53 @@ type noopSecurity struct{}
 
 func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
 	return ctx, nil
+}
+
+func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
+	if !cfg.Enabled {
+		return next
+	}
+
+	allowedMethods := strings.Join(cfg.AllowedMethods, ", ")
+	allowedHeaders := strings.Join(cfg.AllowedHeaders, ", ")
+	exposedHeaders := strings.Join(cfg.ExposedHeaders, ", ")
+	origins := make(map[string]struct{}, len(cfg.AllowedOrigins))
+	for _, o := range cfg.AllowedOrigins {
+		origins[o] = struct{}{}
+	}
+	allowAll := false
+	if _, ok := origins["*"]; ok {
+		allowAll = true
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			if allowAll {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if _, ok := origins[origin]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			if cfg.AllowCredentials {
+				w.Header().Set("Access-Control-Allow-Credentials", strconv.FormatBool(cfg.AllowCredentials))
+			}
+			if exposedHeaders != "" {
+				w.Header().Set("Access-Control-Expose-Headers", exposedHeaders)
+			}
+		}
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
+			if allowedHeaders != "" {
+				w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
+			}
+			if cfg.MaxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", strconv.Itoa(cfg.MaxAge))
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

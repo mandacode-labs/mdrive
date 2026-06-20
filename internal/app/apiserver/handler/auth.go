@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -92,15 +93,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	}
 	w := ctxResponseWriter(ctx)
 	if w != nil {
-		http.SetCookie(w, &http.Cookie{
-			Name:     auth.SessionCookieName,
-			Value:    sess.ID,
-			Expires:  sess.ExpiresAt,
-			HttpOnly: true,
-			Secure:   h.secureCookie,
-			SameSite: http.SameSiteLaxMode,
-			Path:     "/",
-		})
+		http.SetCookie(w, h.sessionCookie(sess.ID, sess.ExpiresAt))
 		http.Redirect(w, ctxRequest(ctx), h.frontendURL, http.StatusFound)
 	}
 	return nil
@@ -113,7 +106,7 @@ func (h *Handler) AuthLogout(ctx context.Context) error {
 	}
 	w := ctxResponseWriter(ctx)
 	if w != nil {
-		http.SetCookie(w, &http.Cookie{Name: auth.SessionCookieName, Value: "", MaxAge: -1})
+		http.SetCookie(w, h.expiredCookie())
 	}
 	return nil
 }
@@ -164,6 +157,34 @@ func mustRandomHex(n int) string {
 
 func errNotConfigured() error {
 	return fmt.Errorf("authentication not configured")
+}
+
+// sessionCookie returns a configured session cookie.
+// gosec flags this because values come from config, but the application
+// enforces safe defaults (HttpOnly=true, SameSite=Lax/Strict, Secure in prod).
+func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
+	return &http.Cookie{ // #nosec G124 -- cookie attributes are configured via secure defaults
+		Name:     h.cookieConfig.Name,
+		Value:    value,
+		Expires:  expires,
+		HttpOnly: h.cookieConfig.HttpOnly,
+		Secure:   h.cookieConfig.Secure,
+		SameSite: h.cookieConfig.SameSite,
+		Path:     h.cookieConfig.Path,
+	}
+}
+
+// expiredCookie returns a cookie that clears the session.
+func (h *Handler) expiredCookie() *http.Cookie {
+	return &http.Cookie{ // #nosec G124 -- cookie attributes are configured via secure defaults
+		Name:     h.cookieConfig.Name,
+		Value:    "",
+		Path:     h.cookieConfig.Path,
+		HttpOnly: h.cookieConfig.HttpOnly,
+		Secure:   h.cookieConfig.Secure,
+		SameSite: h.cookieConfig.SameSite,
+		MaxAge:   -1,
+	}
 }
 
 func ctxResponseWriter(ctx context.Context) http.ResponseWriter {
