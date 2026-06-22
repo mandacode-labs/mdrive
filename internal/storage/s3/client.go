@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -112,20 +113,26 @@ func (c *Client) DeleteObjects(ctx context.Context, bucket string, keys []string
 }
 
 // ObjectExists checks whether the object exists in the bucket.
+// Returns (false, nil) for 404/NotFound; any other error is propagated
+// so callers can distinguish "object absent" from "storage unavailable".
 func (c *Client) ObjectExists(ctx context.Context, bucket, key string) (bool, error) {
 	_, err := c.api.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
-	if err != nil {
-		var notFound *s3types.NotFound
-		if errors.As(err, &notFound) {
-			return false, nil
-		}
-		// 404 also surfaces as a generic NotFound error from the SDK.
+	if err == nil {
+		return true, nil
+	}
+	var notFound *s3types.NotFound
+	if errors.As(err, &notFound) {
 		return false, nil
 	}
-	return true, nil
+	// SDK may also surface 404 as a generic HTTP response error.
+	var httpErr *awshttp.ResponseError
+	if errors.As(err, &httpErr) && httpErr.Response != nil && httpErr.Response.StatusCode == 404 {
+		return false, nil
+	}
+	return false, fmt.Errorf("s3: head object: %w", err)
 }
 
 // GetObject downloads an object as a byte slice.
