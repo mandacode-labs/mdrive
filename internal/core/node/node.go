@@ -222,6 +222,33 @@ func (n *Node) IsFile() bool    { return n.typ == NodeTypeFile }
 func (n *Node) IsSymlink() bool { return n.typ == NodeTypeSymlink }
 func (n *Node) IsObject() bool  { return n.typ == NodeTypeObject }
 
+// Content returns the node's raw stored content bytes. For file
+// nodes this is a JSON-serialized FileContent; for symlinks a
+// SymlinkContent; for object nodes an ObjectContent; for mount
+// nodes a MountContent; for directories and other types without
+// inline content it returns nil.
+//
+// Use the type-specific Read methods (ReadFile, ReadSymlink, etc.)
+// to obtain the decoded value. SetContent is the symmetric setter
+// used by callers that need to inject content in the wire format
+// the repository persists, e.g. for envelope encryption.
+
+// SetContent replaces the node's raw content bytes. This is used
+// by callers that need to inject content in the wire format the
+// repository persists, e.g. for envelope encryption: encrypt the
+// current plaintext, then SetContent(ciphertext), then Save.
+//
+// SetContent does not run any encoding or validation; it simply
+// replaces the stored bytes and updates size/mtime/ctime/rev.
+func (n *Node) SetContent(c []byte) {
+	n.content = c
+	n.size = int64(len(c))
+	now := time.Now()
+	n.mtime = now
+	n.ctime = now
+	n.rev = n.rev.Next()
+}
+
 // write replaces the node's content and updates mtime/ctime/rev.
 // Private: type-specific Write methods in file.go / dir.go / symlink.go / object.go
 // marshal the appropriate content type and then call write.

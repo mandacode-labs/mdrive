@@ -42,7 +42,10 @@ func (r *fakeRepo) WithTx(_ context.Context, fn func(node.Repository) error) err
 	return fn(r)
 }
 
-type fakeDrive struct{ rootID uuid.UUID }
+type fakeDrive struct {
+	rootID          uuid.UUID
+	storageOverride *drive.Storage
+}
 
 func (d *fakeDrive) Create(_ context.Context, _ string, _ *string, _ string, _ drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
 	return nil, uuid.Nil, nil
@@ -54,6 +57,9 @@ func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, er
 	return d.GetByID(context.Background(), "")
 }
 func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
+	if d.storageOverride != nil {
+		return d.storageOverride, nil
+	}
 	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false, ""), nil
 }
 func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
@@ -106,7 +112,7 @@ func newTestService() *Service {
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
+	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, nil)
 }
 
 func strPtr(s string) *string { return &s }

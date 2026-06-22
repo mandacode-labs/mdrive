@@ -25,6 +25,9 @@ func (s *Service) Cat(ctx context.Context, userID, driveID, path string) ([]byte
 		}
 	}
 	n := res.Node
+	if err := s.decryptContent(ctx, res.DriveID, n); err != nil {
+		return nil, err
+	}
 	switch {
 	case n.IsFile():
 		raw, err := n.ReadFile()
@@ -72,6 +75,9 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 		if ferr != nil {
 			return ferr
 		}
+		if err := s.encryptContent(ctx, driveID, f); err != nil {
+			return err
+		}
 		if lerr := s.Node.Link(ctx, parent, name, f); lerr != nil {
 			if derr := s.Node.Delete(ctx, f.ID()); derr != nil {
 				return fmt.Errorf("write: link: %w (cleanup: %v)", lerr, derr)
@@ -86,6 +92,9 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 	}
 	if err := n.WriteFile(content); err != nil {
 		return fmt.Errorf("write: %w", err)
+	}
+	if err := s.encryptContent(ctx, driveID, n); err != nil {
+		return err
 	}
 	return s.Node.Save(ctx, n)
 }
@@ -109,6 +118,9 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 	}
 	n, err := s.Node.CreateObject(ctx, obj, size)
 	if err != nil {
+		return err
+	}
+	if err := s.encryptContent(ctx, driveID, n); err != nil {
 		return err
 	}
 	if lerr := s.Node.Link(ctx, parent, name, n); lerr != nil {

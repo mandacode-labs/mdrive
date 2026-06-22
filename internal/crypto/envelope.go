@@ -173,3 +173,10 @@ func (p *DEKProvider) NewWrappedDEK() (string, error) {
 	}
 	return Wrap(dek, p.kek)
 }
+
+// Unwrap unwraps a wrapped DEK produced by NewWrappedDEK and
+// returns the raw 32-byte data encryption key. Callers use this
+// to build a NodeCipher for a given drive at encrypt/decrypt time.
+func (p *DEKProvider) Unwrap(wrapped string) ([]byte, error) {
+	return Unwrap(wrapped, p.kek)
+}

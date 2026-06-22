@@ -42,6 +42,7 @@ type App struct {
 	SessionStore      session.Store
 	Store             vfs.Store
 	TombstoneInserter vfs.TombstoneInserter
+	ContentCipher     vfs.ContentCipher
 	Auth              *auth.Service
 	Security          *auth.SecurityHandler
 	Perm              permission.Checker
@@ -117,6 +118,33 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	driveRepo := drive.NewRepository(entClient, cipher)
 	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, dekProvider)
 
+	// ContentCipher is the bridge between the vfs service (which
+	// encrypts/decrypts node content) and the per-drive DEK that
+	// lives in drive storage. When the master key is empty (dev)
+	// or the drive has no wrapped DEK (predates Phase 3a), the
+	// closure returns (nil, nil) and the vfs stores plaintext.
+	var contentCipher vfs.ContentCipher
+	if dekProvider != nil {
+		contentCipher = func(ctx context.Context, driveID string) (*cryptopkg.NodeCipher, error) {
+			st, err := driveSvc.GetStorage(ctx, driveID)
+			if err != nil {
+				return nil, err
+			}
+			if st == nil {
+				return nil, nil
+			}
+			wrapped := st.WrappedDEK()
+			if wrapped == "" {
+				return nil, nil
+			}
+			dek, err := dekProvider.Unwrap(wrapped)
+			if err != nil {
+				return nil, fmt.Errorf("crypto: unwrap DEK for drive %q: %w", driveID, err)
+			}
+			return cryptopkg.NewNodeCipher(dek)
+		}
+	}
+
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
 		return nil, err
@@ -183,6 +211,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		SessionStore:      store,
 		Store:             storageStore,
 		TombstoneInserter: gc,
+		ContentCipher:     contentCipher,
 		Auth:              authenticator,
 		Security:          sec,
 		Perm:              permClient,
