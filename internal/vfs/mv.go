@@ -34,16 +34,16 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []
 
 	return s.WithNodeTx(ctx, func(tx *Service) error {
 		if len(srcPaths) == 1 {
-			return tx.mvSingle(ctx, rootID, srcPaths[0], dstPath)
+			return tx.mvOne(ctx, rootID, srcPaths[0], dstPath)
 		}
 		return tx.mvBatch(ctx, rootID, srcPaths, dstPath)
 	})
 }
 
-// mvSingle handles the single-source case. The destination is either
-// a rename target (last path component does not exist yet) or an
-// existing directory.
-func (s *Service) mvSingle(ctx context.Context, rootID uuid.UUID, srcPath, dstPath string) error {
+// mvOne moves a single source to dstPath. If the destination's last
+// path component already exists as a file, it is overwritten; if it
+// exists as a directory, the source is moved into it.
+func (s *Service) mvOne(ctx context.Context, rootID uuid.UUID, srcPath, dstPath string) error {
 	dstParent, dstName, err := s.path.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
 		return fmt.Errorf("mv: dest: %w", err)
@@ -54,7 +54,23 @@ func (s *Service) mvSingle(ctx context.Context, rootID uuid.UUID, srcPath, dstPa
 	if err := s.overwriteTarget(ctx, dstParent, dstName); err != nil {
 		return fmt.Errorf("mv: overwrite target: %w", err)
 	}
-	return s.mvRename(ctx, rootID, srcPath, dstParent, dstName)
+	src, err := s.path.resolve(ctx, rootID, srcPath)
+	if err != nil {
+		return fmt.Errorf("mv: src %s: %w", srcPath, err)
+	}
+	srcParent, srcName, err := s.path.resolveParent(ctx, rootID, srcPath)
+	if err != nil {
+		return fmt.Errorf("mv: resolve src parent: %w", err)
+	}
+	if srcParent != nil && srcName != "" {
+		if _, err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
+			return fmt.Errorf("mv: unlink: %w", err)
+		}
+	}
+	if err := s.Node.Link(ctx, dstParent, dstName, src); err != nil {
+		return fmt.Errorf("mv: link: %w", err)
+	}
+	return nil
 }
 
 // mvBatch handles multi-source moves. The destination must resolve to
@@ -143,29 +159,6 @@ func (s *Service) mvBatch(ctx context.Context, rootID uuid.UUID, srcPaths []stri
 	// Link into the destination with one bulk write.
 	if err := s.Node.BulkLink(ctx, dstDir, links); err != nil {
 		return fmt.Errorf("mv: bulk link: %w", err)
-	}
-	return nil
-}
-
-// mvRename moves a single source to dstParent/dstName. The source is
-// unlinked from its old parent and re-linked in the new parent within
-// the same transaction.
-func (s *Service) mvRename(ctx context.Context, rootID uuid.UUID, srcPath string, dstParent *node.Node, dstName string) error {
-	src, err := s.path.resolve(ctx, rootID, srcPath)
-	if err != nil {
-		return fmt.Errorf("mv: src %s: %w", srcPath, err)
-	}
-	srcParent, srcName, err := s.path.resolveParent(ctx, rootID, srcPath)
-	if err != nil {
-		return fmt.Errorf("mv: resolve src parent: %w", err)
-	}
-	if srcParent != nil && srcName != "" {
-		if _, err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
-			return fmt.Errorf("mv: unlink: %w", err)
-		}
-	}
-	if err := s.Node.Link(ctx, dstParent, dstName, src); err != nil {
-		return fmt.Errorf("mv: link: %w", err)
 	}
 	return nil
 }
