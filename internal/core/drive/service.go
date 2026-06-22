@@ -197,7 +197,7 @@ func (s *Service) ListByOwner(ctx context.Context, ownerID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate})
+		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate, dek: s.dek})
 	})
 }
 

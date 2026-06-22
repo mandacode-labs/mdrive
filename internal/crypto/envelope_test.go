@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +52,6 @@ func TestUnwrapTamperedCiphertext(t *testing.T) {
 
 	raw, err := base64.StdEncoding.DecodeString(wrapped)
 	require.NoError(t, err)
-	// Flip a byte in the middle (the ciphertext, not the nonce).
 	raw[len(raw)-5] ^= 0x01
 	corrupted := base64.StdEncoding.EncodeToString(raw)
 
@@ -79,54 +77,33 @@ func TestUnwrapShortCiphertext(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNodeCipherRoundTrip(t *testing.T) {
-	dek := newTestDEK(t)
-	nc, err := NewNodeCipher(dek)
+func TestDEKProviderNewWrappedDEK(t *testing.T) {
+	master := newTestDEK(t)
+	provider, err := NewDEKProvider(master)
 	require.NoError(t, err)
 
-	driveID := "drive-A"
-	nodeID := uuid.New()
-	plaintext := []byte(`{"items":[{"name":"foo"}]}`)
-
-	ct, err := nc.Encrypt(plaintext, driveID, nodeID)
+	wrapped, err := provider.NewWrappedDEK()
 	require.NoError(t, err)
-	assert.NotEqual(t, plaintext, ct, "ciphertext must differ from plaintext")
-	assert.True(t, bytes.HasPrefix(ct, ct[:cGCMNonceSize()]),
-		"ciphertext is expected to start with the nonce")
+	assert.NotEmpty(t, wrapped)
 
-	pt, err := nc.Decrypt(ct, driveID, nodeID)
+	got, err := Unwrap(wrapped, master)
 	require.NoError(t, err)
-	assert.Equal(t, plaintext, pt)
+	assert.Len(t, got, wrapKeySize)
 }
 
-func TestNodeCipherAADMismatch(t *testing.T) {
-	dek := newTestDEK(t)
-	nc, err := NewNodeCipher(dek)
+func TestDEKProviderDistinctKeys(t *testing.T) {
+	master := newTestDEK(t)
+	provider, err := NewDEKProvider(master)
 	require.NoError(t, err)
 
-	ct, err := nc.Encrypt([]byte("hello"), "drive-A", uuid.New())
+	a, err := provider.NewWrappedDEK()
 	require.NoError(t, err)
-
-	// Different driveID must fail.
-	_, err = nc.Decrypt(ct, "drive-B", uuid.UUID{})
-	assert.Error(t, err, "wrong driveID must fail")
-
-	// Different nodeID must fail.
-	_, err = nc.Decrypt(ct, "drive-A", uuid.New())
-	assert.Error(t, err, "wrong nodeID must fail")
+	b, err := provider.NewWrappedDEK()
+	require.NoError(t, err)
+	assert.NotEqual(t, a, b, "two NewWrappedDEK calls must produce distinct DEKs")
 }
 
-func TestNodeCipherRejectsOversize(t *testing.T) {
-	dek := newTestDEK(t)
-	nc, err := NewNodeCipher(dek)
-	require.NoError(t, err)
-
-	tooBig := make([]byte, nc.ContentCipherSize()+1)
-	_, err = nc.Encrypt(tooBig, "drive-A", uuid.New())
+func TestDEKProviderInvalidKeySize(t *testing.T) {
+	_, err := NewDEKProvider(make([]byte, 16))
 	assert.Error(t, err)
 }
-
-// cGCMNonceSize returns the GCM nonce size used by the package. We
-// can't reach cipher.AEAD from outside without storing the cipher
-// alongside the test, so just hard-code 12 (the standard GCM size).
-func cGCMNonceSize() int { return 12 }

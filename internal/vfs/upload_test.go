@@ -63,48 +63,12 @@ func TestPresignDownloadNotObject(t *testing.T) {
 	assert.Error(t, err)
 }
 
-type recordingReencryptor struct {
-	calls []reencryptCall
-}
-
-type reencryptCall struct {
-	driveID string
-	bucket  string
-	srcKey  string
-	dstKey  string
-}
-
-func (r *recordingReencryptor) MigratePlaintext(_ context.Context, driveID, bucket, srcKey, dstKey string) error {
-	r.calls = append(r.calls, reencryptCall{driveID: driveID, bucket: bucket, srcKey: srcKey, dstKey: dstKey})
-	return nil
-}
-
-func TestCompleteUpload_ReencryptsWhenReencryptorSet(t *testing.T) {
-	svc := newTestService()
-	ctx := context.Background()
-	rec := &recordingReencryptor{}
-	svc.Reencryptor = rec
-
-	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/big.bin", nil, int64Ptr(42), time.Hour)
-	require.NoError(t, err)
-
-	_, err = svc.CompleteUpload(ctx, "user1", "d1", info.UploadID, 42, nil)
-	require.NoError(t, err)
-
-	require.Len(t, rec.calls, 1, "CompleteUpload should call MigratePlaintext exactly once")
-	call := rec.calls[0]
-	assert.Equal(t, "d1", call.driveID)
-	assert.Equal(t, "b", call.bucket)
-	assert.Equal(t, "drives/d1/uploads/"+info.UploadID, call.srcKey)
-	assert.Equal(t, call.srcKey, call.dstKey, "in-place re-encryption")
-}
-
 func TestCompleteUpload_ObjectNotExists(t *testing.T) {
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	svc := NewService(nodeSvc, d, &fakeUser{}, &objectNotFoundStore{Store: &fakeStore{}}, &fakePerm{}, nil, nil, nil, nil)
+	svc := NewService(nodeSvc, d, &fakeUser{}, &objectNotFoundStore{Store: &fakeStore{}}, &fakePerm{}, nil, nil)
 
 	ctx := context.Background()
 	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/missing.bin", nil, nil, time.Hour)
