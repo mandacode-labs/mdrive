@@ -3,6 +3,10 @@
     {
       "path": "ent/.*",
       "rules": ["G115"]
+    },
+    {
+      "path": "internal/app/apiserver/handler/auth.go",
+      "rules": ["G124"]
     }
   ]
 }

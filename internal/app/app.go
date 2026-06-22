@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -41,6 +42,7 @@ type App struct {
 	SessionStore      session.Store
 	Store             vfs.Store
 	TombstoneInserter vfs.TombstoneInserter
+	ContentCipher     vfs.ContentCipher
 	Auth              *auth.Service
 	Security          *auth.SecurityHandler
 	Perm              permission.Checker
@@ -96,8 +98,52 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, errors.New("crypto.master_key is required in production")
 	}
 
+	// DEK provider: generates per-drive data encryption keys, wrapping
+	// them with the master key. We need the raw key bytes (not the
+	// Cipher) because Wrap is a low-level primitive; in dev where
+	// the master key is empty, the provider is nil and Create skips
+	// DEK provisioning.
+	var dekProvider *cryptopkg.DEKProvider
+	if cfg.Crypto.MasterKey != "" {
+		masterKey, err := hex.DecodeString(cfg.Crypto.MasterKey)
+		if err != nil {
+			return nil, fmt.Errorf("crypto: decode master key for DEK: %w", err)
+		}
+		dekProvider, err = cryptopkg.NewDEKProvider(masterKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, dekProvider)
+
+	// ContentCipher is the bridge between the vfs service (which
+	// encrypts/decrypts node content) and the per-drive DEK that
+	// lives in drive storage. When the master key is empty (dev)
+	// or the drive has no wrapped DEK (predates Phase 3a), the
+	// closure returns (nil, nil) and the vfs stores plaintext.
+	var contentCipher vfs.ContentCipher
+	if dekProvider != nil {
+		contentCipher = func(ctx context.Context, driveID string) (*cryptopkg.NodeCipher, error) {
+			st, err := driveSvc.GetStorage(ctx, driveID)
+			if err != nil {
+				return nil, err
+			}
+			if st == nil {
+				return nil, nil
+			}
+			wrapped := st.WrappedDEK()
+			if wrapped == "" {
+				return nil, nil
+			}
+			dek, err := dekProvider.Unwrap(wrapped)
+			if err != nil {
+				return nil, fmt.Errorf("crypto: unwrap DEK for drive %q: %w", driveID, err)
+			}
+			return cryptopkg.NewNodeCipher(dek)
+		}
+	}
 
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
@@ -165,6 +211,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		SessionStore:      store,
 		Store:             storageStore,
 		TombstoneInserter: gc,
+		ContentCipher:     contentCipher,
 		Auth:              authenticator,
 		Security:          sec,
 		Perm:              permClient,

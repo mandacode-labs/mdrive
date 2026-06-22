@@ -107,7 +107,7 @@ func TestResolveCrossDrive(t *testing.T) {
 	require.NoError(t, fix.repo.Save(context.Background(), fileB))
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "shared.txt", fileB))
 
-	svc := NewService(nodeSvc, fix.driveClient(), &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
+	svc := NewService(nodeSvc, fix.driveClient(), &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, nil)
 
 	res, err := svc.Resolve(context.Background(), fix.idA, "/mounts/team/shared.txt")
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestResolveMountCycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "back", back))
 
-	svc := NewService(nodeSvc, fix.driveClient(), &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
+	svc := NewService(nodeSvc, fix.driveClient(), &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, nil)
 
 	_, err = svc.Resolve(context.Background(), fix.idA, "/mount/back/mount")
 	assert.ErrorIs(t, err, ErrMountCycle)

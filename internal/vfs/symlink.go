@@ -25,6 +25,9 @@ func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath
 	if err != nil {
 		return nil, err
 	}
+	if err := s.encryptContent(ctx, driveID, n); err != nil {
+		return nil, err
+	}
 	if err := s.Node.Link(ctx, parent, name, n); err != nil {
 		_ = s.Node.Delete(ctx, n.ID())
 		return nil, fmt.Errorf("symlink: link: %w", err)

@@ -19,7 +19,7 @@ const providerGoogle = "google"
 
 func (h *Handler) GoogleLogin(ctx context.Context) error {
 	if h.auth == nil {
-		return errNotConfigured()
+		return fmt.Errorf("authentication not configured")
 	}
 	state, err := randomHex(32)
 	if err != nil {
@@ -45,7 +45,7 @@ func (h *Handler) GoogleLogin(ctx context.Context) error {
 
 func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNativeLoginReq) (*api.GoogleNativeLoginOK, error) {
 	if h.auth == nil {
-		return nil, errNotConfigured()
+		return nil, fmt.Errorf("authentication not configured")
 	}
 	r := req.Value
 	tokens, err := h.auth.ExchangeJWT(ctx, r.IdToken)
@@ -72,7 +72,7 @@ func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNative
 
 func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParams) error {
 	if h.auth == nil {
-		return errNotConfigured()
+		return fmt.Errorf("authentication not configured")
 	}
 	verifier, err := h.auth.GetPKCE(ctx, params.State)
 	if err != nil {
@@ -117,7 +117,7 @@ func (h *Handler) AuthLogout(ctx context.Context) error {
 func (h *Handler) AuthMe(ctx context.Context) (*api.User, error) {
 	sess := auth.SessionFromContext(ctx)
 	if sess == nil {
-		return nil, errNotConfigured()
+		return nil, fmt.Errorf("authentication not configured")
 	}
 	u, err := h.vfs.GetUser(ctx, sess.UserID, sess.UserID)
 	if err != nil {
@@ -162,15 +162,12 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func errNotConfigured() error {
-	return fmt.Errorf("authentication not configured")
-}
-
-// sessionCookie returns a configured session cookie.
-// gosec flags this because values come from config, but the application
-// enforces safe defaults (HttpOnly=true, SameSite=Lax/Strict, Secure in prod).
+// sessionCookie returns a configured session cookie. Cookie attributes
+// come from config which has safe defaults (HttpOnly=true, SameSite=Lax
+// in dev / Strict in prod, Secure in prod); G124 is excluded in
+// gosec.json for this file.
 func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
-	return &http.Cookie{ // #nosec G124 -- cookie attributes are configured via secure defaults
+	return &http.Cookie{
 		Name:     h.cookieConfig.Name,
 		Value:    value,
 		Expires:  expires,
@@ -183,7 +180,7 @@ func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
 
 // expiredCookie returns a cookie that clears the session.
 func (h *Handler) expiredCookie() *http.Cookie {
-	return &http.Cookie{ // #nosec G124 -- cookie attributes are configured via secure defaults
+	return &http.Cookie{
 		Name:     h.cookieConfig.Name,
 		Value:    "",
 		Path:     h.cookieConfig.Path,

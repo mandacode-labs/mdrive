@@ -78,6 +78,20 @@ func (_c *DriveStorageCreate) SetNillableUsePathStyle(v *bool) *DriveStorageCrea
 	return _c
 }
 
+// SetWrappedDek sets the "wrapped_dek" field.
+func (_c *DriveStorageCreate) SetWrappedDek(v string) *DriveStorageCreate {
+	_c.mutation.SetWrappedDek(v)
+	return _c
+}
+
+// SetNillableWrappedDek sets the "wrapped_dek" field if the given value is not nil.
+func (_c *DriveStorageCreate) SetNillableWrappedDek(v *string) *DriveStorageCreate {
+	if v != nil {
+		_c.SetWrappedDek(*v)
+	}
+	return _c
+}
+
 // SetDrive sets the "drive" edge to the Drive entity.
 func (_c *DriveStorageCreate) SetDrive(v *Drive) *DriveStorageCreate {
 	return _c.SetDriveID(v.ID)
@@ -174,6 +188,11 @@ func (_c *DriveStorageCreate) check() error {
 	if _, ok := _c.mutation.UsePathStyle(); !ok {
 		return &ValidationError{Name: "use_path_style", err: errors.New(`ent: missing required field "DriveStorage.use_path_style"`)}
 	}
+	if v, ok := _c.mutation.WrappedDek(); ok {
+		if err := drivestorage.WrappedDekValidator(v); err != nil {
+			return &ValidationError{Name: "wrapped_dek", err: fmt.Errorf(`ent: validator failed for field "DriveStorage.wrapped_dek": %w`, err)}
+		}
+	}
 	if len(_c.mutation.DriveIDs()) == 0 {
 		return &ValidationError{Name: "drive", err: errors.New(`ent: missing required edge "DriveStorage.drive"`)}
 	}
@@ -226,6 +245,10 @@ func (_c *DriveStorageCreate) createSpec() (*DriveStorage, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.UsePathStyle(); ok {
 		_spec.SetField(drivestorage.FieldUsePathStyle, field.TypeBool, value)
 		_node.UsePathStyle = value
+	}
+	if value, ok := _c.mutation.WrappedDek(); ok {
+		_spec.SetField(drivestorage.FieldWrappedDek, field.TypeString, value)
+		_node.WrappedDek = &value
 	}
 	if nodes := _c.mutation.DriveIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
