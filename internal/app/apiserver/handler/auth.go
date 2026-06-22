@@ -21,7 +21,10 @@ func (h *Handler) GoogleLogin(ctx context.Context) error {
 	if h.auth == nil {
 		return errNotConfigured()
 	}
-	state := mustRandomHex(32)
+	state, err := randomHex(32)
+	if err != nil {
+		return fmt.Errorf("random state: %w", err)
+	}
 	verifier, challenge, err := generatePKCE()
 	if err != nil {
 		return fmt.Errorf("generate pkce: %w", err)
@@ -147,12 +150,16 @@ func generatePKCE() (verifier, challenge string, err error) {
 	return
 }
 
-func mustRandomHex(n int) string {
+// randomHex returns a hex-encoded string of n random bytes. The error
+// is returned to the caller rather than panicked: in practice
+// crypto/rand only fails in catastrophic situations, but panic in a
+// request handler is the wrong failure mode.
+func randomHex(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		panic(err)
+		return "", err
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 func errNotConfigured() error {

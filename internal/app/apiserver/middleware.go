@@ -23,7 +23,15 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get(requestIDHeader)
 		if id == "" {
-			id = newRequestID()
+			generated, err := randomHex(8)
+			if err != nil {
+				// crypto/rand should not fail on a healthy system; if
+				// it does, the request is broken either way. Surface a
+				// 500 rather than smuggling a guessable ID into logs.
+				http.Error(w, "request id unavailable", http.StatusInternalServerError)
+				return
+			}
+			id = generated
 		}
 		w.Header().Set(requestIDHeader, id)
 		ctx := context.WithValue(r.Context(), ctxKeyRequestID, id)
@@ -40,12 +48,11 @@ func RequestIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-func newRequestID() string {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// crypto/rand should not fail on a healthy system; fall back
-		// to a fixed string to keep the request traceable.
-		return "no-rand"
+// randomHex returns a hex-encoded string of n random bytes.
+func randomHex(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
-	return hex.EncodeToString(b[:])
+	return hex.EncodeToString(b), nil
 }
