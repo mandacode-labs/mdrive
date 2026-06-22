@@ -155,41 +155,13 @@ const maxMountHops = 32
 // Resolve walks a path starting at driveID, following mount nodes
 // when encountered. Returns the drive id the final node lives in
 // (which may differ from driveID if mounts were crossed) and the
-// node itself. Cycles in the mount graph are detected via a visited
-// set; maxMountHops is a safety net.
+// node itself.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
-	return s.resolveWithVisited(ctx, driveID, path, map[string]struct{}{driveID: {}})
-}
-
-func (s *Service) resolveWithVisited(ctx context.Context, driveID, path string, visited map[string]struct{}) (Resolved, error) {
-	for hop := 0; hop < maxMountHops; hop++ {
-		rootID, err := s.rootNodeID(ctx, driveID)
-		if err != nil {
-			return Resolved{}, err
-		}
-		n, err := s.path.resolve(ctx, rootID, path)
-		if err != nil {
-			return Resolved{}, err
-		}
-		if !n.IsMount() {
-			return Resolved{DriveID: driveID, Node: n}, nil
-		}
-		// Cross into the source drive. The mount node itself is the
-		// path's terminal component; the user's remaining path is
-		// whatever they put after the mount entry, which is already
-		// empty (resolve stopped at the mount node).
-		srcDriveID, err := n.ReadMount()
-		if err != nil {
-			return Resolved{}, fmt.Errorf("vfs: read mount: %w", err)
-		}
-		if _, seen := visited[srcDriveID]; seen {
-			return Resolved{}, ErrMountCycle
-		}
-		visited[srcDriveID] = struct{}{}
-		driveID = srcDriveID
-		path = "/"
+	drive, node, err := s.resolve(ctx, driveID, path)
+	if err != nil {
+		return Resolved{}, err
 	}
-	return Resolved{}, ErrPathTooDeep
+	return Resolved{DriveID: drive, Node: node}, nil
 }
 
 // rootNodeID resolves the root node UUID for the given drive.

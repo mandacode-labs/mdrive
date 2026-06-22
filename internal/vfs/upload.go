@@ -150,10 +150,11 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	if err != nil {
 		return PresignInfo{}, err
 	}
-	n, err := s.path.resolve(ctx, rootID, filePath)
+	out, err := s.path.resolve(ctx, rootID, filePath)
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: %w", err)
 	}
+	n := out.Node
 	if !n.IsObject() {
 		return PresignInfo{}, fmt.Errorf("presign download: %s is not an object", n.Type())
 	}

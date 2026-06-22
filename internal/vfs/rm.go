@@ -57,10 +57,11 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 
 // rmPath resolves the path and dispatches to the appropriate internal handler.
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]ObjectRef, error) {
-	n, err := s.path.resolve(ctx, rootID, path)
+	out, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: %s: %w", path, err)
 	}
+	n := out.Node
 	if n.IsDir() {
 		if !recursive {
 			return nil, fmt.Errorf("rm: %s: is a directory (use -r)", path)

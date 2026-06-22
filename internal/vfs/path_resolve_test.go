@@ -33,24 +33,24 @@ func TestResolveDotDot(t *testing.T) {
 	r := newResolver(svc)
 
 	// /docs -> root.docs
-	got, err := r.resolve(context.Background(), root.ID(), "/docs")
+	out, err := r.resolve(context.Background(), root.ID(), "/docs")
 	require.NoError(t, err)
-	assert.Equal(t, docs.ID(), got.ID())
+	assert.Equal(t, docs.ID(), out.Node.ID())
 
 	// /docs/sub -> docs.sub
-	got, err = r.resolve(context.Background(), root.ID(), "/docs/sub")
+	out, err = r.resolve(context.Background(), root.ID(), "/docs/sub")
 	require.NoError(t, err)
-	assert.Equal(t, sub.ID(), got.ID())
+	assert.Equal(t, sub.ID(), out.Node.ID())
 
 	// /docs/../docs/sub == /docs/sub
-	got, err = r.resolve(context.Background(), root.ID(), "/docs/../docs/sub")
+	out, err = r.resolve(context.Background(), root.ID(), "/docs/../docs/sub")
 	require.NoError(t, err)
-	assert.Equal(t, sub.ID(), got.ID())
+	assert.Equal(t, sub.ID(), out.Node.ID())
 
 	// /docs/sub/../../docs -> root.docs
-	got, err = r.resolve(context.Background(), root.ID(), "/docs/sub/../../docs")
+	out, err = r.resolve(context.Background(), root.ID(), "/docs/sub/../../docs")
 	require.NoError(t, err)
-	assert.Equal(t, docs.ID(), got.ID())
+	assert.Equal(t, docs.ID(), out.Node.ID())
 
 	// /docs/sub/../../../../../../../ -> cleanPath collapses the climb
 	// above root to "/", so the resolve lands on the drive root rather
@@ -74,9 +74,9 @@ func TestResolveDot(t *testing.T) {
 	require.NoError(t, svc.Link(context.Background(), root, "d", dir))
 
 	r := newResolver(svc)
-	got, err := r.resolve(context.Background(), root.ID(), "/./d/./")
+	out, err := r.resolve(context.Background(), root.ID(), "/./d/./")
 	require.NoError(t, err)
-	assert.Equal(t, dir.ID(), got.ID())
+	assert.Equal(t, dir.ID(), out.Node.ID())
 }
 
 // TestResolveRootIsRoot checks /  and "" map to the drive root.
@@ -89,8 +89,8 @@ func TestResolveRootIsRoot(t *testing.T) {
 
 	r := newResolver(svc)
 	for _, p := range []string{"/", "", "  ", "//", "/././"} {
-		got, err := r.resolve(context.Background(), root.ID(), p)
+		out, err := r.resolve(context.Background(), root.ID(), p)
 		require.NoError(t, err, p)
-		assert.Equal(t, root.ID(), got.ID(), p)
+		assert.Equal(t, root.ID(), out.Node.ID(), p)
 	}
 }

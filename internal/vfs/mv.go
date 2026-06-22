@@ -86,10 +86,11 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	if err != nil {
 		return err
 	}
-	dstDir, err := s.path.resolve(ctx, rootID, dstPath)
+	dstOut, err := s.path.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return fmt.Errorf("mv: dest: %w", err)
 	}
+	dstDir := dstOut.Node
 	if !dstDir.IsDir() {
 		return fmt.Errorf("mv: dest: %w", ErrNotDirectory)
 	}

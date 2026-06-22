@@ -62,7 +62,7 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 	if err != nil {
 		return err
 	}
-	n, err := s.path.resolve(ctx, rootID, path)
+	out, err := s.path.resolve(ctx, rootID, path)
 	if err != nil {
 		parent, name, perr := s.path.resolveParent(ctx, rootID, path)
 		if perr != nil {
@@ -80,6 +80,7 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 		}
 		return nil
 	}
+	n := out.Node
 	if !n.IsFile() {
 		return fmt.Errorf("write: cannot write to %s", n.Type())
 	}
@@ -99,8 +100,8 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 		return err
 	}
 	// Check if path already exists
-	if n, err := s.path.resolve(ctx, rootID, path); err == nil {
-		return fmt.Errorf("write_large: %s: already exists (type=%s)", path, n.Type())
+	if out, err := s.path.resolve(ctx, rootID, path); err == nil {
+		return fmt.Errorf("write_large: %s: already exists (type=%s)", path, out.Node.Type())
 	}
 	parent, name, perr := s.path.resolveParent(ctx, rootID, path)
 	if perr != nil {

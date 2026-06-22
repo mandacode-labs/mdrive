@@ -21,10 +21,11 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 	if err != nil {
 		return nil, err
 	}
-	src, err := s.path.resolve(ctx, rootID, srcPath)
+	out, err := s.path.resolve(ctx, rootID, srcPath)
 	if err != nil {
 		return nil, err
 	}
+	src := out.Node
 	// Mounts, symlinks, directories cannot be hardlinked; only regular
 	// files and object-backed files.
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
