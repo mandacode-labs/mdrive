@@ -275,3 +275,134 @@ func TestBulkUnlinkPartialRefs(t *testing.T) {
 	_, err = repo.Get(context.Background(), child.ID())
 	assert.ErrorIs(t, err, ErrNotFound)
 }
+
+func TestMoveEntryRenameWithinDir(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	file, err := NewFile("a")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), file))
+	require.NoError(t, svc.Link(context.Background(), dir, "a", file))
+
+	// Rename a → b within the same dir. The inode's nlink must stay
+	// at 1 (not bump to 2 like the old Unlink+Link pair would do).
+	require.NoError(t, svc.MoveEntry(context.Background(), dir, "a", dir, "b"))
+
+	entry, err := dir.Lookup("a")
+	require.NoError(t, err)
+	assert.Nil(t, entry, "old name must be gone")
+
+	entry, err = dir.Lookup("b")
+	require.NoError(t, err)
+	require.NotNil(t, entry, "new name must exist")
+	assert.Equal(t, file.ID(), entry.InodeID)
+	assert.Equal(t, uint32(1), file.NLink(), "inode nlink must be preserved")
+}
+
+func TestMoveEntryOverwriteFile(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	a, err := NewFile("a")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), a))
+	require.NoError(t, svc.Link(context.Background(), dir, "a", a))
+
+	b, err := NewFile("b")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), b))
+	require.NoError(t, svc.Link(context.Background(), dir, "b", b))
+
+	// Mv /a → /b (overwrite). /a is gone, /b's inode is gone, /a's
+	// inode is now at "b" with nlink=1.
+	require.NoError(t, svc.MoveEntry(context.Background(), dir, "a", dir, "b"))
+
+	entry, err := dir.Lookup("a")
+	require.NoError(t, err)
+	assert.Nil(t, entry)
+
+	entry, err = dir.Lookup("b")
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	assert.Equal(t, a.ID(), entry.InodeID, "b's entry should now point at a's inode")
+	assert.Equal(t, uint32(1), a.NLink(), "a's inode nlink unchanged")
+
+	// b's inode should be deleted (nlink was 1, the move decremented by overwrite).
+	_, err = repo.Get(context.Background(), b.ID())
+	assert.ErrorIs(t, err, ErrNotFound, "overwritten inode should be deleted")
+}
+
+func TestMoveEntryCrossDir(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	src, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), src))
+
+	dst, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dst))
+
+	a, err := NewFile("a")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), a))
+	require.NoError(t, svc.Link(context.Background(), src, "a", a))
+
+	// Mv /a → /dst/x (cross-dir move into a directory).
+	require.NoError(t, svc.MoveEntry(context.Background(), src, "a", dst, "x"))
+
+	entry, err := src.Lookup("a")
+	require.NoError(t, err)
+	assert.Nil(t, entry, "src's a entry should be gone")
+
+	entry, err = dst.Lookup("x")
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	assert.Equal(t, a.ID(), entry.InodeID)
+	assert.Equal(t, uint32(1), a.NLink())
+}
+
+func TestMoveEntryRejectsTypeMismatch(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	subdir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), subdir))
+	require.NoError(t, svc.Link(context.Background(), dir, "sub", subdir))
+
+	file, err := NewFile("file")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), file))
+	require.NoError(t, svc.Link(context.Background(), dir, "file", file))
+
+	// Cannot overwrite a directory with a file.
+	err = svc.MoveEntry(context.Background(), dir, "file", dir, "sub")
+	assert.ErrorIs(t, err, ErrInvalidMoveOverwrite)
+}
+
+func TestMoveEntryMissingSource(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	err = svc.MoveEntry(context.Background(), dir, "absent", dir, "elsewhere")
+	assert.ErrorIs(t, err, ErrEntryNotFound)
+}

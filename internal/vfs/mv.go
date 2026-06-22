@@ -56,11 +56,25 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []
 // Returns ObjectRef slices for any S3 objects that should be
 // tombstoned (target overwritten, nlink hit zero). The caller is
 // responsible for enqueueing them after the node transaction commits.
+//
+// The move is delegated to node.Service.MoveEntry, which preserves
+// the child inode's nlink instead of doing the Unlink + Link pair.
+// The Unlink + Link pair is unsafe for nlink==1 (it deletes the
+// inode) and is also unsafe when combined with concurrent loads
+// (the in-memory child becomes stale across the operation). The
+// high-level MoveEntry sidesteps both issues.
+//
+// A single fresh resolver is used for the resolveParent pair so
+// that when src and dst share a parent directory, the two calls
+// return the same *Node pointer. MoveEntry is responsible for
+// updating both parents atomically; the resolver cache keeps the
+// optimistic-concurrency check in node.Repository.Save consistent.
 func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]ObjectRef, error) {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
+	r := s.path.fresh()
 	srcRes, err := s.Resolve(ctx, driveID, srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
@@ -68,29 +82,21 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if srcRes.DriveID != driveID {
 		return nil, ErrCrossDrive
 	}
-	src := srcRes.Node
-	dstParent, dstName, err := s.path.resolveParent(ctx, rootID, dstPath)
+	srcParent, srcName, err := r.resolveParent(ctx, rootID, srcPath)
+	if err != nil {
+		return nil, fmt.Errorf("mv: resolve src parent: %w", err)
+	}
+	dstParent, dstName, err := r.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)
 	}
 	if !dstParent.IsDir() {
 		return nil, fmt.Errorf("mv: dest: %w", ErrNotDirectory)
 	}
-	_, overwriteRefs, err := s.overwriteTarget(ctx, dstParent, dstName)
+
+	overwriteRefs, err := s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
 	if err != nil {
-		return nil, fmt.Errorf("mv: overwrite target: %w", err)
-	}
-	srcParent, srcName, err := s.path.resolveParent(ctx, rootID, srcPath)
-	if err != nil {
-		return nil, fmt.Errorf("mv: resolve src parent: %w", err)
-	}
-	if srcParent != nil && srcName != "" {
-		if _, err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
-			return nil, fmt.Errorf("mv: unlink: %w", err)
-		}
-	}
-	if err := s.Node.Link(ctx, dstParent, dstName, src); err != nil {
-		return nil, fmt.Errorf("mv: link: %w", err)
+		return nil, err
 	}
 	return overwriteRefs, nil
 }
@@ -102,12 +108,18 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 //
 // Returns S3 references for any overwritten destination entry whose
 // nlink hit zero; caller enqueues tombstones after the node tx commits.
+//
+// As in mvOne, each move is delegated to MoveEntry so the child
+// inode's nlink is preserved. A single fresh resolver is shared
+// across the resolveParent calls so multiple sources that share
+// a parent directory see the same *Node pointer.
 func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]ObjectRef, error) {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
-	dstOut, err := s.path.resolve(ctx, rootID, dstPath)
+	r := s.path.fresh()
+	dstOut, err := r.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)
 	}
@@ -132,7 +144,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		if res.DriveID != driveID {
 			return nil, ErrCrossDrive
 		}
-		sp, sn, err := s.path.resolveParent(ctx, rootID, srcPath)
+		sp, sn, err := r.resolveParent(ctx, rootID, srcPath)
 		if err != nil {
 			return nil, fmt.Errorf("mv: %s: resolve parent: %w", srcPath, err)
 		}
@@ -153,72 +165,54 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		}
 	}
 
-	links := make(map[string]*node.Node, len(sources))
 	var overwriteRefs []ObjectRef
 	for _, si := range sources {
-		_, refs, err := s.overwriteTarget(ctx, dstDir, si.baseName)
+		refs, err := s.applyMoveEntry(ctx, si.srcParent, si.srcName, dstDir, si.baseName)
 		if err != nil {
-			return nil, fmt.Errorf("mv: dst overwrite: %w", err)
+			return nil, err
 		}
 		overwriteRefs = append(overwriteRefs, refs...)
-		links[si.baseName] = si.node
-	}
-
-	byParent := make(map[*node.Node][]string)
-	for _, si := range sources {
-		if si.srcParent != nil && si.srcName != "" {
-			byParent[si.srcParent] = append(byParent[si.srcParent], si.srcName)
-		}
-	}
-	for parent, names := range byParent {
-		if _, err := s.Node.BulkUnlink(ctx, parent, names); err != nil {
-			return nil, fmt.Errorf("mv: bulk unlink: %w", err)
-		}
-	}
-
-	if err := s.Node.BulkLink(ctx, dstDir, links); err != nil {
-		return nil, fmt.Errorf("mv: bulk link: %w", err)
 	}
 	return overwriteRefs, nil
 }
 
-// overwriteTarget removes the existing entry at parent/name if it
-// exists. Directories are rejected (POSIX: cannot overwrite a directory
-// with a non-directory). Delegates nlink management to
-// node.Service.UnlinkOrReplace so hardlinks are decremented and only
-// deleted when nlink==0.
-//
-// Returns S3 references for any object node that was deleted
-// (nlink reached 0); the caller is responsible for enqueueing
-// tombstones. Returns nil refs when no entry was present or the
-// target was a directory that was rejected.
-func (s *Service) overwriteTarget(ctx context.Context, parent *node.Node, name string) (*node.Node, []ObjectRef, error) {
-	entry, err := parent.Lookup(name)
-	if err != nil {
-		return nil, nil, nil
-	}
-	if entry == nil {
-		return nil, nil, nil
-	}
-	existing, err := s.Node.GetByID(ctx, entry.InodeID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("overwrite: get existing: %w", err)
-	}
-	if existing.IsDir() {
-		return nil, nil, fmt.Errorf("cannot overwrite directory %q with a non-directory", name)
-	}
-	deleted, err := s.Node.UnlinkOrReplace(ctx, parent, name)
-	if err != nil {
-		return nil, nil, fmt.Errorf("overwrite: unlink: %w", err)
-	}
-	if deleted == nil {
-		return existing, nil, nil
-	}
-	if deleted.IsObject() {
-		oc, err := deleted.ReadObject()
-		if err == nil && oc.Bucket != "" && oc.Key != "" {
-			return existing, []ObjectRef{{Bucket: oc.Bucket, Key: oc.Key}}, nil
+// applyMoveEntry wraps node.Service.MoveEntry with vfs-level concerns:
+// detecting when the overwrite target is an S3-backed object (whose
+// bucket+key must be tombstoned for GC) and translating node errors
+// into vfs errors.
+func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]ObjectRef, error) {
+	// Capture the overwrite target's S3 reference (if any) before
+	// MoveEntry removes it. After the call the inode may be gone
+	// (nlink hit 0), so we need the reference pre-emptively.
+	var overwriteRef *ObjectRef
+	if existing, err := dstParent.Lookup(dstName); err == nil && existing != nil {
+		if existingChild, err := s.Node.GetByID(ctx, existing.InodeID); err == nil && existingChild.IsObject() {
+			if oc, err := existingChild.ReadObject(); err == nil && oc.Bucket != "" && oc.Key != "" {
+				overwriteRef = &ObjectRef{Bucket: oc.Bucket, Key: oc.Key}
+			}
 		}
 	}
-	return existing, nil, nil
+
+	if err := s.Node.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
+		return nil, fmt.Errorf("mv: %w", err)
+	}
+
+	if overwriteRef != nil {
+		return []ObjectRef{*overwriteRef}, nil
+	}
+	return nil, nil
 }
+
+// mvBatch handles multi-source moves. The destination must resolve to
+// an existing directory; sources are moved in keeping their basenames.
+// All sources must resolve to driveID (cross-drive moves via mount
+// traversal are rejected as ErrCrossDrive).
+//
+// Returns S3 references for any overwritten destination entry whose
+// nlink hit zero; caller enqueues tombstones after the node tx commits.
+//
+// All resolves share a single fresh resolver so that when multiple
+// sources share a parent directory, the resolver's per-operation
+// cache returns the same *Node pointer for all of them. This is
+// required for BulkUnlink's optimistic-concurrency check to behave
+// consistently across the multiple-source unlink pass.

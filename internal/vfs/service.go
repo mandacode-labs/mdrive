@@ -32,6 +32,7 @@ type NodeClient interface {
 	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
 	BulkUnlink(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error)
 	UnlinkOrReplace(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
+	MoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) error
 	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
 	Save(ctx context.Context, n *node.Node) error
 	Delete(ctx context.Context, id uuid.UUID) error
