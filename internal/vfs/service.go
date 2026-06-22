@@ -56,14 +56,14 @@ type DriveClient interface {
 	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
-// UserClient is the consumer-declared interface for user-domain operations.
+// UserClient is the consumer-declared interface for user-domain
+// operations the VFS actually uses (upsert on OIDC login, lookup by
+// private id). Lookups by public id, provider id, and updates are
+// not part of the VFS surface; callers that need them should use the
+// user.Service directly.
 type UserClient interface {
 	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
 	GetByID(ctx context.Context, id string) (*user.User, error)
-	GetByPublicID(ctx context.Context, pubID string) (*user.User, error)
-	GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error)
-	Update(ctx context.Context, u *user.User) (*user.User, error)
-	Exists(ctx context.Context, id string) (bool, error)
 }
 
 // PermClient is the consumer-declared interface for permission checks.
