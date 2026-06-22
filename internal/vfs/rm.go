@@ -63,30 +63,32 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 }
 
 // rm removes a single file node. Returns S3 references that need cleanup.
+// The unlink delegates nlink management to node.Service; when the last
+// hardlink is removed the child is deleted and any object body is
+// returned as ObjectRef for tombstone registration.
 func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
 	parent, name, err := s.path.resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: resolve parent: %w", err)
 	}
-	if parent != nil && name != "" {
-		if err := s.Node.Unlink(ctx, parent, name); err != nil {
-			return nil, fmt.Errorf("rm: unlink: %w", err)
-		}
+	if parent == nil || name == "" {
+		return nil, nil
+	}
+	deleted, err := s.Node.Unlink(ctx, parent, name)
+	if err != nil {
+		return nil, fmt.Errorf("rm: unlink: %w", err)
 	}
 
 	var refs []ObjectRef
-	if n.IsObject() {
-		oc, err := n.ReadObject()
-		if err != nil {
-			return nil, fmt.Errorf("rm: read object: %w", err)
-		}
-		if oc.Bucket != "" && oc.Key != "" {
+	target := n
+	if deleted != nil {
+		target = deleted
+	}
+	if target.IsObject() {
+		oc, err := target.ReadObject()
+		if err == nil && oc.Bucket != "" && oc.Key != "" {
 			refs = append(refs, ObjectRef{Bucket: oc.Bucket, Key: oc.Key})
 		}
-	}
-
-	if err := s.Node.Delete(ctx, n.ID()); err != nil {
-		return nil, fmt.Errorf("rm: delete node: %w", err)
 	}
 	return refs, nil
 }

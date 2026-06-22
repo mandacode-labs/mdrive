@@ -62,7 +62,7 @@ func (s *Service) mvOne(ctx context.Context, rootID uuid.UUID, srcPath string, d
 		return fmt.Errorf("mv: overwrite target: %w", err)
 	}
 	if srcParent != nil && srcName != "" {
-		if err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
+		if _, err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
 			return fmt.Errorf("mv: unlink: %w", err)
 		}
 	}
@@ -90,7 +90,7 @@ func (s *Service) mvRename(ctx context.Context, rootID uuid.UUID, srcPath, dstPa
 		return fmt.Errorf("mv: resolve src parent: %w", err)
 	}
 	if srcParent != nil && srcName != "" {
-		if err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
+		if _, err := s.Node.Unlink(ctx, srcParent, srcName); err != nil {
 			return fmt.Errorf("mv: unlink: %w", err)
 		}
 	}
@@ -101,6 +101,8 @@ func (s *Service) mvRename(ctx context.Context, rootID uuid.UUID, srcPath, dstPa
 }
 
 // overwriteTarget removes the existing entry at dstParent/dstName if it exists.
+// Delegates nlink management to node.Service.UnlinkOrReplace so that
+// hardlinks are decremented correctly and only deleted when nlink==0.
 func (s *Service) overwriteTarget(ctx context.Context, parent *node.Node, name string) error {
 	entry, err := parent.Lookup(name)
 	if err != nil {
@@ -116,11 +118,9 @@ func (s *Service) overwriteTarget(ctx context.Context, parent *node.Node, name s
 	if existing.IsDir() {
 		return fmt.Errorf("cannot overwrite directory %q with a non-directory", name)
 	}
-	if err := s.Node.Unlink(ctx, parent, name); err != nil {
-		return fmt.Errorf("overwrite: unlink existing: %w", err)
-	}
-	if err := s.Node.Delete(ctx, existing.ID()); err != nil {
-		return fmt.Errorf("overwrite: delete existing: %w", err)
+	_, err = s.Node.UnlinkOrReplace(ctx, parent, name)
+	if err != nil {
+		return fmt.Errorf("overwrite: unlink: %w", err)
 	}
 	return nil
 }

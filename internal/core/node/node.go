@@ -170,13 +170,17 @@ type Node struct {
 
 // newNode creates a new Node. Private: external code must use type-specific constructors
 // (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content.
+//
+// nlink starts at 0 (POSIX semantics): a freshly created inode has no hardlinks.
+// The first successful Link sets nlink to 1; further Links increment; Unlink
+// decrements and triggers deletion at nlink==0.
 func newNode(typ NodeType) *Node {
 	now := time.Now()
 	return &Node{
 		id:      uuid.New(),
 		typ:     typ,
 		size:    0,
-		nlink:   1,
+		nlink:   0,
 		content: nil,
 		atime:   now,
 		mtime:   now,
