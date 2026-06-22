@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -88,6 +89,39 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 	child.ctime = now
 	child.rev = child.rev.Next()
 	return s.repo.Save(ctx, child)
+}
+
+// BulkLink adds multiple child entries to a single parent in one
+// directory write plus one nlink bump per child. The parent is saved
+// once; each child is then saved (with nlink++ and revision bump).
+// Fails atomically on any conflict (duplicate name, empty name, nil
+// child): the directory is left unchanged.
+func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error {
+	if parent == nil {
+		return fmt.Errorf("node: bulk link: nil parent")
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	if err := parent.AddEntries(entries); err != nil {
+		return fmt.Errorf("node: bulk link: %w", err)
+	}
+	if err := s.repo.Save(ctx, parent); err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, child := range entries {
+		if child == nil {
+			continue
+		}
+		child.nlink++
+		child.ctime = now
+		child.rev = child.rev.Next()
+		if err := s.repo.Save(ctx, child); err != nil {
+			return fmt.Errorf("node: bulk link: save child: %w", err)
+		}
+	}
+	return nil
 }
 
 // Unlink removes a child entry from parent and decrements child's nlink.
@@ -198,6 +232,78 @@ func (s *Service) Save(ctx context.Context, n *Node) error {
 // Delete removes a node by its ID.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.repo.Delete(ctx, id)
+}
+
+// BulkUnlink removes multiple entries from a single parent in one
+// directory write. For each removed child, nlink is decremented and
+// the child is deleted if nlink reaches zero. Returns the deleted
+// children (so callers can enqueue S3 tombstones).
+//
+// Missing entries are silently ignored (POSIX rm -f semantics).
+func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error) {
+	if parent == nil {
+		return nil, fmt.Errorf("node: bulk unlink: nil parent")
+	}
+	if len(names) == 0 {
+		return nil, nil
+	}
+	// Collect child IDs to decrement *before* mutating the directory.
+	dc, err := parent.ReadDir()
+	if err != nil {
+		return nil, fmt.Errorf("node: bulk unlink: read dir: %w", err)
+	}
+	byName := make(map[string]uuid.UUID, len(dc.Entries))
+	for _, e := range dc.Entries {
+		byName[e.Name] = e.InodeID
+	}
+	seen := make(map[uuid.UUID]bool, len(names))
+	type childPlan struct {
+		id uuid.UUID
+	}
+	var planned []childPlan
+	for _, n := range names {
+		id, ok := byName[n]
+		if !ok {
+			continue
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		planned = append(planned, childPlan{id: id})
+	}
+	if err := parent.RemoveEntries(names); err != nil {
+		return nil, fmt.Errorf("node: bulk unlink: %w", err)
+	}
+	if err := s.repo.Save(ctx, parent); err != nil {
+		return nil, err
+	}
+	deleted := make([]*Node, 0, len(planned))
+	now := time.Now()
+	for _, p := range planned {
+		child, err := s.GetByID(ctx, p.id)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			return nil, fmt.Errorf("node: bulk unlink: get child: %w", err)
+		}
+		if child.nlink > 1 {
+			child.nlink--
+			child.ctime = now
+			child.rev = child.rev.Next()
+			if err := s.repo.Save(ctx, child); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		// nlink==1 -> last reference; delete the child.
+		if err := s.repo.Delete(ctx, p.id); err != nil {
+			return nil, fmt.Errorf("node: bulk unlink: delete: %w", err)
+		}
+		deleted = append(deleted, child)
+	}
+	return deleted, nil
 }
 
 // WithTx executes fn within a transaction.

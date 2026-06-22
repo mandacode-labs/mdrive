@@ -38,10 +38,64 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []
 		if !dstParent.IsDir() {
 			return fmt.Errorf("mv: dest: %w", ErrNotDirectory)
 		}
+		// Resolve every source upfront and validate. We collect the
+		// (name -> node) pairs so a single BulkLink can write all entries
+		// at once, and a single BulkUnlink can detach them from their
+		// old parents in one round-trip per parent.
+		type src struct {
+			node       *node.Node
+			srcParent  *node.Node
+			srcName    string
+		}
+		sources := make([]src, 0, len(srcPaths))
 		for _, srcPath := range srcPaths {
-			if err := tx.mvOne(ctx, rootID, srcPath, dstParent, dstName); err != nil {
-				return err
+			n, err := tx.path.resolve(ctx, rootID, srcPath)
+			if err != nil {
+				return fmt.Errorf("mv: %s: %w", srcPath, err)
 			}
+			srcParent, srcName, err := tx.path.resolveParent(ctx, rootID, srcPath)
+			if err != nil {
+				return fmt.Errorf("mv: %s: resolve parent: %w", srcPath, err)
+			}
+			sources = append(sources, src{node: n, srcParent: srcParent, srcName: srcName})
+		}
+		// Overwrite target, if any. Done once for the whole batch.
+		if err := tx.overwriteTarget(ctx, dstParent, dstName); err != nil {
+			return fmt.Errorf("mv: overwrite target: %w", err)
+		}
+		// Group unlinks by source parent so we can use BulkUnlink.
+		byParent := make(map[*node.Node][]string)
+		linkEntries := make(map[string]*node.Node, len(sources))
+		for _, s := range sources {
+			if s.srcParent != nil && s.srcName != "" {
+				byParent[s.srcParent] = append(byParent[s.srcParent], s.srcName)
+			}
+			linkEntries[dstName+"_"+s.srcName] = s.node
+		}
+		// If the destination name collides with one of the source names
+		// (mv a b a/) is rejected upfront to avoid double-adding the
+		// same name; we keep distinct keys in linkEntries so this works
+		// for distinct sources, but dstName collisions need a different
+		// strategy. For now require unique dstName per batch.
+		seen := make(map[string]struct{}, len(sources))
+		uniqueLinks := make(map[string]*node.Node, len(sources))
+		for _, s := range sources {
+			if _, dup := seen[dstName]; dup {
+				return fmt.Errorf("mv: duplicate destination name %q in batch", dstName)
+			}
+			seen[dstName] = struct{}{}
+			uniqueLinks[dstName] = s.node
+			_ = linkEntries
+		}
+		// Unlink from old parents (bulk per parent).
+		for parent, names := range byParent {
+			if _, err := tx.Node.BulkUnlink(ctx, parent, names); err != nil {
+				return fmt.Errorf("mv: bulk unlink: %w", err)
+			}
+		}
+		// Link into the destination (single bulk write).
+		if err := tx.Node.BulkLink(ctx, dstParent, uniqueLinks); err != nil {
+			return fmt.Errorf("mv: bulk link: %w", err)
 		}
 		return nil
 	})

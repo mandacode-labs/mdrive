@@ -32,7 +32,9 @@ type NodeClient interface {
 	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
 	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
+	BulkLink(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error
 	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
+	BulkUnlink(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error)
 	UnlinkOrReplace(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
 	Save(ctx context.Context, n *node.Node) error

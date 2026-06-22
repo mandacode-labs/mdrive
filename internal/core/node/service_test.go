@@ -157,3 +157,121 @@ func TestUnlinkOrReplaceNoEntry(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, deleted)
 }
+
+func TestBulkLinkSingleWrite(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	children := map[string]*Node{}
+	for _, name := range []string{"a", "b", "c"} {
+		c, err := NewFile(name)
+		require.NoError(t, err)
+		require.NoError(t, repo.Save(context.Background(), c))
+		children[name] = c
+	}
+
+	require.NoError(t, svc.BulkLink(context.Background(), dir, children))
+
+	for name, c := range children {
+		assert.Equal(t, uint32(1), c.NLink(), "nlink after BulkLink: %s", name)
+		entry, err := dir.Lookup(name)
+		require.NoError(t, err)
+		require.NotNil(t, entry, "entry for %s", name)
+		assert.Equal(t, c.ID(), entry.InodeID)
+	}
+}
+
+func TestBulkLinkRejectsDuplicateName(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	first, err := NewFile("a")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), first))
+	require.NoError(t, svc.Link(context.Background(), dir, "a", first))
+
+	second, err := NewFile("a2")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), second))
+
+	err = svc.BulkLink(context.Background(), dir, map[string]*Node{"a": second})
+	assert.ErrorIs(t, err, ErrEntryExists)
+	// first was already linked; second must not have been touched.
+	assert.Equal(t, uint32(1), first.NLink())
+	assert.Equal(t, uint32(0), second.NLink())
+}
+
+func TestBulkUnlinkDropsEntries(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	children := map[string]*Node{}
+	for _, name := range []string{"a", "b", "c"} {
+		c, err := NewFile(name)
+		require.NoError(t, err)
+		require.NoError(t, repo.Save(context.Background(), c))
+		children[name] = c
+		require.NoError(t, svc.Link(context.Background(), dir, name, c))
+	}
+
+	deleted, err := svc.BulkUnlink(context.Background(), dir, []string{"a", "b", "absent"})
+	require.NoError(t, err)
+	assert.Len(t, deleted, 2, "a and b were the only refs, must be deleted")
+	for _, d := range deleted {
+		_, err := repo.Get(context.Background(), d.ID())
+		assert.ErrorIs(t, err, ErrNotFound)
+	}
+	// c remains.
+	entry, err := dir.Lookup("c")
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	assert.Equal(t, children["c"].ID(), entry.InodeID)
+}
+
+func TestBulkUnlinkPartialRefs(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	dir2, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir2))
+
+	child, err := NewFile("shared")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), child))
+	require.NoError(t, svc.Link(context.Background(), dir, "x", child))
+	require.NoError(t, svc.Link(context.Background(), dir2, "x", child))
+	assert.Equal(t, uint32(2), child.NLink())
+
+	// Remove the first hardlink via BulkUnlink: child must remain (nlink=1).
+	deleted, err := svc.BulkUnlink(context.Background(), dir, []string{"x"})
+	require.NoError(t, err)
+	assert.Empty(t, deleted)
+	assert.Equal(t, uint32(1), child.NLink())
+	_, err = repo.Get(context.Background(), child.ID())
+	assert.NoError(t, err)
+
+	// Remove the second (last) hardlink: child deleted.
+	deleted, err = svc.BulkUnlink(context.Background(), dir2, []string{"x"})
+	require.NoError(t, err)
+	assert.Len(t, deleted, 1)
+	assert.Equal(t, child.ID(), deleted[0].ID())
+	_, err = repo.Get(context.Background(), child.ID())
+	assert.ErrorIs(t, err, ErrNotFound)
+}
