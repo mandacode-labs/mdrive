@@ -142,6 +142,39 @@ func (c *NodeCipher) Decrypt(ciphertext []byte, driveID string, nodeID uuid.UUID
 	return c.gcm.Open(nil, nonce, ct, contentAAD(driveID, nodeID))
 }
 
+// SealWithNonce seals plaintext with a caller-provided nonce and
+// arbitrary additional data, returning only the ciphertext+tag (no
+// nonce prefix). Used by the cryptostore's chunked-AEAD construction
+// where each chunk's nonce is derived from a base nonce + chunk
+// index and therefore not stored alongside the ciphertext.
+func (c *NodeCipher) SealWithNonce(nonce, plaintext, aad []byte) []byte {
+	return c.gcm.Seal(nil, nonce, plaintext, aad)
+}
+
+// OpenWithNonce is the streaming-AEAD counterpart to SealWithNonce.
+// It expects ciphertext+tag (no nonce prefix); the nonce is supplied
+// separately. Returns an error on AAD mismatch or any chunk
+// authentication failure.
+func (c *NodeCipher) OpenWithNonce(nonce, ciphertext, aad []byte) ([]byte, error) {
+	return c.gcm.Open(nil, nonce, ciphertext, aad)
+}
+
+// TagSize returns the AES-GCM tag size in bytes (always 16 for
+// cipher.NewGCM). Exposed so callers can size buffers for chunked
+// AEAD without reaching into cipher internals.
+func (c *NodeCipher) TagSize() int { return c.gcm.Overhead() }
+
+// RandomBytes returns n cryptographically random bytes. Exposed so
+// the cryptostore can generate streaming-AEAD nonces without
+// reaching into io.ReadFull(rand.Reader, ...) at every call site.
+func RandomBytes(n int) ([]byte, error) {
+	out := make([]byte, n)
+	if _, err := io.ReadFull(rand.Reader, out); err != nil {
+		return nil, fmt.Errorf("crypto: generate random: %w", err)
+	}
+	return out, nil
+}
+
 // ContentCipherSize returns the maximum plaintext size accepted by
 // Encrypt. Exposed so callers can validate before invoking.
 func (c *NodeCipher) ContentCipherSize() int { return contentCipherSize }

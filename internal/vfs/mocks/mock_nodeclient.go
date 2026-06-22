@@ -39,6 +39,143 @@ func (_m *NodeClientMock) EXPECT() *NodeClientMock_Expecter {
 	return &NodeClientMock_Expecter{mock: &_m.Mock}
 }
 
+// BulkLink provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) BulkLink(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error {
+	ret := _mock.Called(ctx, parent, entries)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkLink")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, map[string]*node.Node) error); ok {
+		r0 = returnFunc(ctx, parent, entries)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// NodeClientMock_BulkLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkLink'
+type NodeClientMock_BulkLink_Call struct {
+	*mock.Call
+}
+
+// BulkLink is a helper method to define mock.On call
+//   - ctx context.Context
+//   - parent *node.Node
+//   - entries map[string]*node.Node
+func (_e *NodeClientMock_Expecter) BulkLink(ctx interface{}, parent interface{}, entries interface{}) *NodeClientMock_BulkLink_Call {
+	return &NodeClientMock_BulkLink_Call{Call: _e.mock.On("BulkLink", ctx, parent, entries)}
+}
+
+func (_c *NodeClientMock_BulkLink_Call) Run(run func(ctx context.Context, parent *node.Node, entries map[string]*node.Node)) *NodeClientMock_BulkLink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *node.Node
+		if args[1] != nil {
+			arg1 = args[1].(*node.Node)
+		}
+		var arg2 map[string]*node.Node
+		if args[2] != nil {
+			arg2 = args[2].(map[string]*node.Node)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_BulkLink_Call) Return(err error) *NodeClientMock_BulkLink_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *NodeClientMock_BulkLink_Call) RunAndReturn(run func(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error) *NodeClientMock_BulkLink_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BulkUnlink provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) BulkUnlink(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error) {
+	ret := _mock.Called(ctx, parent, names)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkUnlink")
+	}
+
+	var r0 []*node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, []string) ([]*node.Node, error)); ok {
+		return returnFunc(ctx, parent, names)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, []string) []*node.Node); ok {
+		r0 = returnFunc(ctx, parent, names)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*node.Node)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *node.Node, []string) error); ok {
+		r1 = returnFunc(ctx, parent, names)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// NodeClientMock_BulkUnlink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkUnlink'
+type NodeClientMock_BulkUnlink_Call struct {
+	*mock.Call
+}
+
+// BulkUnlink is a helper method to define mock.On call
+//   - ctx context.Context
+//   - parent *node.Node
+//   - names []string
+func (_e *NodeClientMock_Expecter) BulkUnlink(ctx interface{}, parent interface{}, names interface{}) *NodeClientMock_BulkUnlink_Call {
+	return &NodeClientMock_BulkUnlink_Call{Call: _e.mock.On("BulkUnlink", ctx, parent, names)}
+}
+
+func (_c *NodeClientMock_BulkUnlink_Call) Run(run func(ctx context.Context, parent *node.Node, names []string)) *NodeClientMock_BulkUnlink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *node.Node
+		if args[1] != nil {
+			arg1 = args[1].(*node.Node)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_BulkUnlink_Call) Return(nodes []*node.Node, err error) *NodeClientMock_BulkUnlink_Call {
+	_c.Call.Return(nodes, err)
+	return _c
+}
+
+func (_c *NodeClientMock_BulkUnlink_Call) RunAndReturn(run func(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error)) *NodeClientMock_BulkUnlink_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateDirectory provides a mock function for the type NodeClientMock
 func (_mock *NodeClientMock) CreateDirectory(ctx context.Context) (*node.Node, error) {
 	ret := _mock.Called(ctx)
@@ -165,6 +302,74 @@ func (_c *NodeClientMock_CreateFile_Call) Return(node1 *node.Node, err error) *N
 }
 
 func (_c *NodeClientMock_CreateFile_Call) RunAndReturn(run func(ctx context.Context, content string) (*node.Node, error)) *NodeClientMock_CreateFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateMount provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) CreateMount(ctx context.Context, sourceDriveID string) (*node.Node, error) {
+	ret := _mock.Called(ctx, sourceDriveID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateMount")
+	}
+
+	var r0 *node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, sourceDriveID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *node.Node); ok {
+		r0 = returnFunc(ctx, sourceDriveID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*node.Node)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, sourceDriveID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// NodeClientMock_CreateMount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateMount'
+type NodeClientMock_CreateMount_Call struct {
+	*mock.Call
+}
+
+// CreateMount is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sourceDriveID string
+func (_e *NodeClientMock_Expecter) CreateMount(ctx interface{}, sourceDriveID interface{}) *NodeClientMock_CreateMount_Call {
+	return &NodeClientMock_CreateMount_Call{Call: _e.mock.On("CreateMount", ctx, sourceDriveID)}
+}
+
+func (_c *NodeClientMock_CreateMount_Call) Run(run func(ctx context.Context, sourceDriveID string)) *NodeClientMock_CreateMount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_CreateMount_Call) Return(node1 *node.Node, err error) *NodeClientMock_CreateMount_Call {
+	_c.Call.Return(node1, err)
+	return _c
+}
+
+func (_c *NodeClientMock_CreateMount_Call) RunAndReturn(run func(ctx context.Context, sourceDriveID string) (*node.Node, error)) *NodeClientMock_CreateMount_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -563,20 +768,31 @@ func (_c *NodeClientMock_Save_Call) RunAndReturn(run func(ctx context.Context, n
 }
 
 // Unlink provides a mock function for the type NodeClientMock
-func (_mock *NodeClientMock) Unlink(ctx context.Context, parent *node.Node, name string) error {
+func (_mock *NodeClientMock) Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error) {
 	ret := _mock.Called(ctx, parent, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Unlink")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string) error); ok {
+	var r0 *node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, parent, name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string) *node.Node); ok {
 		r0 = returnFunc(ctx, parent, name)
 	} else {
-		r0 = ret.Error(0)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*node.Node)
+		}
 	}
-	return r0
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *node.Node, string) error); ok {
+		r1 = returnFunc(ctx, parent, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // NodeClientMock_Unlink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unlink'
@@ -615,12 +831,86 @@ func (_c *NodeClientMock_Unlink_Call) Run(run func(ctx context.Context, parent *
 	return _c
 }
 
-func (_c *NodeClientMock_Unlink_Call) Return(err error) *NodeClientMock_Unlink_Call {
-	_c.Call.Return(err)
+func (_c *NodeClientMock_Unlink_Call) Return(node1 *node.Node, err error) *NodeClientMock_Unlink_Call {
+	_c.Call.Return(node1, err)
 	return _c
 }
 
-func (_c *NodeClientMock_Unlink_Call) RunAndReturn(run func(ctx context.Context, parent *node.Node, name string) error) *NodeClientMock_Unlink_Call {
+func (_c *NodeClientMock_Unlink_Call) RunAndReturn(run func(ctx context.Context, parent *node.Node, name string) (*node.Node, error)) *NodeClientMock_Unlink_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnlinkOrReplace provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) UnlinkOrReplace(ctx context.Context, parent *node.Node, name string) (*node.Node, error) {
+	ret := _mock.Called(ctx, parent, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnlinkOrReplace")
+	}
+
+	var r0 *node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, parent, name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string) *node.Node); ok {
+		r0 = returnFunc(ctx, parent, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*node.Node)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *node.Node, string) error); ok {
+		r1 = returnFunc(ctx, parent, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// NodeClientMock_UnlinkOrReplace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnlinkOrReplace'
+type NodeClientMock_UnlinkOrReplace_Call struct {
+	*mock.Call
+}
+
+// UnlinkOrReplace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - parent *node.Node
+//   - name string
+func (_e *NodeClientMock_Expecter) UnlinkOrReplace(ctx interface{}, parent interface{}, name interface{}) *NodeClientMock_UnlinkOrReplace_Call {
+	return &NodeClientMock_UnlinkOrReplace_Call{Call: _e.mock.On("UnlinkOrReplace", ctx, parent, name)}
+}
+
+func (_c *NodeClientMock_UnlinkOrReplace_Call) Run(run func(ctx context.Context, parent *node.Node, name string)) *NodeClientMock_UnlinkOrReplace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *node.Node
+		if args[1] != nil {
+			arg1 = args[1].(*node.Node)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_UnlinkOrReplace_Call) Return(node1 *node.Node, err error) *NodeClientMock_UnlinkOrReplace_Call {
+	_c.Call.Return(node1, err)
+	return _c
+}
+
+func (_c *NodeClientMock_UnlinkOrReplace_Call) RunAndReturn(run func(ctx context.Context, parent *node.Node, name string) (*node.Node, error)) *NodeClientMock_UnlinkOrReplace_Call {
 	_c.Call.Return(run)
 	return _c
 }

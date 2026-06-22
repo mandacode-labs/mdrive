@@ -32,7 +32,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, a.Store, a.Perm, a.UploadReg, a.TombstoneInserter, a.ContentCipher)
+			fs := vfs.NewService(a.NodeSvc, a.DriveSvc, a.UserSvc, a.Store, a.Perm, a.UploadReg, a.TombstoneInserter, a.ContentCipher, a.Reencryptor)
 			return server.NewServer(a, fs).Run()
 		},
 	}

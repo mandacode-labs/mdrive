@@ -112,7 +112,7 @@ func newTestService() *Service {
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, nil)
+	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, nil, nil)
 }
 
 func strPtr(s string) *string { return &s }
