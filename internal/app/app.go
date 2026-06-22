@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -97,20 +96,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, errors.New("crypto.master_key is required in production")
 	}
 
-	var dekProvider *cryptopkg.DEKProvider
-	if cfg.Crypto.MasterKey != "" {
-		masterKey, err := hex.DecodeString(cfg.Crypto.MasterKey)
-		if err != nil {
-			return nil, fmt.Errorf("crypto: decode master key for DEK: %w", err)
-		}
-		dekProvider, err = cryptopkg.NewDEKProvider(masterKey)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, dekProvider)
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {

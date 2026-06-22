@@ -939,7 +939,6 @@ type DriveStorageMutation struct {
 	access_key     *string
 	secret_key     *string
 	use_path_style *bool
-	wrapped_dek    *string
 	clearedFields  map[string]struct{}
 	drive          *string
 	cleareddrive   bool
@@ -1311,55 +1310,6 @@ func (m *DriveStorageMutation) ResetUsePathStyle() {
 	m.use_path_style = nil
 }
 
-// SetWrappedDek sets the "wrapped_dek" field.
-func (m *DriveStorageMutation) SetWrappedDek(s string) {
-	m.wrapped_dek = &s
-}
-
-// WrappedDek returns the value of the "wrapped_dek" field in the mutation.
-func (m *DriveStorageMutation) WrappedDek() (r string, exists bool) {
-	v := m.wrapped_dek
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldWrappedDek returns the old "wrapped_dek" field's value of the DriveStorage entity.
-// If the DriveStorage object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DriveStorageMutation) OldWrappedDek(ctx context.Context) (v *string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldWrappedDek is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldWrappedDek requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldWrappedDek: %w", err)
-	}
-	return oldValue.WrappedDek, nil
-}
-
-// ClearWrappedDek clears the value of the "wrapped_dek" field.
-func (m *DriveStorageMutation) ClearWrappedDek() {
-	m.wrapped_dek = nil
-	m.clearedFields[drivestorage.FieldWrappedDek] = struct{}{}
-}
-
-// WrappedDekCleared returns if the "wrapped_dek" field was cleared in this mutation.
-func (m *DriveStorageMutation) WrappedDekCleared() bool {
-	_, ok := m.clearedFields[drivestorage.FieldWrappedDek]
-	return ok
-}
-
-// ResetWrappedDek resets all changes to the "wrapped_dek" field.
-func (m *DriveStorageMutation) ResetWrappedDek() {
-	m.wrapped_dek = nil
-	delete(m.clearedFields, drivestorage.FieldWrappedDek)
-}
-
 // ClearDrive clears the "drive" edge to the Drive entity.
 func (m *DriveStorageMutation) ClearDrive() {
 	m.cleareddrive = true
@@ -1421,7 +1371,7 @@ func (m *DriveStorageMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DriveStorageMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 7)
 	if m.drive != nil {
 		fields = append(fields, drivestorage.FieldDriveID)
 	}
@@ -1442,9 +1392,6 @@ func (m *DriveStorageMutation) Fields() []string {
 	}
 	if m.use_path_style != nil {
 		fields = append(fields, drivestorage.FieldUsePathStyle)
-	}
-	if m.wrapped_dek != nil {
-		fields = append(fields, drivestorage.FieldWrappedDek)
 	}
 	return fields
 }
@@ -1468,8 +1415,6 @@ func (m *DriveStorageMutation) Field(name string) (ent.Value, bool) {
 		return m.SecretKey()
 	case drivestorage.FieldUsePathStyle:
 		return m.UsePathStyle()
-	case drivestorage.FieldWrappedDek:
-		return m.WrappedDek()
 	}
 	return nil, false
 }
@@ -1493,8 +1438,6 @@ func (m *DriveStorageMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldSecretKey(ctx)
 	case drivestorage.FieldUsePathStyle:
 		return m.OldUsePathStyle(ctx)
-	case drivestorage.FieldWrappedDek:
-		return m.OldWrappedDek(ctx)
 	}
 	return nil, fmt.Errorf("unknown DriveStorage field %s", name)
 }
@@ -1553,13 +1496,6 @@ func (m *DriveStorageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUsePathStyle(v)
 		return nil
-	case drivestorage.FieldWrappedDek:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetWrappedDek(v)
-		return nil
 	}
 	return fmt.Errorf("unknown DriveStorage field %s", name)
 }
@@ -1593,9 +1529,6 @@ func (m *DriveStorageMutation) ClearedFields() []string {
 	if m.FieldCleared(drivestorage.FieldEndpoint) {
 		fields = append(fields, drivestorage.FieldEndpoint)
 	}
-	if m.FieldCleared(drivestorage.FieldWrappedDek) {
-		fields = append(fields, drivestorage.FieldWrappedDek)
-	}
 	return fields
 }
 
@@ -1612,9 +1545,6 @@ func (m *DriveStorageMutation) ClearField(name string) error {
 	switch name {
 	case drivestorage.FieldEndpoint:
 		m.ClearEndpoint()
-		return nil
-	case drivestorage.FieldWrappedDek:
-		m.ClearWrappedDek()
 		return nil
 	}
 	return fmt.Errorf("unknown DriveStorage nullable field %s", name)
@@ -1644,9 +1574,6 @@ func (m *DriveStorageMutation) ResetField(name string) error {
 		return nil
 	case drivestorage.FieldUsePathStyle:
 		m.ResetUsePathStyle()
-		return nil
-	case drivestorage.FieldWrappedDek:
-		m.ResetWrappedDek()
 		return nil
 	}
 	return fmt.Errorf("unknown DriveStorage field %s", name)

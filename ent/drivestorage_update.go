@@ -132,26 +132,6 @@ func (_u *DriveStorageUpdate) SetNillableUsePathStyle(v *bool) *DriveStorageUpda
 	return _u
 }
 
-// SetWrappedDek sets the "wrapped_dek" field.
-func (_u *DriveStorageUpdate) SetWrappedDek(v string) *DriveStorageUpdate {
-	_u.mutation.SetWrappedDek(v)
-	return _u
-}
-
-// SetNillableWrappedDek sets the "wrapped_dek" field if the given value is not nil.
-func (_u *DriveStorageUpdate) SetNillableWrappedDek(v *string) *DriveStorageUpdate {
-	if v != nil {
-		_u.SetWrappedDek(*v)
-	}
-	return _u
-}
-
-// ClearWrappedDek clears the value of the "wrapped_dek" field.
-func (_u *DriveStorageUpdate) ClearWrappedDek() *DriveStorageUpdate {
-	_u.mutation.ClearWrappedDek()
-	return _u
-}
-
 // SetDrive sets the "drive" edge to the Drive entity.
 func (_u *DriveStorageUpdate) SetDrive(v *Drive) *DriveStorageUpdate {
 	return _u.SetDriveID(v.ID)
@@ -227,11 +207,6 @@ func (_u *DriveStorageUpdate) check() error {
 			return &ValidationError{Name: "secret_key", err: fmt.Errorf(`ent: validator failed for field "DriveStorage.secret_key": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.WrappedDek(); ok {
-		if err := drivestorage.WrappedDekValidator(v); err != nil {
-			return &ValidationError{Name: "wrapped_dek", err: fmt.Errorf(`ent: validator failed for field "DriveStorage.wrapped_dek": %w`, err)}
-		}
-	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "DriveStorage.drive"`)
 	}
@@ -270,12 +245,6 @@ func (_u *DriveStorageUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(drivestorage.FieldUsePathStyle, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.WrappedDek(); ok {
-		_spec.SetField(drivestorage.FieldWrappedDek, field.TypeString, value)
-	}
-	if _u.mutation.WrappedDekCleared() {
-		_spec.ClearField(drivestorage.FieldWrappedDek, field.TypeString)
 	}
 	if _u.mutation.DriveCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -430,26 +399,6 @@ func (_u *DriveStorageUpdateOne) SetNillableUsePathStyle(v *bool) *DriveStorageU
 	return _u
 }
 
-// SetWrappedDek sets the "wrapped_dek" field.
-func (_u *DriveStorageUpdateOne) SetWrappedDek(v string) *DriveStorageUpdateOne {
-	_u.mutation.SetWrappedDek(v)
-	return _u
-}
-
-// SetNillableWrappedDek sets the "wrapped_dek" field if the given value is not nil.
-func (_u *DriveStorageUpdateOne) SetNillableWrappedDek(v *string) *DriveStorageUpdateOne {
-	if v != nil {
-		_u.SetWrappedDek(*v)
-	}
-	return _u
-}
-
-// ClearWrappedDek clears the value of the "wrapped_dek" field.
-func (_u *DriveStorageUpdateOne) ClearWrappedDek() *DriveStorageUpdateOne {
-	_u.mutation.ClearWrappedDek()
-	return _u
-}
-
 // SetDrive sets the "drive" edge to the Drive entity.
 func (_u *DriveStorageUpdateOne) SetDrive(v *Drive) *DriveStorageUpdateOne {
 	return _u.SetDriveID(v.ID)
@@ -538,11 +487,6 @@ func (_u *DriveStorageUpdateOne) check() error {
 			return &ValidationError{Name: "secret_key", err: fmt.Errorf(`ent: validator failed for field "DriveStorage.secret_key": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.WrappedDek(); ok {
-		if err := drivestorage.WrappedDekValidator(v); err != nil {
-			return &ValidationError{Name: "wrapped_dek", err: fmt.Errorf(`ent: validator failed for field "DriveStorage.wrapped_dek": %w`, err)}
-		}
-	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "DriveStorage.drive"`)
 	}
@@ -598,12 +542,6 @@ func (_u *DriveStorageUpdateOne) sqlSave(ctx context.Context) (_node *DriveStora
 	}
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(drivestorage.FieldUsePathStyle, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.WrappedDek(); ok {
-		_spec.SetField(drivestorage.FieldWrappedDek, field.TypeString, value)
-	}
-	if _u.mutation.WrappedDekCleared() {
-		_spec.ClearField(drivestorage.FieldWrappedDek, field.TypeString)
 	}
 	if _u.mutation.DriveCleared() {
 		edge := &sqlgraph.EdgeSpec{

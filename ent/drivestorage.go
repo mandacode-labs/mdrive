@@ -31,8 +31,6 @@ type DriveStorage struct {
 	SecretKey string `json:"secret_key,omitempty"`
 	// UsePathStyle holds the value of the "use_path_style" field.
 	UsePathStyle bool `json:"use_path_style,omitempty"`
-	// WrappedDek holds the value of the "wrapped_dek" field.
-	WrappedDek *string `json:"wrapped_dek,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DriveStorageQuery when eager-loading is set.
 	Edges        DriveStorageEdges `json:"edges"`
@@ -68,7 +66,7 @@ func (*DriveStorage) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case drivestorage.FieldID:
 			values[i] = new(sql.NullInt64)
-		case drivestorage.FieldDriveID, drivestorage.FieldBucket, drivestorage.FieldEndpoint, drivestorage.FieldRegion, drivestorage.FieldAccessKey, drivestorage.FieldSecretKey, drivestorage.FieldWrappedDek:
+		case drivestorage.FieldDriveID, drivestorage.FieldBucket, drivestorage.FieldEndpoint, drivestorage.FieldRegion, drivestorage.FieldAccessKey, drivestorage.FieldSecretKey:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -134,13 +132,6 @@ func (_m *DriveStorage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UsePathStyle = value.Bool
 			}
-		case drivestorage.FieldWrappedDek:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field wrapped_dek", values[i])
-			} else if value.Valid {
-				_m.WrappedDek = new(string)
-				*_m.WrappedDek = value.String
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -204,11 +195,6 @@ func (_m *DriveStorage) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("use_path_style=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UsePathStyle))
-	builder.WriteString(", ")
-	if v := _m.WrappedDek; v != nil {
-		builder.WriteString("wrapped_dek=")
-		builder.WriteString(*v)
-	}
 	builder.WriteByte(')')
 	return builder.String()
 }

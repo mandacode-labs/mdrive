@@ -27,7 +27,6 @@ CREATE TABLE "drive_storage" (
     "secret_key" character(255) NOT NULL,
     "use_path_style" boolean NOT NULL DEFAULT false,
     "drive_id" character(32) NOT NULL,
-    "wrapped_dek" varchar(1024) NULL,
     PRIMARY KEY ("id"),
     CONSTRAINT "drive_storage_drives_storage" FOREIGN KEY ("drive_id") REFERENCES "drives" ("id") ON DELETE NO ACTION
 );

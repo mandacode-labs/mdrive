@@ -88,11 +88,6 @@ func UsePathStyle(v bool) predicate.DriveStorage {
 	return predicate.DriveStorage(sql.FieldEQ(FieldUsePathStyle, v))
 }
 
-// WrappedDek applies equality check predicate on the "wrapped_dek" field. It's identical to WrappedDekEQ.
-func WrappedDek(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldEQ(FieldWrappedDek, v))
-}
-
 // DriveIDEQ applies the EQ predicate on the "drive_id" field.
 func DriveIDEQ(v string) predicate.DriveStorage {
 	return predicate.DriveStorage(sql.FieldEQ(FieldDriveID, v))
@@ -501,81 +496,6 @@ func UsePathStyleEQ(v bool) predicate.DriveStorage {
 // UsePathStyleNEQ applies the NEQ predicate on the "use_path_style" field.
 func UsePathStyleNEQ(v bool) predicate.DriveStorage {
 	return predicate.DriveStorage(sql.FieldNEQ(FieldUsePathStyle, v))
-}
-
-// WrappedDekEQ applies the EQ predicate on the "wrapped_dek" field.
-func WrappedDekEQ(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldEQ(FieldWrappedDek, v))
-}
-
-// WrappedDekNEQ applies the NEQ predicate on the "wrapped_dek" field.
-func WrappedDekNEQ(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldNEQ(FieldWrappedDek, v))
-}
-
-// WrappedDekIn applies the In predicate on the "wrapped_dek" field.
-func WrappedDekIn(vs ...string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldIn(FieldWrappedDek, vs...))
-}
-
-// WrappedDekNotIn applies the NotIn predicate on the "wrapped_dek" field.
-func WrappedDekNotIn(vs ...string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldNotIn(FieldWrappedDek, vs...))
-}
-
-// WrappedDekGT applies the GT predicate on the "wrapped_dek" field.
-func WrappedDekGT(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldGT(FieldWrappedDek, v))
-}
-
-// WrappedDekGTE applies the GTE predicate on the "wrapped_dek" field.
-func WrappedDekGTE(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldGTE(FieldWrappedDek, v))
-}
-
-// WrappedDekLT applies the LT predicate on the "wrapped_dek" field.
-func WrappedDekLT(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldLT(FieldWrappedDek, v))
-}
-
-// WrappedDekLTE applies the LTE predicate on the "wrapped_dek" field.
-func WrappedDekLTE(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldLTE(FieldWrappedDek, v))
-}
-
-// WrappedDekContains applies the Contains predicate on the "wrapped_dek" field.
-func WrappedDekContains(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldContains(FieldWrappedDek, v))
-}
-
-// WrappedDekHasPrefix applies the HasPrefix predicate on the "wrapped_dek" field.
-func WrappedDekHasPrefix(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldHasPrefix(FieldWrappedDek, v))
-}
-
-// WrappedDekHasSuffix applies the HasSuffix predicate on the "wrapped_dek" field.
-func WrappedDekHasSuffix(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldHasSuffix(FieldWrappedDek, v))
-}
-
-// WrappedDekIsNil applies the IsNil predicate on the "wrapped_dek" field.
-func WrappedDekIsNil() predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldIsNull(FieldWrappedDek))
-}
-
-// WrappedDekNotNil applies the NotNil predicate on the "wrapped_dek" field.
-func WrappedDekNotNil() predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldNotNull(FieldWrappedDek))
-}
-
-// WrappedDekEqualFold applies the EqualFold predicate on the "wrapped_dek" field.
-func WrappedDekEqualFold(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldEqualFold(FieldWrappedDek, v))
-}
-
-// WrappedDekContainsFold applies the ContainsFold predicate on the "wrapped_dek" field.
-func WrappedDekContainsFold(v string) predicate.DriveStorage {
-	return predicate.DriveStorage(sql.FieldContainsFold(FieldWrappedDek, v))
 }
 
 // HasDrive applies the HasEdge predicate on the "drive" edge.

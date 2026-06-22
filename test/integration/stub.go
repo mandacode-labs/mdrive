@@ -73,7 +73,7 @@ func (s *stubFS) GetDrive(ctx context.Context, actorID, id string) (*drive.Drive
 	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
 func (s *stubFS) GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
-	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false, ""), nil
+	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
 }
 func (s *stubFS) UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error) {
 	n := ""

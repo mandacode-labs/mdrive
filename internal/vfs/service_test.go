@@ -60,7 +60,7 @@ func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, err
 	if d.storageOverride != nil {
 		return d.storageOverride, nil
 	}
-	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false, ""), nil
+	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false), nil
 }
 func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
 	return nil, nil

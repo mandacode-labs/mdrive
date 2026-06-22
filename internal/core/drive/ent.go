@@ -51,19 +51,15 @@ func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		return fmt.Errorf("encrypt secret key: %w", err)
 	}
 
-	wrappedDEK := s.WrappedDEK()
-	create := tx.DriveStorage.Create().
+	if _, err := tx.DriveStorage.Create().
 		SetDriveID(s.DriveID()).
 		SetBucket(s.Bucket()).
 		SetNillableEndpoint(s.Endpoint()).
 		SetRegion(s.Region()).
 		SetAccessKey(s.AccessKey()).
 		SetSecretKey(string(secretKey)).
-		SetUsePathStyle(s.UsePathStyle())
-	if wrappedDEK != "" {
-		create = create.SetWrappedDek(wrappedDEK)
-	}
-	if _, err := create.Save(ctx); err != nil {
+		SetUsePathStyle(s.UsePathStyle()).
+		Save(ctx); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("create drive storage: %w", err)
 	}
@@ -105,10 +101,6 @@ func (r *EntRepository) GetStorage(ctx context.Context, driveID string) (*Storag
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDecryptionFailed, err)
 	}
-	var wrappedDEK string
-	if s.WrappedDek != nil {
-		wrappedDEK = *s.WrappedDek
-	}
 	return NewStorage(
 		s.DriveID,
 		s.Bucket,
@@ -117,7 +109,6 @@ func (r *EntRepository) GetStorage(ctx context.Context, driveID string) (*Storag
 		s.AccessKey,
 		string(secretKey),
 		s.UsePathStyle,
-		wrappedDEK,
 	), nil
 }
 

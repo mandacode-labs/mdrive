@@ -9,16 +9,6 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// DEKProvider supplies wrapped per-drive data encryption keys.
-// The implementation lives in the crypto layer; the drive domain
-// only depends on this small interface so the service can stay
-// crypto-agnostic. NewWrappedDEK is called once per drive creation
-// to produce the wrapped DEK that is persisted alongside the
-// storage credentials.
-type DEKProvider interface {
-	NewWrappedDEK() (string, error)
-}
-
 // Service provides domain-level drive operations.
 // It wraps Repository with validation and convenience, analogous to
 // Linux super_operations (alloc_inode, destroy_inode) but without
@@ -27,14 +17,11 @@ type Service struct {
 	repo       Repository
 	users      Exister
 	rootCreate RootCreator
-	dek        DEKProvider
 }
 
-// NewService creates a new Service. dek may be nil in dev/test where
-// envelope encryption is not used; the service skips DEK
-// provisioning in that case.
-func NewService(repo Repository, users Exister, rootCreate RootCreator, dek DEKProvider) *Service {
-	return &Service{repo: repo, users: users, rootCreate: rootCreate, dek: dek}
+// NewService creates a new Service.
+func NewService(repo Repository, users Exister, rootCreate RootCreator) *Service {
+	return &Service{repo: repo, users: users, rootCreate: rootCreate}
 }
 
 // Create creates a drive and its root directory node.
@@ -61,16 +48,8 @@ func (s *Service) Create(ctx context.Context, name string, desc *string, ownerID
 	now := time.Now()
 	d := NewDrive(id, id, name, desc, ProviderS3, ownerID, nil, nil, now, now)
 
-	var wrappedDEK string
-	if s.dek != nil {
-		wrappedDEK, err = s.dek.NewWrappedDEK()
-		if err != nil {
-			return nil, uuid.Nil, fmt.Errorf("generate dek: %w", err)
-		}
-	}
-
 	s2 := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
-		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle, wrappedDEK)
+		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
 
 	if err := s.repo.Create(ctx, d, s2); err != nil {
 		return nil, uuid.Nil, fmt.Errorf("create drive: %w", err)
@@ -197,7 +176,7 @@ func (s *Service) ListByOwner(ctx context.Context, ownerID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate, dek: s.dek})
+		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate})
 	})
 }
 

@@ -54,7 +54,6 @@ var (
 		{Name: "access_key", Type: field.TypeString, Size: 255},
 		{Name: "secret_key", Type: field.TypeString, Size: 255},
 		{Name: "use_path_style", Type: field.TypeBool, Default: false},
-		{Name: "wrapped_dek", Type: field.TypeString, Nullable: true, Size: 1024},
 		{Name: "drive_id", Type: field.TypeString, Unique: true, Size: 32},
 	}
 	// DriveStorageTable holds the schema information for the "drive_storage" table.
@@ -65,7 +64,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "drive_storage_drives_storage",
-				Columns:    []*schema.Column{DriveStorageColumns[8]},
+				Columns:    []*schema.Column{DriveStorageColumns[7]},
 				RefColumns: []*schema.Column{DrivesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

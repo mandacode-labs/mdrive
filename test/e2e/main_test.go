@@ -102,7 +102,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 	require.NoError(t, err)
 
 	driveRepo := drive.NewRepository(entClient, nil)
-	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, nil)
+	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
 
 	fs := vfs.NewService(nodeSvc, driveSvc, userSvc, nil, nil, nil, nil)
 

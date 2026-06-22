@@ -8,7 +8,7 @@ import (
 
 func TestNewStorage(t *testing.T) {
 	endpoint := "https://s3.example.com"
-	s := NewStorage("drive-id", "my-bucket", &endpoint, "us-east-1", "AKIA...", "secret", true, "wrapped-dek")
+	s := NewStorage("drive-id", "my-bucket", &endpoint, "us-east-1", "AKIA...", "secret", true)
 
 	assert.Equal(t, "drive-id", s.DriveID())
 	assert.Equal(t, "my-bucket", s.Bucket())
