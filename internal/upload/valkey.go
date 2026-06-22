@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/valkey-io/valkey-go"
@@ -80,3 +81,34 @@ func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
 	}
 	return nil
 }
+
+// Scan iterates all upload keys using the Valkey SCAN command. The
+// callback receives the upload ID (not the full key). Returning an
+// error from fn aborts the scan.
+func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) error {
+	prefix := DefaultKeyPrefix
+	cursor := uint64(0)
+	for {
+		resp := r.client.Do(ctx, r.client.B().Scan().Cursor(cursor).Match(prefix+"*").Count(100).Build())
+		if err := resp.Error(); err != nil {
+			return fmt.Errorf("upload: valkey scan: %w", err)
+		}
+		arr, err := resp.AsScanEntry()
+		if err != nil {
+			return fmt.Errorf("upload: valkey scan entry: %w", err)
+		}
+		for _, k := range arr.Elements {
+			id := strings.TrimPrefix(k, prefix)
+			if err := fn(id); err != nil {
+				return err
+			}
+		}
+		cursor = arr.Cursor
+		if cursor == 0 {
+			return nil
+		}
+	}
+}
+
+var _ Registry = (*ValkeyRegistry)(nil)
+var _ Scanner = (*ValkeyRegistry)(nil)

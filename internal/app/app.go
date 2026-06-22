@@ -38,6 +38,7 @@ type App struct {
 	UserSvc           *user.Service
 	UserEx            user.Exister
 	UploadReg         upload.Registry
+	SessionStore      session.Store
 	Store             vfs.Store
 	TombstoneInserter vfs.TombstoneInserter
 	Auth              *auth.Service
@@ -161,6 +162,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserSvc:           userSvc,
 		UserEx:            userEx,
 		UploadReg:         uploadReg,
+		SessionStore:      store,
 		Store:             storageStore,
 		TombstoneInserter: gc,
 		Auth:              authenticator,

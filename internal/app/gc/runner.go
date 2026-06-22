@@ -7,9 +7,15 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
+	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/storage/s3"
+	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
+
+// vfsObjectRef aliases vfs.ObjectRef to keep the GC logic readable.
+type vfsObjectRef = vfs.ObjectRef
 
 const defaultProcessLimit = 1000
 
@@ -98,7 +104,11 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 	return nil
 }
 
-// UploadExpirer removes stale upload registrations.
+// UploadExpirer removes stale upload registrations and their backing S3
+// objects. It scans the upload registry for tokens whose ExpiresAt has
+// passed, deletes the S3 object (best-effort, tombstone on failure), and
+// removes the registry entry. Safe to run on registries that do not
+// implement Scanner (logs a warning and returns).
 type UploadExpirer struct {
 	app *app.App
 	log *logging.Logger
@@ -110,11 +120,58 @@ func NewUploadExpirer(a *app.App) *UploadExpirer {
 
 func (e *UploadExpirer) Run(ctx context.Context) error {
 	e.log.Info().Msg("gc: expire-uploads starting")
-	e.log.Info().Msg("gc: expire-uploads complete")
+	defer e.log.Info().Msg("gc: expire-uploads complete")
+
+	scanner, ok := e.app.UploadReg.(upload.Scanner)
+	if !ok {
+		e.log.Warn().Msg("gc: upload registry does not support Scan; skipping")
+		return nil
+	}
+
+	var scanned, deleted, s3err int
+	err := scanner.Scan(ctx, func(id string) error {
+		scanned++
+		meta, err := e.app.UploadReg.Get(ctx, id)
+		if err != nil {
+			// Token already gone or expired: just clean up the registry entry.
+			_ = e.app.UploadReg.Delete(ctx, id)
+			return nil
+		}
+		if !meta.IsExpired() {
+			return nil
+		}
+		// Best-effort: delete the S3 object the client may have uploaded
+		// but never completed. On failure, record a tombstone so the
+		// tombstone-cleaner job can retry.
+		bucket := meta.Bucket
+		key := meta.Key
+		if e.app.Store != nil && bucket != "" && key != "" {
+			if err := e.app.Store.DeleteObject(ctx, bucket, key); err != nil {
+				s3err++
+				e.log.Warn().Err(err).Str("bucket", bucket).Str("key", key).Msg("gc: delete upload object failed")
+				if e.app.TombstoneInserter != nil {
+					_ = e.app.TombstoneInserter.InsertTombstones(ctx, []vfsObjectRef{{Bucket: bucket, Key: key}})
+				}
+			}
+		}
+		if err := e.app.UploadReg.Delete(ctx, id); err != nil {
+			e.log.Warn().Err(err).Str("upload_id", id).Msg("gc: delete upload token failed")
+			return nil
+		}
+		deleted++
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("gc: upload scan: %w", err)
+	}
+	e.log.Info().Int("scanned", scanned).Int("deleted", deleted).Int("s3_errors", s3err).Msg("gc: uploads")
 	return nil
 }
 
-// SessionExpirer removes expired sessions from the store.
+// SessionExpirer removes expired sessions from the session store. It scans
+// the store (when supported) and deletes any session whose ExpiresAt has
+// passed. Backends that do not implement session.Scanner are skipped with
+// a warning.
 type SessionExpirer struct {
 	app *app.App
 	log *logging.Logger
@@ -126,6 +183,36 @@ func NewSessionExpirer(a *app.App) *SessionExpirer {
 
 func (e *SessionExpirer) Run(ctx context.Context) error {
 	e.log.Info().Msg("gc: expire-sessions starting")
-	e.log.Info().Msg("gc: expire-sessions complete")
+	defer e.log.Info().Msg("gc: expire-sessions complete")
+
+	if e.app.SessionStore == nil {
+		e.log.Warn().Msg("gc: no session store; skipping")
+		return nil
+	}
+	scanner, ok := e.app.SessionStore.(session.Scanner)
+	if !ok {
+		e.log.Warn().Msg("gc: session store does not support Scan; skipping")
+		return nil
+	}
+	var scanned, deleted int
+	err := scanner.Scan(ctx, func(id string) error {
+		scanned++
+		sess, err := e.app.SessionStore.Get(ctx, id)
+		if err != nil {
+			_ = e.app.SessionStore.Delete(ctx, id)
+			deleted++
+			return nil
+		}
+		if sess.IsExpired() {
+			if err := e.app.SessionStore.Delete(ctx, id); err == nil {
+				deleted++
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("gc: session scan: %w", err)
+	}
+	e.log.Info().Int("scanned", scanned).Int("deleted", deleted).Msg("gc: sessions")
 	return nil
 }

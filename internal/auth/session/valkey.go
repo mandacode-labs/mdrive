@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/valkey-io/valkey-go"
 )
@@ -72,4 +73,32 @@ func (s *ValkeyStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// Scan iterates all session keys using the Valkey SCAN command. The
+// callback receives the session ID (not the full key). Returning an
+// error from fn aborts the scan.
+func (s *ValkeyStore) Scan(ctx context.Context, fn func(id string) error) error {
+	cursor := uint64(0)
+	for {
+		resp := s.client.Do(ctx, s.client.B().Scan().Cursor(cursor).Match(s.prefix+"*").Count(100).Build())
+		if err := resp.Error(); err != nil {
+			return fmt.Errorf("session: valkey scan: %w", err)
+		}
+		arr, err := resp.AsScanEntry()
+		if err != nil {
+			return fmt.Errorf("session: valkey scan entry: %w", err)
+		}
+		for _, k := range arr.Elements {
+			id := strings.TrimPrefix(k, s.prefix)
+			if err := fn(id); err != nil {
+				return err
+			}
+		}
+		cursor = arr.Cursor
+		if cursor == 0 {
+			return nil
+		}
+	}
+}
+
 var _ Store = (*ValkeyStore)(nil)
+var _ Scanner = (*ValkeyStore)(nil)
