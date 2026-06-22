@@ -15,6 +15,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -37,12 +38,8 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 	healthDeps := handler.HealthDeps{
 		DB: a.DB,
 	}
-	if a.SessionStore != nil {
-		if s, ok := a.SessionStore.(interface {
-			Scan(context.Context, func(string) error) error
-		}); ok {
-			healthDeps.ValKey = scannerAdapter{scan: s.Scan}
-		}
+	if s, ok := a.SessionStore.(session.Scanner); ok {
+		healthDeps.ValKey = s
 	}
 	if a.Perm != nil {
 		healthDeps.Perm = a.Perm
@@ -136,15 +133,6 @@ func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName
 	return ctx, nil
 }
 
-// scannerAdapter bridges a runtime interface (with a Scan method) to the
-// static session.Scanner type expected by the health check.
-type scannerAdapter struct {
-	scan func(context.Context, func(string) error) error
-}
-
-func (s scannerAdapter) Scan(ctx context.Context, fn func(string) error) error {
-	return s.scan(ctx, fn)
-}
 
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	if !cfg.Enabled {
