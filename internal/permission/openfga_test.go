@@ -109,7 +109,3 @@ func TestBuildCredentials(t *testing.T) {
 		})
 	}
 }
-
-func contains(s, sub string) bool {
-	return len(sub) == 0 || strings.Contains(s, sub)
-}

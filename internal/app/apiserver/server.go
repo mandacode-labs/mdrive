@@ -72,7 +72,7 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 		a.Log.Fatal().Err(err).Msg("failed to create ogen server")
 	}
 
-	var finalHandler http.Handler = RequestIDMiddleware(ogenServer)
+	var finalHandler = RequestIDMiddleware(ogenServer)
 	if a.Security != nil {
 		finalHandler = RequestIDMiddleware(a.Security.Middleware(ogenServer))
 	}

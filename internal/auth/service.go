@@ -76,9 +76,9 @@ func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Toke
 		return nil, fmt.Errorf("auth: jwt profile: %w", err)
 	}
 	return &oidc.Tokens[*oidc.IDTokenClaims]{
-		Token:        token,
+		Token:         token,
 		IDTokenClaims: claims,
-		IDToken:      idToken,
+		IDToken:       idToken,
 	}, nil
 }
 
@@ -108,9 +108,9 @@ func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerif
 		return nil, fmt.Errorf("auth: code exchange: %w", err)
 	}
 	return &oidc.Tokens[*oidc.IDTokenClaims]{
-		Token:        token,
+		Token:         token,
 		IDTokenClaims: claims,
-		IDToken:      idToken,
+		IDToken:       idToken,
 	}, nil
 }
 
@@ -202,6 +202,5 @@ type tokenEndpointCaller struct {
 	http *http.Client
 }
 
-func (t *tokenEndpointCaller) TokenEndpoint() string   { return t.dc.TokenEndpoint }
+func (t *tokenEndpointCaller) TokenEndpoint() string    { return t.dc.TokenEndpoint }
 func (t *tokenEndpointCaller) HttpClient() *http.Client { return t.http }
-

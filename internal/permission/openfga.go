@@ -71,16 +71,16 @@ var ErrInvalidAuthMode = fmt.Errorf("permission: invalid openfga auth_mode (allo
 
 // Config for OpenFGAChecker.
 type Config struct {
-	AuthMode            AuthMode
-	APIURL              string
-	StoreID             string
+	AuthMode             AuthMode
+	APIURL               string
+	StoreID              string
 	AuthorizationModelID string
-	APIToken            string
-	ClientID            string
-	ClientSecret        string
-	TokenIssuer         string
-	Audience            string
-	Timeout             time.Duration
+	APIToken             string
+	ClientID             string
+	ClientSecret         string
+	TokenIssuer          string
+	Audience             string
+	Timeout              time.Duration
 }
 
 // NewOpenFGAChecker creates a new OpenFGAChecker.

@@ -138,8 +138,8 @@ type Content []byte
 // MaxContentSize is the maximum size of inline content.
 const MaxContentSize = 4096
 
-func (c Content) Size() int     { return len(c) }
-func (c Content) Data() []byte   { return c }
+func (c Content) Size() int    { return len(c) }
+func (c Content) Data() []byte { return c }
 
 // Node is the POSIX-style inode abstraction.
 // A node holds metadata and (for small items) inline content. The node does NOT know its
@@ -150,17 +150,17 @@ func (c Content) Data() []byte   { return c }
 // existence is checked lazily on read (HEAD to S3). If the S3 object is
 // missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
-	id       uuid.UUID
-	typ      NodeType
-	size     int64
-	nlink    uint32
-	content  Content
-	atime    time.Time
-	mtime    time.Time
-	ctime    time.Time
-	crtime   time.Time
-	flags    Flags
-	rev      Revision
+	id      uuid.UUID
+	typ     NodeType
+	size    int64
+	nlink   uint32
+	content Content
+	atime   time.Time
+	mtime   time.Time
+	ctime   time.Time
+	crtime  time.Time
+	flags   Flags
+	rev     Revision
 
 	// staleRev is the revision loaded from the DB. Save uses it for
 	// optimistic concurrency: UPDATE WHERE revision = staleRev.

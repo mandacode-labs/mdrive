@@ -17,11 +17,11 @@ func TestCleanPath(t *testing.T) {
 		{"/a/./b", "/a/b"},
 		{"/a/b/..", "/a"},
 		{"/a/b/../c", "/a/c"},
-		{"/..", "/"},     // cannot ascend above root
-		{"/../a", "/a"},  // path.Clean collapses
+		{"/..", "/"},    // cannot ascend above root
+		{"/../a", "/a"}, // path.Clean collapses
 		{"  /a/b  ", "/a/b"},
 		{"/a/b/", "/a/b"},
-		{"a/b", "/a/b"},  // path.Clean of "/a/b" is "/a/b"
+		{"a/b", "/a/b"}, // path.Clean of "/a/b" is "/a/b"
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {

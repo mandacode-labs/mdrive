@@ -13,9 +13,9 @@ import (
 // HealthDeps captures the components the health check pings. nil values
 // are skipped (useful in development where some backends are absent).
 type HealthDeps struct {
-	DB       *sql.DB
-	ValKey   session.Scanner // presence indicates a Valkey-backed store
-	Perm     permission.Checker
+	DB     *sql.DB
+	ValKey session.Scanner // presence indicates a Valkey-backed store
+	Perm   permission.Checker
 }
 
 // Health returns a simple health check response. It returns 200 with

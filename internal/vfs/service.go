@@ -16,10 +16,10 @@ import (
 
 // Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
 var (
-	_ NodeClient = (*node.Service)(nil)
+	_ NodeClient  = (*node.Service)(nil)
 	_ DriveClient = (*drive.Service)(nil)
-	_ UserClient = (*user.Service)(nil)
-	_ PermClient = (*permission.OpenFGAChecker)(nil)
+	_ UserClient  = (*user.Service)(nil)
+	_ PermClient  = (*permission.OpenFGAChecker)(nil)
 )
 
 // --------------- Consumer-declared interfaces ---------------
