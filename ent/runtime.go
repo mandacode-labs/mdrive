@@ -82,6 +82,10 @@ func init() {
 	drivestorageDescUsePathStyle := drivestorageFields[6].Descriptor()
 	// drivestorage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
 	drivestorage.DefaultUsePathStyle = drivestorageDescUsePathStyle.Default.(bool)
+	// drivestorageDescWrappedDek is the schema descriptor for wrapped_dek field.
+	drivestorageDescWrappedDek := drivestorageFields[7].Descriptor()
+	// drivestorage.WrappedDekValidator is a validator for the "wrapped_dek" field. It is called by the builders before save.
+	drivestorage.WrappedDekValidator = drivestorageDescWrappedDek.Validators[0].(func(string) error)
 	gctombstoneMixin := schema.GCTombstone{}.Mixin()
 	gctombstoneMixinFields0 := gctombstoneMixin[0].Fields()
 	_ = gctombstoneMixinFields0

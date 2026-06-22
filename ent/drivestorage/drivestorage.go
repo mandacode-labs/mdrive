@@ -26,6 +26,8 @@ const (
 	FieldSecretKey = "secret_key"
 	// FieldUsePathStyle holds the string denoting the use_path_style field in the database.
 	FieldUsePathStyle = "use_path_style"
+	// FieldWrappedDek holds the string denoting the wrapped_dek field in the database.
+	FieldWrappedDek = "wrapped_dek"
 	// EdgeDrive holds the string denoting the drive edge name in mutations.
 	EdgeDrive = "drive"
 	// Table holds the table name of the drivestorage in the database.
@@ -49,6 +51,7 @@ var Columns = []string{
 	FieldAccessKey,
 	FieldSecretKey,
 	FieldUsePathStyle,
+	FieldWrappedDek,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -76,6 +79,8 @@ var (
 	SecretKeyValidator func(string) error
 	// DefaultUsePathStyle holds the default value on creation for the "use_path_style" field.
 	DefaultUsePathStyle bool
+	// WrappedDekValidator is a validator for the "wrapped_dek" field. It is called by the builders before save.
+	WrappedDekValidator func(string) error
 )
 
 // OrderOption defines the ordering options for the DriveStorage queries.
@@ -119,6 +124,11 @@ func BySecretKey(opts ...sql.OrderTermOption) OrderOption {
 // ByUsePathStyle orders the results by the use_path_style field.
 func ByUsePathStyle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUsePathStyle, opts...).ToFunc()
+}
+
+// ByWrappedDek orders the results by the wrapped_dek field.
+func ByWrappedDek(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldWrappedDek, opts...).ToFunc()
 }
 
 // ByDriveField orders the results by drive field.

@@ -55,6 +55,16 @@ func (DriveStorage) Fields() []ent.Field {
 		// Use path-style addressing (required for MinIO).
 		field.Bool("use_path_style").
 			Default(false),
+
+		// Wrapped per-drive data encryption key (Phase 3a). The DEK is
+		// a random 32-byte key encrypted with the master key (KEK)
+		// and stored as base64(nonce(12) || aesgcm-ciphertext || tag(16)).
+		// Nullable for backfill of pre-existing rows; newly created
+		// drives always populate this column.
+		field.String("wrapped_dek").
+			Optional().
+			Nillable().
+			MaxLen(1024),
 	}
 }
 
