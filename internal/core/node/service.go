@@ -220,6 +220,176 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 	return s.Unlink(ctx, parent, name)
 }
 
+// MoveEntry atomically moves a directory entry from srcParent/srcName
+// to dstParent/dstName. The child inode is preserved with its nlink
+// unchanged: a move renames the entry, it does not add a new link.
+// This is the POSIX rename semantics and avoids the nlink==1
+// "delete then re-link" hazard of the Unlink+Link pair, which would
+// otherwise drop and recreate the inode.
+//
+// If dstParent/dstName already points to a different inode, that
+// inode is overwritten: its directory entry is removed and its
+// nlink is decremented (or the inode is deleted if nlink hits 0).
+// Type mismatch between src and overwrite-target is rejected
+// (POSIX: cannot overwrite a directory with a non-directory).
+//
+// Returns ErrEntryNotFound if srcName is not in srcParent.
+func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error {
+	if srcParent == nil || dstParent == nil {
+		return fmt.Errorf("node: move entry: nil parent")
+	}
+
+	srcDC, err := srcParent.ReadDir()
+	if err != nil {
+		return fmt.Errorf("move entry: read src dir: %w", err)
+	}
+	var (
+		srcInodeID uuid.UUID
+		srcType    NodeType
+		srcFound   bool
+	)
+	for _, e := range srcDC.Entries {
+		if e.Name == srcName {
+			srcInodeID = e.InodeID
+			srcType = e.Type
+			srcFound = true
+			break
+		}
+	}
+	if !srcFound {
+		return ErrEntryNotFound
+	}
+
+	// No-op rename: same parent and same name. Returning early
+	// avoids touching the DB and keeps callers from having to special-case
+	// the identity operation.
+	if srcParent.ID() == dstParent.ID() && srcName == dstName {
+		return nil
+	}
+
+	// Find any existing entry at dstName so we can decide whether
+	// this is an overwrite and (if so) of what type.
+	var (
+		existingInodeID    uuid.UUID
+		existingType       NodeType
+		existingInodeKnown bool
+	)
+	dstDC, err := dstParent.ReadDir()
+	if err != nil {
+		return fmt.Errorf("move entry: read dst dir: %w", err)
+	}
+	for _, e := range dstDC.Entries {
+		if e.Name == dstName {
+			existingInodeID = e.InodeID
+			existingType = e.Type
+			existingInodeKnown = true
+			break
+		}
+	}
+
+	// If the existing dst entry is the same inode as src, this is a
+	// no-op (idempotent rename of a path that already points to the
+	// right inode). Save both parents in case mtime/ctime matter.
+	if existingInodeKnown && existingInodeID == srcInodeID {
+		return nil
+	}
+
+	// Type check: cannot overwrite a directory with a non-directory
+	// (or vice versa). Same-type overwrites are fine.
+	if existingInodeKnown && existingType != srcType {
+		return ErrInvalidMoveOverwrite
+	}
+
+	// Build the updated directory listing(s). When src and dst share
+	// a parent (rename within a directory), we update that one
+	// directory once; otherwise we update each independently.
+	// Doing it as a single update when srcParent == dstParent is
+	// important: the two-pass approach (write dst, then write src)
+	// would overwrite the dst update with the unmodified src content.
+	newSrcEntries := make([]DirEntry, 0, len(srcDC.Entries)+1)
+	dstEntryReplaced := false
+	for _, e := range srcDC.Entries {
+		if e.Name == srcName {
+			continue
+		}
+		if srcParent.ID() == dstParent.ID() && e.Name == dstName {
+			// Same parent: replace this entry with the renamed one.
+			newSrcEntries = append(newSrcEntries, DirEntry{
+				InodeID: srcInodeID,
+				Name:    dstName,
+				Type:    srcType,
+			})
+			dstEntryReplaced = true
+			continue
+		}
+		newSrcEntries = append(newSrcEntries, e)
+	}
+	if srcParent.ID() == dstParent.ID() && !dstEntryReplaced {
+		newSrcEntries = append(newSrcEntries, DirEntry{
+			InodeID: srcInodeID,
+			Name:    dstName,
+			Type:    srcType,
+		})
+	}
+	if srcParent.ID() == dstParent.ID() {
+		if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
+			return fmt.Errorf("move entry: write parent: %w", err)
+		}
+		if err := s.repo.Save(ctx, srcParent); err != nil {
+			return fmt.Errorf("move entry: save parent: %w", err)
+		}
+	} else {
+		newDstEntries := make([]DirEntry, 0, len(dstDC.Entries)+1)
+		for _, e := range dstDC.Entries {
+			if e.Name == dstName {
+				continue
+			}
+			newDstEntries = append(newDstEntries, e)
+		}
+		newDstEntries = append(newDstEntries, DirEntry{
+			InodeID: srcInodeID,
+			Name:    dstName,
+			Type:    srcType,
+		})
+		if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
+			return fmt.Errorf("move entry: write src dir: %w", err)
+		}
+		if err := s.repo.Save(ctx, srcParent); err != nil {
+			return fmt.Errorf("move entry: save src: %w", err)
+		}
+		if err := dstParent.WriteDir(DirContent{Entries: newDstEntries}); err != nil {
+			return fmt.Errorf("move entry: write dst dir: %w", err)
+		}
+		if err := s.repo.Save(ctx, dstParent); err != nil {
+			return fmt.Errorf("move entry: save dst: %w", err)
+		}
+	}
+
+	// Handle the overwrite target: drop its directory entry (done
+	// above) and decrement its nlink; delete the inode if its
+	// nlink reaches 0. The src inode's nlink is untouched because
+	// the move just relocates an existing link, it does not create
+	// a new one.
+	if existingInodeKnown {
+		overwrite, err := s.GetByID(ctx, existingInodeID)
+		if err != nil {
+			return fmt.Errorf("move entry: load overwrite target: %w", err)
+		}
+		if overwrite.nlink <= 1 {
+			if err := s.repo.Delete(ctx, existingInodeID); err != nil {
+				return fmt.Errorf("move entry: delete overwritten inode: %w", err)
+			}
+		} else {
+			overwrite.nlink--
+			overwrite.rev = overwrite.rev.Next()
+			if err := s.repo.Save(ctx, overwrite); err != nil {
+				return fmt.Errorf("move entry: save overwritten inode: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 // GetByID returns a node by its ID.
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 	n, err := s.repo.Get(ctx, id)

@@ -42,4 +42,9 @@ var (
 	// points to a directory (POSIX: cannot overwrite a directory with a
 	// non-directory).
 	ErrIsDirectory = errors.New("node: target is a directory")
+
+	// ErrInvalidMoveOverwrite is returned when a move would overwrite
+	// an entry whose type does not match the source (e.g. moving a
+	// file onto a directory or vice versa).
+	ErrInvalidMoveOverwrite = errors.New("node: cannot overwrite entry of different type")
 )

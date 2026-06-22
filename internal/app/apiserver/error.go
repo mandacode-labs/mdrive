@@ -28,6 +28,7 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, user.ErrNotFound),
 		errors.Is(err, node.ErrEntryNotFound),
 		errors.Is(err, node.ErrNoContent),
+		errors.Is(err, vfs.ErrNotFound),
 		errors.Is(err, vfs.ErrObjectNotUploaded):
 		return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
 

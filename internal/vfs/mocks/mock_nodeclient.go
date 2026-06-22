@@ -710,6 +710,81 @@ func (_c *NodeClientMock_Link_Call) RunAndReturn(run func(ctx context.Context, p
 	return _c
 }
 
+// MoveEntry provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) MoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) error {
+	ret := _mock.Called(ctx, srcParent, srcName, dstParent, dstName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MoveEntry")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *node.Node, string, *node.Node, string) error); ok {
+		r0 = returnFunc(ctx, srcParent, srcName, dstParent, dstName)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// NodeClientMock_MoveEntry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MoveEntry'
+type NodeClientMock_MoveEntry_Call struct {
+	*mock.Call
+}
+
+// MoveEntry is a helper method to define mock.On call
+//   - ctx context.Context
+//   - srcParent *node.Node
+//   - srcName string
+//   - dstParent *node.Node
+//   - dstName string
+func (_e *NodeClientMock_Expecter) MoveEntry(ctx interface{}, srcParent interface{}, srcName interface{}, dstParent interface{}, dstName interface{}) *NodeClientMock_MoveEntry_Call {
+	return &NodeClientMock_MoveEntry_Call{Call: _e.mock.On("MoveEntry", ctx, srcParent, srcName, dstParent, dstName)}
+}
+
+func (_c *NodeClientMock_MoveEntry_Call) Run(run func(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string)) *NodeClientMock_MoveEntry_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *node.Node
+		if args[1] != nil {
+			arg1 = args[1].(*node.Node)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 *node.Node
+		if args[3] != nil {
+			arg3 = args[3].(*node.Node)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_MoveEntry_Call) Return(err error) *NodeClientMock_MoveEntry_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *NodeClientMock_MoveEntry_Call) RunAndReturn(run func(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) error) *NodeClientMock_MoveEntry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Save provides a mock function for the type NodeClientMock
 func (_mock *NodeClientMock) Save(ctx context.Context, n *node.Node) error {
 	ret := _mock.Called(ctx, n)

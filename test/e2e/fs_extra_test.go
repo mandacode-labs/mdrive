@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func urlEscape(p string) string { return url.QueryEscape(p) }
 
 // createDrive provisions a drive and returns its ID. Mirrors the
 // existing TestE2E_FSOperations pattern: create with no parse,
@@ -47,6 +50,63 @@ func createDrive(t *testing.T, env *e2eEnv, name, bucket string) string {
 	return ""
 }
 
+func TestE2E_Mv(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
+	env := setupE2E(t)
+	driveID := createDrive(t, env, "mv-drive", "mv-bucket")
+
+	mkdir := func(p string) {
+		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/mkdir", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+	}
+	touch := func(p string) {
+		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+	}
+	stat := func(p string) int {
+		req := env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path="+urlEscape(p), nil)
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		return resp.StatusCode
+	}
+	mv := func(sources []string, dest string) int {
+		body, _ := json.Marshal(map[string]any{"sources": sources, "destination": dest})
+		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/mv", bytes.NewReader(body))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	mkdir("/src")
+	mkdir("/dst")
+	touch("/src/a.txt")
+	touch("/src/b.txt")
+
+	// Rename within the same directory — this is the case that
+	// previously hit ErrRevisionConflict because src and dst parents
+	// were loaded as two distinct *Node pointers.
+	assert.Equal(t, http.StatusOK, mv([]string{"/src/a.txt"}, "/src/a-renamed.txt"))
+	assert.Equal(t, http.StatusNotFound, stat("/src/a.txt"))
+	assert.Equal(t, http.StatusOK, stat("/src/a-renamed.txt"))
+
+	// Move two sources into a directory in a single Mv call.
+	assert.Equal(t, http.StatusOK, mv([]string{"/src/a-renamed.txt", "/src/b.txt"}, "/dst"))
+	assert.Equal(t, http.StatusOK, stat("/dst/a-renamed.txt"))
+	assert.Equal(t, http.StatusOK, stat("/dst/b.txt"))
+	assert.Equal(t, http.StatusNotFound, stat("/src/a-renamed.txt"))
+	assert.Equal(t, http.StatusNotFound, stat("/src/b.txt"))
+}
+
 func TestE2E_Symlink(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping e2e test in short mode")
@@ -54,23 +114,23 @@ func TestE2E_Symlink(t *testing.T) {
 	env := setupE2E(t)
 	driveID := createDrive(t, env, "symlink-drive", "symlink-bucket")
 
-	// Setup: target file
-	for _, p := range []string{"/data", "/data/target.txt"} {
-		op := "POST"
-		var path string
-		if p == "/data" {
-			path = "/v1/drives/" + driveID + "/fs/mkdir"
-		} else {
-			path = "/v1/drives/" + driveID + "/fs/touch"
-		}
-		req := env.authReq(op, path, bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
+	mkdir := func(p string) {
+		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/mkdir", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
 		resp, err := env.apiClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	}
+	touch := func(p string) {
+		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+	}
+	mkdir("/data")
+	touch("/data/target.txt")
 
-	// Create symlink
 	body, _ := json.Marshal(map[string]any{
 		"target":   "/data/target.txt",
 		"linkPath": "/link-to-target",
@@ -81,7 +141,6 @@ func TestE2E_Symlink(t *testing.T) {
 	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-	// Verify: stat the link (should report file type with the link's own inode)
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Flink-to-target", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
@@ -93,7 +152,6 @@ func TestE2E_Symlink(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&statBody))
 	assert.Equal(t, "symlink", statBody.Type)
 
-	// Cat the link (returns the target string)
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/cat?path=%2Flink-to-target", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)

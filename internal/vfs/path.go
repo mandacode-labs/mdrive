@@ -9,13 +9,50 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-// resolver walks the node tree from a drive root to resolve Unix paths.
+// resolver walks the node tree from a drive root to resolve Unix
+// paths. The cache memoizes GetByID loads within a single resolver
+// instance so multiple resolves of the same UUID return the same
+// in-memory *Node pointer. vfs methods that do more than one
+// resolve should obtain a fresh resolver (resolver.fresh) so the
+// cache is scoped to a single operation; sharing one resolver
+// across operations is goroutine-unsafe.
 type resolver struct {
-	node NodeClient
+	node  NodeClient
+	cache map[uuid.UUID]*node.Node
 }
 
 func newResolver(n NodeClient) *resolver {
 	return &resolver{node: n}
+}
+
+// fresh returns a new resolver with an empty cache. Use it within
+// a vfs operation that resolves the same UUID more than once (e.g.
+// mvOne loading the same parent directory for both src and dst
+// endpoints). The returned resolver shares the underlying NodeClient
+// with the receiver; only the cache is fresh.
+func (r *resolver) fresh() *resolver {
+	return &resolver{node: r.node, cache: make(map[uuid.UUID]*node.Node)}
+}
+
+// loadByID returns the cached *Node for id, or fetches it via the
+// NodeClient and caches the result. The cache is a load-time
+// optimization: it does not affect correctness for single-resolve
+// callers, but for multi-resolve callers it guarantees that two
+// loads of the same UUID share the same pointer, which is required
+// for the optimistic-concurrency check in node.Repository.Save
+// (staleRev) to behave consistently within one operation.
+func (r *resolver) loadByID(ctx context.Context, id uuid.UUID) (*node.Node, error) {
+	if n, ok := r.cache[id]; ok {
+		return n, nil
+	}
+	n, err := r.node.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		r.cache[id] = n
+	}
+	return n, nil
 }
 
 // resolveOutcome is the result of a single-drive path lookup. When
@@ -35,13 +72,13 @@ type resolveOutcome struct {
 func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (resolveOutcome, error) {
 	cleaned := cleanPath(p)
 	if cleaned == "" || cleaned == "/" {
-		n, err := r.node.GetByID(ctx, rootID)
+		n, err := r.loadByID(ctx, rootID)
 		if err != nil {
 			return resolveOutcome{}, err
 		}
 		return resolveOutcome{Node: n}, nil
 	}
-	current, err := r.node.GetByID(ctx, rootID)
+	current, err := r.loadByID(ctx, rootID)
 	if err != nil || current == nil {
 		return resolveOutcome{}, ErrNotFound
 	}
@@ -66,7 +103,7 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 		if de == nil {
 			return resolveOutcome{}, ErrNotFound
 		}
-		child, err := r.node.GetByID(ctx, de.InodeID)
+		child, err := r.loadByID(ctx, de.InodeID)
 		if err != nil || child == nil {
 			return resolveOutcome{}, ErrNotFound
 		}
@@ -87,6 +124,7 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 // graph are detected via a visited set; maxMountHops is a safety net
 // against pathological graphs.
 func (s *Service) resolve(ctx context.Context, driveID, path string) (driveIDOut string, n *node.Node, err error) {
+	r := s.path.fresh()
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
@@ -95,7 +133,7 @@ func (s *Service) resolve(ctx context.Context, driveID, path string) (driveIDOut
 		if err != nil {
 			return "", nil, err
 		}
-		out, err := s.path.resolve(ctx, rootID, currentPath)
+		out, err := r.resolve(ctx, rootID, currentPath)
 		if err != nil {
 			return "", nil, err
 		}
