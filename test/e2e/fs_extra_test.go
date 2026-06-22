@@ -1,0 +1,165 @@
+package e2e
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// createDrive provisions a drive and returns its ID. Mirrors the
+// existing TestE2E_FSOperations pattern: create with no parse,
+// then list and pick the matching name.
+func createDrive(t *testing.T, env *e2eEnv, name, bucket string) string {
+	t.Helper()
+	body, _ := json.Marshal(map[string]any{
+		"name": name,
+		"storage": map[string]string{
+			"bucket":    bucket,
+			"region":    "us-east-1",
+			"accessKey": "a",
+			"secretKey": "s",
+		},
+	})
+	req := env.authReq("POST", "/v1/drives", bytes.NewReader(body))
+	resp, err := env.apiClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	req = env.authReq("GET", "/v1/drives", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var drives []map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&drives))
+	for _, d := range drives {
+		if d["name"] == name {
+			return d["id"].(string)
+		}
+	}
+	t.Fatalf("created drive %q not in list", name)
+	return ""
+}
+
+func TestE2E_Symlink(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
+	env := setupE2E(t)
+	driveID := createDrive(t, env, "symlink-drive", "symlink-bucket")
+
+	// Setup: target file
+	for _, p := range []string{"/data", "/data/target.txt"} {
+		op := "POST"
+		var path string
+		if p == "/data" {
+			path = "/v1/drives/" + driveID + "/fs/mkdir"
+		} else {
+			path = "/v1/drives/" + driveID + "/fs/touch"
+		}
+		req := env.authReq(op, path, bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+	}
+
+	// Create symlink
+	body, _ := json.Marshal(map[string]any{
+		"target":   "/data/target.txt",
+		"linkPath": "/link-to-target",
+	})
+	req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/symlink", bytes.NewReader(body))
+	resp, err := env.apiClient.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Verify: stat the link (should report file type with the link's own inode)
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Flink-to-target", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var statBody struct {
+		Type string `json:"type"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&statBody))
+	assert.Equal(t, "symlink", statBody.Type)
+
+	// Cat the link (returns the target string)
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/cat?path=%2Flink-to-target", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	got, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.Equal(t, "/data/target.txt", string(got))
+}
+
+func TestE2E_WriteLarge(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
+	env := setupE2E(t)
+	driveID := createDrive(t, env, "writelarge-drive", "writelarge-bucket")
+
+	// WriteLarge just creates the node reference; the body is
+	// uploaded via presigned PUT to S3. The e2e can verify the
+	// node is created and stat reports the object type.
+	body, _ := json.Marshal(map[string]any{
+		"path": "/big.bin",
+		"size": 1024,
+		"object": map[string]any{
+			"bucket":      "writelarge-bucket",
+			"key":         "drives/" + driveID + "/uploads/test",
+			"contentType": "application/octet-stream",
+		},
+	})
+	req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/object", bytes.NewReader(body))
+	resp, err := env.apiClient.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	// Stat the new node
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Fbig.bin", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var statBody struct {
+		Type string `json:"type"`
+		Size int64  `json:"size"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&statBody))
+	assert.Equal(t, "object", statBody.Type)
+	assert.Equal(t, int64(1024), statBody.Size)
+
+	// Cat returns ObjectNotFound (we didn't actually upload); that's
+	// expected — WriteLarge only creates the reference. We don't
+	// assert on the cat error here because the e2e fake S3 isn't
+	// populated, so just confirm the node is listed.
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/ls?path=%2F", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var lsBody struct {
+		Entries []struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		} `json:"entries"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&lsBody))
+	require.Len(t, lsBody.Entries, 1)
+	assert.Equal(t, "big.bin", lsBody.Entries[0].Name)
+	assert.Equal(t, "object", lsBody.Entries[0].Type)
+}
