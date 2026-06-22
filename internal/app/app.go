@@ -22,7 +22,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
-	"github.com/mandacode-labs/mdrive/internal/cryptostore"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/storage/s3"
@@ -43,8 +42,6 @@ type App struct {
 	SessionStore      session.Store
 	Store             vfs.Store
 	TombstoneInserter vfs.TombstoneInserter
-	ContentCipher     vfs.ContentCipher
-	Reencryptor       vfs.Reencryptor
 	Auth              *auth.Service
 	Security          *auth.SecurityHandler
 	Perm              permission.Checker
@@ -100,11 +97,6 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, errors.New("crypto.master_key is required in production")
 	}
 
-	// DEK provider: generates per-drive data encryption keys, wrapping
-	// them with the master key. We need the raw key bytes (not the
-	// Cipher) because Wrap is a low-level primitive; in dev where
-	// the master key is empty, the provider is nil and Create skips
-	// DEK provisioning.
 	var dekProvider *cryptopkg.DEKProvider
 	if cfg.Crypto.MasterKey != "" {
 		masterKey, err := hex.DecodeString(cfg.Crypto.MasterKey)
@@ -120,33 +112,6 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	driveRepo := drive.NewRepository(entClient, cipher)
 	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, dekProvider)
 
-	// ContentCipher is the bridge between the vfs service (which
-	// encrypts/decrypts node content) and the per-drive DEK that
-	// lives in drive storage. When the master key is empty (dev)
-	// or the drive has no wrapped DEK (predates Phase 3a), the
-	// closure returns (nil, nil) and the vfs stores plaintext.
-	var contentCipher vfs.ContentCipher
-	if dekProvider != nil {
-		contentCipher = func(ctx context.Context, driveID string) (*cryptopkg.NodeCipher, error) {
-			st, err := driveSvc.GetStorage(ctx, driveID)
-			if err != nil {
-				return nil, err
-			}
-			if st == nil {
-				return nil, nil
-			}
-			wrapped := st.WrappedDEK()
-			if wrapped == "" {
-				return nil, nil
-			}
-			dek, err := dekProvider.Unwrap(wrapped)
-			if err != nil {
-				return nil, fmt.Errorf("crypto: unwrap DEK for drive %q: %w", driveID, err)
-			}
-			return cryptopkg.NewNodeCipher(dek)
-		}
-	}
-
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
 		return nil, err
@@ -154,40 +119,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	gc := newTombstoneInserter(entClient)
 
-	rawStore, err := newStore(ctx, cfg.Storage)
+	storageStore, err := newStore(ctx, cfg.Storage)
 	if err != nil {
 		return nil, err
-	}
-
-	// The cryptostore wraps the raw S3 client with envelope
-	// encryption. When the master key is empty (dev) or the
-	// drive has no wrapped DEK, the cryptostore is a pass-through.
-	var (
-		storageStore  = rawStore
-		bodyReencrypt vfs.Reencryptor
-	)
-	if cfg.Crypto.MasterKey != "" {
-		bodyCipherLookup := func(ctx context.Context, driveID string) (*cryptopkg.NodeCipher, error) {
-			st, err := driveSvc.GetStorage(ctx, driveID)
-			if err != nil {
-				return nil, err
-			}
-			if st == nil {
-				return nil, nil
-			}
-			wrapped := st.WrappedDEK()
-			if wrapped == "" {
-				return nil, nil
-			}
-			dek, err := dekProvider.Unwrap(wrapped)
-			if err != nil {
-				return nil, fmt.Errorf("crypto: unwrap DEK for drive %q: %w", driveID, err)
-			}
-			return cryptopkg.NewNodeCipher(dek)
-		}
-		cs := cryptostore.New(rawStore, bodyCipherLookup)
-		storageStore = cs
-		bodyReencrypt = cs
 	}
 
 	var permClient permission.Checker
@@ -244,8 +178,6 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		SessionStore:      store,
 		Store:             storageStore,
 		TombstoneInserter: gc,
-		ContentCipher:     contentCipher,
-		Reencryptor:       bodyReencrypt,
 		Auth:              authenticator,
 		Security:          sec,
 		Perm:              permClient,

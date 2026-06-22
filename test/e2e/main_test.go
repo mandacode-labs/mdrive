@@ -104,7 +104,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 	driveRepo := drive.NewRepository(entClient, nil)
 	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, nil)
 
-	fs := vfs.NewService(nodeSvc, driveSvc, userSvc, nil, nil, nil, nil, nil, nil)
+	fs := vfs.NewService(nodeSvc, driveSvc, userSvc, nil, nil, nil, nil)
 
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
 		return u.ID(), true

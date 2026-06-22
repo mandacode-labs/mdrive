@@ -1,5 +1,6 @@
-// Package crypto provides at-rest encryption helpers used by repositories
-// to protect sensitive fields (e.g. S3 secret keys).
+// Package crypto provides at-rest encryption helpers used by
+// repositories to protect sensitive fields (e.g. S3 secret keys)
+// and to manage per-drive data encryption keys (envelope encryption).
 package crypto
 
 import (

@@ -102,18 +102,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, ErrObjectNotUploaded
 	}
 
-	// Re-encrypt the body in place. The presigned URL targets a
-	// plaintext key; once the client finishes the PUT, the
-	// cryptostore reads the plaintext, encrypts, and writes the
-	// ciphertext back to the same key. The ObjectContent node
-	// then points at the ciphertext blob. When s.Reencryptor is
-	// nil (e.g. legacy or dev), the body stays plaintext.
-	if s.Reencryptor != nil {
-		if err := s.Reencryptor.MigratePlaintext(ctx, driveID, meta.Bucket, meta.Key, meta.Key); err != nil {
-			return nil, fmt.Errorf("complete upload: re-encrypt: %w", err)
-		}
-	}
-
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
