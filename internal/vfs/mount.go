@@ -71,10 +71,11 @@ func (s *Service) Unmount(ctx context.Context, userID, driveID, mountPath string
 	if err != nil {
 		return err
 	}
-	n, err := s.path.resolve(ctx, rootID, mountPath)
+	out, err := s.path.resolve(ctx, rootID, mountPath)
 	if err != nil {
 		return fmt.Errorf("unmount: %w", err)
 	}
+	n := out.Node
 	if !n.IsMount() {
 		return fmt.Errorf("unmount: %s is not a mount", mountPath)
 	}
@@ -87,4 +88,3 @@ func (s *Service) Unmount(ctx context.Context, userID, driveID, mountPath string
 	}
 	return nil
 }
-

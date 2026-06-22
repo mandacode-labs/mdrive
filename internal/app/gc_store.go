@@ -21,7 +21,11 @@ func newTombstoneInserter(client *ent.Client) vfs.TombstoneInserter {
 	return &gcClient{client: client}
 }
 
-// InsertTombstones writes tombstone records for S3 objects whose nodes have been deleted.
+// InsertTombstones writes tombstone records for S3 objects whose nodes
+// have been deleted. The writes commit independently of the node
+// transaction that deleted the source nodes; on failure the caller
+// must accept that the S3 objects are orphaned (a future orphan-scan
+// job can reclaim them).
 func (g *gcClient) InsertTombstones(ctx context.Context, refs []vfs.ObjectRef) error {
 	if len(refs) == 0 {
 		return nil
@@ -33,29 +37,6 @@ func (g *gcClient) InsertTombstones(ctx context.Context, refs []vfs.ObjectRef) e
 	_, err := g.client.GCTombstone.CreateBulk(bulk...).Save(ctx)
 	if err != nil {
 		return fmt.Errorf("gc: insert tombstones: %w", err)
-	}
-	return nil
-}
-
-// InsertTombstonesTx is the transactional variant. It accepts an
-// *ent.Tx and writes tombstone rows within the caller's transaction so
-// the gctombstone updates commit or roll back atomically with the node
-// changes that produced them.
-func (g *gcClient) InsertTombstonesTx(ctx context.Context, tx any, refs []vfs.ObjectRef) error {
-	if len(refs) == 0 {
-		return nil
-	}
-	entTx, ok := tx.(*ent.Tx)
-	if !ok {
-		return fmt.Errorf("gc: tombstone tx requires *ent.Tx, got %T", tx)
-	}
-	bulk := make([]*ent.GCTombstoneCreate, len(refs))
-	for i, r := range refs {
-		bulk[i] = entTx.GCTombstone.Create().SetBucket(r.Bucket).SetKey(r.Key)
-	}
-	_, err := entTx.GCTombstone.CreateBulk(bulk...).Save(ctx)
-	if err != nil {
-		return fmt.Errorf("gc: insert tombstones (tx): %w", err)
 	}
 	return nil
 }

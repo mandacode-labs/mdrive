@@ -21,7 +21,10 @@ func (h *Handler) GoogleLogin(ctx context.Context) error {
 	if h.auth == nil {
 		return errNotConfigured()
 	}
-	state := mustRandomHex(32)
+	state, err := randomHex(32)
+	if err != nil {
+		return fmt.Errorf("random state: %w", err)
+	}
 	verifier, challenge, err := generatePKCE()
 	if err != nil {
 		return fmt.Errorf("generate pkce: %w", err)
@@ -147,12 +150,16 @@ func generatePKCE() (verifier, challenge string, err error) {
 	return
 }
 
-func mustRandomHex(n int) string {
+// randomHex returns a hex-encoded string of n random bytes. The error
+// is returned to the caller rather than panicked: in practice
+// crypto/rand only fails in catastrophic situations, but panic in a
+// request handler is the wrong failure mode.
+func randomHex(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
-		panic(err)
+		return "", err
 	}
-	return hex.EncodeToString(b)
+	return hex.EncodeToString(b), nil
 }
 
 func errNotConfigured() error {
@@ -187,17 +194,24 @@ func (h *Handler) expiredCookie() *http.Cookie {
 	}
 }
 
+// responseWriterProvider is the interface ogen wraps around the real
+// http.ResponseWriter. The auth flow needs direct access to call
+// http.Redirect for browser flows, so we extract it from the context.
+type responseWriterProvider interface{ ResponseWriter() http.ResponseWriter }
+
+// requestProvider is the ogen interface for retrieving the underlying
+// *http.Request from the context.
+type requestProvider interface{ Request() *http.Request }
+
 func ctxResponseWriter(ctx context.Context) http.ResponseWriter {
-	type rw interface{ ResponseWriter() http.ResponseWriter }
-	if r, ok := ctx.(rw); ok {
+	if r, ok := ctx.(responseWriterProvider); ok {
 		return r.ResponseWriter()
 	}
 	return nil
 }
 
 func ctxRequest(ctx context.Context) *http.Request {
-	type rq interface{ Request() *http.Request }
-	if r, ok := ctx.(rq); ok {
+	if r, ok := ctx.(requestProvider); ok {
 		return r.Request()
 	}
 	return nil

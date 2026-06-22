@@ -56,14 +56,14 @@ type DriveClient interface {
 	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
-// UserClient is the consumer-declared interface for user-domain operations.
+// UserClient is the consumer-declared interface for user-domain
+// operations the VFS actually uses (upsert on OIDC login, lookup by
+// private id). Lookups by public id, provider id, and updates are
+// not part of the VFS surface; callers that need them should use the
+// user.Service directly.
 type UserClient interface {
 	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
 	GetByID(ctx context.Context, id string) (*user.User, error)
-	GetByPublicID(ctx context.Context, pubID string) (*user.User, error)
-	GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error)
-	Update(ctx context.Context, u *user.User) (*user.User, error)
-	Exists(ctx context.Context, id string) (bool, error)
 }
 
 // PermClient is the consumer-declared interface for permission checks.
@@ -137,6 +137,31 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 			path:  newResolver(txNode),
 		})
 	})
+}
+
+// Resolved is the result of a path resolution across drives.
+type Resolved struct {
+	// DriveID is the drive the resolved node lives in. If the path
+	// crossed mount nodes, this is the source drive; otherwise it
+	// equals the driveID passed to Resolve.
+	DriveID string
+	Node    *node.Node
+}
+
+// maxMountHops caps the mount-traversal depth so a malicious or
+// pathological mount graph cannot spin a single resolve forever.
+const maxMountHops = 32
+
+// Resolve walks a path starting at driveID, following mount nodes
+// when encountered. Returns the drive id the final node lives in
+// (which may differ from driveID if mounts were crossed) and the
+// node itself.
+func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
+	drive, node, err := s.resolve(ctx, driveID, path)
+	if err != nil {
+		return Resolved{}, err
+	}
+	return Resolved{DriveID: drive, Node: node}, nil
 }
 
 // rootNodeID resolves the root node UUID for the given drive.

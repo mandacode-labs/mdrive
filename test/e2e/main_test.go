@@ -24,6 +24,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/testsupport"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -115,7 +116,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		UsePathStyle: false,
 	}))
 
-	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(
+	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(
 		func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 			t.Logf("e2e error: %s %s -> %v", r.Method, r.URL.Path, err)
 			apiserver.WriteError(w, err)
@@ -153,12 +154,6 @@ type rootNodeCreator struct {
 
 func (r *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, error) {
 	return r.rootID, nil
-}
-
-type noopSecurity struct{}
-
-func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	return ctx, nil
 }
 
 func (e *e2eEnv) authReq(method, path string, body io.Reader) *http.Request {

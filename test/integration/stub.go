@@ -16,6 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/testsupport"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -106,18 +107,12 @@ func (s *stubFS) GetUser(ctx context.Context, actorID, id string) (*user.User, e
 
 var _ handler.FSClient = (*stubFS)(nil)
 
-type noopSecurity struct{}
-
-func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	return ctx, nil
-}
-
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	h := handler.New(&stubFS{}, func(ctx context.Context) (string, bool) {
 		return testUserID, true
 	})
-	ogenServer, err := api.NewServer(h, &noopSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 		apiserver.WriteError(w, err)
 	}))
 	require.NoError(t, err)

@@ -20,19 +20,18 @@ type HealthDeps struct {
 
 // Health returns a simple health check response. It returns 200 with
 // status "ok" when all configured dependencies respond, or 503 with
-// status "degraded" when any dependency is unreachable.
+// status "degraded" when any dependency is unreachable. A zero-value
+// HealthDeps is treated as 'no dependencies configured' and always
+// returns ok.
 func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
-	if h.healthDeps == nil {
-		return &api.HealthOK{Status: apputils.OptString("ok")}, nil
-	}
 	if h.healthDeps.DB != nil {
 		if err := h.healthDeps.DB.PingContext(ctx); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: database unreachable")}, nil
 		}
 	}
 	if h.healthDeps.ValKey != nil {
-		// Scan a single key to confirm connectivity; pass a no-op callback
-		// so we don't actually iterate anything.
+		// Scan with a no-op callback to confirm connectivity without
+		// actually iterating anything.
 		if err := h.healthDeps.ValKey.Scan(ctx, func(_ string) error { return nil }); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: valkey unreachable")}, nil
 		}

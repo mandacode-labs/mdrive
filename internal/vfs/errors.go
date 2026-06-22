@@ -11,4 +11,6 @@ var (
 	ErrCrossDrive        = errors.New("vfs: cross-drive move not supported")
 	ErrUploadMismatch    = errors.New("vfs: upload token does not match drive")
 	ErrObjectNotUploaded = errors.New("vfs: S3 object was not uploaded")
+	ErrMountCycle        = errors.New("vfs: mount cycle detected")
+	ErrPathTooDeep       = errors.New("vfs: max mount hops exceeded")
 )
