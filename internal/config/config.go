@@ -159,15 +159,21 @@ func (c AuthConfig) SessionTTLDuration() time.Duration {
 // OpenFGAConfig holds OpenFGA settings.
 // Secret fields can be set via env vars:
 //   OPENFGA_API_TOKEN, OPENFGA_CLIENT_ID, OPENFGA_CLIENT_SECRET
+//
+// AuthMode selects the credential mode and is validated at startup:
+//   - "api_token"           : requires api_token
+//   - "client_credentials"  : requires client_id, client_secret, token_issuer, audience
+//   - "none"                : no credentials (development only)
 type OpenFGAConfig struct {
-	APIURL               string `mapstructure:"api_url"`
-	StoreID              string `mapstructure:"store_id"`
+	AuthMode            string `mapstructure:"auth_mode"`
+	APIURL              string `mapstructure:"api_url"`
+	StoreID             string `mapstructure:"store_id"`
 	AuthorizationModelID string `mapstructure:"authorization_model_id"`
-	APIToken             string `mapstructure:"api_token"`
-	ClientID             string `mapstructure:"client_id"`
-	ClientSecret         string `mapstructure:"client_secret"`
-	TokenIssuer          string `mapstructure:"token_issuer"`
-	Audience             string `mapstructure:"audience"`
+	APIToken            string `mapstructure:"api_token"`
+	ClientID            string `mapstructure:"client_id"`
+	ClientSecret        string `mapstructure:"client_secret"`
+	TokenIssuer         string `mapstructure:"token_issuer"`
+	Audience            string `mapstructure:"audience"`
 }
 
 // Load reads the configuration from the given path.
@@ -239,6 +245,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.client_id", "")
 	v.SetDefault("auth.session_ttl", "24h")
 	v.SetDefault("auth.frontend_url", "http://localhost:3000")
+	v.SetDefault("openfga.auth_mode", "api_token")
 	v.SetDefault("openfga.api_url", "")
 	v.SetDefault("openfga.store_id", "")
 	v.SetDefault("openfga.authorization_model_id", "")
