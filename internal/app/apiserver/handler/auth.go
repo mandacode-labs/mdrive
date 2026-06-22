@@ -194,17 +194,24 @@ func (h *Handler) expiredCookie() *http.Cookie {
 	}
 }
 
+// responseWriterProvider is the interface ogen wraps around the real
+// http.ResponseWriter. The auth flow needs direct access to call
+// http.Redirect for browser flows, so we extract it from the context.
+type responseWriterProvider interface{ ResponseWriter() http.ResponseWriter }
+
+// requestProvider is the ogen interface for retrieving the underlying
+// *http.Request from the context.
+type requestProvider interface{ Request() *http.Request }
+
 func ctxResponseWriter(ctx context.Context) http.ResponseWriter {
-	type rw interface{ ResponseWriter() http.ResponseWriter }
-	if r, ok := ctx.(rw); ok {
+	if r, ok := ctx.(responseWriterProvider); ok {
 		return r.ResponseWriter()
 	}
 	return nil
 }
 
 func ctxRequest(ctx context.Context) *http.Request {
-	type rq interface{ Request() *http.Request }
-	if r, ok := ctx.(rq); ok {
+	if r, ok := ctx.(requestProvider); ok {
 		return r.Request()
 	}
 	return nil
