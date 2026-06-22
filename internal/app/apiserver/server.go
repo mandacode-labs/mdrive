@@ -133,7 +133,6 @@ func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName
 	return ctx, nil
 }
 
-
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	if !cfg.Enabled {
 		return next

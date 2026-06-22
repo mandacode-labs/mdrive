@@ -88,4 +88,3 @@ func (s *Service) Unmount(ctx context.Context, userID, driveID, mountPath string
 	}
 	return nil
 }
-
