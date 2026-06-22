@@ -59,8 +59,8 @@ func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, err
 func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
 	return nil, nil
 }
-func (d *fakeDrive) Delete(_ context.Context, _ string) error                        { return nil }
-func (d *fakeDrive) Restore(_ context.Context, _ string) (*drive.Drive, error)        { return nil, nil }
+func (d *fakeDrive) Delete(_ context.Context, _ string) error                  { return nil }
+func (d *fakeDrive) Restore(_ context.Context, _ string) (*drive.Drive, error) { return nil, nil }
 func (d *fakeDrive) ListDeleted(_ context.Context, _ time.Time, _ int) ([]*drive.Drive, error) {
 	return nil, nil
 }

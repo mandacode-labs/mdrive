@@ -165,8 +165,8 @@ func parseNodeType(s string) NodeType {
 		return NodeTypeSymlink
 	case "object":
 		return NodeTypeObject
-	case "device":
-		return NodeTypeDevice
+	case "mount":
+		return NodeTypeMount
 	default:
 		return NodeType(0)
 	}
@@ -182,8 +182,8 @@ func entType(nt NodeType) entnode.Type {
 		return entnode.TypeSymlink
 	case NodeTypeObject:
 		return entnode.TypeObject
-	case NodeTypeDevice:
-		return entnode.TypeDevice
+	case NodeTypeMount:
+		return entnode.TypeMount
 	default:
 		return entnode.TypeFile
 	}

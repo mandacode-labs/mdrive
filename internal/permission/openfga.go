@@ -53,8 +53,25 @@ type OpenFGAChecker struct {
 	client *client.OpenFgaClient
 }
 
+// AuthMode selects the OpenFGA authentication strategy.
+type AuthMode string
+
+const (
+	// AuthModeAPIToken uses a static API token (api_token).
+	AuthModeAPIToken AuthMode = "api_token"
+	// AuthModeClientCredentials uses OAuth client credentials flow
+	// (client_id + client_secret + token_issuer + audience).
+	AuthModeClientCredentials AuthMode = "client_credentials"
+	// AuthModeNone disables authentication (development only).
+	AuthModeNone AuthMode = "none"
+)
+
+// ErrInvalidAuthMode is returned when an unknown AuthMode is provided.
+var ErrInvalidAuthMode = fmt.Errorf("permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
+
 // Config for OpenFGAChecker.
 type Config struct {
+	AuthMode             AuthMode
 	APIURL               string
 	StoreID              string
 	AuthorizationModelID string
@@ -69,6 +86,9 @@ type Config struct {
 // NewOpenFGAChecker creates a new OpenFGAChecker.
 // StoreID is required. Use fga CLI to create it: fga store create --name "mdrive"
 // AuthorizationModelID is optional. If empty, the embedded model is written and used.
+//
+// AuthMode is required and must be one of AuthModeAPIToken, AuthModeClientCredentials,
+// or AuthModeNone. Mixing credentials across modes is a configuration error.
 func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error) {
 	if cfg.StoreID == "" {
 		return nil, fmt.Errorf("openfga: store_id is required; create one with: fga store create --name \"mdrive\"")
@@ -79,32 +99,13 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 		timeout = 10 * time.Second
 	}
 
-	var creds *credentials.Credentials
-	if cfg.APIToken != "" {
-		var err error
-		creds, err = credentials.NewCredentials(credentials.Credentials{
-			Method: credentials.CredentialsMethodApiToken,
-			Config: &credentials.Config{
-				ApiToken: cfg.APIToken,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("openfga: credentials: %w", err)
-		}
-	} else if cfg.ClientID != "" && cfg.ClientSecret != "" {
-		var err error
-		creds, err = credentials.NewCredentials(credentials.Credentials{
-			Method: credentials.CredentialsMethodClientCredentials,
-			Config: &credentials.Config{
-				ClientCredentialsClientId:       cfg.ClientID,
-				ClientCredentialsClientSecret:   cfg.ClientSecret,
-				ClientCredentialsApiTokenIssuer: cfg.TokenIssuer,
-				ClientCredentialsApiAudience:    cfg.Audience,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("openfga: credentials: %w", err)
-		}
+	mode := cfg.AuthMode
+	if mode == "" {
+		mode = AuthModeAPIToken
+	}
+	creds, err := buildCredentials(cfg, mode)
+	if err != nil {
+		return nil, err
 	}
 
 	c, err := client.NewSdkClient(&client.ClientConfiguration{
@@ -133,6 +134,62 @@ func NewOpenFGAChecker(ctx context.Context, cfg Config) (*OpenFGAChecker, error)
 	}
 
 	return &OpenFGAChecker{client: c}, nil
+}
+
+// buildCredentials validates AuthMode and constructs the appropriate
+// SDK credentials. Extracted for testability.
+func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, error) {
+	if mode != AuthModeAPIToken && mode != AuthModeClientCredentials && mode != AuthModeNone {
+		return nil, ErrInvalidAuthMode
+	}
+	switch mode {
+	case AuthModeAPIToken:
+		if cfg.APIToken == "" {
+			return nil, fmt.Errorf("openfga: auth_mode=api_token requires api_token")
+		}
+		if cfg.ClientID != "" || cfg.ClientSecret != "" {
+			return nil, fmt.Errorf("openfga: auth_mode=api_token does not accept client_id/client_secret")
+		}
+		creds, err := credentials.NewCredentials(credentials.Credentials{
+			Method: credentials.CredentialsMethodApiToken,
+			Config: &credentials.Config{
+				ApiToken: cfg.APIToken,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("openfga: credentials: %w", err)
+		}
+		return creds, nil
+	case AuthModeClientCredentials:
+		if cfg.ClientID == "" || cfg.ClientSecret == "" {
+			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires client_id and client_secret")
+		}
+		if cfg.TokenIssuer == "" || cfg.Audience == "" {
+			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires token_issuer and audience")
+		}
+		if cfg.APIToken != "" {
+			return nil, fmt.Errorf("openfga: auth_mode=client_credentials does not accept api_token")
+		}
+		creds, err := credentials.NewCredentials(credentials.Credentials{
+			Method: credentials.CredentialsMethodClientCredentials,
+			Config: &credentials.Config{
+				ClientCredentialsClientId:       cfg.ClientID,
+				ClientCredentialsClientSecret:   cfg.ClientSecret,
+				ClientCredentialsApiTokenIssuer: cfg.TokenIssuer,
+				ClientCredentialsApiAudience:    cfg.Audience,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("openfga: credentials: %w", err)
+		}
+		return creds, nil
+	case AuthModeNone:
+		if cfg.APIToken != "" || cfg.ClientID != "" || cfg.ClientSecret != "" {
+			return nil, fmt.Errorf("openfga: auth_mode=none does not accept any credentials")
+		}
+		return nil, nil
+	}
+	return nil, ErrInvalidAuthMode
 }
 
 // writeModel writes the embedded authorization model and returns the new model ID.

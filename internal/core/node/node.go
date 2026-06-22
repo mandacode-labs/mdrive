@@ -16,7 +16,7 @@ const (
 	NodeTypeDirectory NodeType = 1
 	NodeTypeSymlink   NodeType = 2
 	NodeTypeObject    NodeType = 3
-	NodeTypeDevice    NodeType = 4
+	NodeTypeMount     NodeType = 4
 )
 
 func (nt NodeType) String() string {
@@ -29,8 +29,8 @@ func (nt NodeType) String() string {
 		return "symlink"
 	case NodeTypeObject:
 		return "object"
-	case NodeTypeDevice:
-		return "device"
+	case NodeTypeMount:
+		return "mount"
 	default:
 		return "unknown"
 	}
@@ -138,8 +138,8 @@ type Content []byte
 // MaxContentSize is the maximum size of inline content.
 const MaxContentSize = 4096
 
-func (c Content) Size() int     { return len(c) }
-func (c Content) Data() []byte   { return c }
+func (c Content) Size() int    { return len(c) }
+func (c Content) Data() []byte { return c }
 
 // Node is the POSIX-style inode abstraction.
 // A node holds metadata and (for small items) inline content. The node does NOT know its
@@ -150,17 +150,17 @@ func (c Content) Data() []byte   { return c }
 // existence is checked lazily on read (HEAD to S3). If the S3 object is
 // missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
-	id       uuid.UUID
-	typ      NodeType
-	size     int64
-	nlink    uint32
-	content  Content
-	atime    time.Time
-	mtime    time.Time
-	ctime    time.Time
-	crtime   time.Time
-	flags    Flags
-	rev      Revision
+	id      uuid.UUID
+	typ     NodeType
+	size    int64
+	nlink   uint32
+	content Content
+	atime   time.Time
+	mtime   time.Time
+	ctime   time.Time
+	crtime  time.Time
+	flags   Flags
+	rev     Revision
 
 	// staleRev is the revision loaded from the DB. Save uses it for
 	// optimistic concurrency: UPDATE WHERE revision = staleRev.
@@ -170,13 +170,17 @@ type Node struct {
 
 // newNode creates a new Node. Private: external code must use type-specific constructors
 // (NewFile, NewDirectory, NewSymlink, NewObject) which set the appropriate content.
+//
+// nlink starts at 0 (POSIX semantics): a freshly created inode has no hardlinks.
+// The first successful Link sets nlink to 1; further Links increment; Unlink
+// decrements and triggers deletion at nlink==0.
 func newNode(typ NodeType) *Node {
 	now := time.Now()
 	return &Node{
 		id:      uuid.New(),
 		typ:     typ,
 		size:    0,
-		nlink:   1,
+		nlink:   0,
 		content: nil,
 		atime:   now,
 		mtime:   now,

@@ -44,18 +44,18 @@ func (Node) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 
-		// Node type (file, directory, symlink, object, device).
+		// Node type (file, directory, symlink, object, mount).
 		field.Enum("type").
-			Values("file", "directory", "symlink", "object", "device").
+			Values("file", "directory", "symlink", "object", "mount").
 			Default("file"),
 
 		// Size in bytes. For objects, this is the size of the externally-stored data.
 		field.Int64("size").
 			Default(0),
 
-		// Hard-link count.
+		// Hard-link count (POSIX: fresh inode has nlink=0).
 		field.Uint32("nlink").
-			Default(1),
+			Default(0),
 
 		// Inline content (JSON-serialized). Max 4 KiB; nil for large files / objects.
 		field.Bytes("content").

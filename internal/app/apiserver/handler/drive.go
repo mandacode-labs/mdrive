@@ -45,12 +45,43 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 	if r.Description.Set {
 		desc = r.Description.Value
 	}
-	// Custom drive storage is disabled; always use the platform default storage.
-	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, h.defaultStorage)
+	cfg := h.defaultStorage
+	if r.Storage.Set {
+		override := r.Storage.Value
+		cfg = storageConfigFromAPI(override)
+	}
+	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, cfg)
 	if err != nil {
 		return nil, err
 	}
 	return driveToAPI(d), nil
+}
+
+// storageConfigFromAPI converts an api.StorageConfig into a drive.StorageConfig.
+// Nil/empty optional fields are propagated as such; empty strings fall back to
+// the platform default for bucket/region to preserve prior behavior.
+func storageConfigFromAPI(s api.StorageConfig) drive.StorageConfig {
+	bucket := s.Bucket
+	region := s.Region
+	endpoint := s.Endpoint.Value
+	accessKey := s.AccessKey.Value
+	secretKey := s.SecretKey.Value
+	usePathStyle := false
+	if s.UsePathStyle.Set {
+		usePathStyle = s.UsePathStyle.Value
+	}
+	var endpointPtr *string
+	if endpoint != "" {
+		endpointPtr = &endpoint
+	}
+	return drive.StorageConfig{
+		Bucket:       bucket,
+		Endpoint:     endpointPtr,
+		Region:       region,
+		AccessKey:    accessKey,
+		SecretKey:    secretKey,
+		UsePathStyle: usePathStyle,
+	}
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {

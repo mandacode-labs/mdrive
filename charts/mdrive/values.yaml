@@ -173,6 +173,7 @@ config:
     frontend_url: ""
 
   openfga:
+    auth_mode: "api_token"  # api_token | client_credentials | none
     api_url: ""
     store_id: ""
     authorization_model_id: ""

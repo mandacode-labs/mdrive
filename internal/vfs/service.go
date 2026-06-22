@@ -16,10 +16,10 @@ import (
 
 // Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
 var (
-	_ NodeClient = (*node.Service)(nil)
+	_ NodeClient  = (*node.Service)(nil)
 	_ DriveClient = (*drive.Service)(nil)
-	_ UserClient = (*user.Service)(nil)
-	_ PermClient = (*permission.OpenFGAChecker)(nil)
+	_ UserClient  = (*user.Service)(nil)
+	_ PermClient  = (*permission.OpenFGAChecker)(nil)
 )
 
 // --------------- Consumer-declared interfaces ---------------
@@ -31,8 +31,12 @@ type NodeClient interface {
 	CreateDirectory(ctx context.Context) (*node.Node, error)
 	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
 	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
+	CreateMount(ctx context.Context, sourceDriveID string) (*node.Node, error)
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
-	Unlink(ctx context.Context, parent *node.Node, name string) error
+	BulkLink(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error
+	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
+	BulkUnlink(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error)
+	UnlinkOrReplace(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
 	Save(ctx context.Context, n *node.Node) error
 	Delete(ctx context.Context, id uuid.UUID) error

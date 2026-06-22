@@ -34,6 +34,19 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 		HttpOnly: a.Cfg.HTTP.Cookie.HttpOnly,
 		SameSite: a.Cfg.HTTP.Cookie.SameSiteMode(),
 	}
+	healthDeps := handler.HealthDeps{
+		DB: a.DB,
+	}
+	if a.SessionStore != nil {
+		if s, ok := a.SessionStore.(interface {
+			Scan(context.Context, func(string) error) error
+		}); ok {
+			healthDeps.ValKey = scannerAdapter{scan: s.Scan}
+		}
+	}
+	if a.Perm != nil {
+		healthDeps.Perm = a.Perm
+	}
 	h := handler.New(fs, func(ctx context.Context) (string, bool) {
 		return "", false
 	}, handler.WithDefaultStorage(drive.StorageConfig{
@@ -43,7 +56,7 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 		AccessKey:    a.Cfg.Storage.AccessKey,
 		SecretKey:    a.Cfg.Storage.SecretKey,
 		UsePathStyle: a.Cfg.Storage.UsePathStyle,
-	}), handler.WithCookie(cookieCfg))
+	}), handler.WithCookie(cookieCfg), handler.WithHealthDeps(healthDeps))
 
 	if a.Auth != nil && a.Security != nil {
 		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL)
@@ -59,11 +72,11 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 		a.Log.Fatal().Err(err).Msg("failed to create ogen server")
 	}
 
-	var finalHandler http.Handler = ogenServer
+	var finalHandler = RequestIDMiddleware(ogenServer)
 	if a.Security != nil {
-		finalHandler = a.Security.Middleware(ogenServer)
+		finalHandler = RequestIDMiddleware(a.Security.Middleware(ogenServer))
 	}
-	finalHandler = withCORS(finalHandler, a.Cfg.HTTP.CORS)
+	finalHandler = RequestIDMiddleware(withCORS(finalHandler, a.Cfg.HTTP.CORS))
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Cfg.HTTP.Host, a.Cfg.HTTP.Port),
@@ -121,6 +134,16 @@ type noopSecurity struct{}
 
 func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
 	return ctx, nil
+}
+
+// scannerAdapter bridges a runtime interface (with a Scan method) to the
+// static session.Scanner type expected by the health check.
+type scannerAdapter struct {
+	scan func(context.Context, func(string) error) error
+}
+
+func (s scannerAdapter) Scan(ctx context.Context, fn func(string) error) error {
+	return s.scan(ctx, fn)
 }
 
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {

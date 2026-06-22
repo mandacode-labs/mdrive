@@ -37,4 +37,9 @@ var (
 	// ErrRevisionConflict is returned when a Save detects that the node's
 	// revision has changed since it was loaded (concurrent update).
 	ErrRevisionConflict = errors.New("node: revision conflict")
+
+	// ErrIsDirectory is returned when overwriting/replacing an entry that
+	// points to a directory (POSIX: cannot overwrite a directory with a
+	// non-directory).
+	ErrIsDirectory = errors.New("node: target is a directory")
 )

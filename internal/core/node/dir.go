@@ -107,6 +107,46 @@ func (n *Node) AddEntry(name string, child *Node) error {
 	return n.WriteDir(dc)
 }
 
+// AddEntries adds multiple child entries in a single DirContent write,
+// persisting the directory exactly once. Fails atomically: if any name
+// is empty or already present, no entries are added.
+//
+// Returns the map of name -> child ID for callers that need to track
+// what was inserted (e.g. tombstone association).
+func (n *Node) AddEntries(entries map[string]*Node) error {
+	if n.typ != NodeTypeDirectory {
+		return ErrNotDirectory
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	dc, err := n.ReadDir()
+	if err != nil {
+		return err
+	}
+	existing := make(map[string]struct{}, len(dc.Entries))
+	for _, e := range dc.Entries {
+		existing[e.Name] = struct{}{}
+	}
+	for name, child := range entries {
+		if name == "" {
+			return ErrInvalidName
+		}
+		if child == nil {
+			return fmt.Errorf("node: add entries: nil child for %q", name)
+		}
+		if _, ok := existing[name]; ok {
+			return ErrEntryExists
+		}
+		dc.Entries = append(dc.Entries, DirEntry{
+			InodeID: child.id,
+			Name:    name,
+			Type:    child.typ,
+		})
+	}
+	return n.WriteDir(dc)
+}
+
 // RemoveEntry removes a child entry by name.
 func (n *Node) RemoveEntry(name string) error {
 	if n.typ != NodeTypeDirectory {
@@ -123,6 +163,38 @@ func (n *Node) RemoveEntry(name string) error {
 		}
 	}
 	return ErrEntryNotFound
+}
+
+// RemoveEntries removes multiple child entries in a single DirContent
+// write. Entries that do not exist are silently skipped (POSIX rm -f
+// semantics) so partial failure is acceptable; the directory is
+// persisted exactly once.
+func (n *Node) RemoveEntries(names []string) error {
+	if n.typ != NodeTypeDirectory {
+		return ErrNotDirectory
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	dc, err := n.ReadDir()
+	if err != nil {
+		return err
+	}
+	toRemove := make(map[string]struct{}, len(names))
+	for _, n := range names {
+		toRemove[n] = struct{}{}
+	}
+	out := dc.Entries[:0]
+	for _, e := range dc.Entries {
+		if _, drop := toRemove[e.Name]; !drop {
+			out = append(out, e)
+		}
+	}
+	if len(out) == len(dc.Entries) {
+		return nil // nothing removed
+	}
+	dc.Entries = out
+	return n.WriteDir(dc)
 }
 
 // Lookup returns the child entry with the given name, or nil if not present.

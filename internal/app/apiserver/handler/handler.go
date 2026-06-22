@@ -62,6 +62,7 @@ type Handler struct {
 	frontendURL    string
 	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
+	healthDeps     *HealthDeps
 }
 
 type CookieConfig struct {
@@ -85,6 +86,12 @@ type Option func(*Handler)
 func WithDefaultStorage(cfg drive.StorageConfig) Option {
 	return func(h *Handler) {
 		h.defaultStorage = cfg
+	}
+}
+
+func WithHealthDeps(deps HealthDeps) Option {
+	return func(h *Handler) {
+		h.healthDeps = &deps
 	}
 }
 

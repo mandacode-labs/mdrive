@@ -47,4 +47,3 @@ func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
 	}
 	return userToAPI(u), nil
 }
-

@@ -1,0 +1,66 @@
+package node
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+)
+
+// ErrInvalidMountReference is returned when a mount's source drive id is empty.
+var ErrInvalidMountReference = errors.New("node: mount source drive id is required")
+
+// MountContent is the JSON-serialized payload of a mount node. A mount
+// node represents a bind-style reference to another drive's root
+// directory: when path resolution reaches it, the resolver switches
+// context to SourceDriveID and continues with the remaining path.
+type MountContent struct {
+	SourceDriveID string `json:"src"`
+}
+
+// NewMountContent creates a MountContent for the given source drive id.
+func NewMountContent(sourceDriveID string) *MountContent {
+	return &MountContent{SourceDriveID: sourceDriveID}
+}
+
+// Marshal returns the JSON representation of MountContent.
+func (m *MountContent) Marshal() ([]byte, error) {
+	return json.Marshal(m)
+}
+
+// NewMount creates a new mount node pointing to sourceDriveID's root.
+// The mount node starts with nlink=0 (it has no hardlinks of its own;
+// the mount is purely a directory entry, so it is never hardlinked
+// away independently).
+func NewMount(sourceDriveID string) (*Node, error) {
+	if sourceDriveID == "" {
+		return nil, ErrInvalidMountReference
+	}
+	data, err := json.Marshal(NewMountContent(sourceDriveID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal mount content: %w", err)
+	}
+	if len(data) > MaxContentSize {
+		return nil, ErrContentTooLarge
+	}
+	n := newNode(NodeTypeMount)
+	if err := n.write(Content(data), 0); err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+// ReadMount returns the source drive id this mount points to.
+func (n *Node) ReadMount() (string, error) {
+	content, err := n.read()
+	if err != nil {
+		return "", fmt.Errorf("failed to read mount content: %w", err)
+	}
+	var mc MountContent
+	if err := json.Unmarshal(content, &mc); err != nil {
+		return "", fmt.Errorf("failed to unmarshal mount content: %w", err)
+	}
+	return mc.SourceDriveID, nil
+}
+
+// IsMount reports whether the node is a mount.
+func (n *Node) IsMount() bool { return n.typ == NodeTypeMount }
