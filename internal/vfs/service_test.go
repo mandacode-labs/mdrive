@@ -54,7 +54,7 @@ func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, er
 	return d.GetByID(context.Background(), "")
 }
 func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
-	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false), nil
+	return drive.NewStorage("d1", "b", nil, "us-east-1", "a", "s", false, ""), nil
 }
 func (d *fakeDrive) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
 	return nil, nil

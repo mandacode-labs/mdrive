@@ -145,3 +145,31 @@ func (c *NodeCipher) Decrypt(ciphertext []byte, driveID string, nodeID uuid.UUID
 // ContentCipherSize returns the maximum plaintext size accepted by
 // Encrypt. Exposed so callers can validate before invoking.
 func (c *NodeCipher) ContentCipherSize() int { return contentCipherSize }
+
+// DEKProvider implements drive.DEKProvider: it generates a random
+// 32-byte DEK and wraps it with the configured KEK (master key).
+// The returned string is base64(nonce || aesgcm-ciphertext || tag)
+// and is safe to store in the database.
+type DEKProvider struct {
+	kek []byte
+}
+
+// NewDEKProvider returns a DEKProvider keyed by kek. kek must be 32
+// bytes (an AES-256 key).
+func NewDEKProvider(kek []byte) (*DEKProvider, error) {
+	if len(kek) != wrapKeySize {
+		return nil, fmt.Errorf("crypto: DEKProvider requires %d-byte key, got %d", wrapKeySize, len(kek))
+	}
+	return &DEKProvider{kek: append([]byte(nil), kek...)}, nil
+}
+
+// NewWrappedDEK generates a fresh 32-byte DEK and returns it wrapped
+// with the KEK. The DEK is the encryption key for per-drive node
+// content; the wrapped form is what gets persisted.
+func (p *DEKProvider) NewWrappedDEK() (string, error) {
+	dek := make([]byte, wrapKeySize)
+	if _, err := io.ReadFull(rand.Reader, dek); err != nil {
+		return "", fmt.Errorf("crypto: generate DEK: %w", err)
+	}
+	return Wrap(dek, p.kek)
+}
