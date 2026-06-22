@@ -9,18 +9,22 @@ import (
 )
 
 // Cat reads the content of a file, symlink target, or object (like `cat /path`).
+// Permission is checked on the drive the path ultimately resolves to, so
+// a mount traversal into another drive requires view on the source.
 func (s *Service) Cat(ctx context.Context, userID, driveID, path string) ([]byte, error) {
 	if err := s.checkAccess(ctx, userID, permission.PermissionView, driveID); err != nil {
 		return nil, err
 	}
-	rootID, err := s.rootNodeID(ctx, driveID)
-	if err != nil {
-		return nil, err
-	}
-	n, err := s.path.resolve(ctx, rootID, path)
+	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
 		return nil, fmt.Errorf("cat: %w", err)
 	}
+	if res.DriveID != driveID {
+		if err := s.checkAccess(ctx, userID, permission.PermissionView, res.DriveID); err != nil {
+			return nil, fmt.Errorf("cat: %w", err)
+		}
+	}
+	n := res.Node
 	switch {
 	case n.IsFile():
 		raw, err := n.ReadFile()
@@ -41,7 +45,7 @@ func (s *Service) Cat(ctx context.Context, userID, driveID, path string) ([]byte
 	case n.IsSymlink():
 		target, err := n.ReadSymlink()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cat: read: %w", err)
 		}
 		return []byte(target), nil
 	default:

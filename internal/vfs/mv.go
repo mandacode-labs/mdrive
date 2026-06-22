@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
@@ -27,23 +25,33 @@ func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []
 	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, srcDriveID); err != nil {
 		return err
 	}
-	rootID, err := s.rootNodeID(ctx, srcDriveID)
-	if err != nil {
-		return err
-	}
 
 	return s.WithNodeTx(ctx, func(tx *Service) error {
 		if len(srcPaths) == 1 {
-			return tx.mvOne(ctx, rootID, srcPaths[0], dstPath)
+			return tx.mvOne(ctx, srcDriveID, srcPaths[0], dstPath)
 		}
-		return tx.mvBatch(ctx, rootID, srcPaths, dstPath)
+		return tx.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
 	})
 }
 
 // mvOne moves a single source to dstPath. If the destination's last
 // path component already exists as a file, it is overwritten; if it
-// exists as a directory, the source is moved into it.
-func (s *Service) mvOne(ctx context.Context, rootID uuid.UUID, srcPath, dstPath string) error {
+// exists as a directory, the source is moved into it. The source path
+// may traverse mounts but the resolved source must live in driveID
+// (cross-drive moves are still rejected as ErrCrossDrive).
+func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) error {
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return err
+	}
+	srcRes, err := s.Resolve(ctx, driveID, srcPath)
+	if err != nil {
+		return fmt.Errorf("mv: src %s: %w", srcPath, err)
+	}
+	if srcRes.DriveID != driveID {
+		return ErrCrossDrive
+	}
+	src := srcRes.Node
 	dstParent, dstName, err := s.path.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
 		return fmt.Errorf("mv: dest: %w", err)
@@ -53,10 +61,6 @@ func (s *Service) mvOne(ctx context.Context, rootID uuid.UUID, srcPath, dstPath 
 	}
 	if err := s.overwriteTarget(ctx, dstParent, dstName); err != nil {
 		return fmt.Errorf("mv: overwrite target: %w", err)
-	}
-	src, err := s.path.resolve(ctx, rootID, srcPath)
-	if err != nil {
-		return fmt.Errorf("mv: src %s: %w", srcPath, err)
 	}
 	srcParent, srcName, err := s.path.resolveParent(ctx, rootID, srcPath)
 	if err != nil {
@@ -75,7 +79,13 @@ func (s *Service) mvOne(ctx context.Context, rootID uuid.UUID, srcPath, dstPath 
 
 // mvBatch handles multi-source moves. The destination must resolve to
 // an existing directory; sources are moved in keeping their basenames.
-func (s *Service) mvBatch(ctx context.Context, rootID uuid.UUID, srcPaths []string, dstPath string) error {
+// All sources must resolve to driveID (cross-drive moves via mount
+// traversal are rejected as ErrCrossDrive).
+func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) error {
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return err
+	}
 	dstDir, err := s.path.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return fmt.Errorf("mv: dest: %w", err)
@@ -93,9 +103,12 @@ func (s *Service) mvBatch(ctx context.Context, rootID uuid.UUID, srcPaths []stri
 	sources := make([]srcInfo, 0, len(srcPaths))
 	seen := make(map[string]struct{}, len(srcPaths))
 	for _, srcPath := range srcPaths {
-		n, err := s.path.resolve(ctx, rootID, srcPath)
+		res, err := s.Resolve(ctx, driveID, srcPath)
 		if err != nil {
 			return fmt.Errorf("mv: %s: %w", srcPath, err)
+		}
+		if res.DriveID != driveID {
+			return ErrCrossDrive
 		}
 		sp, sn, err := s.path.resolveParent(ctx, rootID, srcPath)
 		if err != nil {
@@ -109,7 +122,7 @@ func (s *Service) mvBatch(ctx context.Context, rootID uuid.UUID, srcPaths []stri
 			return fmt.Errorf("mv: duplicate source basename %q in batch", base)
 		}
 		seen[base] = struct{}{}
-		sources = append(sources, srcInfo{node: n, baseName: base, srcParent: sp, srcName: sn})
+		sources = append(sources, srcInfo{node: res.Node, baseName: base, srcParent: sp, srcName: sn})
 	}
 
 	// Reject any source-destination collision up front: a source cannot

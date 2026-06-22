@@ -139,6 +139,59 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 	})
 }
 
+// Resolved is the result of a path resolution across drives.
+type Resolved struct {
+	// DriveID is the drive the resolved node lives in. If the path
+	// crossed mount nodes, this is the source drive; otherwise it
+	// equals the driveID passed to Resolve.
+	DriveID string
+	Node    *node.Node
+}
+
+// maxMountHops caps the mount-traversal depth so a malicious or
+// pathological mount graph cannot spin a single resolve forever.
+const maxMountHops = 32
+
+// Resolve walks a path starting at driveID, following mount nodes
+// when encountered. Returns the drive id the final node lives in
+// (which may differ from driveID if mounts were crossed) and the
+// node itself. Cycles in the mount graph are detected via a visited
+// set; maxMountHops is a safety net.
+func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
+	return s.resolveWithVisited(ctx, driveID, path, map[string]struct{}{driveID: {}})
+}
+
+func (s *Service) resolveWithVisited(ctx context.Context, driveID, path string, visited map[string]struct{}) (Resolved, error) {
+	for hop := 0; hop < maxMountHops; hop++ {
+		rootID, err := s.rootNodeID(ctx, driveID)
+		if err != nil {
+			return Resolved{}, err
+		}
+		n, err := s.path.resolve(ctx, rootID, path)
+		if err != nil {
+			return Resolved{}, err
+		}
+		if !n.IsMount() {
+			return Resolved{DriveID: driveID, Node: n}, nil
+		}
+		// Cross into the source drive. The mount node itself is the
+		// path's terminal component; the user's remaining path is
+		// whatever they put after the mount entry, which is already
+		// empty (resolve stopped at the mount node).
+		srcDriveID, err := n.ReadMount()
+		if err != nil {
+			return Resolved{}, fmt.Errorf("vfs: read mount: %w", err)
+		}
+		if _, seen := visited[srcDriveID]; seen {
+			return Resolved{}, ErrMountCycle
+		}
+		visited[srcDriveID] = struct{}{}
+		driveID = srcDriveID
+		path = "/"
+	}
+	return Resolved{}, ErrPathTooDeep
+}
+
 // rootNodeID resolves the root node UUID for the given drive.
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
 	d, err := s.Drive.GetByID(ctx, driveID)
