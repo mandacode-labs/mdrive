@@ -31,6 +31,7 @@ type NodeClient interface {
 	CreateDirectory(ctx context.Context) (*node.Node, error)
 	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
 	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
+	CreateMount(ctx context.Context, sourceDriveID string) (*node.Node, error)
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
 	BulkLink(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error
 	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)

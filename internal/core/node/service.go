@@ -70,6 +70,19 @@ func (s *Service) CreateObject(ctx context.Context, content ObjectContent, size 
 	return n, nil
 }
 
+// CreateMount creates a mount node pointing to sourceDriveID's root and
+// persists it.
+func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node, error) {
+	n, err := NewMount(sourceDriveID)
+	if err != nil {
+		return nil, fmt.Errorf("node: create mount: %w", err)
+	}
+	if err := s.repo.Save(ctx, n); err != nil {
+		return nil, fmt.Errorf("node: save mount: %w", err)
+	}
+	return n, nil
+}
+
 // Link adds a child entry to parent and persists the parent.
 // Increments child's nlink (POSIX hardlink semantics). A fresh child
 // (nlink==0 from newNode) gets nlink=1 after its first Link; subsequent

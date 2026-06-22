@@ -16,7 +16,7 @@ const (
 	NodeTypeDirectory NodeType = 1
 	NodeTypeSymlink   NodeType = 2
 	NodeTypeObject    NodeType = 3
-	NodeTypeDevice    NodeType = 4
+	NodeTypeMount     NodeType = 4
 )
 
 func (nt NodeType) String() string {
@@ -29,8 +29,8 @@ func (nt NodeType) String() string {
 		return "symlink"
 	case NodeTypeObject:
 		return "object"
-	case NodeTypeDevice:
-		return "device"
+	case NodeTypeMount:
+		return "mount"
 	default:
 		return "unknown"
 	}
