@@ -48,7 +48,7 @@ func newEncryptedTestService(t *testing.T) (*Service, *fakeRepo, string, *drive.
 		}
 		return cryptopkg.NewNodeCipher(dek)
 	}
-	svc := NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, cipher)
+	svc := NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil, cipher, nil)
 	return svc, repo, "d1", st
 }
 

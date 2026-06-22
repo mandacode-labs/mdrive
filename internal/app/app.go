@@ -22,6 +22,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
+	"github.com/mandacode-labs/mdrive/internal/cryptostore"
 	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/storage/s3"
@@ -43,6 +44,7 @@ type App struct {
 	Store             vfs.Store
 	TombstoneInserter vfs.TombstoneInserter
 	ContentCipher     vfs.ContentCipher
+	Reencryptor       vfs.Reencryptor
 	Auth              *auth.Service
 	Security          *auth.SecurityHandler
 	Perm              permission.Checker
@@ -152,9 +154,40 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	gc := newTombstoneInserter(entClient)
 
-	storageStore, err := newStore(ctx, cfg.Storage)
+	rawStore, err := newStore(ctx, cfg.Storage)
 	if err != nil {
 		return nil, err
+	}
+
+	// The cryptostore wraps the raw S3 client with envelope
+	// encryption. When the master key is empty (dev) or the
+	// drive has no wrapped DEK, the cryptostore is a pass-through.
+	var (
+		storageStore  = rawStore
+		bodyReencrypt vfs.Reencryptor
+	)
+	if cfg.Crypto.MasterKey != "" {
+		bodyCipherLookup := func(ctx context.Context, driveID string) (*cryptopkg.NodeCipher, error) {
+			st, err := driveSvc.GetStorage(ctx, driveID)
+			if err != nil {
+				return nil, err
+			}
+			if st == nil {
+				return nil, nil
+			}
+			wrapped := st.WrappedDEK()
+			if wrapped == "" {
+				return nil, nil
+			}
+			dek, err := dekProvider.Unwrap(wrapped)
+			if err != nil {
+				return nil, fmt.Errorf("crypto: unwrap DEK for drive %q: %w", driveID, err)
+			}
+			return cryptopkg.NewNodeCipher(dek)
+		}
+		cs := cryptostore.New(rawStore, bodyCipherLookup)
+		storageStore = cs
+		bodyReencrypt = cs
 	}
 
 	var permClient permission.Checker
@@ -212,6 +245,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		Store:             storageStore,
 		TombstoneInserter: gc,
 		ContentCipher:     contentCipher,
+		Reencryptor:       bodyReencrypt,
 		Auth:              authenticator,
 		Security:          sec,
 		Perm:              permClient,

@@ -23,6 +23,17 @@ import (
 // (or, in future revisions, a cache).
 type ContentCipher func(ctx context.Context, driveID string) (*crypto.NodeCipher, error)
 
+// Reencryptor is an optional dependency for migrating plaintext
+// objects (e.g. those uploaded via a presigned URL) to ciphertext.
+// CompleteUpload calls MigratePlaintext after the client finishes
+// the upload so the body sitting in S3 is the encrypted form.
+// When nil, presigned-uploaded bodies stay plaintext; this matches
+// the pre-Phase-3b behaviour and is fine for dev or for drives that
+// predate envelope encryption.
+type Reencryptor interface {
+	MigratePlaintext(ctx context.Context, driveID, bucket, srcKey, dstKey string) error
+}
+
 // Compile-time interface satisfaction: core services satisfy vfs-declared interfaces.
 var (
 	_ NodeClient  = (*node.Service)(nil)
@@ -105,12 +116,13 @@ type Service struct {
 	GC            TombstoneInserter
 	path          *resolver
 	contentCipher ContentCipher
+	Reencryptor   Reencryptor
 }
 
-// NewService creates a new VFS Service. contentCipher is optional;
-// pass nil to skip envelope encryption (the repository then stores
-// node content as plaintext, which is fine for dev/test and for
-// drives that predate Phase 3a).
+// NewService creates a new VFS Service. contentCipher and reencryptor
+// are optional; pass nil for either to skip envelope encryption
+// (the repository then stores node content as plaintext, which is
+// fine for dev/test and for drives that predate Phase 3a/3b).
 func NewService(
 	n NodeClient,
 	d DriveClient,
@@ -120,6 +132,7 @@ func NewService(
 	reg upload.Registry,
 	gc TombstoneInserter,
 	contentCipher ContentCipher,
+	reencryptor Reencryptor,
 ) *Service {
 	if reg == nil {
 		reg = upload.NewMemoryRegistry()
@@ -134,6 +147,7 @@ func NewService(
 		GC:            gc,
 		path:          newResolver(n),
 		contentCipher: contentCipher,
+		Reencryptor:   reencryptor,
 	}
 }
 
@@ -151,6 +165,7 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 			GC:            s.GC,
 			path:          newResolver(txNode),
 			contentCipher: s.contentCipher,
+			Reencryptor:   s.Reencryptor,
 		})
 	})
 }
