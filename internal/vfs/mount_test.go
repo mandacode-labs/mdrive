@@ -31,7 +31,7 @@ type denyPerm struct{}
 func (d *denyPerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
 	return false, nil
 }
-func (d *denyPerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
+func (d *denyPerm) Grant(_ context.Context, _, _, _, _ string) error { return nil }
 
 // TestUnmountNotAMount rejects unmount on a non-mount entry.
 func TestUnmountNotAMount(t *testing.T) {

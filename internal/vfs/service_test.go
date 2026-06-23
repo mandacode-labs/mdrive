@@ -120,7 +120,7 @@ type fakePerm struct{}
 func (p *fakePerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
 	return true, nil
 }
-func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
+func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error { return nil }
 
 func newTestService() *Service {
 	repo := newFakeRepo()
