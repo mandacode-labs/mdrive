@@ -24,9 +24,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	drivesvc "github.com/mandacode-labs/mdrive/internal/drive"
 	"github.com/mandacode-labs/mdrive/internal/testsupport"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	vfsdrive "github.com/mandacode-labs/mdrive/internal/vfs/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -111,7 +111,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		User:  userSvc,
 	})
 
-	driveSvcVfs := vfsdrive.NewService(vfsdrive.Config{
+	driveSvcVfs := drivesvc.NewService(drivesvc.Config{
 		Drive: driveSvc,
 		Perm:  nil,
 	})
