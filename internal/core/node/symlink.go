@@ -30,8 +30,13 @@ func NewSymlink(target string) (*Node, error) {
 	return newInlineNode(NodeTypeSymlink, NewSymlinkContent(target), int64(len(target)))
 }
 
-// ReadSymlink returns the symlink's target.
-func (n *Node) ReadSymlink() (string, error) {
+// Readlink returns the symlink's target path (POSIX readlink(2)). The
+// caller must have already verified the node is a symlink; calling
+// Readlink on a non-symlink node returns ErrInvalidType.
+func (n *Node) Readlink() (string, error) {
+	if n.typ != NodeTypeSymlink {
+		return "", ErrInvalidType
+	}
 	content, err := n.read()
 	if err != nil {
 		return "", fmt.Errorf("failed to read symlink content: %w", err)
@@ -41,6 +46,15 @@ func (n *Node) ReadSymlink() (string, error) {
 		return "", fmt.Errorf("failed to unmarshal symlink content: %w", err)
 	}
 	return sc.Target, nil
+}
+
+// ReadSymlink is the legacy name for Readlink. It is kept as an
+// alias so existing callers compile without churn, but new code
+// should call Readlink (matching POSIX readlink(2)).
+//
+// Deprecated: use Node.Readlink.
+func (n *Node) ReadSymlink() (string, error) {
+	return n.Readlink()
 }
 
 // WriteSymlink updates the symlink's target.

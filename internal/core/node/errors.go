@@ -43,8 +43,12 @@ var (
 	// non-directory).
 	ErrIsDirectory = errors.New("node: target is a directory")
 
-	// ErrInvalidMoveOverwrite is returned when a move would overwrite
-	// an entry whose type does not match the source (e.g. moving a
-	// file onto a directory or vice versa).
-	ErrInvalidMoveOverwrite = errors.New("node: cannot overwrite entry of different type")
+    // ErrInvalidMoveOverwrite is returned when a move would overwrite
+    // an entry whose type does not match the source (e.g. moving a
+    // file onto a directory or vice versa).
+    ErrInvalidMoveOverwrite = errors.New("node: cannot overwrite entry of different type")
+
+    // ErrSymlinkCycle is returned when symlink resolution exceeds the
+    // hop limit (POSIX ELOOP). Mirrors Linux's MAXSYMLINKS budget.
+    ErrSymlinkCycle = errors.New("node: symlink cycle or too many hops")
 )
