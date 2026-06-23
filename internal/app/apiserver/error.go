@@ -10,6 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -20,7 +21,8 @@ func FromError(err error) (int, api.Error) {
 	case errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied):
 		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthorized"}
 
-	case errors.Is(err, vfs.ErrPermission):
+	case errors.Is(err, vfs.ErrPermission),
+		errors.Is(err, upload.ErrPermission):
 		return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}
 
 	case errors.Is(err, node.ErrNotFound),
@@ -29,7 +31,7 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, node.ErrEntryNotFound),
 		errors.Is(err, node.ErrNoContent),
 		errors.Is(err, vfs.ErrNotFound),
-		errors.Is(err, vfs.ErrObjectNotUploaded):
+		errors.Is(err, upload.ErrObjectNotUploaded):
 		return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
 
 	case errors.Is(err, node.ErrEntryExists),
@@ -51,7 +53,7 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, user.ErrNameRequired),
 		errors.Is(err, vfs.ErrInvalidPath),
 		errors.Is(err, vfs.ErrCrossDrive),
-		errors.Is(err, vfs.ErrUploadMismatch):
+		errors.Is(err, upload.ErrUploadMismatch):
 		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
 	}
 

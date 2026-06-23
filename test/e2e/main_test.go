@@ -26,6 +26,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	drivesvc "github.com/mandacode-labs/mdrive/internal/drive"
 	"github.com/mandacode-labs/mdrive/internal/testsupport"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -116,7 +117,15 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Perm:  nil,
 	})
 
-	h := handler.New(fs, driveSvcVfs, func(ctx context.Context) (string, bool) {
+	uploadSvcVfs := upload.NewService(upload.Config{
+		Drive: fs.Drive,
+		Nodes: fs.Node,
+		Store: nil,
+		Path:  fs,
+		Perm:  nil,
+	})
+
+	h := handler.New(fs, driveSvcVfs, uploadSvcVfs, func(ctx context.Context) (string, bool) {
 		return u.ID(), true
 	}, handler.WithDefaultStorage(drive.StorageConfig{
 		Bucket:       "e2e-bucket",

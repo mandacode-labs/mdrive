@@ -138,3 +138,6 @@ func newTestService() *Service {
 
 func strPtr(s string) *string { return &s }
 func int64Ptr(i int64) *int64 { return &i }
+
+var _ = strPtr
+var _ = int64Ptr
