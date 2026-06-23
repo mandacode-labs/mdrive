@@ -35,18 +35,7 @@ func NewMount(sourceDriveID string) (*Node, error) {
 	if sourceDriveID == "" {
 		return nil, ErrInvalidMountReference
 	}
-	data, err := json.Marshal(NewMountContent(sourceDriveID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal mount content: %w", err)
-	}
-	if len(data) > MaxContentSize {
-		return nil, ErrContentTooLarge
-	}
-	n := newNode(NodeTypeMount)
-	if err := n.write(Content(data), 0); err != nil {
-		return nil, err
-	}
-	return n, nil
+	return newInlineNode(NodeTypeMount, NewMountContent(sourceDriveID), 0)
 }
 
 // ReadMount returns the source drive id this mount points to.

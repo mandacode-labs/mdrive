@@ -15,14 +15,13 @@ import (
 // rejected when the caller lacks view permission on the source drive.
 func TestMountRequiresViewOnSource(t *testing.T) {
 	repo := newFakeRepo()
-	svc := NewService(
-		node.NewService(repo),
-		&fakeDrive{},
-		&fakeUser{},
-		&fakeStore{},
-		&denyPerm{},
-		nil, nil,
-	)
+	svc := NewService(ServiceConfig{
+		Node:  node.NewService(repo),
+		Drive: &fakeDrive{},
+		User:  &fakeUser{},
+		Store: &fakeStore{},
+		Perm:  &denyPerm{},
+	})
 	_, err := svc.Mount(context.Background(), "user1", "d1", "/mounts/team", "d2")
 	assert.Error(t, err)
 }
@@ -43,7 +42,13 @@ func TestUnmountNotAMount(t *testing.T) {
 	require.NoError(t, repo.Save(context.Background(), root))
 
 	drive := &fakeDrive{rootID: root.ID()}
-	svc := NewService(nodeSvc, drive, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
+	svc := NewService(ServiceConfig{
+		Node:  nodeSvc,
+		Drive: drive,
+		User:  &fakeUser{},
+		Store: &fakeStore{},
+		Perm:  &fakePerm{},
+	})
 
 	// Create a regular file under root.
 	f, err := nodeSvc.CreateFile(context.Background(), "x")

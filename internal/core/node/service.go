@@ -24,14 +24,7 @@ func NewService(repo Repository) *Service {
 
 // CreateFile creates and persists a file node.
 func (s *Service) CreateFile(ctx context.Context, content string) (*Node, error) {
-	n, err := NewFile(content)
-	if err != nil {
-		return nil, fmt.Errorf("node: create file: %w", err)
-	}
-	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save file: %w", err)
-	}
-	return n, nil
+	return s.create(ctx, "file", func() (*Node, error) { return NewFile(content) })
 }
 
 // Touch creates and persists an empty file node, mirroring `touch path`.
@@ -43,49 +36,37 @@ func (s *Service) Touch(ctx context.Context) (*Node, error) {
 
 // CreateDirectory creates and persists a directory node.
 func (s *Service) CreateDirectory(ctx context.Context) (*Node, error) {
-	n, err := NewDirectory()
-	if err != nil {
-		return nil, fmt.Errorf("node: create dir: %w", err)
-	}
-	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save dir: %w", err)
-	}
-	return n, nil
+	return s.create(ctx, "directory", NewDirectory)
 }
 
 // CreateSymlink creates and persists a symlink node.
 func (s *Service) CreateSymlink(ctx context.Context, target string) (*Node, error) {
-	n, err := NewSymlink(target)
-	if err != nil {
-		return nil, fmt.Errorf("node: create symlink: %w", err)
-	}
-	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save symlink: %w", err)
-	}
-	return n, nil
+	return s.create(ctx, "symlink", func() (*Node, error) { return NewSymlink(target) })
 }
 
 // CreateObject creates and persists an object (S3-backed) node.
 func (s *Service) CreateObject(ctx context.Context, content ObjectContent, size int64) (*Node, error) {
-	n, err := NewObject(content, size)
-	if err != nil {
-		return nil, fmt.Errorf("node: create object: %w", err)
-	}
-	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save object: %w", err)
-	}
-	return n, nil
+	return s.create(ctx, "object", func() (*Node, error) { return NewObject(content, size) })
 }
 
 // CreateMount creates a mount node pointing to sourceDriveID's root and
 // persists it.
 func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node, error) {
-	n, err := NewMount(sourceDriveID)
+	return s.create(ctx, "mount", func() (*Node, error) { return NewMount(sourceDriveID) })
+}
+
+// create is the shared persistence step for all Create* methods:
+// construct a Node with the type-specific factory, then Save it.
+// Centralizing the Save + error wrapping removes the five-line
+// "NewX, fmt.Errorf, repo.Save, fmt.Errorf" pattern that would
+// otherwise be repeated for each node type.
+func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
+	n, err := factory()
 	if err != nil {
-		return nil, fmt.Errorf("node: create mount: %w", err)
+		return nil, fmt.Errorf("node: create %s: %w", kind, err)
 	}
 	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save mount: %w", err)
+		return nil, fmt.Errorf("node: save %s: %w", kind, err)
 	}
 	return n, nil
 }

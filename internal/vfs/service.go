@@ -81,26 +81,30 @@ type Service struct {
 	GC    TombstoneInserter
 }
 
-func NewService(
-	n NodeClient,
-	d DriveClient,
-	u UserClient,
-	store Store,
-	checker PermClient,
-	reg upload.Registry,
-	gc TombstoneInserter,
-) *Service {
-	if reg == nil {
-		reg = upload.NewMemoryRegistry()
+// ServiceConfig groups the dependencies of NewService so callers
+// don't have to remember the positional order of seven arguments.
+type ServiceConfig struct {
+	Node  NodeClient
+	Drive DriveClient
+	User  UserClient
+	Store Store
+	Perm  PermClient
+	Reg   upload.Registry
+	GC    TombstoneInserter
+}
+
+func NewService(cfg ServiceConfig) *Service {
+	if cfg.Reg == nil {
+		cfg.Reg = upload.NewMemoryRegistry()
 	}
 	return &Service{
-		Node:  n,
-		Drive: d,
-		User:  u,
-		Store: store,
-		Perm:  checker,
-		Reg:   reg,
-		GC:    gc,
+		Node:  cfg.Node,
+		Drive: cfg.Drive,
+		User:  cfg.User,
+		Store: cfg.Store,
+		Perm:  cfg.Perm,
+		Reg:   cfg.Reg,
+		GC:    cfg.GC,
 	}
 }
 

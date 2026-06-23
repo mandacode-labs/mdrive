@@ -27,18 +27,7 @@ func NewSymlink(target string) (*Node, error) {
 	if target == "" {
 		return nil, ErrInvalidName
 	}
-	data, err := json.Marshal(NewSymlinkContent(target))
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal symlink content: %w", err)
-	}
-	if len(data) > MaxContentSize {
-		return nil, ErrContentTooLarge
-	}
-	n := newNode(NodeTypeSymlink)
-	if err := n.write(Content(data), int64(len(target))); err != nil {
-		return nil, err
-	}
-	return n, nil
+	return newInlineNode(NodeTypeSymlink, NewSymlinkContent(target), int64(len(target)))
 }
 
 // ReadSymlink returns the symlink's target.

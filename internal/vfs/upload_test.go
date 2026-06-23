@@ -68,7 +68,13 @@ func TestCompleteUpload_ObjectNotExists(t *testing.T) {
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	svc := NewService(nodeSvc, d, &fakeUser{}, &objectNotFoundStore{Store: &fakeStore{}}, &fakePerm{}, nil, nil)
+	svc := NewService(ServiceConfig{
+		Node:  nodeSvc,
+		Drive: d,
+		User:  &fakeUser{},
+		Store: &objectNotFoundStore{Store: &fakeStore{}},
+		Perm:  &fakePerm{},
+	})
 
 	ctx := context.Background()
 	info, err := svc.InitiateUpload(ctx, "user1", "d1", "/missing.bin", nil, nil, time.Hour)
