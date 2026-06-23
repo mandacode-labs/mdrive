@@ -68,7 +68,7 @@ func (s *Service) lnHardlink(ctx context.Context, driveID, srcPath, linkPath str
 		return nil, err
 	}
 	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, srcPath)
+	out, err := r.resolve(ctx, rootID, srcPath, true)
 	if err != nil {
 		return nil, err
 	}

@@ -97,12 +97,14 @@ type Resolved struct {
 const maxMountHops = 32
 
 // Resolve walks from root to the node at the given absolute path,
-// transparently following mount nodes into other drives. Permission
-// checking is the caller's responsibility: Resolve itself only
-// does path resolution. Callers that need a permission check
-// should use Resolve and then check against Resolved.DriveID.
+// Resolve walks the path following symlinks (POSIX stat(2)
+// semantics) and transparently following mount nodes into other
+// drives. Permission checking is the caller's responsibility:
+// Resolve itself only does path resolution. Callers that need a
+// permission check should use Resolve and then check against
+// Resolved.DriveID.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
-	drive, n, err := s.resolveCross(ctx, driveID, path)
+	drive, n, err := s.resolveCross(ctx, driveID, path, true)
 	if err != nil {
 		return Resolved{}, err
 	}
@@ -115,7 +117,7 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 // stops at the first mount node and returns the drive to which the
 // mount points plus the remaining path within that drive, so the
 // caller can both check permission and then re-resolve the rest of
-// the path within the source drive.
+// the path within the source drive. Symlinks are followed.
 type ResolvedRef struct {
 	DriveID string
 	Path    string
@@ -127,14 +129,10 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 	if err != nil {
 		return ResolvedRef{}, err
 	}
-	out, err := r.resolve(ctx, rootID, path)
+	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
 		return ResolvedRef{}, err
 	}
-	// If the resolved node is a mount, the actual node lives in
-	// the source drive. Return the source drive ID and the
-	// remaining path; the caller will check permission on the
-	// source drive and then re-resolve the rest there.
 	if out.Node.IsMount() {
 		srcDriveID, err := out.Node.ReadMount()
 		if err != nil {
@@ -143,6 +141,49 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 		return ResolvedRef{DriveID: srcDriveID, Path: out.Remaining}, nil
 	}
 	return ResolvedRef{DriveID: driveID, Path: path}, nil
+}
+
+// LstatForPermission is the no-symlink-follow variant of
+// ResolveForPermission (POSIX lstat(2)). It returns the
+// (DriveID, Path) pair for the permission check without
+// traversing symlinks.
+func (s *Service) LstatForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
+	res, err := s.Lstat(ctx, driveID, path)
+	if err != nil {
+		return ResolvedRef{}, err
+	}
+	return ResolvedRef{DriveID: res.DriveID, Path: path}, nil
+}
+
+// Lstat is the standalone no-symlink-follow variant. It returns
+// the final node without traversing symlinks (POSIX lstat(2)).
+// Mount traversal still happens; only the symlink follow is
+// skipped. Used by callers that need the resolved node itself
+// (e.g. the readlink handler).
+func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, error) {
+	r := s.newResolver()
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return Resolved{}, err
+	}
+	out, err := r.resolve(ctx, rootID, path, false)
+	if err != nil {
+		return Resolved{}, err
+	}
+	if out.Remaining != "" {
+		// Path crossed a mount: re-resolve inside the source
+		// drive (still no symlink follow).
+		srcDriveID, err := out.Node.ReadMount()
+		if err != nil {
+			return Resolved{}, err
+		}
+		drive2, n2, err := s.resolveCross(ctx, srcDriveID, out.Remaining, false)
+		if err != nil {
+			return Resolved{}, err
+		}
+		return Resolved{DriveID: drive2, Node: n2}, nil
+	}
+	return Resolved{DriveID: driveID, Node: out.Node}, nil
 }
 
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
@@ -187,7 +228,7 @@ func (s *Service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid
 	if err != nil {
 		return uuid.Nil, err
 	}
-	out, err := s.newResolver().resolve(ctx, rootID, path)
+	out, err := s.newResolver().resolve(ctx, rootID, path, true)
 	if err != nil {
 		return uuid.Nil, err
 	}

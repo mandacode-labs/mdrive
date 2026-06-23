@@ -55,12 +55,34 @@ type resolveOutcome struct {
 	Remaining string
 }
 
-// resolve walks from root to the node at the given absolute path.
-// Supports "." and ".." per POSIX (no ascending above the drive
-// root). Stops at the first mount node: the mount itself is
-// returned and Remaining contains the rest of the path for the
-// caller to follow.
-func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (resolveOutcome, error) {
+// maxSymlinkDepth mirrors Linux's MAXSYMLINKS (40). Path resolution
+// stops with ErrSymlinkCycle if the symlink-follow budget is
+// exhausted, matching POSIX ELOOP.
+const maxSymlinkDepth = 40
+
+// resolve walks from root to the node at the given absolute path,
+// following symlinks per POSIX when follow is true (Linux stat(2)
+// semantics). When follow is false, the resolution stops at the
+// first symlink and returns it (Linux lstat(2) semantics).
+//
+// Supports "." and "..". Stops at the first mount node: the mount
+// itself is returned and Remaining contains the rest of the path
+// for the caller to follow into the source drive.
+//
+// Symlink loops are detected by tracking the inodes of symlinks
+// traversed during a single follow chain (POSIX ELOOP).
+//
+// Relative symlinks resolve relative to their parent directory;
+// absolute targets restart resolution from the drive root.
+func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string, follow bool) (resolveOutcome, error) {
+	return r.resolveInner(ctx, rootID, p, follow, make(map[uuid.UUID]struct{}))
+}
+
+// resolveInner does the actual walk. It is split out from resolve
+// so the symlink-follow branch can recurse (cheap Go call, not
+// a Go-statement-cost loop iteration) when a target needs to be
+// spliced into the remaining path.
+func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string, follow bool, visited map[uuid.UUID]struct{}) (resolveOutcome, error) {
 	cleaned := cleanPath(p)
 	if cleaned == "" || cleaned == "/" {
 		n, err := r.loadByID(ctx, rootID)
@@ -69,25 +91,27 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 		}
 		return resolveOutcome{Node: n}, nil
 	}
-	current, err := r.loadByID(ctx, rootID)
-	if err != nil || current == nil {
+	root, err := r.loadByID(ctx, rootID)
+	if err != nil || root == nil {
 		return resolveOutcome{}, ErrNotFound
 	}
-	ancestors := []*node.Node{current}
+	cur := root
+	parents := []*node.Node{root}
 	parts := splitPath(cleaned)
 	for i, part := range parts {
 		switch part {
 		case "", ".":
 			continue
 		case "..":
-			if len(ancestors) <= 1 {
+			if len(parents) <= 1 {
 				return resolveOutcome{}, ErrInvalidPath
 			}
-			ancestors = ancestors[:len(ancestors)-1]
-			current = ancestors[len(ancestors)-1]
+			parents = parents[:len(parents)-1]
+			cur = parents[len(parents)-1]
 			continue
 		}
-		de, err := current.Lookup(part)
+
+		de, err := cur.Lookup(part)
 		if err != nil {
 			return resolveOutcome{}, err
 		}
@@ -102,10 +126,50 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 			rest := joinParts(parts[i+1:])
 			return resolveOutcome{Node: child, Remaining: rest}, nil
 		}
-		ancestors = append(ancestors, child)
-		current = child
+
+		// Symlink follow: if the child we just resolved is a
+		// symlink and follow is on, splice the target into the
+		// remaining path and recurse from the drive root.
+		if follow && child.IsSymlink() {
+			if len(visited) >= maxSymlinkDepth {
+				return resolveOutcome{}, node.ErrSymlinkCycle
+			}
+			if _, seen := visited[child.ID()]; seen {
+				return resolveOutcome{}, node.ErrSymlinkCycle
+			}
+			visited[child.ID()] = struct{}{}
+
+			target, err := child.Readlink()
+			if err != nil {
+				return resolveOutcome{}, err
+			}
+			suffix := joinParts(parts[i+1:])
+			var joined string
+			if strings.HasPrefix(target, "/") {
+				if suffix == "" {
+					joined = target
+				} else {
+					joined = target + "/" + suffix
+				}
+			} else {
+				parentParts := parts[:i]
+				parentPath := joinParts(parentParts)
+				if parentPath == "" {
+					parentPath = "/"
+				}
+				if suffix == "" {
+					joined = path.Clean(parentPath + "/" + target)
+				} else {
+					joined = path.Clean(parentPath + "/" + target + "/" + suffix)
+				}
+			}
+			return r.resolveInner(ctx, rootID, joined, follow, visited)
+		}
+
+		parents = append(parents, child)
+		cur = child
 	}
-	return resolveOutcome{Node: current}, nil
+	return resolveOutcome{Node: cur}, nil
 }
 
 // resolveCross walks from root to the node at the given absolute path,
@@ -117,7 +181,7 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 //
 // Each hop uses a fresh resolver so the cache for one mount
 // traversal does not leak across hops.
-func (s *Service) resolveCross(ctx context.Context, driveID, path string) (driveIDOut string, n *node.Node, err error) {
+func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow bool) (driveIDOut string, n *node.Node, err error) {
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
@@ -127,7 +191,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string) (drive
 		if err != nil {
 			return "", nil, err
 		}
-		out, err := r.resolve(ctx, rootID, currentPath)
+		out, err := r.resolve(ctx, rootID, currentPath, follow)
 		if err != nil {
 			return "", nil, err
 		}
@@ -150,9 +214,13 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string) (drive
 	return "", nil, ErrPathTooDeep
 }
 
-// resolveParent returns the parent node and the last path component.
-// For paths that cross a mount, the returned parent is the mount
-// node itself; cross-drive continuation is the caller's
+// resolveParent returns the parent node and the last path component
+// of p, following symlinks in the parent portion (so the returned
+// parent is the actual directory that would contain the new entry,
+// not a symlink in the middle of the parent path). Symlinks at
+// the leaf name itself are NOT followed: the leaf is what the caller
+// intends to operate on. Stops at the first mount node along the
+// parent path; cross-drive continuation is the caller's
 // responsibility (e.g. mv constructs both endpoints explicitly).
 func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string) (parent *node.Node, name string, err error) {
 	cleaned := cleanPath(p)
@@ -168,7 +236,7 @@ func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string
 	if name == "" {
 		return nil, "", ErrInvalidPath
 	}
-	out, err := r.resolve(ctx, rootID, parentPath)
+	out, err := r.resolve(ctx, rootID, parentPath, true)
 	if err != nil {
 		return nil, "", err
 	}

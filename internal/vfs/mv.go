@@ -76,7 +76,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	r := s.newResolver()
 	// A single resolve call gives us the src node; if it stops at a
 	// mount, the move would cross drives, which mv rejects.
-	srcOut, err := r.resolve(ctx, rootID, srcPath)
+	srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 	if err != nil {
 		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
 	}
@@ -120,7 +120,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		return nil, err
 	}
 	r := s.newResolver()
-	dstOut, err := r.resolve(ctx, rootID, dstPath)
+	dstOut, err := r.resolve(ctx, rootID, dstPath, true)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)
 	}
@@ -138,7 +138,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	sources := make([]srcInfo, 0, len(srcPaths))
 	seen := make(map[string]struct{}, len(srcPaths))
 	for _, srcPath := range srcPaths {
-		srcOut, err := r.resolve(ctx, rootID, srcPath)
+		srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 		if err != nil {
 			return nil, fmt.Errorf("mv: %s: %w", srcPath, err)
 		}

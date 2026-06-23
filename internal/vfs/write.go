@@ -17,7 +17,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	// A single resolver instance for the resolve + resolveParent
 	// pair so any shared intermediate nodes see the same *Node.
 	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, path)
+	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
 		// Path doesn't exist yet; treat the resolve error as a hint
 		// to fall back to creating a new file. We need the parent

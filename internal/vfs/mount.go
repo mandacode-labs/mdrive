@@ -61,7 +61,7 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	// pair see the same *Node pointer for any shared intermediate
 	// nodes.
 	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, mountPath)
+	out, err := r.resolve(ctx, rootID, mountPath, true)
 	if err != nil {
 		return fmt.Errorf("unmount: %w", err)
 	}
