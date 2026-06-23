@@ -125,10 +125,8 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 }
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
-	if !auth.IsAdmin(ctx) {
-		return nil, drivesvc.ErrPermission
-	}
-	drives, err := h.drive.ListDeleted(ctx)
+	isAdmin := auth.IsAdmin(ctx)
+	drives, err := h.drive.ListDeleted(ctx, isAdmin)
 	if err != nil {
 		return nil, err
 	}
