@@ -6,7 +6,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	vfsdrive "github.com/mandacode-labs/mdrive/internal/vfs/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -50,7 +50,7 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 		override := r.Storage.Value
 		cfg = storageConfigFromAPI(override)
 	}
-	d, _, err := h.vfs.CreateDrive(ctx, h.userID(ctx), r.Name, desc, cfg)
+	d, _, err := h.drive.Create(ctx, h.userID(ctx), r.Name, desc, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func storageConfigFromAPI(s api.StorageConfig) drive.StorageConfig {
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
-	d, err := h.vfs.GetDrive(ctx, h.userID(ctx), params.DriveID)
+	d, err := h.drive.Get(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 	if r.Description.Set {
 		descPtr = &r.Description.Value
 	}
-	drv, err := h.vfs.UpdateDrive(ctx, h.userID(ctx), params.DriveID, namePtr, descPtr)
+	drv, err := h.drive.Update(ctx, h.userID(ctx), params.DriveID, namePtr, descPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -110,14 +110,14 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 }
 
 func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) error {
-	return h.vfs.DeleteDrive(ctx, h.userID(ctx), params.DriveID)
+	return h.drive.Delete(ctx, h.userID(ctx), params.DriveID)
 }
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, vfs.ErrPermission
+		return nil, vfsdrive.ErrPermission
 	}
-	d, err := h.vfs.RestoreDrive(ctx, h.userID(ctx), params.DriveID)
+	d, err := h.drive.Restore(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,9 +126,9 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, vfs.ErrPermission
+		return nil, vfsdrive.ErrPermission
 	}
-	drives, err := h.vfs.ListDeletedDrives(ctx)
+	drives, err := h.drive.ListDeleted(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
-	s, err := h.vfs.GetDriveStorage(ctx, h.userID(ctx), params.DriveID)
+	s, err := h.drive.GetStorage(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 }
 
 func (h *Handler) ListDrives(ctx context.Context) ([]api.Drive, error) {
-	drives, err := h.vfs.ListUserDrives(ctx, h.userID(ctx))
+	drives, err := h.drive.ListByOwner(ctx, h.userID(ctx))
 	if err != nil {
 		return nil, err
 	}

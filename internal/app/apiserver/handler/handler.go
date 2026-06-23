@@ -17,6 +17,11 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
+// FSClient is the consumer-declared interface for filesystem
+// operations on a vfs service. The handler depends on this
+// interface (rather than vfs.Service directly) so the wiring
+// stays decoupled from the vfs implementation and tests can
+// supply fakes per-method.
 type FSClient interface {
 	Mkdir(ctx context.Context, userID, driveID, path string) (*node.Node, error)
 	Touch(ctx context.Context, userID, driveID, path string) (*node.Node, error)
@@ -31,16 +36,25 @@ type FSClient interface {
 	InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (vfs.PresignInfo, error)
 	CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error)
 	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (vfs.PresignInfo, error)
-	CreateDrive(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
-	GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error)
-	GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
-	UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error)
-	DeleteDrive(ctx context.Context, actorID, id string) error
-	RestoreDrive(ctx context.Context, actorID, id string) (*drive.Drive, error)
-	ListDeletedDrives(ctx context.Context) ([]*drive.Drive, error)
-	ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error)
 	UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)
 	GetUser(ctx context.Context, actorID, id string) (*user.User, error)
+}
+
+// DriveClient is the consumer-declared interface for drive CRUD.
+// It is implemented by vfs/drive.Service (a subpackage of vfs
+// that composes the core drive.Service with permission checks).
+// Splitting this out of FSClient keeps the handler's dependency
+// on filesystem code minimal: drive CRUD has nothing to do with
+// node/permission/S3 I/O.
+type DriveClient interface {
+	Create(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
+	Get(ctx context.Context, actorID, id string) (*drive.Drive, error)
+	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
+	Update(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error)
+	Delete(ctx context.Context, actorID, id string) error
+	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)
+	ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error)
+	ListDeleted(ctx context.Context) ([]*drive.Drive, error)
 }
 
 // AuthClient is the consumer-declared interface for authentication operations.
@@ -57,6 +71,7 @@ type AuthClient interface {
 
 type Handler struct {
 	vfs            FSClient
+	drive          DriveClient
 	getUser        func(context.Context) (string, bool)
 	auth           AuthClient
 	frontendURL    string
@@ -73,8 +88,8 @@ type CookieConfig struct {
 	SameSite http.SameSite
 }
 
-func New(fs FSClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
-	h := &Handler{vfs: fs, getUser: getUser}
+func New(fs FSClient, drive DriveClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
+	h := &Handler{vfs: fs, drive: drive, getUser: getUser}
 	for _, opt := range opts {
 		opt(h)
 	}
