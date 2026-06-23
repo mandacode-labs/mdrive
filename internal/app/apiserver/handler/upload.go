@@ -23,7 +23,7 @@ func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest,
 		v := r.ContentLength.Value
 		contentLength = &v
 	}
-	info, err := h.vfs.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, contentType, contentLength, time.Hour)
+	info, err := h.upload.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, contentType, contentLength, time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteR
 		s := r.Checksum.Value
 		cs = &s
 	}
-	n, err := h.vfs.CompleteUpload(ctx, h.userID(ctx), params.DriveID, params.UploadId, r.ContentLength, cs)
+	n, err := h.upload.CompleteUpload(ctx, h.userID(ctx), params.DriveID, params.UploadId, r.ContentLength, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteR
 }
 
 func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloadParams) (api.PresignDownloadRes, error) {
-	info, err := h.vfs.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, time.Hour)
+	info, err := h.upload.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, time.Hour)
 	if err != nil {
 		return nil, err
 	}

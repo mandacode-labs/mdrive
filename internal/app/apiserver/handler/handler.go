@@ -13,7 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -33,19 +33,16 @@ type FSClient interface {
 	WriteLarge(ctx context.Context, userID, driveID, path string, obj node.ObjectContent, size int64) error
 	Stat(ctx context.Context, userID, driveID, path string) (*node.Node, error)
 	Symlink(ctx context.Context, userID, driveID, target, linkPath string) (*node.Node, error)
-	InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (vfs.PresignInfo, error)
-	CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error)
-	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (vfs.PresignInfo, error)
 	UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)
 	GetUser(ctx context.Context, actorID, id string) (*user.User, error)
 }
 
 // DriveClient is the consumer-declared interface for drive CRUD.
-// It is implemented by vfs/drive.Service (a subpackage of vfs
-// that composes the core drive.Service with permission checks).
-// Splitting this out of FSClient keeps the handler's dependency
-// on filesystem code minimal: drive CRUD has nothing to do with
-// node/permission/S3 I/O.
+// It is implemented by internal/drive.Service (a top-level
+// package that composes the core drive.Service with permission
+// checks). Splitting this out of FSClient keeps the handler's
+// dependency on filesystem code minimal: drive CRUD has nothing
+// to do with node/permission/S3 I/O.
 type DriveClient interface {
 	Create(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	Get(ctx context.Context, actorID, id string) (*drive.Drive, error)
@@ -55,6 +52,20 @@ type DriveClient interface {
 	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)
 	ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error)
 	ListDeleted(ctx context.Context, isAdmin bool) ([]*drive.Drive, error)
+}
+
+// UploadClient is the consumer-declared interface for the
+// presigned-upload flow. It is implemented by internal/upload.Service
+// (a top-level package that composes the upload Registry with the
+// vfs node tree and the S3 store). Splitting this out of FSClient
+// keeps the handler's dependency on filesystem code minimal:
+// upload orchestration is a separate concern (it requires a
+// Registry, presigned URLs, and the node tree, but those are
+// supplied as dependencies, not as vfs internals).
+type UploadClient interface {
+	InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (upload.PresignInfo, error)
+	CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error)
+	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (upload.PresignInfo, error)
 }
 
 // AuthClient is the consumer-declared interface for authentication operations.
@@ -72,6 +83,7 @@ type AuthClient interface {
 type Handler struct {
 	vfs            FSClient
 	drive          DriveClient
+	upload         UploadClient
 	getUser        func(context.Context) (string, bool)
 	auth           AuthClient
 	frontendURL    string
@@ -88,8 +100,8 @@ type CookieConfig struct {
 	SameSite http.SameSite
 }
 
-func New(fs FSClient, drive DriveClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
-	h := &Handler{vfs: fs, drive: drive, getUser: getUser}
+func New(fs FSClient, drive DriveClient, upload UploadClient, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
+	h := &Handler{vfs: fs, drive: drive, upload: upload, getUser: getUser}
 	for _, opt := range opts {
 		opt(h)
 	}

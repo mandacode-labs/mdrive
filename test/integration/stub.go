@@ -17,7 +17,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/testsupport"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -52,16 +52,6 @@ func (s *stubFS) Stat(context.Context, string, string, string) (*node.Node, erro
 func (s *stubFS) Symlink(ctx context.Context, userID, driveID, target, linkPath string) (*node.Node, error) {
 	n, _ := node.NewSymlink(target)
 	return n, nil
-}
-func (s *stubFS) InitiateUpload(context.Context, string, string, string, *string, *int64, time.Duration) (vfs.PresignInfo, error) {
-	return vfs.PresignInfo{}, nil
-}
-func (s *stubFS) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
-	n, _ := node.NewObject(node.ObjectContent{Bucket: "b", Key: "k"}, contentLength)
-	return n, nil
-}
-func (s *stubFS) PresignDownload(context.Context, string, string, string, time.Duration) (vfs.PresignInfo, error) {
-	return vfs.PresignInfo{}, nil
 }
 func (s *stubFS) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
 	return user.NewUser("u1", "pub1", cmd.Name, cmd.Email, cmd.Provider, cmd.ProviderID, time.Now(), time.Now()), nil
@@ -112,9 +102,24 @@ func (s *stubDrive) ListDeleted(ctx context.Context, isAdmin bool) ([]*drive.Dri
 
 var _ handler.DriveClient = (*stubDrive)(nil)
 
+type stubUpload struct{}
+
+func (s *stubUpload) InitiateUpload(context.Context, string, string, string, *string, *int64, time.Duration) (upload.PresignInfo, error) {
+	return upload.PresignInfo{Method: "PUT", URL: "https://s3.example.com/put", Headers: map[string]string{}}, nil
+}
+func (s *stubUpload) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
+	n, _ := node.NewObject(node.ObjectContent{Bucket: "b", Key: "k"}, contentLength)
+	return n, nil
+}
+func (s *stubUpload) PresignDownload(context.Context, string, string, string, time.Duration) (upload.PresignInfo, error) {
+	return upload.PresignInfo{Method: "GET", URL: "https://s3.example.com/get", Headers: map[string]string{}}, nil
+}
+
+var _ handler.UploadClient = (*stubUpload)(nil)
+
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	h := handler.New(&stubFS{}, &stubDrive{}, func(ctx context.Context) (string, bool) {
+	h := handler.New(&stubFS{}, &stubDrive{}, &stubUpload{}, func(ctx context.Context) (string, bool) {
 		return testUserID, true
 	})
 	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {

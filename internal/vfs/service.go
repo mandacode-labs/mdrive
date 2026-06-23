@@ -11,7 +11,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/permission"
-	"github.com/mandacode-labs/mdrive/internal/upload"
 )
 
 var (
@@ -77,7 +76,6 @@ type Service struct {
 	User  UserClient
 	Store Store
 	Perm  PermClient
-	Reg   upload.Registry
 	GC    TombstoneInserter
 }
 
@@ -89,21 +87,16 @@ type ServiceConfig struct {
 	User  UserClient
 	Store Store
 	Perm  PermClient
-	Reg   upload.Registry
 	GC    TombstoneInserter
 }
 
 func NewService(cfg ServiceConfig) *Service {
-	if cfg.Reg == nil {
-		cfg.Reg = upload.NewMemoryRegistry()
-	}
 	return &Service{
 		Node:  cfg.Node,
 		Drive: cfg.Drive,
 		User:  cfg.User,
 		Store: cfg.Store,
 		Perm:  cfg.Perm,
-		Reg:   cfg.Reg,
 		GC:    cfg.GC,
 	}
 }
@@ -124,7 +117,6 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 			User:  s.User,
 			Store: s.Store,
 			Perm:  s.Perm,
-			Reg:   s.Reg,
 			GC:    s.GC,
 		})
 	})
@@ -154,6 +146,44 @@ func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, er
 		return uuid.Nil, ErrNotFound
 	}
 	return *d.RootNodeID(), nil
+}
+
+// GetRootNodeID is the public form of rootNodeID. External services
+// (notably internal/upload.Service) use it to resolve a drive's
+// root node for path operations.
+func (s *Service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
+	return s.rootNodeID(ctx, driveID)
+}
+
+// ResolveParentNodeID resolves a path's parent directory and last
+// component, returning the parent's node ID and the leaf name.
+// Public so external services (internal/upload.Service) can link
+// new nodes without taking on the resolver.
+func (s *Service) ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error) {
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+	return parent.ID(), name, nil
+}
+
+// ResolveNodeID resolves a path to its node ID within a drive.
+// Public so external services (internal/upload.Service) can fetch
+// an existing node without a full Resolved struct.
+func (s *Service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error) {
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	out, err := s.newResolver().resolve(ctx, rootID, path)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return out.Node.ID(), nil
 }
 
 func (s *Service) checkAccess(ctx context.Context, userID string, perm permission.Permission, driveID string) error {
