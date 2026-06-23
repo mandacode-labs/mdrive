@@ -29,7 +29,7 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 	// Mounts, symlinks, directories cannot be hardlinked; only regular
 	// files and object-backed files.
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
-		return nil, errHardlinkNotSupported
+		return nil, ErrHardlinkNotSupported
 	}
 	parent, name, err := s.path.resolveParent(ctx, rootID, linkPath)
 	if err != nil {
@@ -47,8 +47,6 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 // ErrHardlinkNotSupported is returned when the source node type does
 // not support hardlinks.
 var ErrHardlinkNotSupported = &hardlinkError{}
-
-var errHardlinkNotSupported = ErrHardlinkNotSupported
 
 type hardlinkError struct{}
 
