@@ -17,7 +17,7 @@ func (s *Service) Mkdir(ctx context.Context, userID, driveID, path string) (*nod
 	if err != nil {
 		return nil, err
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, path)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("mkdir: %w", err)
 	}

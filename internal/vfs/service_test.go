@@ -10,6 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 type fakeRepo struct {
@@ -116,7 +117,9 @@ func (s *fakeStore) GetPresignedDownloadURL(_ context.Context, _, _ string, _ ti
 
 type fakePerm struct{}
 
-func (p *fakePerm) Check(_ context.Context, _, _, _, _ string) (bool, error) { return true, nil }
+func (p *fakePerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
+	return true, nil
+}
 func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
 
 func newTestService() *Service {

@@ -23,6 +23,7 @@ var (
 
 type NodeClient interface {
 	CreateFile(ctx context.Context, content string) (*node.Node, error)
+	Touch(ctx context.Context) (*node.Node, error)
 	CreateDirectory(ctx context.Context) (*node.Node, error)
 	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
 	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
@@ -57,7 +58,7 @@ type UserClient interface {
 }
 
 type PermClient interface {
-	Check(ctx context.Context, userID, relation, objType, objID string) (bool, error)
+	Check(ctx context.Context, userID string, perm permission.Permission, objType, objID string) (bool, error)
 	Grant(ctx context.Context, userID, relation, objType, objID string) error
 }
 
@@ -78,7 +79,6 @@ type Service struct {
 	Perm  PermClient
 	Reg   upload.Registry
 	GC    TombstoneInserter
-	path  *resolver
 }
 
 func NewService(
@@ -101,8 +101,15 @@ func NewService(
 		Perm:  checker,
 		Reg:   reg,
 		GC:    gc,
-		path:  newResolver(n),
 	}
+}
+
+// newResolver returns a fresh resolver backed by the Service's
+// NodeClient. Use it within an operation that resolves the same
+// UUID more than once so the cache collapses the loads to a single
+// *Node pointer; single-load callers can ignore the return value.
+func (s *Service) newResolver() *resolver {
+	return newResolver(s.Node)
 }
 
 func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) error {
@@ -115,7 +122,6 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 			Perm:  s.Perm,
 			Reg:   s.Reg,
 			GC:    s.GC,
-			path:  newResolver(txNode),
 		})
 	})
 }
@@ -146,11 +152,11 @@ func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, er
 	return *d.RootNodeID(), nil
 }
 
-func (s *Service) checkAccess(ctx context.Context, userID, permission, driveID string) error {
+func (s *Service) checkAccess(ctx context.Context, userID string, perm permission.Permission, driveID string) error {
 	if s.Perm == nil {
 		return nil
 	}
-	allowed, err := s.Perm.Check(ctx, userID, permission, "drive", driveID)
+	allowed, err := s.Perm.Check(ctx, userID, perm, "drive", driveID)
 	if err != nil {
 		return err
 	}

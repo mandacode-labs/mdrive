@@ -17,14 +17,14 @@ func (s *Service) Touch(ctx context.Context, userID, driveID, path string) (*nod
 	if err != nil {
 		return nil, err
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, path)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("touch: %w", err)
 	}
 	if !parent.IsDir() {
 		return nil, ErrNotDirectory
 	}
-	n, err := s.Node.CreateFile(ctx, "")
+	n, err := s.Node.Touch(ctx)
 	if err != nil {
 		return nil, err
 	}

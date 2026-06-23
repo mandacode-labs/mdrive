@@ -37,7 +37,7 @@ func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
 		}
 	}
 	if h.healthDeps.Perm != nil {
-		if _, err := h.healthDeps.Perm.Check(ctx, "healthcheck", "can_view", "drive", "_healthcheck"); err != nil {
+		if _, err := h.healthDeps.Perm.Check(ctx, "healthcheck", permission.PermissionView, "drive", "_healthcheck"); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: openfga unreachable")}, nil
 		}
 	}

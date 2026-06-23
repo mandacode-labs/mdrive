@@ -17,7 +17,7 @@ func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath
 	if err != nil {
 		return nil, err
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, linkPath)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, linkPath)
 	if err != nil {
 		return nil, fmt.Errorf("symlink: %w", err)
 	}

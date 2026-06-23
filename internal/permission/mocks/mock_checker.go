@@ -7,6 +7,7 @@ package permissionMocks
 import (
 	"context"
 
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -38,8 +39,8 @@ func (_m *CheckerMock) EXPECT() *CheckerMock_Expecter {
 }
 
 // Check provides a mock function for the type CheckerMock
-func (_mock *CheckerMock) Check(ctx context.Context, user string, permission string, objectType string, objectID string) (bool, error) {
-	ret := _mock.Called(ctx, user, permission, objectType, objectID)
+func (_mock *CheckerMock) Check(ctx context.Context, user string, perm permission.Permission, objectType string, objectID string) (bool, error) {
+	ret := _mock.Called(ctx, user, perm, objectType, objectID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Check")
@@ -47,16 +48,16 @@ func (_mock *CheckerMock) Check(ctx context.Context, user string, permission str
 
 	var r0 bool
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) (bool, error)); ok {
-		return returnFunc(ctx, user, permission, objectType, objectID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Permission, string, string) (bool, error)); ok {
+		return returnFunc(ctx, user, perm, objectType, objectID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) bool); ok {
-		r0 = returnFunc(ctx, user, permission, objectType, objectID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Permission, string, string) bool); ok {
+		r0 = returnFunc(ctx, user, perm, objectType, objectID)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
-		r1 = returnFunc(ctx, user, permission, objectType, objectID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Permission, string, string) error); ok {
+		r1 = returnFunc(ctx, user, perm, objectType, objectID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -71,14 +72,14 @@ type CheckerMock_Check_Call struct {
 // Check is a helper method to define mock.On call
 //   - ctx context.Context
 //   - user string
-//   - permission string
+//   - perm permission.Permission
 //   - objectType string
 //   - objectID string
-func (_e *CheckerMock_Expecter) Check(ctx interface{}, user interface{}, permission interface{}, objectType interface{}, objectID interface{}) *CheckerMock_Check_Call {
-	return &CheckerMock_Check_Call{Call: _e.mock.On("Check", ctx, user, permission, objectType, objectID)}
+func (_e *CheckerMock_Expecter) Check(ctx interface{}, user interface{}, perm interface{}, objectType interface{}, objectID interface{}) *CheckerMock_Check_Call {
+	return &CheckerMock_Check_Call{Call: _e.mock.On("Check", ctx, user, perm, objectType, objectID)}
 }
 
-func (_c *CheckerMock_Check_Call) Run(run func(ctx context.Context, user string, permission string, objectType string, objectID string)) *CheckerMock_Check_Call {
+func (_c *CheckerMock_Check_Call) Run(run func(ctx context.Context, user string, perm permission.Permission, objectType string, objectID string)) *CheckerMock_Check_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -88,9 +89,9 @@ func (_c *CheckerMock_Check_Call) Run(run func(ctx context.Context, user string,
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 permission.Permission
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(permission.Permission)
 		}
 		var arg3 string
 		if args[3] != nil {
@@ -116,7 +117,7 @@ func (_c *CheckerMock_Check_Call) Return(b bool, err error) *CheckerMock_Check_C
 	return _c
 }
 
-func (_c *CheckerMock_Check_Call) RunAndReturn(run func(ctx context.Context, user string, permission string, objectType string, objectID string) (bool, error)) *CheckerMock_Check_Call {
+func (_c *CheckerMock_Check_Call) RunAndReturn(run func(ctx context.Context, user string, perm permission.Permission, objectType string, objectID string) (bool, error)) *CheckerMock_Check_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -197,8 +198,8 @@ func (_c *CheckerMock_Grant_Call) RunAndReturn(run func(ctx context.Context, use
 }
 
 // ListObjects provides a mock function for the type CheckerMock
-func (_mock *CheckerMock) ListObjects(ctx context.Context, user string, permission string, objectType string) ([]string, error) {
-	ret := _mock.Called(ctx, user, permission, objectType)
+func (_mock *CheckerMock) ListObjects(ctx context.Context, user string, perm string, objectType string) ([]string, error) {
+	ret := _mock.Called(ctx, user, perm, objectType)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListObjects")
@@ -207,17 +208,17 @@ func (_mock *CheckerMock) ListObjects(ctx context.Context, user string, permissi
 	var r0 []string
 	var r1 error
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) ([]string, error)); ok {
-		return returnFunc(ctx, user, permission, objectType)
+		return returnFunc(ctx, user, perm, objectType)
 	}
 	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) []string); ok {
-		r0 = returnFunc(ctx, user, permission, objectType)
+		r0 = returnFunc(ctx, user, perm, objectType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, user, permission, objectType)
+		r1 = returnFunc(ctx, user, perm, objectType)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -232,13 +233,13 @@ type CheckerMock_ListObjects_Call struct {
 // ListObjects is a helper method to define mock.On call
 //   - ctx context.Context
 //   - user string
-//   - permission string
+//   - perm string
 //   - objectType string
-func (_e *CheckerMock_Expecter) ListObjects(ctx interface{}, user interface{}, permission interface{}, objectType interface{}) *CheckerMock_ListObjects_Call {
-	return &CheckerMock_ListObjects_Call{Call: _e.mock.On("ListObjects", ctx, user, permission, objectType)}
+func (_e *CheckerMock_Expecter) ListObjects(ctx interface{}, user interface{}, perm interface{}, objectType interface{}) *CheckerMock_ListObjects_Call {
+	return &CheckerMock_ListObjects_Call{Call: _e.mock.On("ListObjects", ctx, user, perm, objectType)}
 }
 
-func (_c *CheckerMock_ListObjects_Call) Run(run func(ctx context.Context, user string, permission string, objectType string)) *CheckerMock_ListObjects_Call {
+func (_c *CheckerMock_ListObjects_Call) Run(run func(ctx context.Context, user string, perm string, objectType string)) *CheckerMock_ListObjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -271,7 +272,7 @@ func (_c *CheckerMock_ListObjects_Call) Return(strings []string, err error) *Che
 	return _c
 }
 
-func (_c *CheckerMock_ListObjects_Call) RunAndReturn(run func(ctx context.Context, user string, permission string, objectType string) ([]string, error)) *CheckerMock_ListObjects_Call {
+func (_c *CheckerMock_ListObjects_Call) RunAndReturn(run func(ctx context.Context, user string, perm string, objectType string) ([]string, error)) *CheckerMock_ListObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

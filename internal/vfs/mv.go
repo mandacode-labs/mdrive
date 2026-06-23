@@ -74,7 +74,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if err != nil {
 		return nil, err
 	}
-	r := s.path.fresh()
+	r := s.newResolver()
 	srcRes, err := s.Resolve(ctx, driveID, srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
@@ -118,7 +118,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	if err != nil {
 		return nil, err
 	}
-	r := s.path.fresh()
+	r := s.newResolver()
 	dstOut, err := r.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)

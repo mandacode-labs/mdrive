@@ -21,7 +21,7 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.path.resolve(ctx, rootID, srcPath)
+	out, err := s.newResolver().resolve(ctx, rootID, srcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
 		return nil, ErrHardlinkNotSupported
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, linkPath)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, linkPath)
 	if err != nil {
 		return nil, err
 	}

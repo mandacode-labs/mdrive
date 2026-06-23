@@ -34,6 +34,13 @@ func (s *Service) CreateFile(ctx context.Context, content string) (*Node, error)
 	return n, nil
 }
 
+// Touch creates and persists an empty file node, mirroring `touch path`.
+// It is a thin convenience over CreateFile with content=""; both return
+// a node with an empty FileContent and no further invariants.
+func (s *Service) Touch(ctx context.Context) (*Node, error) {
+	return s.CreateFile(ctx, "")
+}
+
 // CreateDirectory creates and persists a directory node.
 func (s *Service) CreateDirectory(ctx context.Context) (*Node, error) {
 	n, err := NewDirectory()

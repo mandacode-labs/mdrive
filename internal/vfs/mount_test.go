@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // TestMountRequiresViewOnSource verifies that creating a mount is
@@ -28,7 +29,9 @@ func TestMountRequiresViewOnSource(t *testing.T) {
 
 type denyPerm struct{}
 
-func (d *denyPerm) Check(_ context.Context, _, _, _, _ string) (bool, error) { return false, nil }
+func (d *denyPerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
+	return false, nil
+}
 func (d *denyPerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
 
 // TestUnmountNotAMount rejects unmount on a non-mount entry.

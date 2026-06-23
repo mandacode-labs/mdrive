@@ -40,7 +40,7 @@ func (s *Service) Mount(ctx context.Context, userID, driveID, mountPath, sourceD
 	if err != nil {
 		return nil, err
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, mountPath)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, mountPath)
 	if err != nil {
 		return nil, fmt.Errorf("mount: resolve target: %w", err)
 	}
@@ -71,7 +71,7 @@ func (s *Service) Unmount(ctx context.Context, userID, driveID, mountPath string
 	if err != nil {
 		return err
 	}
-	out, err := s.path.resolve(ctx, rootID, mountPath)
+	out, err := s.newResolver().resolve(ctx, rootID, mountPath)
 	if err != nil {
 		return fmt.Errorf("unmount: %w", err)
 	}
@@ -79,7 +79,7 @@ func (s *Service) Unmount(ctx context.Context, userID, driveID, mountPath string
 	if !n.IsMount() {
 		return fmt.Errorf("unmount: %s is not a mount", mountPath)
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, mountPath)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, mountPath)
 	if err != nil {
 		return fmt.Errorf("unmount: resolve parent: %w", err)
 	}

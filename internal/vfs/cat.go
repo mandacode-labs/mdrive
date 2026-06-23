@@ -62,9 +62,9 @@ func (s *Service) Write(ctx context.Context, userID, driveID, path, content stri
 	if err != nil {
 		return err
 	}
-	out, err := s.path.resolve(ctx, rootID, path)
+	out, err := s.newResolver().resolve(ctx, rootID, path)
 	if err != nil {
-		parent, name, perr := s.path.resolveParent(ctx, rootID, path)
+		parent, name, perr := s.newResolver().resolveParent(ctx, rootID, path)
 		if perr != nil {
 			return fmt.Errorf("write: %w", perr)
 		}
@@ -100,10 +100,10 @@ func (s *Service) WriteLarge(ctx context.Context, userID, driveID, path string, 
 		return err
 	}
 	// Check if path already exists
-	if out, err := s.path.resolve(ctx, rootID, path); err == nil {
+	if out, err := s.newResolver().resolve(ctx, rootID, path); err == nil {
 		return fmt.Errorf("write_large: %s: already exists (type=%s)", path, out.Node.Type())
 	}
-	parent, name, perr := s.path.resolveParent(ctx, rootID, path)
+	parent, name, perr := s.newResolver().resolveParent(ctx, rootID, path)
 	if perr != nil {
 		return fmt.Errorf("write_large: %w", perr)
 	}
