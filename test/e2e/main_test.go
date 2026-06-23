@@ -21,11 +21,11 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/migrate"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	drivesvc "github.com/mandacode-labs/mdrive/internal/drive"
-	"github.com/mandacode-labs/mdrive/internal/testsupport"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -104,18 +104,13 @@ func setupE2E(t *testing.T) *e2eEnv {
 	require.NoError(t, err)
 
 	driveRepo := drive.NewRepository(entClient, nil)
-	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
+	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, nil)
 
 	fs := vfs.NewService(vfs.ServiceConfig{
 		Node:  nodeSvc,
 		Drive: driveSvc,
 		Store: nil,
 		GC:    nil,
-	})
-
-	driveSvcVfs := drivesvc.NewService(drivesvc.Config{
-		Drive: driveSvc,
-		Perm:  nil,
 	})
 
 	uploadSvcVfs := upload.NewService(upload.Config{
@@ -126,17 +121,16 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Perm:  nil,
 	})
 
-	h := handler.New(fs, driveSvcVfs, userSvc, uploadSvcVfs, nil, func(ctx context.Context) (string, bool) {
-		return u.ID(), true
-	}, handler.WithDefaultStorage(drive.StorageConfig{
-		Bucket:       "e2e-bucket",
-		Region:       "us-east-1",
-		AccessKey:    "a",
-		SecretKey:    "s",
-		UsePathStyle: false,
-	}))
+	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, nil, nil, "",
+		handler.WithDefaultStorage(drive.StorageConfig{
+			Bucket:       "e2e-bucket",
+			Region:       "us-east-1",
+			AccessKey:    "a",
+			SecretKey:    "s",
+			UsePathStyle: false,
+		}))
 
-	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(
+	ogenServer, err := api.NewServer(h, e2eSecurity{userID: u.ID()}, api.WithErrorHandler(
 		func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 			t.Logf("e2e error: %s %s -> %v", r.Method, r.URL.Path, err)
 			apiserver.WriteError(w, err)
@@ -181,4 +175,15 @@ func (e *e2eEnv) authReq(method, path string, body io.Reader) *http.Request {
 	req.Header.Set("Authorization", "Bearer test-token")
 	req.Header.Set("Content-Type", "application/json")
 	return req
+}
+
+// e2eSecurity injects a session for a fixed user on every request.
+// Mirrors the production SecurityHandler but skips the OIDC flow.
+type e2eSecurity struct {
+	userID string
+}
+
+func (e e2eSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	sess := &session.Session{UserID: e.userID}
+	return auth.ContextWithSession(ctx, sess), nil
 }

@@ -73,12 +73,14 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if err != nil {
 		return nil, err
 	}
-	r := s.newResolver().fresh()
-	srcRes, err := s.Resolve(ctx, driveID, srcPath)
+	r := s.newResolver()
+	// A single resolve call gives us the src node; if it stops at a
+	// mount, the move would cross drives, which mv rejects.
+	srcOut, err := r.resolve(ctx, rootID, srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
 	}
-	if srcRes.DriveID != driveID {
+	if srcOut.Remaining != "" {
 		return nil, ErrCrossDrive
 	}
 	srcParent, srcName, err := r.resolveParent(ctx, rootID, srcPath)
@@ -117,7 +119,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	if err != nil {
 		return nil, err
 	}
-	r := s.newResolver().fresh()
+	r := s.newResolver()
 	dstOut, err := r.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)
@@ -136,11 +138,11 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	sources := make([]srcInfo, 0, len(srcPaths))
 	seen := make(map[string]struct{}, len(srcPaths))
 	for _, srcPath := range srcPaths {
-		res, err := s.Resolve(ctx, driveID, srcPath)
+		srcOut, err := r.resolve(ctx, rootID, srcPath)
 		if err != nil {
 			return nil, fmt.Errorf("mv: %s: %w", srcPath, err)
 		}
-		if res.DriveID != driveID {
+		if srcOut.Remaining != "" {
 			return nil, ErrCrossDrive
 		}
 		sp, sn, err := r.resolveParent(ctx, rootID, srcPath)
@@ -155,7 +157,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 			return nil, fmt.Errorf("mv: duplicate source basename %q in batch", base)
 		}
 		seen[base] = struct{}{}
-		sources = append(sources, srcInfo{node: res.Node, baseName: base, srcParent: sp, srcName: sn})
+		sources = append(sources, srcInfo{node: srcOut.Node, baseName: base, srcParent: sp, srcName: sn})
 	}
 
 	for _, si := range sources {

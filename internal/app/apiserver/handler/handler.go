@@ -35,7 +35,7 @@ type FSClient interface {
 	Write(ctx context.Context, driveID, path, content string) error
 	WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error
 	Stat(ctx context.Context, driveID, path string) (*node.Node, error)
-	Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error)
+	Ln(ctx context.Context, driveID, target, linkPath string, mode vfs.LinkMode) (*node.Node, error)
 }
 
 // DriveClient is the consumer-declared interface for drive CRUD.
@@ -43,11 +43,11 @@ type DriveClient interface {
 	Create(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	Get(ctx context.Context, actorID, id string) (*drive.Drive, error)
 	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
-	Update(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error)
+	Update(ctx context.Context, actorID, id string, name, description string) (*drive.Drive, error)
 	Delete(ctx context.Context, actorID, id string) error
 	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)
 	ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error)
-	ListDeleted(ctx context.Context, isAdmin bool) ([]*drive.Drive, error)
+	ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*drive.Drive, error)
 }
 
 // UserClient is the consumer-declared interface for user CRUD.
@@ -75,22 +75,17 @@ type AuthClient interface {
 	GetPKCE(ctx context.Context, state string) (string, error)
 }
 
-// ErrPermission is the handler-level permission-denied error.
-// vfs and drive both return their own ErrPermission; the handler
-// re-uses them when propagating.
-var ErrPermission = permission.ErrPermission
-
 type Handler struct {
 	vfs            FSClient
 	drive          DriveClient
 	users          UserClient
 	upload         UploadClient
 	perm           permission.Checker
-	getUser        func(context.Context) (string, bool)
 	auth           AuthClient
 	frontendURL    string
 	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
+	presignTTL     time.Duration
 	healthDeps     HealthDeps
 }
 
@@ -102,14 +97,18 @@ type CookieConfig struct {
 	SameSite http.SameSite
 }
 
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, perm permission.Checker, getUser func(context.Context) (string, bool), opts ...Option) *Handler {
+// New wires the handler. The auth client is optional; when nil,
+// requests are expected to arrive without a session (e.g. health
+// checks) and any auth-protected endpoint will return an error.
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, perm permission.Checker, auth AuthClient, frontendURL string, opts ...Option) *Handler {
 	h := &Handler{
-		vfs:     fs,
-		drive:   drive,
-		users:   users,
-		upload:  upload,
-		perm:    perm,
-		getUser: getUser,
+		vfs:         fs,
+		drive:       drive,
+		users:       users,
+		upload:      upload,
+		perm:        perm,
+		auth:        auth,
+		frontendURL: frontendURL,
 	}
 	for _, opt := range opts {
 		opt(h)
@@ -125,6 +124,12 @@ func WithDefaultStorage(cfg drive.StorageConfig) Option {
 	}
 }
 
+func WithPresignTTL(ttl time.Duration) Option {
+	return func(h *Handler) {
+		h.presignTTL = ttl
+	}
+}
+
 func WithHealthDeps(deps HealthDeps) Option {
 	return func(h *Handler) {
 		h.healthDeps = deps
@@ -137,56 +142,16 @@ func WithCookie(cfg CookieConfig) Option {
 	}
 }
 
-func (h *Handler) WithAuth(a AuthClient, frontendURL string) {
-	h.auth = a
-	h.frontendURL = frontendURL
-}
-
 func (h *Handler) userID(ctx context.Context) string {
-	if id, ok := h.getUser(ctx); ok {
-		return id
-	}
-	if h.auth != nil {
-		sess := auth.SessionFromContext(ctx)
-		if sess != nil {
-			return sess.UserID
-		}
-	}
-	return ""
+	return auth.UserIDFromContext(ctx)
 }
 
-// checkEdit returns nil if the user has edit permission on driveID,
-// ErrPermission otherwise. Used before any write-side FS op.
-func (h *Handler) checkEdit(ctx context.Context, userID, driveID string) error {
-	if h.perm == nil {
-		return nil
-	}
-	allowed, err := h.perm.Check(ctx, userID, permission.PermissionEdit, permission.ObjectTypeDrive, driveID)
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return permission.ErrPermission
-	}
-	return nil
-}
-
-// checkViewAfterResolve extends a permission check to the drive the
-// path ultimately resolves to (which may differ from driveID if a
-// mount was crossed). The caller invokes vfs.Resolve first, then
-// passes the resulting drive to this check.
-func (h *Handler) checkViewAfterResolve(ctx context.Context, userID, resolvedDriveID string) error {
-	if h.perm == nil {
-		return nil
-	}
-	allowed, err := h.perm.Check(ctx, userID, permission.PermissionView, permission.ObjectTypeDrive, resolvedDriveID)
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return permission.ErrPermission
-	}
-	return nil
+// requirePerm centralizes the handler's permission check. All
+// writes use PermissionEdit; reads use PermissionView (the caller
+// may need to call ResolveForPermission first if the path may
+// cross a mount — see fs.go).
+func (h *Handler) requirePerm(ctx context.Context, perm permission.Permission, driveID string) error {
+	return permission.Require(ctx, h.perm, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
 // Compile-time checks.

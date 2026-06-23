@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ogen-go/ogen/ogenerrors"
+
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -117,7 +119,7 @@ func (h *Handler) AuthLogout(ctx context.Context) error {
 func (h *Handler) AuthMe(ctx context.Context) (*api.User, error) {
 	sess := auth.SessionFromContext(ctx)
 	if sess == nil {
-		return nil, fmt.Errorf("authentication not configured")
+		return nil, ogenerrors.ErrSecurityRequirementIsNotSatisfied
 	}
 	u, err := h.users.GetByID(ctx, sess.UserID)
 	if err != nil {

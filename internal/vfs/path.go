@@ -11,37 +11,29 @@ import (
 )
 
 // resolver walks the node tree from a drive root to resolve Unix
-// paths. The cache memoizes GetByID loads within a single resolver
-// instance so multiple resolves of the same UUID return the same
-// in-memory *Node pointer. vfs methods that do more than one
-// resolve should obtain a fresh resolver (resolver.fresh) so the
-// cache is scoped to a single operation; sharing one resolver
-// across operations is goroutine-unsafe.
+// paths. Each resolver instance has its own cache that memoizes
+// GetByID loads within the instance, so multiple resolves of the
+// same UUID return the same in-memory *Node pointer. This pointer
+// identity is required for the optimistic-concurrency check in
+// node.Repository.Save (staleRev) to behave consistently within
+// one operation.
+//
+// Resolvers are NOT safe to share across operations: the cache
+// grows without bounds and stale entries may bleed into a
+// later call. Each vfs method that resolves more than once
+// must construct its own resolver.
 type resolver struct {
 	node  NodeClient
 	cache map[uuid.UUID]*node.Node
 }
 
 func newResolver(n NodeClient) *resolver {
-	return &resolver{node: n}
-}
-
-// fresh returns a new resolver with an empty cache. Use it within
-// a vfs operation that resolves the same UUID more than once (e.g.
-// mvOne loading the same parent directory for both src and dst
-// endpoints). The returned resolver shares the underlying NodeClient
-// with the receiver; only the cache is fresh.
-func (r *resolver) fresh() *resolver {
-	return &resolver{node: r.node, cache: make(map[uuid.UUID]*node.Node)}
+	return &resolver{node: n, cache: make(map[uuid.UUID]*node.Node)}
 }
 
 // loadByID returns the cached *Node for id, or fetches it via the
-// NodeClient and caches the result. The cache is a load-time
-// optimization: it does not affect correctness for single-resolve
-// callers, but for multi-resolve callers it guarantees that two
-// loads of the same UUID share the same pointer, which is required
-// for the optimistic-concurrency check in node.Repository.Save
-// (staleRev) to behave consistently within one operation.
+// NodeClient and caches the result. Two loads of the same UUID
+// within one resolver always return the same pointer.
 func (r *resolver) loadByID(ctx context.Context, id uuid.UUID) (*node.Node, error) {
 	if n, ok := r.cache[id]; ok {
 		return n, nil
@@ -50,9 +42,7 @@ func (r *resolver) loadByID(ctx context.Context, id uuid.UUID) (*node.Node, erro
 	if err != nil {
 		return nil, err
 	}
-	if r.cache != nil {
-		r.cache[id] = n
-	}
+	r.cache[id] = n
 	return n, nil
 }
 

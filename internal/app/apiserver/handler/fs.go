@@ -6,6 +6,8 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -17,7 +19,7 @@ import (
 
 func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.MkdirParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
 	_, err := h.vfs.Mkdir(ctx, params.DriveID, r.Path)
@@ -26,7 +28,7 @@ func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.Mkd
 
 func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.TouchParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
 	_, err := h.vfs.Touch(ctx, params.DriveID, r.Path)
@@ -35,7 +37,7 @@ func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.Tou
 
 func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
 	recursiveVal := false
@@ -47,7 +49,7 @@ func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams)
 
 func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
 	return h.vfs.Mv(ctx, params.DriveID, r.Sources, params.DriveID, r.Destination)
@@ -64,7 +66,7 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 	if err != nil {
 		return nil, err
 	}
-	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	// Re-resolve the remaining path (if any) within the source drive
@@ -93,7 +95,7 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatOK, err
 	if err != nil {
 		return api.CatOK{}, err
 	}
-	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
 		return api.CatOK{}, err
 	}
 	finalPath := res.Path
@@ -109,7 +111,7 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatOK, err
 
 func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.WriteParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
 	return h.vfs.Write(ctx, params.DriveID, r.Path, r.Content)
@@ -117,7 +119,7 @@ func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.Wri
 
 func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) (api.WriteLargeRes, error) {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	ct := ""
@@ -142,10 +144,10 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 
 func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {
 	r := req.Value
-	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
-	_, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath)
+	_, err := h.vfs.Ln(ctx, params.DriveID, r.Target, r.LinkPath, vfs.Symlink)
 	return err
 }
 
@@ -154,7 +156,7 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 	if err != nil {
 		return nil, err
 	}
-	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	finalPath := res.Path

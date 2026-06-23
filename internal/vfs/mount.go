@@ -35,9 +35,6 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 	if err != nil {
 		return nil, fmt.Errorf("mount: %w", err)
 	}
-	if !parent.IsDir() {
-		return nil, ErrNotDirectory
-	}
 	mount, err := s.Node.CreateMount(ctx, sourceDriveID)
 	if err != nil {
 		return nil, err

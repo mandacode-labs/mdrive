@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"time"
 
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -23,7 +22,7 @@ func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest,
 		v := r.ContentLength.Value
 		contentLength = &v
 	}
-	info, err := h.upload.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, contentType, contentLength, time.Hour)
+	info, err := h.upload.InitiateUpload(ctx, h.userID(ctx), params.DriveID, r.Path, contentType, contentLength, h.presignTTL)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +60,7 @@ func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteR
 }
 
 func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloadParams) (api.PresignDownloadRes, error) {
-	info, err := h.upload.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, time.Hour)
+	info, err := h.upload.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, h.presignTTL)
 	if err != nil {
 		return nil, err
 	}

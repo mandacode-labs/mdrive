@@ -70,16 +70,20 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	return &Client{api: api, presigner: presigner}, nil
 }
 
-// PutObject uploads an object to the given bucket.
-func (c *Client) PutObject(ctx context.Context, bucket, key string, reader io.Reader, _ int64) error {
+// PutObject uploads an object to the given bucket. SSE-S3 is
+// applied so the body is encrypted at rest with AES256 by S3
+// itself; the bucket must accept this default (or the call will
+// fail with a 400).
+func (c *Client) PutObject(ctx context.Context, bucket, key string, reader io.Reader) error {
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("s3: read body: %w", err)
 	}
 	_, err = c.api.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(data),
+		Bucket:               aws.String(bucket),
+		Key:                  aws.String(key),
+		Body:                 bytes.NewReader(data),
+		ServerSideEncryption: s3types.ServerSideEncryptionAes256,
 	})
 	return err
 }
@@ -178,8 +182,12 @@ func (c *Client) GetObjectChecksum(ctx context.Context, bucket, key string) (str
 	return *out.ETag, nil
 }
 
-// GetPresignedUploadURL returns a presigned PUT URL.
-func (c *Client) GetPresignedUploadURL(ctx context.Context, bucket, key, _ string, _ int64, _ string, expiry time.Duration) (string, error) {
+// GetPresignedUploadURL returns a presigned PUT URL. The URL
+// does NOT include SSE-S3 in its signature; clients must
+// set the x-amz-server-side-encryption: AES256 header
+// themselves if they want at-rest protection (the bucket's
+// default encryption policy will apply regardless).
+func (c *Client) GetPresignedUploadURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error) {
 	req, err := c.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),

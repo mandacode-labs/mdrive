@@ -24,10 +24,12 @@ type PresignInfo struct {
 }
 
 // DriveLookup is the data-access contract for the storage config
-// of a drive. vfs.Service satisfies it via its embedded Drive
-// field's GetStorage.
+// of a drive. The underlying *drive.Service satisfies it via
+// GetStorage; the actorID parameter is unused (the storage
+// record is fetched unconditionally) but the signature is kept
+// uniform with the rest of the drive service.
 type DriveLookup interface {
-	GetStorage(ctx context.Context, driveID string) (*coredrive.Storage, error)
+	GetStorage(ctx context.Context, actorID, driveID string) (*coredrive.Storage, error)
 }
 
 // NodeOps is the subset of node.Service the upload flow needs:
@@ -43,7 +45,7 @@ type NodeOps interface {
 // ObjectStore is the S3 abstraction the upload flow needs: presigned
 // URLs and object existence check.
 type ObjectStore interface {
-	GetPresignedUploadURL(ctx context.Context, bucket, key, contentType string, size int64, checksum string, expiry time.Duration) (string, error)
+	GetPresignedUploadURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
 	GetPresignedDownloadURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
 	ObjectExists(ctx context.Context, bucket, key string) (bool, error)
 }
@@ -58,7 +60,7 @@ type PathResolver interface {
 
 // PermChecker is the permission abstraction: we need a single Check.
 type PermChecker interface {
-	Check(ctx context.Context, userID string, perm permission.Permission, objType, objID string) (bool, error)
+	permission.Checker
 }
 
 // Service is the vfs-level upload orchestrator. It composes the
@@ -106,7 +108,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	if err := s.checkAccess(ctx, userID, driveID); err != nil {
 		return PresignInfo{}, err
 	}
-	storage, err := s.Drive.GetStorage(ctx, driveID)
+	storage, err := s.Drive.GetStorage(ctx, userID, driveID)
 	if err != nil {
 		return PresignInfo{}, err
 	}
@@ -116,15 +118,6 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	}
 	uploadID := uuid.NewString()
 	key := path.Join("drives", driveID, "uploads", uploadID)
-
-	var ct string
-	if contentType != nil {
-		ct = *contentType
-	}
-	var size int64
-	if contentLength != nil {
-		size = *contentLength
-	}
 
 	meta := PresignMeta{
 		UploadID:    uploadID,
@@ -142,7 +135,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 		return PresignInfo{}, fmt.Errorf("initiate upload: register: %w", err)
 	}
 
-	url, err := s.Store.GetPresignedUploadURL(ctx, bucket, key, ct, size, "", expiry)
+	url, err := s.Store.GetPresignedUploadURL(ctx, bucket, key, expiry)
 	if err != nil {
 		_ = s.Reg.Delete(ctx, uploadID)
 		return PresignInfo{}, fmt.Errorf("initiate upload: presign: %w", err)
@@ -253,21 +246,9 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	}, nil
 }
 
-// checkAccess centralizes the permission check; nil Perm skips
-// (development mode). All upload operations require edit on the
-// drive, matching the vfs.InitiateUpload/CompleteUpload/PresignDownload
-// behavior pre-move (they all used PermissionEdit at the drive
-// boundary).
+// checkAccess centralizes the permission check. All upload
+// operations require edit on the drive. Nil Perm is tolerated for
+// development mode (see permission.Require).
 func (s *Service) checkAccess(ctx context.Context, userID, driveID string) error {
-	if s.Perm == nil {
-		return nil
-	}
-	allowed, err := s.Perm.Check(ctx, userID, permission.PermissionEdit, permission.ObjectTypeDrive, driveID)
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return ErrPermission
-	}
-	return nil
+	return permission.Require(ctx, s.Perm, userID, permission.PermissionEdit, permission.ObjectTypeDrive, driveID)
 }

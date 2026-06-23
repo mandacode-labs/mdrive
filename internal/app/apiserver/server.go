@@ -46,20 +46,18 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if perm != nil {
 		healthDeps.Perm = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, func(ctx context.Context) (string, bool) {
-		return "", false
-	}, handler.WithDefaultStorage(drive.StorageConfig{
-		Bucket:       a.Cfg.Storage.Bucket,
-		Endpoint:     nil,
-		Region:       a.Cfg.Storage.Region,
-		AccessKey:    a.Cfg.Storage.AccessKey,
-		SecretKey:    a.Cfg.Storage.SecretKey,
-		UsePathStyle: a.Cfg.Storage.UsePathStyle,
-	}), handler.WithCookie(cookieCfg), handler.WithHealthDeps(healthDeps))
-
-	if a.Auth != nil && a.Security != nil {
-		h.WithAuth(a.Auth, a.Cfg.Auth.FrontendURL)
-	}
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Cfg.Auth.FrontendURL,
+		handler.WithDefaultStorage(drive.StorageConfig{
+			Bucket:       a.Cfg.Storage.Bucket,
+			Region:       a.Cfg.Storage.Region,
+			AccessKey:    a.Cfg.Storage.AccessKey,
+			SecretKey:    a.Cfg.Storage.SecretKey,
+			UsePathStyle: a.Cfg.Storage.UsePathStyle,
+		}),
+		handler.WithPresignTTL(a.Cfg.Storage.PresignTTL),
+		handler.WithCookie(cookieCfg),
+		handler.WithHealthDeps(healthDeps),
+	)
 
 	var securityHandler api.SecurityHandler = &noopSecurity{}
 	if a.Security != nil {

@@ -24,7 +24,7 @@ type fakeStore struct {
 	uploadErr    error
 }
 
-func (f *fakeStore) GetPresignedUploadURL(context.Context, string, string, string, int64, string, time.Duration) (string, error) {
+func (f *fakeStore) GetPresignedUploadURL(context.Context, string, string, time.Duration) (string, error) {
 	if f.uploadErr != nil {
 		return "", f.uploadErr
 	}
@@ -45,7 +45,7 @@ type fakeDrive struct {
 	getErr  error
 }
 
-func (f *fakeDrive) GetStorage(context.Context, string) (*coredrive.Storage, error) {
+func (f *fakeDrive) GetStorage(context.Context, string, string) (*coredrive.Storage, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
@@ -103,6 +103,12 @@ func (f *fakePerm) Check(context.Context, string, permission.Permission, string,
 	return f.allowed, f.err
 }
 
+func (f *fakePerm) Grant(context.Context, string, string, string, string) error  { return nil }
+func (f *fakePerm) Revoke(context.Context, string, string, string, string) error { return nil }
+func (f *fakePerm) ListObjects(context.Context, string, permission.Permission, string) ([]string, error) {
+	return nil, nil
+}
+
 // --- Helpers ---
 
 func newTestService(t *testing.T, reg Registry, store *fakeStore, perm *fakePerm) *Service {
@@ -143,7 +149,7 @@ func TestInitiateUploadHappyPath(t *testing.T) {
 func TestInitiateUploadPermissionDenied(t *testing.T) {
 	svc := newTestService(t, nil, nil, &fakePerm{allowed: false})
 	_, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
-	assert.ErrorIs(t, err, ErrPermission)
+	assert.ErrorIs(t, err, permission.ErrPermission)
 }
 
 func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
@@ -240,7 +246,7 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 func TestPresignDownloadPermissionDenied(t *testing.T) {
 	svc := newTestService(t, nil, nil, &fakePerm{allowed: false})
 	_, err := svc.PresignDownload(context.Background(), "u1", "d1", "/x", time.Hour)
-	assert.ErrorIs(t, err, ErrPermission)
+	assert.ErrorIs(t, err, permission.ErrPermission)
 }
 
 func TestNilPermSkipsCheck(t *testing.T) {

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"entgo.io/ent/dialect"
@@ -53,6 +52,10 @@ type App struct {
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	log := logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
 
+	if err := cfg.Validate(cfg.App.Env); err != nil {
+		return nil, err
+	}
+
 	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
 		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
 	)
@@ -92,12 +95,13 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		if err != nil {
 			return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
 		}
-	} else if cfg.App.Env != "development" {
-		return nil, errors.New("crypto.master_key is required in production")
 	}
 
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
+	// driveSvc is finalized below once permClient is constructed;
+	// this declaration is a placeholder so the vfs+gc init below
+	// can run before the Perm wiring point.
+	var driveSvc *drive.Service
 
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
@@ -112,11 +116,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	var permClient permission.Checker
-	openFGAConfigured := cfg.OpenFGA.APIURL != ""
-	if openFGAConfigured || cfg.App.Env != "development" {
-		if cfg.OpenFGA.APIURL == "" {
-			return nil, errors.New("openfga.api_url is required in production")
-		}
+	if cfg.OpenFGA.APIURL != "" {
 		permClient, err = permission.NewOpenFGAChecker(ctx, permission.Config{
 			AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),
 			APIURL:               cfg.OpenFGA.APIURL,
@@ -133,6 +133,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		}
 	}
 
+	// Rebuild the drive service with the real permission checker.
+	// vfs+gc hold a pointer to the previous (no-perm) instance;
+	// they don't need permission checks (vfs is filesystem-only,
+	// gc uses ListDeleted with isAdmin gated at the handler).
+	driveSvc = drive.NewService(driveRepo, userEx, rootCreator, permClient)
+
 	var store session.Store = session.NewMemoryStore()
 	var authenticator *auth.Service
 	var sec *auth.SecurityHandler
@@ -145,7 +151,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 			Issuer:       cfg.Auth.Issuer,
 			ClientID:     cfg.Auth.ClientID,
 			SessionStore: store,
-			SessionTTL:   cfg.Auth.SessionTTLDuration(),
+			SessionTTL:   cfg.Auth.SessionTTL,
 			FrontendURL:  cfg.Auth.FrontendURL,
 		})
 		if err != nil {

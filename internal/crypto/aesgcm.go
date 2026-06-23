@@ -1,13 +1,14 @@
 // Package crypto provides at-rest encryption helpers used by
-// repositories to protect sensitive fields (e.g. S3 secret keys)
-// and to manage per-drive data encryption keys (envelope encryption).
+// repositories to protect sensitive fields (e.g. the S3 secret
+// key stored on each drive's storage row). Object bodies are
+// encrypted at rest by S3 itself via SSE-S3 (AES256); this
+// package does not handle object encryption.
 package crypto
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -88,8 +89,3 @@ type NoOp struct{}
 
 func (NoOp) Encrypt(p []byte) ([]byte, error) { return p, nil }
 func (NoOp) Decrypt(c []byte) ([]byte, error) { return c, nil }
-
-// ConstantTimeEqual compares two strings in constant time.
-func ConstantTimeEqual(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
-}

@@ -3,7 +3,6 @@ package vfs
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -35,16 +34,16 @@ type NodeClient interface {
 	WithTx(ctx context.Context, fn func(tx *node.Service) error) error
 }
 
+// DriveClient is the data-access contract vfs needs from a drive
+// service. vfs only needs read paths. The actorID parameter is
+// unused for these read methods (by-design unprotected: the
+// handler decides whether the caller may see the data), but the
+// interface is shaped to the underlying drive service so a real
+// *drive.Service satisfies it.
 type DriveClient interface {
-	Create(ctx context.Context, name string, desc *string, ownerID string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	GetByID(ctx context.Context, id string) (*drive.Drive, error)
 	GetByPublicID(ctx context.Context, pubID string) (*drive.Drive, error)
-	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
-	Update(ctx context.Context, id string, name, description *string) (*drive.Drive, error)
-	Delete(ctx context.Context, id string) error
-	Restore(ctx context.Context, id string) (*drive.Drive, error)
-	ListDeleted(ctx context.Context, before time.Time, limit int) ([]*drive.Drive, error)
-	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
+	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
 }
 
 type TombstoneInserter interface {

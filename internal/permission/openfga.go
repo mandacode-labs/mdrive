@@ -50,7 +50,7 @@ type Checker interface {
 	Grant(ctx context.Context, user, relation, objectType, objectID string) error
 	Revoke(ctx context.Context, user, relation, objectType, objectID string) error
 	Check(ctx context.Context, user string, perm Permission, objectType, objectID string) (bool, error)
-	ListObjects(ctx context.Context, user, perm, objectType string) ([]string, error)
+	ListObjects(ctx context.Context, user string, perm Permission, objectType string) ([]string, error)
 }
 
 // OpenFGAChecker implements Checker using an OpenFGA client.
@@ -74,10 +74,31 @@ const (
 // ErrInvalidAuthMode is returned when an unknown AuthMode is provided.
 var ErrInvalidAuthMode = fmt.Errorf("permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 
-// ErrPermission is returned by the handler when a permission
-// check fails. vfs and drive have their own ErrPermission too;
-// the handler propagates whichever the called service returned.
+// ErrPermission is the single permission-denied sentinel. All
+// packages that need to report "not allowed" return this directly
+// or wrap it; consumers test with errors.Is(err, permission.ErrPermission).
 var ErrPermission = errors.New("permission: denied")
+
+// Require is the canonical permission check. It returns ErrPermission
+// (wrapped with a hint) if the user lacks the permission, the
+// checker's own error if the call failed, or nil on success.
+//
+// A nil checker (development mode) returns nil. This is the
+// single point of nil-tolerance so call sites don't have to
+// reproduce the same `if c == nil { return nil }` guard.
+func Require(ctx context.Context, c Checker, userID string, perm Permission, objectType, objectID string) error {
+	if c == nil {
+		return nil
+	}
+	allowed, err := c.Check(ctx, userID, perm, objectType, objectID)
+	if err != nil {
+		return fmt.Errorf("permission: check %s on %s:%s: %w", perm, objectType, objectID, err)
+	}
+	if !allowed {
+		return fmt.Errorf("%s on %s:%s: %w", perm, objectType, objectID, ErrPermission)
+	}
+	return nil
+}
 
 // Config for OpenFGAChecker.
 type Config struct {
@@ -253,10 +274,10 @@ func (c *OpenFGAChecker) Check(ctx context.Context, user string, perm Permission
 }
 
 // ListObjects returns the IDs of objects of the given type that the user has the given permission on.
-func (c *OpenFGAChecker) ListObjects(ctx context.Context, user, perm, objectType string) ([]string, error) {
+func (c *OpenFGAChecker) ListObjects(ctx context.Context, user string, perm Permission, objectType string) ([]string, error) {
 	resp, err := c.client.ListObjects(ctx).Body(client.ClientListObjectsRequest{
 		User:     userObject(user),
-		Relation: perm,
+		Relation: string(perm),
 		Type:     objectType,
 	}).Execute()
 	if err != nil {

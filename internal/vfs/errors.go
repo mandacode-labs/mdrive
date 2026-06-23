@@ -5,7 +5,6 @@ import "errors"
 var (
 	ErrNotFound     = errors.New("vfs: not found")
 	ErrNotDirectory = errors.New("vfs: not a directory")
-	ErrPermission   = errors.New("vfs: permission denied")
 	ErrInvalidPath  = errors.New("vfs: invalid path")
 	ErrCrossDrive   = errors.New("vfs: cross-drive move not supported")
 	ErrMountCycle   = errors.New("vfs: mount cycle detected")

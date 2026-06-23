@@ -72,7 +72,7 @@ func TestResolverCachesGetByID(t *testing.T) {
 	require.NoError(t, err)
 	repo.seed(d)
 
-	r := newResolver(node.NewService(repo)).fresh()
+	r := newResolver(node.NewService(repo))
 
 	first, err := r.loadByID(context.Background(), d.ID())
 	require.NoError(t, err)
@@ -84,22 +84,14 @@ func TestResolverCachesGetByID(t *testing.T) {
 	assert.Equal(t, 1, repo.count(d.ID()), "the second load must hit the cache")
 }
 
-func TestResolverFreshCacheStartsEmpty(t *testing.T) {
-	r := newResolver(nil)
-	assert.Nil(t, r.cache, "newResolver should not allocate a cache by default")
-	fr := r.fresh()
-	assert.NotNil(t, fr.cache, "fresh resolver must have an allocated cache")
-	assert.Empty(t, fr.cache)
-}
-
-func TestResolverFreshIsIndependent(t *testing.T) {
+func TestResolverInstancesAreIndependent(t *testing.T) {
 	repo := newCountingRepo()
 	d, err := node.NewDirectory()
 	require.NoError(t, err)
 	repo.seed(d)
 
-	r1 := newResolver(node.NewService(repo)).fresh()
-	r2 := r1.fresh()
+	r1 := newResolver(node.NewService(repo))
+	r2 := newResolver(node.NewService(repo))
 
 	_, err = r1.loadByID(context.Background(), d.ID())
 	require.NoError(t, err)

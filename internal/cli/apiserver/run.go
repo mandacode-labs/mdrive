@@ -6,7 +6,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/config"
-	"github.com/mandacode-labs/mdrive/internal/drive"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
@@ -40,10 +39,6 @@ func newRunCmd() *cobra.Command {
 				Store: a.Store,
 				GC:    a.TombstoneInserter,
 			})
-			driveSvc := drive.NewService(drive.Config{
-				Drive: a.DriveSvc,
-				Perm:  a.Perm,
-			})
 			uploadSvc := upload.NewService(upload.Config{
 				Reg:   a.UploadReg,
 				Drive: fs.Drive,
@@ -52,7 +47,7 @@ func newRunCmd() *cobra.Command {
 				Path:  fs,
 				Perm:  a.Perm,
 			})
-			return server.NewServer(a, fs, driveSvc, uploadSvc, a.UserSvc, a.Perm).Run()
+			return server.NewServer(a, fs, a.DriveSvc, uploadSvc, a.UserSvc, a.Perm).Run()
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
