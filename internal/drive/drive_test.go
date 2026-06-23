@@ -15,7 +15,7 @@ import (
 )
 
 // fakeClient is a hand-rolled stub of the drive Client interface,
-// just enough to exercise the vfs/drive.Service permission checks
+// just enough to exercise the drive.Service permission checks
 // and pass-through behavior.
 type fakeClient struct {
 	storage     *coredrive.Storage

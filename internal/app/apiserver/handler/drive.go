@@ -5,13 +5,13 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	vfsdrive "github.com/mandacode-labs/mdrive/internal/vfs/drive"
+	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
+	drivesvc "github.com/mandacode-labs/mdrive/internal/drive"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // driveToAPI converts a domain drive to an API drive.
-func driveToAPI(d *drive.Drive) *api.Drive {
+func driveToAPI(d *coredrive.Drive) *api.Drive {
 	if d == nil {
 		return nil
 	}
@@ -57,10 +57,10 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 	return driveToAPI(d), nil
 }
 
-// storageConfigFromAPI converts an api.StorageConfig into a drive.StorageConfig.
+// storageConfigFromAPI converts an api.StorageConfig into a coredrive.StorageConfig.
 // Nil/empty optional fields are propagated as such; empty strings fall back to
 // the platform default for bucket/region to preserve prior behavior.
-func storageConfigFromAPI(s api.StorageConfig) drive.StorageConfig {
+func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 	bucket := s.Bucket
 	region := s.Region
 	endpoint := s.Endpoint.Value
@@ -74,7 +74,7 @@ func storageConfigFromAPI(s api.StorageConfig) drive.StorageConfig {
 	if endpoint != "" {
 		endpointPtr = &endpoint
 	}
-	return drive.StorageConfig{
+	return coredrive.StorageConfig{
 		Bucket:       bucket,
 		Endpoint:     endpointPtr,
 		Region:       region,
@@ -115,7 +115,7 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, vfsdrive.ErrPermission
+		return nil, drivesvc.ErrPermission
 	}
 	d, err := h.drive.Restore(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
@@ -126,7 +126,7 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, vfsdrive.ErrPermission
+		return nil, drivesvc.ErrPermission
 	}
 	drives, err := h.drive.ListDeleted(ctx)
 	if err != nil {

@@ -6,8 +6,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/drive"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	vfsdrive "github.com/mandacode-labs/mdrive/internal/vfs/drive"
 )
 
 func NewCmd() *cobra.Command {
@@ -42,7 +42,7 @@ func newRunCmd() *cobra.Command {
 				Reg:   a.UploadReg,
 				GC:    a.TombstoneInserter,
 			})
-			driveSvc := vfsdrive.NewService(vfsdrive.Config{
+			driveSvc := drive.NewService(drive.Config{
 				Drive: a.DriveSvc,
 				Perm:  a.Perm,
 			})
