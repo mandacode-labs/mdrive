@@ -124,7 +124,7 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 // graph are detected via a visited set; maxMountHops is a safety net
 // against pathological graphs.
 func (s *Service) resolve(ctx context.Context, driveID, path string) (driveIDOut string, n *node.Node, err error) {
-	r := s.path.fresh()
+	r := s.newResolver()
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)

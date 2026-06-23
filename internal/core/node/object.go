@@ -41,18 +41,7 @@ func NewObject(content ObjectContent, size int64) (*Node, error) {
 	if size < 0 {
 		return nil, ErrInvalidSize
 	}
-	data, err := json.Marshal(&content)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal object content: %w", err)
-	}
-	if len(data) > MaxContentSize {
-		return nil, ErrContentTooLarge
-	}
-	n := newNode(NodeTypeObject)
-	if err := n.write(Content(data), size); err != nil {
-		return nil, err
-	}
-	return n, nil
+	return newInlineNode(NodeTypeObject, &content, size)
 }
 
 // ReadObject returns the object node's external reference.

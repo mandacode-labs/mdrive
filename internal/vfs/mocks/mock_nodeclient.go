@@ -842,6 +842,68 @@ func (_c *NodeClientMock_Save_Call) RunAndReturn(run func(ctx context.Context, n
 	return _c
 }
 
+// Touch provides a mock function for the type NodeClientMock
+func (_mock *NodeClientMock) Touch(ctx context.Context) (*node.Node, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Touch")
+	}
+
+	var r0 *node.Node
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (*node.Node, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) *node.Node); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*node.Node)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// NodeClientMock_Touch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Touch'
+type NodeClientMock_Touch_Call struct {
+	*mock.Call
+}
+
+// Touch is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *NodeClientMock_Expecter) Touch(ctx interface{}) *NodeClientMock_Touch_Call {
+	return &NodeClientMock_Touch_Call{Call: _e.mock.On("Touch", ctx)}
+}
+
+func (_c *NodeClientMock_Touch_Call) Run(run func(ctx context.Context)) *NodeClientMock_Touch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *NodeClientMock_Touch_Call) Return(node1 *node.Node, err error) *NodeClientMock_Touch_Call {
+	_c.Call.Return(node1, err)
+	return _c
+}
+
+func (_c *NodeClientMock_Touch_Call) RunAndReturn(run func(ctx context.Context) (*node.Node, error)) *NodeClientMock_Touch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Unlink provides a mock function for the type NodeClientMock
 func (_mock *NodeClientMock) Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error) {
 	ret := _mock.Called(ctx, parent, name)

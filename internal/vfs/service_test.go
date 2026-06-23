@@ -10,6 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 type fakeRepo struct {
@@ -25,11 +26,23 @@ func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*node.Node, error) {
 	if !ok {
 		return nil, node.ErrNotFound
 	}
-	return n, nil
+	c := n.Clone()
+	c.SetStaleRev(n.Revision())
+	return c, nil
 }
 
 func (r *fakeRepo) Save(_ context.Context, n *node.Node) error {
-	r.nodes[n.ID()] = n
+	existing, ok := r.nodes[n.ID()]
+	if !ok {
+		r.nodes[n.ID()] = n.Clone()
+		n.SetStaleRev(n.Revision())
+		return nil
+	}
+	if existing.Revision() != n.StaleRev() {
+		return node.ErrRevisionConflict
+	}
+	r.nodes[n.ID()] = n.Clone()
+	n.SetStaleRev(n.Revision())
 	return nil
 }
 
@@ -104,15 +117,23 @@ func (s *fakeStore) GetPresignedDownloadURL(_ context.Context, _, _ string, _ ti
 
 type fakePerm struct{}
 
-func (p *fakePerm) Check(_ context.Context, _, _, _, _ string) (bool, error) { return true, nil }
-func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error         { return nil }
+func (p *fakePerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
+	return true, nil
+}
+func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error { return nil }
 
 func newTestService() *Service {
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
-	return NewService(nodeSvc, d, &fakeUser{}, &fakeStore{}, &fakePerm{}, nil, nil)
+	return NewService(ServiceConfig{
+		Node:  nodeSvc,
+		Drive: d,
+		User:  &fakeUser{},
+		Store: &fakeStore{},
+		Perm:  &fakePerm{},
+	})
 }
 
 func strPtr(s string) *string { return &s }

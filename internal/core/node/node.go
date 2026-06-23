@@ -211,6 +211,34 @@ func (n *Node) CRTime() time.Time  { return n.crtime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
 
+// StaleRev returns the revision that was current when the node was
+// loaded from the repository. The repository uses it to detect concurrent
+// modifications between Get and Save (optimistic concurrency).
+func (n *Node) StaleRev() Revision { return n.staleRev }
+
+// SetStaleRev records the revision that is currently persisted in the
+// repository. It is called by Repository implementations after a
+// successful Save to mark the in-memory node as in sync with storage.
+// Callers should not invoke this directly; the repository owns the
+// staleRev field.
+func (n *Node) SetStaleRev(r Revision) { n.staleRev = r }
+
+// Clone returns a deep copy of n. The content bytes are copied so
+// mutating either side does not affect the other; the revision and
+// staleRev are preserved (so this is a true snapshot of the node as
+// the repository would hand it back, with no spurious revision bump).
+// Repository implementations use this to materialize stored state
+// without going through SetContent (which would increment rev).
+func (n *Node) Clone() *Node {
+	c := *n
+	if n.content != nil {
+		buf := make(Content, len(n.content))
+		copy(buf, n.content)
+		c.content = buf
+	}
+	return &c
+}
+
 // Content is exported for repository serialization; not intended for direct mutation
 // by external callers. Type-specific Read methods are the public API.
 func (n *Node) Content() Content { return n.content }
@@ -221,33 +249,6 @@ func (n *Node) IsDir() bool     { return n.typ == NodeTypeDirectory }
 func (n *Node) IsFile() bool    { return n.typ == NodeTypeFile }
 func (n *Node) IsSymlink() bool { return n.typ == NodeTypeSymlink }
 func (n *Node) IsObject() bool  { return n.typ == NodeTypeObject }
-
-// Content returns the node's raw stored content bytes. For file
-// nodes this is a JSON-serialized FileContent; for symlinks a
-// SymlinkContent; for object nodes an ObjectContent; for mount
-// nodes a MountContent; for directories and other types without
-// inline content it returns nil.
-//
-// Use the type-specific Read methods (ReadFile, ReadSymlink, etc.)
-// to obtain the decoded value. SetContent is the symmetric setter
-// used by callers that need to inject content in the wire format
-// the repository persists, e.g. for envelope encryption.
-
-// SetContent replaces the node's raw content bytes. This is used
-// by callers that need to inject content in the wire format the
-// repository persists, e.g. for envelope encryption: encrypt the
-// current plaintext, then SetContent(ciphertext), then Save.
-//
-// SetContent does not run any encoding or validation; it simply
-// replaces the stored bytes and updates size/mtime/ctime/rev.
-func (n *Node) SetContent(c []byte) {
-	n.content = c
-	n.size = int64(len(c))
-	now := time.Now()
-	n.mtime = now
-	n.ctime = now
-	n.rev = n.rev.Next()
-}
 
 // write replaces the node's content and updates mtime/ctime/rev.
 // Private: type-specific Write methods in file.go / dir.go / symlink.go / object.go
@@ -272,13 +273,4 @@ func (n *Node) read() (Content, error) {
 		return nil, ErrNoContent
 	}
 	return n.content, nil
-}
-
-// SetSize updates the size field and bumps mtime/ctime/rev.
-func (n *Node) SetSize(size int64) {
-	n.size = size
-	now := time.Now()
-	n.mtime = now
-	n.ctime = now
-	n.rev = n.rev.Next()
 }

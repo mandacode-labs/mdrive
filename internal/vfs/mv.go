@@ -74,7 +74,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if err != nil {
 		return nil, err
 	}
-	r := s.path.fresh()
+	r := s.newResolver().fresh()
 	srcRes, err := s.Resolve(ctx, driveID, srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
@@ -118,7 +118,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	if err != nil {
 		return nil, err
 	}
-	r := s.path.fresh()
+	r := s.newResolver().fresh()
 	dstOut, err := r.resolve(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("mv: dest: %w", err)
@@ -202,17 +202,3 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	}
 	return nil, nil
 }
-
-// mvBatch handles multi-source moves. The destination must resolve to
-// an existing directory; sources are moved in keeping their basenames.
-// All sources must resolve to driveID (cross-drive moves via mount
-// traversal are rejected as ErrCrossDrive).
-//
-// Returns S3 references for any overwritten destination entry whose
-// nlink hit zero; caller enqueues tombstones after the node tx commits.
-//
-// All resolves share a single fresh resolver so that when multiple
-// sources share a parent directory, the resolver's per-operation
-// cache returns the same *Node pointer for all of them. This is
-// required for BulkUnlink's optimistic-concurrency check to behave
-// consistently across the multiple-source unlink pass.

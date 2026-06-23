@@ -2,32 +2,22 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Symlink creates a symbolic link at linkPath pointing to target (like `ln -s /target /link`).
 func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath string) (*node.Node, error) {
-	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
-		return nil, err
-	}
-	rootID, err := s.rootNodeID(ctx, driveID)
+	_, parent, name, err := s.requireEditPath(ctx, "symlink", userID, driveID, linkPath)
 	if err != nil {
 		return nil, err
-	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, linkPath)
-	if err != nil {
-		return nil, fmt.Errorf("symlink: %w", err)
 	}
 	n, err := s.Node.CreateSymlink(ctx, target)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Node.Link(ctx, parent, name, n); err != nil {
-		_ = s.Node.Delete(ctx, n.ID())
-		return nil, fmt.Errorf("symlink: link: %w", err)
+	if err := s.createAndLink(ctx, "symlink", n, parent, name); err != nil {
+		return nil, err
 	}
 	return n, nil
 }

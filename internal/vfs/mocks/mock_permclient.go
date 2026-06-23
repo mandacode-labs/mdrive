@@ -7,6 +7,7 @@ package vfsMocks
 import (
 	"context"
 
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -38,8 +39,8 @@ func (_m *PermClientMock) EXPECT() *PermClientMock_Expecter {
 }
 
 // Check provides a mock function for the type PermClientMock
-func (_mock *PermClientMock) Check(ctx context.Context, userID string, relation string, objType string, objID string) (bool, error) {
-	ret := _mock.Called(ctx, userID, relation, objType, objID)
+func (_mock *PermClientMock) Check(ctx context.Context, userID string, perm permission.Permission, objType string, objID string) (bool, error) {
+	ret := _mock.Called(ctx, userID, perm, objType, objID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Check")
@@ -47,16 +48,16 @@ func (_mock *PermClientMock) Check(ctx context.Context, userID string, relation 
 
 	var r0 bool
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) (bool, error)); ok {
-		return returnFunc(ctx, userID, relation, objType, objID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Permission, string, string) (bool, error)); ok {
+		return returnFunc(ctx, userID, perm, objType, objID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) bool); ok {
-		r0 = returnFunc(ctx, userID, relation, objType, objID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Permission, string, string) bool); ok {
+		r0 = returnFunc(ctx, userID, perm, objType, objID)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, relation, objType, objID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Permission, string, string) error); ok {
+		r1 = returnFunc(ctx, userID, perm, objType, objID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -71,14 +72,14 @@ type PermClientMock_Check_Call struct {
 // Check is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID string
-//   - relation string
+//   - perm permission.Permission
 //   - objType string
 //   - objID string
-func (_e *PermClientMock_Expecter) Check(ctx interface{}, userID interface{}, relation interface{}, objType interface{}, objID interface{}) *PermClientMock_Check_Call {
-	return &PermClientMock_Check_Call{Call: _e.mock.On("Check", ctx, userID, relation, objType, objID)}
+func (_e *PermClientMock_Expecter) Check(ctx interface{}, userID interface{}, perm interface{}, objType interface{}, objID interface{}) *PermClientMock_Check_Call {
+	return &PermClientMock_Check_Call{Call: _e.mock.On("Check", ctx, userID, perm, objType, objID)}
 }
 
-func (_c *PermClientMock_Check_Call) Run(run func(ctx context.Context, userID string, relation string, objType string, objID string)) *PermClientMock_Check_Call {
+func (_c *PermClientMock_Check_Call) Run(run func(ctx context.Context, userID string, perm permission.Permission, objType string, objID string)) *PermClientMock_Check_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -88,9 +89,9 @@ func (_c *PermClientMock_Check_Call) Run(run func(ctx context.Context, userID st
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 permission.Permission
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].(permission.Permission)
 		}
 		var arg3 string
 		if args[3] != nil {
@@ -116,7 +117,7 @@ func (_c *PermClientMock_Check_Call) Return(b bool, err error) *PermClientMock_C
 	return _c
 }
 
-func (_c *PermClientMock_Check_Call) RunAndReturn(run func(ctx context.Context, userID string, relation string, objType string, objID string) (bool, error)) *PermClientMock_Check_Call {
+func (_c *PermClientMock_Check_Call) RunAndReturn(run func(ctx context.Context, userID string, perm permission.Permission, objType string, objID string) (bool, error)) *PermClientMock_Check_Call {
 	_c.Call.Return(run)
 	return _c
 }

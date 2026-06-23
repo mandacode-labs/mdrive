@@ -18,34 +18,38 @@ const (
 	relationOwner  = "owner"
 	relationEditor = "editor"
 	relationViewer = "viewer"
-
-	permView   = "can_view"
-	permEdit   = "can_edit"
-	permDelete = "can_delete"
-	permManage = "can_manage"
-	permShare  = "can_share"
 )
 
-// Exported permission constants.
+// Permission is a typed enum for OpenFGA relation strings.
+// Using a named type catches typos at compile time and lets
+// signatures document intent without losing string compatibility
+// (Permission's underlying type is string, so the OpenFGA SDK
+// accepts it via implicit conversion at the boundary).
+type Permission string
+
 const (
-	ObjectTypeDrive  = objectTypeDrive
-	ObjectTypeUser   = objectTypeUser
-	RelationOwner    = relationOwner
-	RelationEditor   = relationEditor
-	RelationViewer   = relationViewer
-	PermissionView   = permView
-	PermissionEdit   = permEdit
-	PermissionDelete = permDelete
-	PermissionManage = permManage
-	PermissionShare  = permShare
+	PermissionView   Permission = "can_view"
+	PermissionEdit   Permission = "can_edit"
+	PermissionDelete Permission = "can_delete"
+	PermissionManage Permission = "can_manage"
+	PermissionShare  Permission = "can_share"
+)
+
+// Exported constants.
+const (
+	ObjectTypeDrive = objectTypeDrive
+	ObjectTypeUser  = objectTypeUser
+	RelationOwner   = relationOwner
+	RelationEditor  = relationEditor
+	RelationViewer  = relationViewer
 )
 
 // Checker grants, revokes, and checks OpenFGA relations.
 type Checker interface {
 	Grant(ctx context.Context, user, relation, objectType, objectID string) error
 	Revoke(ctx context.Context, user, relation, objectType, objectID string) error
-	Check(ctx context.Context, user, permission, objectType, objectID string) (bool, error)
-	ListObjects(ctx context.Context, user, permission, objectType string) ([]string, error)
+	Check(ctx context.Context, user string, perm Permission, objectType, objectID string) (bool, error)
+	ListObjects(ctx context.Context, user, perm, objectType string) ([]string, error)
 }
 
 // OpenFGAChecker implements Checker using an OpenFGA client.
@@ -230,10 +234,10 @@ func (c *OpenFGAChecker) Revoke(ctx context.Context, user, relation, objectType,
 }
 
 // Check returns true if the user has the given permission on the object.
-func (c *OpenFGAChecker) Check(ctx context.Context, user, permission, objectType, objectID string) (bool, error) {
+func (c *OpenFGAChecker) Check(ctx context.Context, user string, perm Permission, objectType, objectID string) (bool, error) {
 	resp, err := c.client.Check(ctx).Body(client.ClientCheckRequest{
 		User:     userObject(user),
-		Relation: permission,
+		Relation: string(perm),
 		Object:   objectRef(objectType, objectID),
 	}).Execute()
 	if err != nil {
@@ -243,10 +247,10 @@ func (c *OpenFGAChecker) Check(ctx context.Context, user, permission, objectType
 }
 
 // ListObjects returns the IDs of objects of the given type that the user has the given permission on.
-func (c *OpenFGAChecker) ListObjects(ctx context.Context, user, permission, objectType string) ([]string, error) {
+func (c *OpenFGAChecker) ListObjects(ctx context.Context, user, perm, objectType string) ([]string, error) {
 	resp, err := c.client.ListObjects(ctx).Body(client.ClientListObjectsRequest{
 		User:     userObject(user),
-		Relation: permission,
+		Relation: perm,
 		Type:     objectType,
 	}).Execute()
 	if err != nil {

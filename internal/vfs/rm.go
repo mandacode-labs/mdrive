@@ -57,7 +57,7 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 
 // rmPath resolves the path and dispatches to the appropriate internal handler.
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]ObjectRef, error) {
-	out, err := s.path.resolve(ctx, rootID, path)
+	out, err := s.newResolver().resolve(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: %s: %w", path, err)
 	}
@@ -76,7 +76,7 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 // hardlink is removed the child is deleted and any object body is
 // returned as ObjectRef for tombstone registration.
 func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
-	parent, name, err := s.path.resolveParent(ctx, rootID, path)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: resolve parent: %w", err)
 	}

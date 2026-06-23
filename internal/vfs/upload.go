@@ -106,7 +106,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 	if err != nil {
 		return nil, err
 	}
-	parent, name, err := s.path.resolveParent(ctx, rootID, meta.Path)
+	parent, name, err := s.newResolver().resolveParent(ctx, rootID, meta.Path)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: %w", err)
 	}
@@ -150,7 +150,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	if err != nil {
 		return PresignInfo{}, err
 	}
-	out, err := s.path.resolve(ctx, rootID, filePath)
+	out, err := s.newResolver().resolve(ctx, rootID, filePath)
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: %w", err)
 	}
