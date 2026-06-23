@@ -12,10 +12,10 @@ func TestStat(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	_, err := svc.Touch(ctx, "user1", "d1", "/x")
+	_, err := svc.Touch(ctx, "d1", "/x")
 	require.NoError(t, err)
 
-	n, err := svc.Stat(ctx, "user1", "d1", "/x")
+	n, err := svc.Stat(ctx, "d1", "/x")
 	require.NoError(t, err)
 	assert.True(t, n.IsFile())
 	assert.Equal(t, int64(0), n.Size())

@@ -109,7 +109,8 @@ func setupE2E(t *testing.T) *e2eEnv {
 	fs := vfs.NewService(vfs.ServiceConfig{
 		Node:  nodeSvc,
 		Drive: driveSvc,
-		User:  userSvc,
+		Store: nil,
+		GC:    nil,
 	})
 
 	driveSvcVfs := drivesvc.NewService(drivesvc.Config{
@@ -125,7 +126,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Perm:  nil,
 	})
 
-	h := handler.New(fs, driveSvcVfs, uploadSvcVfs, func(ctx context.Context) (string, bool) {
+	h := handler.New(fs, driveSvcVfs, userSvc, uploadSvcVfs, nil, func(ctx context.Context) (string, bool) {
 		return u.ID(), true
 	}, handler.WithDefaultStorage(drive.StorageConfig{
 		Bucket:       "e2e-bucket",

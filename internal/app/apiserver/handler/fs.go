@@ -10,31 +10,47 @@ import (
 )
 
 // --- FS (filesystem) handlers ---
+//
+// Permission checks live here in the handler. vfs is filesystem-only;
+// each op here is preceded by a permission check on the drive
+// (and on the resolved drive for read ops that may cross mounts).
 
 func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.MkdirParams) error {
 	r := req.Value
-	_, err := h.vfs.Mkdir(ctx, h.userID(ctx), params.DriveID, r.Path)
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
+	_, err := h.vfs.Mkdir(ctx, params.DriveID, r.Path)
 	return err
 }
 
 func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.TouchParams) error {
 	r := req.Value
-	_, err := h.vfs.Touch(ctx, h.userID(ctx), params.DriveID, r.Path)
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
+	_, err := h.vfs.Touch(ctx, params.DriveID, r.Path)
 	return err
 }
 
 func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams) error {
 	r := req.Value
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
 	recursiveVal := false
 	if r.Recursive.Set {
 		recursiveVal = bool(r.Recursive.Value)
 	}
-	return h.vfs.Rm(ctx, h.userID(ctx), params.DriveID, r.Paths, recursiveVal)
+	return h.vfs.Rm(ctx, params.DriveID, r.Paths, recursiveVal)
 }
 
 func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams) error {
 	r := req.Value
-	return h.vfs.Mv(ctx, h.userID(ctx), params.DriveID, r.Sources, params.DriveID, r.Destination)
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
+	return h.vfs.Mv(ctx, params.DriveID, r.Sources, params.DriveID, r.Destination)
 }
 
 func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent, error) {
@@ -42,7 +58,22 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 	if path == "" {
 		path = "/"
 	}
-	dc, err := h.vfs.Ls(ctx, h.userID(ctx), params.DriveID, path)
+	// Resolve first so the permission check matches the drive the
+	// path actually resolves to (a mount may have crossed).
+	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, path)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+		return nil, err
+	}
+	// Re-resolve the remaining path (if any) within the source drive
+	// so vfs.Ls sees a single-drive path it can walk cleanly.
+	finalPath := res.Path
+	if res.DriveID != params.DriveID {
+		finalPath = "/" + res.Path
+	}
+	dc, err := h.vfs.Ls(ctx, res.DriveID, finalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +89,18 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (*api.DirContent,
 }
 
 func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatOK, error) {
-	data, err := h.vfs.Cat(ctx, h.userID(ctx), params.DriveID, params.Path)
+	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	if err != nil {
+		return api.CatOK{}, err
+	}
+	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+		return api.CatOK{}, err
+	}
+	finalPath := res.Path
+	if res.DriveID != params.DriveID {
+		finalPath = "/" + res.Path
+	}
+	data, err := h.vfs.Cat(ctx, res.DriveID, finalPath)
 	if err != nil {
 		return api.CatOK{}, err
 	}
@@ -67,11 +109,17 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatOK, err
 
 func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.WriteParams) error {
 	r := req.Value
-	return h.vfs.Write(ctx, h.userID(ctx), params.DriveID, r.Path, r.Content)
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
+	return h.vfs.Write(ctx, params.DriveID, r.Path, r.Content)
 }
 
 func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) (api.WriteLargeRes, error) {
 	r := req.Value
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return nil, err
+	}
 	ct := ""
 	if r.Object.ContentType.Set {
 		ct = r.Object.ContentType.Value
@@ -86,7 +134,7 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 		Mime:     ct,
 		Checksum: cs,
 	}
-	if err := h.vfs.WriteLarge(ctx, h.userID(ctx), params.DriveID, r.Path, obj, r.Size); err != nil {
+	if err := h.vfs.WriteLarge(ctx, params.DriveID, r.Path, obj, r.Size); err != nil {
 		return nil, err
 	}
 	return &api.WriteLargeCreated{}, nil
@@ -94,12 +142,26 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 
 func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {
 	r := req.Value
-	_, err := h.vfs.Symlink(ctx, h.userID(ctx), params.DriveID, r.Target, r.LinkPath)
+	if err := h.checkEdit(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return err
+	}
+	_, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath)
 	return err
 }
 
 func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK, error) {
-	n, err := h.vfs.Stat(ctx, h.userID(ctx), params.DriveID, params.Path)
+	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.checkViewAfterResolve(ctx, h.userID(ctx), res.DriveID); err != nil {
+		return nil, err
+	}
+	finalPath := res.Path
+	if res.DriveID != params.DriveID {
+		finalPath = "/" + res.Path
+	}
+	n, err := h.vfs.Stat(ctx, res.DriveID, finalPath)
 	if err != nil {
 		return nil, err
 	}

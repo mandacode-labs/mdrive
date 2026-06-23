@@ -7,8 +7,9 @@ import (
 )
 
 // Touch creates an empty file at path (like `touch /path`).
-func (s *Service) Touch(ctx context.Context, userID, driveID, path string) (*node.Node, error) {
-	_, parent, name, err := s.requireEditPath(ctx, "touch", userID, driveID, path)
+// Permission is the caller's responsibility.
+func (s *Service) Touch(ctx context.Context, driveID, path string) (*node.Node, error) {
+	parent, name, err := s.requireEditPath(ctx, driveID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +17,7 @@ func (s *Service) Touch(ctx context.Context, userID, driveID, path string) (*nod
 	if err != nil {
 		return nil, err
 	}
-	if err := s.createAndLink(ctx, "touch", n, parent, name); err != nil {
+	if err := s.createAndLink(ctx, n, parent, name); err != nil {
 		return nil, err
 	}
 	return n, nil

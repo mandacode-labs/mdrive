@@ -18,6 +18,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/testsupport"
 	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -25,39 +26,36 @@ const testUserID = "owner1"
 
 type stubFS struct{}
 
-func (s *stubFS) Mkdir(context.Context, string, string, string) (*node.Node, error) {
+func (s *stubFS) ResolveForPermission(context.Context, string, string) (vfs.ResolvedRef, error) {
+	return vfs.ResolvedRef{DriveID: "", Path: ""}, nil
+}
+func (s *stubFS) Mkdir(context.Context, string, string) (*node.Node, error) {
 	n, _ := node.NewDirectory()
 	return n, nil
 }
-func (s *stubFS) Touch(context.Context, string, string, string) (*node.Node, error) {
+func (s *stubFS) Touch(context.Context, string, string) (*node.Node, error) {
 	n, _ := node.NewFile("")
 	return n, nil
 }
-func (s *stubFS) Rm(context.Context, string, string, []string, bool) error           { return nil }
-func (s *stubFS) Mv(context.Context, string, string, []string, string, string) error { return nil }
-func (s *stubFS) Ls(context.Context, string, string, string) (node.DirContent, error) {
+func (s *stubFS) Rm(context.Context, string, []string, bool) error           { return nil }
+func (s *stubFS) Mv(context.Context, string, []string, string, string) error { return nil }
+func (s *stubFS) Ls(context.Context, string, string) (node.DirContent, error) {
 	return node.DirContent{}, nil
 }
-func (s *stubFS) Cat(context.Context, string, string, string) ([]byte, error) {
+func (s *stubFS) Cat(context.Context, string, string) ([]byte, error) {
 	return []byte("hello"), nil
 }
-func (s *stubFS) Write(context.Context, string, string, string, string) error { return nil }
-func (s *stubFS) WriteLarge(context.Context, string, string, string, node.ObjectContent, int64) error {
+func (s *stubFS) Write(context.Context, string, string, string) error { return nil }
+func (s *stubFS) WriteLarge(context.Context, string, string, node.ObjectContent, int64) error {
 	return nil
 }
-func (s *stubFS) Stat(context.Context, string, string, string) (*node.Node, error) {
+func (s *stubFS) Stat(context.Context, string, string) (*node.Node, error) {
 	n, _ := node.NewFile("")
 	return n, nil
 }
-func (s *stubFS) Symlink(ctx context.Context, userID, driveID, target, linkPath string) (*node.Node, error) {
-	n, _ := node.NewSymlink(target)
+func (s *stubFS) Symlink(context.Context, string, string, string) (*node.Node, error) {
+	n, _ := node.NewSymlink("")
 	return n, nil
-}
-func (s *stubFS) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
-	return user.NewUser("u1", "pub1", cmd.Name, cmd.Email, cmd.Provider, cmd.ProviderID, time.Now(), time.Now()), nil
-}
-func (s *stubFS) GetUser(ctx context.Context, actorID, id string) (*user.User, error) {
-	return user.NewUser(id, "pub1", "Tester", nil, "google", "g123", time.Now(), time.Now()), nil
 }
 
 var _ handler.FSClient = (*stubFS)(nil)
@@ -119,7 +117,8 @@ var _ handler.UploadClient = (*stubUpload)(nil)
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	h := handler.New(&stubFS{}, &stubDrive{}, &stubUpload{}, func(ctx context.Context) (string, bool) {
+	userSvc := newFakeUserSvc()
+	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, nil, func(ctx context.Context) (string, bool) {
 		return testUserID, true
 	})
 	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
@@ -127,6 +126,64 @@ func newTestServer(t *testing.T) *httptest.Server {
 	}))
 	require.NoError(t, err)
 	return httptest.NewServer(ogenServer)
+}
+
+// newFakeUserSvc returns a *user.Service backed by an in-memory
+// fake repository. The integration tests use this for the
+// handler's UserClient (which is *user.Service).
+func newFakeUserSvc() *user.Service {
+	return user.NewService(newUserRepoFake())
+}
+
+// userRepoFake is a minimal in-memory user.Repository for tests.
+type userRepoFake struct {
+	users map[string]*user.User
+}
+
+func newUserRepoFake() *userRepoFake {
+	return &userRepoFake{users: map[string]*user.User{}}
+}
+
+var _ user.Repository = (*userRepoFake)(nil)
+
+func (r *userRepoFake) Create(_ context.Context, cmd *user.CreateCommand) (*user.User, error) {
+	id := user.GenerateID()
+	now := time.Now()
+	u := user.NewUser(id, "pub-"+id, cmd.Name, cmd.Email, cmd.Provider, cmd.ProviderID, now, now)
+	r.users[u.ID()] = u
+	return u, nil
+}
+
+func (r *userRepoFake) GetByID(_ context.Context, id string) (*user.User, error) {
+	u, ok := r.users[id]
+	if !ok {
+		return nil, user.ErrNotFound
+	}
+	return u, nil
+}
+func (r *userRepoFake) GetByPublicID(_ context.Context, publicID string) (*user.User, error) {
+	for _, u := range r.users {
+		if u.PublicID() == publicID {
+			return u, nil
+		}
+	}
+	return nil, user.ErrNotFound
+}
+func (r *userRepoFake) GetByProviderID(_ context.Context, provider, providerID string) (*user.User, error) {
+	for _, u := range r.users {
+		if u.Provider() == provider && u.ProviderID() == providerID {
+			return u, nil
+		}
+	}
+	return nil, user.ErrNotFound
+}
+func (r *userRepoFake) Update(_ context.Context, u *user.User) (*user.User, error) {
+	r.users[u.ID()] = u
+	return u, nil
+}
+func (r *userRepoFake) Delete(_ context.Context, id string) error {
+	delete(r.users, id)
+	return nil
 }
 
 func authReq(method, url string, body io.Reader) *http.Request {

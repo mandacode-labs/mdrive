@@ -119,7 +119,7 @@ func (h *Handler) AuthMe(ctx context.Context) (*api.User, error) {
 	if sess == nil {
 		return nil, fmt.Errorf("authentication not configured")
 	}
-	u, err := h.vfs.GetUser(ctx, sess.UserID, sess.UserID)
+	u, err := h.users.GetByID(ctx, sess.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (h *Handler) createOrUpdateUser(ctx context.Context, sub, name, email, prov
 	if email != "" {
 		eptr = &email
 	}
-	return h.vfs.UpsertUser(ctx, "", &user.CreateCommand{
+	return h.users.UpsertFromOIDC(ctx, &user.CreateCommand{
 		Name:       name,
 		Email:      eptr,
 		Provider:   provider,

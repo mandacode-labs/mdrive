@@ -18,6 +18,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -27,7 +29,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient) *Server {
+func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Checker) *Server {
 	cookieCfg := handler.CookieConfig{
 		Name:     a.Cfg.HTTP.Cookie.Name,
 		Path:     a.Cfg.HTTP.Cookie.Path,
@@ -41,10 +43,10 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if s, ok := a.SessionStore.(session.Scanner); ok {
 		healthDeps.ValKey = s
 	}
-	if a.Perm != nil {
-		healthDeps.Perm = a.Perm
+	if perm != nil {
+		healthDeps.Perm = perm
 	}
-	h := handler.New(fs, driveSvc, uploadSvc, func(ctx context.Context) (string, bool) {
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, func(ctx context.Context) (string, bool) {
 		return "", false
 	}, handler.WithDefaultStorage(drive.StorageConfig{
 		Bucket:       a.Cfg.Storage.Bucket,

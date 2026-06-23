@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
@@ -18,10 +17,9 @@ import (
 // still reported as successful to the caller: the node state is
 // already gone and the user-visible operation succeeded. Orphaned S3
 // objects can be reclaimed by a future orphan-scan job.
-func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string, recursive bool) error {
-	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
-		return err
-	}
+//
+// Permission is the caller's responsibility.
+func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return err
@@ -57,7 +55,10 @@ func (s *Service) Rm(ctx context.Context, userID, driveID string, paths []string
 
 // rmPath resolves the path and dispatches to the appropriate internal handler.
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]ObjectRef, error) {
-	out, err := s.newResolver().resolve(ctx, rootID, path)
+	// Use a single resolver so the resolve + resolveParent pair see
+	// the same *Node pointer for any shared intermediate nodes.
+	r := s.newResolver()
+	out, err := r.resolve(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: %s: %w", path, err)
 	}
@@ -68,15 +69,15 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}
-	return s.rm(ctx, rootID, n, path)
+	return s.rm(ctx, rootID, n, path, r)
 }
 
 // rm removes a single file node. Returns S3 references that need cleanup.
 // The unlink delegates nlink management to node.Service; when the last
 // hardlink is removed the child is deleted and any object body is
 // returned as ObjectRef for tombstone registration.
-func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
-	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
+func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]ObjectRef, error) {
+	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: resolve parent: %w", err)
 	}
@@ -105,6 +106,9 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 // rmRecursive removes a directory and all its children. Returns S3 references
 // from all object nodes discovered during the traversal.
 func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
+	// Use a single resolver for the whole traversal so the recursive
+	// child loads share the cache with each other.
+	r := s.newResolver()
 	dc, err := n.ReadDir()
 	if err != nil {
 		return nil, fmt.Errorf("rm: read dir: %w", err)
@@ -113,15 +117,21 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 	var allRefs []ObjectRef
 	for _, e := range dc.Entries {
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
-		child, err := s.Node.GetByID(ctx, e.InodeID)
-		if err != nil {
-			return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
+		var child *node.Node
+		if de, err := n.Lookup(e.Name); err == nil && de != nil {
+			child, _ = r.loadByID(ctx, de.InodeID)
+		}
+		if child == nil {
+			child, err = s.Node.GetByID(ctx, e.InodeID)
+			if err != nil {
+				return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
+			}
 		}
 		var refs []ObjectRef
 		if child.IsDir() {
 			refs, err = s.rmRecursive(ctx, rootID, child, childPath)
 		} else {
-			refs, err = s.rm(ctx, rootID, child, childPath)
+			refs, err = s.rm(ctx, rootID, child, childPath, r)
 		}
 		if err != nil {
 			return nil, err
@@ -129,7 +139,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 		allRefs = append(allRefs, refs...)
 	}
 
-	refs, err := s.rm(ctx, rootID, n, path)
+	refs, err := s.rm(ctx, rootID, n, path, r)
 	if err != nil {
 		return nil, err
 	}

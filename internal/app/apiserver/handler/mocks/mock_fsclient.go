@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -40,8 +40,8 @@ func (_m *FSClientMock) EXPECT() *FSClientMock_Expecter {
 }
 
 // Cat provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Cat(ctx context.Context, userID string, driveID string, path string) ([]byte, error) {
-	ret := _mock.Called(ctx, userID, driveID, path)
+func (_mock *FSClientMock) Cat(ctx context.Context, driveID string, path string) ([]byte, error) {
+	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Cat")
@@ -49,18 +49,18 @@ func (_mock *FSClientMock) Cat(ctx context.Context, userID string, driveID strin
 
 	var r0 []byte
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) ([]byte, error)); ok {
-		return returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) ([]byte, error)); ok {
+		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) []byte); ok {
-		r0 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) []byte); ok {
+		r0 = returnFunc(ctx, driveID, path)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]byte)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -74,14 +74,13 @@ type FSClientMock_Cat_Call struct {
 
 // Cat is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
-func (_e *FSClientMock_Expecter) Cat(ctx interface{}, userID interface{}, driveID interface{}, path interface{}) *FSClientMock_Cat_Call {
-	return &FSClientMock_Cat_Call{Call: _e.mock.On("Cat", ctx, userID, driveID, path)}
+func (_e *FSClientMock_Expecter) Cat(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_Cat_Call {
+	return &FSClientMock_Cat_Call{Call: _e.mock.On("Cat", ctx, driveID, path)}
 }
 
-func (_c *FSClientMock_Cat_Call) Run(run func(ctx context.Context, userID string, driveID string, path string)) *FSClientMock_Cat_Call {
+func (_c *FSClientMock_Cat_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_Cat_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -95,15 +94,10 @@ func (_c *FSClientMock_Cat_Call) Run(run func(ctx context.Context, userID string
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -114,88 +108,14 @@ func (_c *FSClientMock_Cat_Call) Return(bytes []byte, err error) *FSClientMock_C
 	return _c
 }
 
-func (_c *FSClientMock_Cat_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) ([]byte, error)) *FSClientMock_Cat_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetUser provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) GetUser(ctx context.Context, actorID string, id string) (*user.User, error) {
-	ret := _mock.Called(ctx, actorID, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetUser")
-	}
-
-	var r0 *user.User
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*user.User, error)); ok {
-		return returnFunc(ctx, actorID, id)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *user.User); ok {
-		r0 = returnFunc(ctx, actorID, id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*user.User)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = returnFunc(ctx, actorID, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// FSClientMock_GetUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUser'
-type FSClientMock_GetUser_Call struct {
-	*mock.Call
-}
-
-// GetUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - actorID string
-//   - id string
-func (_e *FSClientMock_Expecter) GetUser(ctx interface{}, actorID interface{}, id interface{}) *FSClientMock_GetUser_Call {
-	return &FSClientMock_GetUser_Call{Call: _e.mock.On("GetUser", ctx, actorID, id)}
-}
-
-func (_c *FSClientMock_GetUser_Call) Run(run func(ctx context.Context, actorID string, id string)) *FSClientMock_GetUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *FSClientMock_GetUser_Call) Return(user1 *user.User, err error) *FSClientMock_GetUser_Call {
-	_c.Call.Return(user1, err)
-	return _c
-}
-
-func (_c *FSClientMock_GetUser_Call) RunAndReturn(run func(ctx context.Context, actorID string, id string) (*user.User, error)) *FSClientMock_GetUser_Call {
+func (_c *FSClientMock_Cat_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) ([]byte, error)) *FSClientMock_Cat_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Ls provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Ls(ctx context.Context, userID string, driveID string, path string) (node.DirContent, error) {
-	ret := _mock.Called(ctx, userID, driveID, path)
+func (_mock *FSClientMock) Ls(ctx context.Context, driveID string, path string) (node.DirContent, error) {
+	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Ls")
@@ -203,16 +123,16 @@ func (_mock *FSClientMock) Ls(ctx context.Context, userID string, driveID string
 
 	var r0 node.DirContent
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (node.DirContent, error)); ok {
-		return returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (node.DirContent, error)); ok {
+		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) node.DirContent); ok {
-		r0 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) node.DirContent); ok {
+		r0 = returnFunc(ctx, driveID, path)
 	} else {
 		r0 = ret.Get(0).(node.DirContent)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -226,14 +146,13 @@ type FSClientMock_Ls_Call struct {
 
 // Ls is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
-func (_e *FSClientMock_Expecter) Ls(ctx interface{}, userID interface{}, driveID interface{}, path interface{}) *FSClientMock_Ls_Call {
-	return &FSClientMock_Ls_Call{Call: _e.mock.On("Ls", ctx, userID, driveID, path)}
+func (_e *FSClientMock_Expecter) Ls(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_Ls_Call {
+	return &FSClientMock_Ls_Call{Call: _e.mock.On("Ls", ctx, driveID, path)}
 }
 
-func (_c *FSClientMock_Ls_Call) Run(run func(ctx context.Context, userID string, driveID string, path string)) *FSClientMock_Ls_Call {
+func (_c *FSClientMock_Ls_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_Ls_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -247,15 +166,10 @@ func (_c *FSClientMock_Ls_Call) Run(run func(ctx context.Context, userID string,
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -266,14 +180,14 @@ func (_c *FSClientMock_Ls_Call) Return(dirContent node.DirContent, err error) *F
 	return _c
 }
 
-func (_c *FSClientMock_Ls_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) (node.DirContent, error)) *FSClientMock_Ls_Call {
+func (_c *FSClientMock_Ls_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (node.DirContent, error)) *FSClientMock_Ls_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Mkdir provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Mkdir(ctx context.Context, userID string, driveID string, path string) (*node.Node, error) {
-	ret := _mock.Called(ctx, userID, driveID, path)
+func (_mock *FSClientMock) Mkdir(ctx context.Context, driveID string, path string) (*node.Node, error) {
+	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Mkdir")
@@ -281,18 +195,18 @@ func (_mock *FSClientMock) Mkdir(ctx context.Context, userID string, driveID str
 
 	var r0 *node.Node
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (*node.Node, error)); ok {
-		return returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) *node.Node); ok {
-		r0 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *node.Node); ok {
+		r0 = returnFunc(ctx, driveID, path)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*node.Node)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -306,14 +220,13 @@ type FSClientMock_Mkdir_Call struct {
 
 // Mkdir is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
-func (_e *FSClientMock_Expecter) Mkdir(ctx interface{}, userID interface{}, driveID interface{}, path interface{}) *FSClientMock_Mkdir_Call {
-	return &FSClientMock_Mkdir_Call{Call: _e.mock.On("Mkdir", ctx, userID, driveID, path)}
+func (_e *FSClientMock_Expecter) Mkdir(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_Mkdir_Call {
+	return &FSClientMock_Mkdir_Call{Call: _e.mock.On("Mkdir", ctx, driveID, path)}
 }
 
-func (_c *FSClientMock_Mkdir_Call) Run(run func(ctx context.Context, userID string, driveID string, path string)) *FSClientMock_Mkdir_Call {
+func (_c *FSClientMock_Mkdir_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_Mkdir_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -327,15 +240,10 @@ func (_c *FSClientMock_Mkdir_Call) Run(run func(ctx context.Context, userID stri
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -346,22 +254,22 @@ func (_c *FSClientMock_Mkdir_Call) Return(node1 *node.Node, err error) *FSClient
 	return _c
 }
 
-func (_c *FSClientMock_Mkdir_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) (*node.Node, error)) *FSClientMock_Mkdir_Call {
+func (_c *FSClientMock_Mkdir_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (*node.Node, error)) *FSClientMock_Mkdir_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Mv provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Mv(ctx context.Context, userID string, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string) error {
-	ret := _mock.Called(ctx, userID, srcDriveID, srcPaths, dstDriveID, dstPath)
+func (_mock *FSClientMock) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string) error {
+	ret := _mock.Called(ctx, srcDriveID, srcPaths, dstDriveID, dstPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Mv")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, []string, string, string) error); ok {
-		r0 = returnFunc(ctx, userID, srcDriveID, srcPaths, dstDriveID, dstPath)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []string, string, string) error); ok {
+		r0 = returnFunc(ctx, srcDriveID, srcPaths, dstDriveID, dstPath)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -375,16 +283,97 @@ type FSClientMock_Mv_Call struct {
 
 // Mv is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - srcDriveID string
 //   - srcPaths []string
 //   - dstDriveID string
 //   - dstPath string
-func (_e *FSClientMock_Expecter) Mv(ctx interface{}, userID interface{}, srcDriveID interface{}, srcPaths interface{}, dstDriveID interface{}, dstPath interface{}) *FSClientMock_Mv_Call {
-	return &FSClientMock_Mv_Call{Call: _e.mock.On("Mv", ctx, userID, srcDriveID, srcPaths, dstDriveID, dstPath)}
+func (_e *FSClientMock_Expecter) Mv(ctx interface{}, srcDriveID interface{}, srcPaths interface{}, dstDriveID interface{}, dstPath interface{}) *FSClientMock_Mv_Call {
+	return &FSClientMock_Mv_Call{Call: _e.mock.On("Mv", ctx, srcDriveID, srcPaths, dstDriveID, dstPath)}
 }
 
-func (_c *FSClientMock_Mv_Call) Run(run func(ctx context.Context, userID string, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string)) *FSClientMock_Mv_Call {
+func (_c *FSClientMock_Mv_Call) Run(run func(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string)) *FSClientMock_Mv_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *FSClientMock_Mv_Call) Return(err error) *FSClientMock_Mv_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *FSClientMock_Mv_Call) RunAndReturn(run func(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string) error) *FSClientMock_Mv_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResolveForPermission provides a mock function for the type FSClientMock
+func (_mock *FSClientMock) ResolveForPermission(ctx context.Context, driveID string, path string) (vfs.ResolvedRef, error) {
+	ret := _mock.Called(ctx, driveID, path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveForPermission")
+	}
+
+	var r0 vfs.ResolvedRef
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (vfs.ResolvedRef, error)); ok {
+		return returnFunc(ctx, driveID, path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) vfs.ResolvedRef); ok {
+		r0 = returnFunc(ctx, driveID, path)
+	} else {
+		r0 = ret.Get(0).(vfs.ResolvedRef)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// FSClientMock_ResolveForPermission_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveForPermission'
+type FSClientMock_ResolveForPermission_Call struct {
+	*mock.Call
+}
+
+// ResolveForPermission is a helper method to define mock.On call
+//   - ctx context.Context
+//   - driveID string
+//   - path string
+func (_e *FSClientMock_Expecter) ResolveForPermission(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_ResolveForPermission_Call {
+	return &FSClientMock_ResolveForPermission_Call{Call: _e.mock.On("ResolveForPermission", ctx, driveID, path)}
+}
+
+func (_c *FSClientMock_ResolveForPermission_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_ResolveForPermission_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -398,51 +387,36 @@ func (_c *FSClientMock_Mv_Call) Run(run func(ctx context.Context, userID string,
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 []string
-		if args[3] != nil {
-			arg3 = args[3].([]string)
-		}
-		var arg4 string
-		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
-		var arg5 string
-		if args[5] != nil {
-			arg5 = args[5].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
-			arg4,
-			arg5,
 		)
 	})
 	return _c
 }
 
-func (_c *FSClientMock_Mv_Call) Return(err error) *FSClientMock_Mv_Call {
-	_c.Call.Return(err)
+func (_c *FSClientMock_ResolveForPermission_Call) Return(resolvedRef vfs.ResolvedRef, err error) *FSClientMock_ResolveForPermission_Call {
+	_c.Call.Return(resolvedRef, err)
 	return _c
 }
 
-func (_c *FSClientMock_Mv_Call) RunAndReturn(run func(ctx context.Context, userID string, srcDriveID string, srcPaths []string, dstDriveID string, dstPath string) error) *FSClientMock_Mv_Call {
+func (_c *FSClientMock_ResolveForPermission_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (vfs.ResolvedRef, error)) *FSClientMock_ResolveForPermission_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Rm provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Rm(ctx context.Context, userID string, driveID string, paths []string, recursive bool) error {
-	ret := _mock.Called(ctx, userID, driveID, paths, recursive)
+func (_mock *FSClientMock) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
+	ret := _mock.Called(ctx, driveID, paths, recursive)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Rm")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, []string, bool) error); ok {
-		r0 = returnFunc(ctx, userID, driveID, paths, recursive)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []string, bool) error); ok {
+		r0 = returnFunc(ctx, driveID, paths, recursive)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -456,15 +430,14 @@ type FSClientMock_Rm_Call struct {
 
 // Rm is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - paths []string
 //   - recursive bool
-func (_e *FSClientMock_Expecter) Rm(ctx interface{}, userID interface{}, driveID interface{}, paths interface{}, recursive interface{}) *FSClientMock_Rm_Call {
-	return &FSClientMock_Rm_Call{Call: _e.mock.On("Rm", ctx, userID, driveID, paths, recursive)}
+func (_e *FSClientMock_Expecter) Rm(ctx interface{}, driveID interface{}, paths interface{}, recursive interface{}) *FSClientMock_Rm_Call {
+	return &FSClientMock_Rm_Call{Call: _e.mock.On("Rm", ctx, driveID, paths, recursive)}
 }
 
-func (_c *FSClientMock_Rm_Call) Run(run func(ctx context.Context, userID string, driveID string, paths []string, recursive bool)) *FSClientMock_Rm_Call {
+func (_c *FSClientMock_Rm_Call) Run(run func(ctx context.Context, driveID string, paths []string, recursive bool)) *FSClientMock_Rm_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -474,24 +447,19 @@ func (_c *FSClientMock_Rm_Call) Run(run func(ctx context.Context, userID string,
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 string
+		var arg2 []string
 		if args[2] != nil {
-			arg2 = args[2].(string)
+			arg2 = args[2].([]string)
 		}
-		var arg3 []string
+		var arg3 bool
 		if args[3] != nil {
-			arg3 = args[3].([]string)
-		}
-		var arg4 bool
-		if args[4] != nil {
-			arg4 = args[4].(bool)
+			arg3 = args[3].(bool)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -502,14 +470,14 @@ func (_c *FSClientMock_Rm_Call) Return(err error) *FSClientMock_Rm_Call {
 	return _c
 }
 
-func (_c *FSClientMock_Rm_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, paths []string, recursive bool) error) *FSClientMock_Rm_Call {
+func (_c *FSClientMock_Rm_Call) RunAndReturn(run func(ctx context.Context, driveID string, paths []string, recursive bool) error) *FSClientMock_Rm_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Stat provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Stat(ctx context.Context, userID string, driveID string, path string) (*node.Node, error) {
-	ret := _mock.Called(ctx, userID, driveID, path)
+func (_mock *FSClientMock) Stat(ctx context.Context, driveID string, path string) (*node.Node, error) {
+	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Stat")
@@ -517,18 +485,18 @@ func (_mock *FSClientMock) Stat(ctx context.Context, userID string, driveID stri
 
 	var r0 *node.Node
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (*node.Node, error)); ok {
-		return returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) *node.Node); ok {
-		r0 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *node.Node); ok {
+		r0 = returnFunc(ctx, driveID, path)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*node.Node)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -542,14 +510,13 @@ type FSClientMock_Stat_Call struct {
 
 // Stat is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
-func (_e *FSClientMock_Expecter) Stat(ctx interface{}, userID interface{}, driveID interface{}, path interface{}) *FSClientMock_Stat_Call {
-	return &FSClientMock_Stat_Call{Call: _e.mock.On("Stat", ctx, userID, driveID, path)}
+func (_e *FSClientMock_Expecter) Stat(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_Stat_Call {
+	return &FSClientMock_Stat_Call{Call: _e.mock.On("Stat", ctx, driveID, path)}
 }
 
-func (_c *FSClientMock_Stat_Call) Run(run func(ctx context.Context, userID string, driveID string, path string)) *FSClientMock_Stat_Call {
+func (_c *FSClientMock_Stat_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_Stat_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -563,15 +530,10 @@ func (_c *FSClientMock_Stat_Call) Run(run func(ctx context.Context, userID strin
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -582,14 +544,14 @@ func (_c *FSClientMock_Stat_Call) Return(node1 *node.Node, err error) *FSClientM
 	return _c
 }
 
-func (_c *FSClientMock_Stat_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) (*node.Node, error)) *FSClientMock_Stat_Call {
+func (_c *FSClientMock_Stat_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (*node.Node, error)) *FSClientMock_Stat_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Symlink provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Symlink(ctx context.Context, userID string, driveID string, target string, linkPath string) (*node.Node, error) {
-	ret := _mock.Called(ctx, userID, driveID, target, linkPath)
+func (_mock *FSClientMock) Symlink(ctx context.Context, driveID string, target string, linkPath string) (*node.Node, error) {
+	ret := _mock.Called(ctx, driveID, target, linkPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Symlink")
@@ -597,18 +559,18 @@ func (_mock *FSClientMock) Symlink(ctx context.Context, userID string, driveID s
 
 	var r0 *node.Node
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) (*node.Node, error)); ok {
-		return returnFunc(ctx, userID, driveID, target, linkPath)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, driveID, target, linkPath)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) *node.Node); ok {
-		r0 = returnFunc(ctx, userID, driveID, target, linkPath)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) *node.Node); ok {
+		r0 = returnFunc(ctx, driveID, target, linkPath)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*node.Node)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, target, linkPath)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, target, linkPath)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -622,15 +584,14 @@ type FSClientMock_Symlink_Call struct {
 
 // Symlink is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - target string
 //   - linkPath string
-func (_e *FSClientMock_Expecter) Symlink(ctx interface{}, userID interface{}, driveID interface{}, target interface{}, linkPath interface{}) *FSClientMock_Symlink_Call {
-	return &FSClientMock_Symlink_Call{Call: _e.mock.On("Symlink", ctx, userID, driveID, target, linkPath)}
+func (_e *FSClientMock_Expecter) Symlink(ctx interface{}, driveID interface{}, target interface{}, linkPath interface{}) *FSClientMock_Symlink_Call {
+	return &FSClientMock_Symlink_Call{Call: _e.mock.On("Symlink", ctx, driveID, target, linkPath)}
 }
 
-func (_c *FSClientMock_Symlink_Call) Run(run func(ctx context.Context, userID string, driveID string, target string, linkPath string)) *FSClientMock_Symlink_Call {
+func (_c *FSClientMock_Symlink_Call) Run(run func(ctx context.Context, driveID string, target string, linkPath string)) *FSClientMock_Symlink_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -648,16 +609,11 @@ func (_c *FSClientMock_Symlink_Call) Run(run func(ctx context.Context, userID st
 		if args[3] != nil {
 			arg3 = args[3].(string)
 		}
-		var arg4 string
-		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -668,14 +624,14 @@ func (_c *FSClientMock_Symlink_Call) Return(node1 *node.Node, err error) *FSClie
 	return _c
 }
 
-func (_c *FSClientMock_Symlink_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, target string, linkPath string) (*node.Node, error)) *FSClientMock_Symlink_Call {
+func (_c *FSClientMock_Symlink_Call) RunAndReturn(run func(ctx context.Context, driveID string, target string, linkPath string) (*node.Node, error)) *FSClientMock_Symlink_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Touch provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Touch(ctx context.Context, userID string, driveID string, path string) (*node.Node, error) {
-	ret := _mock.Called(ctx, userID, driveID, path)
+func (_mock *FSClientMock) Touch(ctx context.Context, driveID string, path string) (*node.Node, error) {
+	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Touch")
@@ -683,18 +639,18 @@ func (_mock *FSClientMock) Touch(ctx context.Context, userID string, driveID str
 
 	var r0 *node.Node
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (*node.Node, error)); ok {
-		return returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*node.Node, error)); ok {
+		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) *node.Node); ok {
-		r0 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *node.Node); ok {
+		r0 = returnFunc(ctx, driveID, path)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*node.Node)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, userID, driveID, path)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, driveID, path)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -708,14 +664,13 @@ type FSClientMock_Touch_Call struct {
 
 // Touch is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
-func (_e *FSClientMock_Expecter) Touch(ctx interface{}, userID interface{}, driveID interface{}, path interface{}) *FSClientMock_Touch_Call {
-	return &FSClientMock_Touch_Call{Call: _e.mock.On("Touch", ctx, userID, driveID, path)}
+func (_e *FSClientMock_Expecter) Touch(ctx interface{}, driveID interface{}, path interface{}) *FSClientMock_Touch_Call {
+	return &FSClientMock_Touch_Call{Call: _e.mock.On("Touch", ctx, driveID, path)}
 }
 
-func (_c *FSClientMock_Touch_Call) Run(run func(ctx context.Context, userID string, driveID string, path string)) *FSClientMock_Touch_Call {
+func (_c *FSClientMock_Touch_Call) Run(run func(ctx context.Context, driveID string, path string)) *FSClientMock_Touch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -729,15 +684,10 @@ func (_c *FSClientMock_Touch_Call) Run(run func(ctx context.Context, userID stri
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -748,96 +698,22 @@ func (_c *FSClientMock_Touch_Call) Return(node1 *node.Node, err error) *FSClient
 	return _c
 }
 
-func (_c *FSClientMock_Touch_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string) (*node.Node, error)) *FSClientMock_Touch_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpsertUser provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
-	ret := _mock.Called(ctx, actorID, cmd)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpsertUser")
-	}
-
-	var r0 *user.User
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *user.CreateCommand) (*user.User, error)); ok {
-		return returnFunc(ctx, actorID, cmd)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *user.CreateCommand) *user.User); ok {
-		r0 = returnFunc(ctx, actorID, cmd)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*user.User)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *user.CreateCommand) error); ok {
-		r1 = returnFunc(ctx, actorID, cmd)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// FSClientMock_UpsertUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertUser'
-type FSClientMock_UpsertUser_Call struct {
-	*mock.Call
-}
-
-// UpsertUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - actorID string
-//   - cmd *user.CreateCommand
-func (_e *FSClientMock_Expecter) UpsertUser(ctx interface{}, actorID interface{}, cmd interface{}) *FSClientMock_UpsertUser_Call {
-	return &FSClientMock_UpsertUser_Call{Call: _e.mock.On("UpsertUser", ctx, actorID, cmd)}
-}
-
-func (_c *FSClientMock_UpsertUser_Call) Run(run func(ctx context.Context, actorID string, cmd *user.CreateCommand)) *FSClientMock_UpsertUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 *user.CreateCommand
-		if args[2] != nil {
-			arg2 = args[2].(*user.CreateCommand)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *FSClientMock_UpsertUser_Call) Return(user1 *user.User, err error) *FSClientMock_UpsertUser_Call {
-	_c.Call.Return(user1, err)
-	return _c
-}
-
-func (_c *FSClientMock_UpsertUser_Call) RunAndReturn(run func(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error)) *FSClientMock_UpsertUser_Call {
+func (_c *FSClientMock_Touch_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (*node.Node, error)) *FSClientMock_Touch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Write provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) Write(ctx context.Context, userID string, driveID string, path string, content string) error {
-	ret := _mock.Called(ctx, userID, driveID, path, content)
+func (_mock *FSClientMock) Write(ctx context.Context, driveID string, path string, content string) error {
+	ret := _mock.Called(ctx, driveID, path, content)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Write")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) error); ok {
-		r0 = returnFunc(ctx, userID, driveID, path, content)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = returnFunc(ctx, driveID, path, content)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -851,15 +727,14 @@ type FSClientMock_Write_Call struct {
 
 // Write is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
 //   - content string
-func (_e *FSClientMock_Expecter) Write(ctx interface{}, userID interface{}, driveID interface{}, path interface{}, content interface{}) *FSClientMock_Write_Call {
-	return &FSClientMock_Write_Call{Call: _e.mock.On("Write", ctx, userID, driveID, path, content)}
+func (_e *FSClientMock_Expecter) Write(ctx interface{}, driveID interface{}, path interface{}, content interface{}) *FSClientMock_Write_Call {
+	return &FSClientMock_Write_Call{Call: _e.mock.On("Write", ctx, driveID, path, content)}
 }
 
-func (_c *FSClientMock_Write_Call) Run(run func(ctx context.Context, userID string, driveID string, path string, content string)) *FSClientMock_Write_Call {
+func (_c *FSClientMock_Write_Call) Run(run func(ctx context.Context, driveID string, path string, content string)) *FSClientMock_Write_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -877,16 +752,11 @@ func (_c *FSClientMock_Write_Call) Run(run func(ctx context.Context, userID stri
 		if args[3] != nil {
 			arg3 = args[3].(string)
 		}
-		var arg4 string
-		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -897,22 +767,22 @@ func (_c *FSClientMock_Write_Call) Return(err error) *FSClientMock_Write_Call {
 	return _c
 }
 
-func (_c *FSClientMock_Write_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string, content string) error) *FSClientMock_Write_Call {
+func (_c *FSClientMock_Write_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string, content string) error) *FSClientMock_Write_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // WriteLarge provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) WriteLarge(ctx context.Context, userID string, driveID string, path string, obj node.ObjectContent, size int64) error {
-	ret := _mock.Called(ctx, userID, driveID, path, obj, size)
+func (_mock *FSClientMock) WriteLarge(ctx context.Context, driveID string, path string, obj node.ObjectContent, size int64) error {
+	ret := _mock.Called(ctx, driveID, path, obj, size)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WriteLarge")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, node.ObjectContent, int64) error); ok {
-		r0 = returnFunc(ctx, userID, driveID, path, obj, size)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, node.ObjectContent, int64) error); ok {
+		r0 = returnFunc(ctx, driveID, path, obj, size)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -926,16 +796,15 @@ type FSClientMock_WriteLarge_Call struct {
 
 // WriteLarge is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID string
 //   - driveID string
 //   - path string
 //   - obj node.ObjectContent
 //   - size int64
-func (_e *FSClientMock_Expecter) WriteLarge(ctx interface{}, userID interface{}, driveID interface{}, path interface{}, obj interface{}, size interface{}) *FSClientMock_WriteLarge_Call {
-	return &FSClientMock_WriteLarge_Call{Call: _e.mock.On("WriteLarge", ctx, userID, driveID, path, obj, size)}
+func (_e *FSClientMock_Expecter) WriteLarge(ctx interface{}, driveID interface{}, path interface{}, obj interface{}, size interface{}) *FSClientMock_WriteLarge_Call {
+	return &FSClientMock_WriteLarge_Call{Call: _e.mock.On("WriteLarge", ctx, driveID, path, obj, size)}
 }
 
-func (_c *FSClientMock_WriteLarge_Call) Run(run func(ctx context.Context, userID string, driveID string, path string, obj node.ObjectContent, size int64)) *FSClientMock_WriteLarge_Call {
+func (_c *FSClientMock_WriteLarge_Call) Run(run func(ctx context.Context, driveID string, path string, obj node.ObjectContent, size int64)) *FSClientMock_WriteLarge_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -949,17 +818,13 @@ func (_c *FSClientMock_WriteLarge_Call) Run(run func(ctx context.Context, userID
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
+		var arg3 node.ObjectContent
 		if args[3] != nil {
-			arg3 = args[3].(string)
+			arg3 = args[3].(node.ObjectContent)
 		}
-		var arg4 node.ObjectContent
+		var arg4 int64
 		if args[4] != nil {
-			arg4 = args[4].(node.ObjectContent)
-		}
-		var arg5 int64
-		if args[5] != nil {
-			arg5 = args[5].(int64)
+			arg4 = args[4].(int64)
 		}
 		run(
 			arg0,
@@ -967,7 +832,6 @@ func (_c *FSClientMock_WriteLarge_Call) Run(run func(ctx context.Context, userID
 			arg2,
 			arg3,
 			arg4,
-			arg5,
 		)
 	})
 	return _c
@@ -978,7 +842,7 @@ func (_c *FSClientMock_WriteLarge_Call) Return(err error) *FSClientMock_WriteLar
 	return _c
 }
 
-func (_c *FSClientMock_WriteLarge_Call) RunAndReturn(run func(ctx context.Context, userID string, driveID string, path string, obj node.ObjectContent, size int64) error) *FSClientMock_WriteLarge_Call {
+func (_c *FSClientMock_WriteLarge_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string, obj node.ObjectContent, size int64) error) *FSClientMock_WriteLarge_Call {
 	_c.Call.Return(run)
 	return _c
 }

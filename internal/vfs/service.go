@@ -9,15 +9,11 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 var (
 	_ NodeClient  = (*node.Service)(nil)
 	_ DriveClient = (*drive.Service)(nil)
-	_ UserClient  = (*user.Service)(nil)
-	_ PermClient  = (*permission.OpenFGAChecker)(nil)
 )
 
 type NodeClient interface {
@@ -51,16 +47,6 @@ type DriveClient interface {
 	ListByOwner(ctx context.Context, ownerID string) ([]*drive.Drive, error)
 }
 
-type UserClient interface {
-	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
-	GetByID(ctx context.Context, id string) (*user.User, error)
-}
-
-type PermClient interface {
-	Check(ctx context.Context, userID string, perm permission.Permission, objType, objID string) (bool, error)
-	Grant(ctx context.Context, userID, relation, objType, objID string) error
-}
-
 type TombstoneInserter interface {
 	InsertTombstones(ctx context.Context, refs []ObjectRef) error
 }
@@ -73,20 +59,17 @@ type ObjectRef struct {
 type Service struct {
 	Node  NodeClient
 	Drive DriveClient
-	User  UserClient
 	Store Store
-	Perm  PermClient
 	GC    TombstoneInserter
 }
 
-// ServiceConfig groups the dependencies of NewService so callers
-// don't have to remember the positional order of seven arguments.
+// ServiceConfig groups the dependencies of NewService. vfs is
+// filesystem-only: it has no user or permission dependencies.
+// Permission checks are the caller's responsibility (handler layer).
 type ServiceConfig struct {
 	Node  NodeClient
 	Drive DriveClient
-	User  UserClient
 	Store Store
-	Perm  PermClient
 	GC    TombstoneInserter
 }
 
@@ -94,17 +77,15 @@ func NewService(cfg ServiceConfig) *Service {
 	return &Service{
 		Node:  cfg.Node,
 		Drive: cfg.Drive,
-		User:  cfg.User,
 		Store: cfg.Store,
-		Perm:  cfg.Perm,
 		GC:    cfg.GC,
 	}
 }
 
 // newResolver returns a fresh resolver backed by the Service's
-// NodeClient. Use it within an operation that resolves the same
-// UUID more than once so the cache collapses the loads to a single
-// *Node pointer; single-load callers can ignore the return value.
+// NodeClient. The cache is shared across calls within the same
+// operation (multiple resolves of the same UUID return the same
+// *Node pointer).
 func (s *Service) newResolver() *resolver {
 	return newResolver(s.Node)
 }
@@ -114,9 +95,7 @@ func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) er
 		return fn(&Service{
 			Node:  txNode,
 			Drive: s.Drive,
-			User:  s.User,
 			Store: s.Store,
-			Perm:  s.Perm,
 			GC:    s.GC,
 		})
 	})
@@ -129,12 +108,53 @@ type Resolved struct {
 
 const maxMountHops = 32
 
+// Resolve walks from root to the node at the given absolute path,
+// transparently following mount nodes into other drives. Permission
+// checking is the caller's responsibility: Resolve itself only
+// does path resolution. Callers that need a permission check
+// should use Resolve and then check against Resolved.DriveID.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
-	drive, n, err := s.resolve(ctx, driveID, path)
+	drive, n, err := s.resolveCross(ctx, driveID, path)
 	if err != nil {
 		return Resolved{}, err
 	}
 	return Resolved{DriveID: drive, Node: n}, nil
+}
+
+// ResolveForPermission is the variant of Resolve for callers that
+// need to perform a permission check on the resolved drive (the
+// one the path actually lands in, not the requested driveID). It
+// stops at the first mount node and returns the drive to which the
+// mount points plus the remaining path within that drive, so the
+// caller can both check permission and then re-resolve the rest of
+// the path within the source drive.
+type ResolvedRef struct {
+	DriveID string
+	Path    string
+}
+
+func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
+	r := s.newResolver()
+	rootID, err := s.rootNodeID(ctx, driveID)
+	if err != nil {
+		return ResolvedRef{}, err
+	}
+	out, err := r.resolve(ctx, rootID, path)
+	if err != nil {
+		return ResolvedRef{}, err
+	}
+	// If the resolved node is a mount, the actual node lives in
+	// the source drive. Return the source drive ID and the
+	// remaining path; the caller will check permission on the
+	// source drive and then re-resolve the rest there.
+	if out.Node.IsMount() {
+		srcDriveID, err := out.Node.ReadMount()
+		if err != nil {
+			return ResolvedRef{}, err
+		}
+		return ResolvedRef{DriveID: srcDriveID, Path: out.Remaining}, nil
+	}
+	return ResolvedRef{DriveID: driveID, Path: path}, nil
 }
 
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
@@ -184,18 +204,4 @@ func (s *Service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid
 		return uuid.Nil, err
 	}
 	return out.Node.ID(), nil
-}
-
-func (s *Service) checkAccess(ctx context.Context, userID string, perm permission.Permission, driveID string) error {
-	if s.Perm == nil {
-		return nil
-	}
-	allowed, err := s.Perm.Check(ctx, userID, perm, "drive", driveID)
-	if err != nil {
-		return err
-	}
-	if !allowed {
-		return ErrPermission
-	}
-	return nil
 }

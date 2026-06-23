@@ -7,9 +7,9 @@ import (
 )
 
 // Stat returns metadata for the file or directory at path. Permission
-// is checked on the drive the path ultimately resolves to.
-func (s *Service) Stat(ctx context.Context, userID, driveID, path string) (*node.Node, error) {
-	res, err := s.resolveView(ctx, "stat", userID, driveID, path)
+// is the caller's responsibility.
+func (s *Service) Stat(ctx context.Context, driveID, path string) (*node.Node, error) {
+	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
 		return nil, err
 	}

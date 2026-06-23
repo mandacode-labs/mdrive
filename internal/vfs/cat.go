@@ -6,12 +6,13 @@ import (
 )
 
 // Cat reads the content of a file, symlink target, or object (like `cat /path`).
-// Permission is checked on the drive the path ultimately resolves to, so
-// a mount traversal into another drive requires view on the source.
-func (s *Service) Cat(ctx context.Context, userID, driveID, path string) ([]byte, error) {
-	res, err := s.resolveView(ctx, "cat", userID, driveID, path)
+// Permission is the caller's responsibility: vfs does not check.
+// The caller should have already verified view permission on the
+// drive the path ultimately resolves to.
+func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
+	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cat: %w", err)
 	}
 	n := res.Node
 	switch {

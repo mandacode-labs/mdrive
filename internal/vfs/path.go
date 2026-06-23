@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // resolver walks the node tree from a drive root to resolve Unix
@@ -119,18 +118,21 @@ func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string) (res
 	return resolveOutcome{Node: current}, nil
 }
 
-// resolve walks from root to the node at the given absolute path,
+// resolveCross walks from root to the node at the given absolute path,
 // transparently following mount nodes along the way. Returns the
 // drive the final node lives in (which may differ from driveID if
 // mounts were crossed) and the node itself. Cycles in the mount
 // graph are detected via a visited set; maxMountHops is a safety net
 // against pathological graphs.
-func (s *Service) resolve(ctx context.Context, driveID, path string) (driveIDOut string, n *node.Node, err error) {
-	r := s.newResolver()
+//
+// Each hop uses a fresh resolver so the cache for one mount
+// traversal does not leak across hops.
+func (s *Service) resolveCross(ctx context.Context, driveID, path string) (driveIDOut string, n *node.Node, err error) {
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
 	for hop := 0; hop < maxMountHops; hop++ {
+		r := s.newResolver()
 		rootID, err := s.rootNodeID(ctx, currentDrive)
 		if err != nil {
 			return "", nil, err
@@ -220,60 +222,36 @@ func cleanPath(p string) string {
 	return cleaned
 }
 
-// requireEditPath checks edit permission on driveID, fetches the drive's
-// root node, and resolves path's parent directory. op is the calling
-// operation name used in error wrapping. Returns ErrNotDirectory if the
-// parent is not a directory.
-func (s *Service) requireEditPath(ctx context.Context, op, userID, driveID, path string) (rootID uuid.UUID, parent *node.Node, name string, err error) {
-	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
-		return uuid.Nil, nil, "", fmt.Errorf("%s: %w", op, err)
-	}
-	rootID, err = s.rootNodeID(ctx, driveID)
+// requireEditPath resolves the path's parent directory and verifies
+// it is a directory. Returns ErrNotDirectory if the parent is not
+// a directory.
+//
+// Permission is the caller's responsibility: vfs does not check
+// edit permission.
+func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
+	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
-		return uuid.Nil, nil, "", fmt.Errorf("%s: %w", op, err)
+		return nil, "", err
 	}
 	parent, name, err = s.newResolver().resolveParent(ctx, rootID, path)
 	if err != nil {
-		return uuid.Nil, nil, "", fmt.Errorf("%s: %w", op, err)
+		return nil, "", err
 	}
 	if !parent.IsDir() {
-		return uuid.Nil, nil, "", fmt.Errorf("%s: %w", op, ErrNotDirectory)
+		return nil, "", ErrNotDirectory
 	}
-	return rootID, parent, name, nil
-}
-
-// resolveView checks view permission on driveID, resolves the path
-// (transparently following mount nodes into other drives), and checks
-// view on the resolved drive. This is the "look at a node, possibly
-// through a mount" idiom: cross-drive traversal re-checks permissions
-// on the source so a view on the parent does not implicitly grant
-// access to the mounted subtree.
-func (s *Service) resolveView(ctx context.Context, op, userID, driveID, path string) (Resolved, error) {
-	if err := s.checkAccess(ctx, userID, permission.PermissionView, driveID); err != nil {
-		return Resolved{}, fmt.Errorf("%s: %w", op, err)
-	}
-	res, err := s.Resolve(ctx, driveID, path)
-	if err != nil {
-		return Resolved{}, fmt.Errorf("%s: %w", op, err)
-	}
-	if res.DriveID != driveID {
-		if err := s.checkAccess(ctx, userID, permission.PermissionView, res.DriveID); err != nil {
-			return Resolved{}, fmt.Errorf("%s: %w", op, err)
-		}
-	}
-	return res, nil
+	return parent, name, nil
 }
 
 // createAndLink links child at parent/name. On link failure, the
 // child is deleted to prevent leaking unparented inodes; the
-// original link error is returned (cleanup error is logged via
-// the returned wrapped error).
-func (s *Service) createAndLink(ctx context.Context, op string, child, parent *node.Node, name string) error {
+// original link error is returned with cleanup context.
+func (s *Service) createAndLink(ctx context.Context, child, parent *node.Node, name string) error {
 	if err := s.Node.Link(ctx, parent, name, child); err != nil {
 		if derr := s.Node.Delete(ctx, child.ID()); derr != nil {
-			return fmt.Errorf("%s: link: %w (cleanup: %v)", op, err, derr)
+			return fmt.Errorf("link: %w (cleanup: %v)", err, derr)
 		}
-		return fmt.Errorf("%s: link: %w", op, err)
+		return fmt.Errorf("link: %w", err)
 	}
 	return nil
 }

@@ -37,9 +37,7 @@ func newRunCmd() *cobra.Command {
 			fs := vfs.NewService(vfs.ServiceConfig{
 				Node:  a.NodeSvc,
 				Drive: a.DriveSvc,
-				User:  a.UserSvc,
 				Store: a.Store,
-				Perm:  a.Perm,
 				GC:    a.TombstoneInserter,
 			})
 			driveSvc := drive.NewService(drive.Config{
@@ -52,9 +50,9 @@ func newRunCmd() *cobra.Command {
 				Nodes: fs.Node,
 				Store: fs.Store,
 				Path:  fs,
-				Perm:  fs.Perm,
+				Perm:  a.Perm,
 			})
-			return server.NewServer(a, fs, driveSvc, uploadSvc).Run()
+			return server.NewServer(a, fs, driveSvc, uploadSvc, a.UserSvc, a.Perm).Run()
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")

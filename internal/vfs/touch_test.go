@@ -12,11 +12,11 @@ func TestTouch(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	n, err := svc.Touch(ctx, "user1", "d1", "/hello.txt")
+	n, err := svc.Touch(ctx, "d1", "/hello.txt")
 	require.NoError(t, err)
 	assert.True(t, n.IsFile())
 
-	raw, err := svc.Cat(ctx, "user1", "d1", "/hello.txt")
+	raw, err := svc.Cat(ctx, "d1", "/hello.txt")
 	require.NoError(t, err)
 	assert.Empty(t, string(raw))
 }
