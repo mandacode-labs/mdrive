@@ -27,7 +27,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient) *Server {
+func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient) *Server {
 	cookieCfg := handler.CookieConfig{
 		Name:     a.Cfg.HTTP.Cookie.Name,
 		Path:     a.Cfg.HTTP.Cookie.Path,
@@ -44,7 +44,7 @@ func NewServer(a *app.App, fs handler.FSClient) *Server {
 	if a.Perm != nil {
 		healthDeps.Perm = a.Perm
 	}
-	h := handler.New(fs, func(ctx context.Context) (string, bool) {
+	h := handler.New(fs, driveSvc, func(ctx context.Context) (string, bool) {
 		return "", false
 	}, handler.WithDefaultStorage(drive.StorageConfig{
 		Bucket:       a.Cfg.Storage.Bucket,

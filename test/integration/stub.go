@@ -63,41 +63,6 @@ func (s *stubFS) CompleteUpload(ctx context.Context, userID, driveID, uploadID s
 func (s *stubFS) PresignDownload(context.Context, string, string, string, time.Duration) (vfs.PresignInfo, error) {
 	return vfs.PresignInfo{}, nil
 }
-func (s *stubFS) CreateDrive(ctx context.Context, actorID, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
-	rootID := uuid.New()
-	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
-	return d, rootID, nil
-}
-func (s *stubFS) GetDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
-	rootID := uuid.New()
-	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
-}
-func (s *stubFS) GetDriveStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
-	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
-}
-func (s *stubFS) UpdateDrive(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error) {
-	n := ""
-	if name != nil {
-		n = *name
-	}
-	rootID := uuid.New()
-	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
-}
-func (s *stubFS) DeleteDrive(ctx context.Context, actorID, id string) error { return nil }
-func (s *stubFS) RestoreDrive(ctx context.Context, actorID, id string) (*drive.Drive, error) {
-	rootID := uuid.New()
-	return drive.NewDrive(id, "pub1", "restored", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
-}
-func (s *stubFS) ListDeletedDrives(ctx context.Context) ([]*drive.Drive, error) {
-	rootID := uuid.New()
-	d := drive.NewDrive("d1", "pub1", "deleted-drive", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now())
-	return []*drive.Drive{d}, nil
-}
-func (s *stubFS) ListUserDrives(ctx context.Context, actorID string) ([]*drive.Drive, error) {
-	rootID := uuid.New()
-	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
-	return []*drive.Drive{d}, nil
-}
 func (s *stubFS) UpsertUser(ctx context.Context, actorID string, cmd *user.CreateCommand) (*user.User, error) {
 	return user.NewUser("u1", "pub1", cmd.Name, cmd.Email, cmd.Provider, cmd.ProviderID, time.Now(), time.Now()), nil
 }
@@ -107,9 +72,49 @@ func (s *stubFS) GetUser(ctx context.Context, actorID, id string) (*user.User, e
 
 var _ handler.FSClient = (*stubFS)(nil)
 
+type stubDrive struct{}
+
+func (s *stubDrive) Create(ctx context.Context, actorID, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
+	rootID := uuid.New()
+	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
+	return d, rootID, nil
+}
+func (s *stubDrive) Get(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+	rootID := uuid.New()
+	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
+}
+func (s *stubDrive) GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
+	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
+}
+func (s *stubDrive) Update(ctx context.Context, actorID, id string, name, description *string) (*drive.Drive, error) {
+	n := ""
+	if name != nil {
+		n = *name
+	}
+	rootID := uuid.New()
+	return drive.NewDrive(id, "pub1", n, description, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
+}
+func (s *stubDrive) Delete(ctx context.Context, actorID, id string) error { return nil }
+func (s *stubDrive) Restore(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+	rootID := uuid.New()
+	return drive.NewDrive(id, "pub1", "restored", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
+}
+func (s *stubDrive) ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error) {
+	rootID := uuid.New()
+	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
+	return []*drive.Drive{d}, nil
+}
+func (s *stubDrive) ListDeleted(ctx context.Context) ([]*drive.Drive, error) {
+	rootID := uuid.New()
+	d := drive.NewDrive("d1", "pub1", "deleted-drive", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now())
+	return []*drive.Drive{d}, nil
+}
+
+var _ handler.DriveClient = (*stubDrive)(nil)
+
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	h := handler.New(&stubFS{}, func(ctx context.Context) (string, bool) {
+	h := handler.New(&stubFS{}, &stubDrive{}, func(ctx context.Context) (string, bool) {
 		return testUserID, true
 	})
 	ogenServer, err := api.NewServer(h, testsupport.NoopSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
