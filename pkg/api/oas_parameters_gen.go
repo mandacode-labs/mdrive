@@ -718,6 +718,116 @@ func decodeLsParams(args [1]string, argsEscaped bool, r *http.Request) (params L
 	return params, nil
 }
 
+// LstatParams is parameters of lstat operation.
+type LstatParams struct {
+	DriveID string
+	Path    string
+}
+
+func unpackLstatParams(packed middleware.Parameters) (params LstatParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "path",
+			In:   "query",
+		}
+		params.Path = packed[key].(string)
+	}
+	return params
+}
+
+func decodeLstatParams(args [1]string, argsEscaped bool, r *http.Request) (params LstatParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: path.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "path",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Path = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "path",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // MkdirParams is parameters of mkdir operation.
 type MkdirParams struct {
 	DriveID string
@@ -873,6 +983,116 @@ func unpackPresignDownloadParams(packed middleware.Parameters) (params PresignDo
 }
 
 func decodePresignDownloadParams(args [1]string, argsEscaped bool, r *http.Request) (params PresignDownloadParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: path.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "path",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Path = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "path",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ReadlinkParams is parameters of readlink operation.
+type ReadlinkParams struct {
+	DriveID string
+	Path    string
+}
+
+func unpackReadlinkParams(packed middleware.Parameters) (params ReadlinkParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "path",
+			In:   "query",
+		}
+		params.Path = packed[key].(string)
+	}
+	return params
+}
+
+func decodeReadlinkParams(args [1]string, argsEscaped bool, r *http.Request) (params ReadlinkParams, _ error) {
 	q := uri.NewQueryDecoder(r.URL.Query())
 	// Decode path: driveID.
 	if err := func() error {

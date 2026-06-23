@@ -59,7 +59,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Drive created",
             "content": {
               "application/json": {
@@ -292,7 +292,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Directory created"
           }
         }
@@ -330,7 +330,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "File created"
           }
         }
@@ -576,7 +576,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Symlink created"
           }
         }
@@ -585,7 +585,7 @@
     "/v1/drives/{driveID}/fs/stat": {
       "get": {
         "operationId": "stat",
-        "summary": "Get file metadata",
+        "summary": "Get file metadata (follows symlinks, POSIX stat(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -645,6 +645,113 @@
         }
       }
     },
+    "/v1/drives/{driveID}/fs/lstat": {
+      "get": {
+        "operationId": "lstat",
+        "summary": "Get file metadata without following symlinks (POSIX lstat(2))",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File metadata (symlink returned as-is)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer",
+                      "format": "int64"
+                    },
+                    "atime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "mtime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "ctime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "flags": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/readlink": {
+      "get": {
+        "operationId": "readlink",
+        "summary": "Read a symbolic link's target (POSIX readlink(2))",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Symlink target",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "target"
+                  ],
+                  "properties": {
+                    "target": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/drives/{driveID}/fs/object": {
       "post": {
         "operationId": "writeLarge",
@@ -686,7 +793,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Object node created"
           },
           "default": {
@@ -726,7 +833,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Presigned upload URL created",
             "content": {
               "application/json": {
@@ -781,7 +888,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Object node created",
             "content": {
               "application/json": {

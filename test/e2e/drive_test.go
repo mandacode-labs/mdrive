@@ -25,7 +25,7 @@ func TestE2E_DriveLifecycle(t *testing.T) {
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var created api.Drive
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))

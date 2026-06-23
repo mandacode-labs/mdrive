@@ -510,8 +510,88 @@ func (s *HealthOK) SetStatus(val OptString) {
 	s.Status = val
 }
 
-// MkdirCreated is response for Mkdir operation.
-type MkdirCreated struct{}
+type LstatOK struct {
+	Type     OptString   `json:"type"`
+	Size     OptInt64    `json:"size"`
+	Atime    OptDateTime `json:"atime"`
+	Mtime    OptDateTime `json:"mtime"`
+	Ctime    OptDateTime `json:"ctime"`
+	Flags    OptString   `json:"flags"`
+	Revision OptString   `json:"revision"`
+}
+
+// GetType returns the value of Type.
+func (s *LstatOK) GetType() OptString {
+	return s.Type
+}
+
+// GetSize returns the value of Size.
+func (s *LstatOK) GetSize() OptInt64 {
+	return s.Size
+}
+
+// GetAtime returns the value of Atime.
+func (s *LstatOK) GetAtime() OptDateTime {
+	return s.Atime
+}
+
+// GetMtime returns the value of Mtime.
+func (s *LstatOK) GetMtime() OptDateTime {
+	return s.Mtime
+}
+
+// GetCtime returns the value of Ctime.
+func (s *LstatOK) GetCtime() OptDateTime {
+	return s.Ctime
+}
+
+// GetFlags returns the value of Flags.
+func (s *LstatOK) GetFlags() OptString {
+	return s.Flags
+}
+
+// GetRevision returns the value of Revision.
+func (s *LstatOK) GetRevision() OptString {
+	return s.Revision
+}
+
+// SetType sets the value of Type.
+func (s *LstatOK) SetType(val OptString) {
+	s.Type = val
+}
+
+// SetSize sets the value of Size.
+func (s *LstatOK) SetSize(val OptInt64) {
+	s.Size = val
+}
+
+// SetAtime sets the value of Atime.
+func (s *LstatOK) SetAtime(val OptDateTime) {
+	s.Atime = val
+}
+
+// SetMtime sets the value of Mtime.
+func (s *LstatOK) SetMtime(val OptDateTime) {
+	s.Mtime = val
+}
+
+// SetCtime sets the value of Ctime.
+func (s *LstatOK) SetCtime(val OptDateTime) {
+	s.Ctime = val
+}
+
+// SetFlags sets the value of Flags.
+func (s *LstatOK) SetFlags(val OptString) {
+	s.Flags = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *LstatOK) SetRevision(val OptString) {
+	s.Revision = val
+}
+
+// MkdirOK is response for Mkdir operation.
+type MkdirOK struct{}
 
 type MkdirReq struct {
 	Path string `json:"path"`
@@ -1651,6 +1731,20 @@ func (s *PresignResponseHeaders) init() PresignResponseHeaders {
 	return m
 }
 
+type ReadlinkOK struct {
+	Target string `json:"target"`
+}
+
+// GetTarget returns the value of Target.
+func (s *ReadlinkOK) GetTarget() string {
+	return s.Target
+}
+
+// SetTarget sets the value of Target.
+func (s *ReadlinkOK) SetTarget(val string) {
+	s.Target = val
+}
+
 // RmNoContent is response for Rm operation.
 type RmNoContent struct{}
 
@@ -1829,8 +1923,8 @@ func (s *StorageConfig) SetUsePathStyle(val OptBool) {
 	s.UsePathStyle = val
 }
 
-// SymlinkCreated is response for Symlink operation.
-type SymlinkCreated struct{}
+// SymlinkOK is response for Symlink operation.
+type SymlinkOK struct{}
 
 type SymlinkReq struct {
 	Target   string `json:"target"`
@@ -1857,8 +1951,8 @@ func (s *SymlinkReq) SetLinkPath(val string) {
 	s.LinkPath = val
 }
 
-// TouchCreated is response for Touch operation.
-type TouchCreated struct{}
+// TouchOK is response for Touch operation.
+type TouchOK struct{}
 
 type TouchReq struct {
 	Path string `json:"path"`
@@ -2094,10 +2188,10 @@ func (s *User) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
-// WriteLargeCreated is response for WriteLarge operation.
-type WriteLargeCreated struct{}
+// WriteLargeOK is response for WriteLarge operation.
+type WriteLargeOK struct{}
 
-func (*WriteLargeCreated) writeLargeRes() {}
+func (*WriteLargeOK) writeLargeRes() {}
 
 type WriteLargeReq struct {
 	Path   string        `json:"path"`

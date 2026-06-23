@@ -32,7 +32,7 @@ func createDrive(t *testing.T, env *e2eEnv, name, bucket string) string {
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	req = env.authReq("GET", "/v1/drives", nil)
 	resp, err = env.apiClient.Do(req)
@@ -62,14 +62,14 @@ func TestE2E_Mv(t *testing.T) {
 		resp, err := env.apiClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 	touch := func(p string) {
 		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
 		resp, err := env.apiClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 	stat := func(p string) int {
 		req := env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path="+urlEscape(p), nil)
@@ -119,17 +119,25 @@ func TestE2E_Symlink(t *testing.T) {
 		resp, err := env.apiClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 	touch := func(p string) {
 		req := env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"`+p+`"}`)))
 		resp, err := env.apiClient.Do(req)
 		require.NoError(t, err)
 		_ = resp.Body.Close()
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 	mkdir("/data")
 	touch("/data/target.txt")
+	write := func(p, content string) {
+		req := env.authReq("PUT", "/v1/drives/"+driveID+"/fs/write", bytes.NewReader([]byte(`{"path":"`+p+`","content":"`+content+`"}`)))
+		resp, err := env.apiClient.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	}
+	write("/data/target.txt", "target content")
 
 	body, _ := json.Marshal(map[string]any{
 		"target":   "/data/target.txt",
@@ -139,8 +147,9 @@ func TestE2E_Symlink(t *testing.T) {
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
+	// Stat follows the symlink (POSIX stat).
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Flink-to-target", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
@@ -150,8 +159,33 @@ func TestE2E_Symlink(t *testing.T) {
 		Type string `json:"type"`
 	}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&statBody))
-	assert.Equal(t, "symlink", statBody.Type)
+	assert.Equal(t, "file", statBody.Type, "stat follows symlinks to the target file")
 
+	// Lstat returns the symlink itself (POSIX lstat).
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/lstat?path=%2Flink-to-target", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var lstatBody struct {
+		Type string `json:"type"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&lstatBody))
+	assert.Equal(t, "symlink", lstatBody.Type, "lstat returns the symlink itself")
+
+	// Readlink returns the symlink's target path (POSIX readlink).
+	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/readlink?path=%2Flink-to-target", nil)
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	var readlinkBody struct {
+		Target string `json:"target"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&readlinkBody))
+	assert.Equal(t, "/data/target.txt", readlinkBody.Target)
+
+	// Cat follows the symlink (POSIX cat).
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/cat?path=%2Flink-to-target", nil)
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
@@ -159,7 +193,7 @@ func TestE2E_Symlink(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	got, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
-	assert.Equal(t, "/data/target.txt", string(got))
+	assert.Equal(t, "target content", string(got))
 }
 
 func TestE2E_WriteLarge(t *testing.T) {
@@ -185,7 +219,7 @@ func TestE2E_WriteLarge(t *testing.T) {
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Stat the new node
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/fs/stat?path=%2Fbig.bin", nil)

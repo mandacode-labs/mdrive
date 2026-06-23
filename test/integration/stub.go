@@ -30,6 +30,9 @@ type stubFS struct{}
 func (s *stubFS) ResolveForPermission(context.Context, string, string) (vfs.ResolvedRef, error) {
 	return vfs.ResolvedRef{DriveID: "", Path: ""}, nil
 }
+func (s *stubFS) Lstat(context.Context, string, string) (vfs.Resolved, error) {
+	return vfs.Resolved{DriveID: "", Node: nil}, nil
+}
 func (s *stubFS) Mkdir(context.Context, string, string) (*node.Node, error) {
 	n, _ := node.NewDirectory()
 	return n, nil

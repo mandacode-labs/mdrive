@@ -8,7 +8,7 @@ drives:
           schema:
             $ref: "../openapi.yaml#/components/schemas/DriveCreate"
     responses:
-      "201":
+      "200":
         description: Drive created
         content:
           application/json:

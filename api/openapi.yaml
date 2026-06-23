@@ -59,6 +59,12 @@ paths:
   /v1/drives/{driveID}/fs/stat:
     $ref: "./endpoints/fs.yaml#/stat"
 
+  /v1/drives/{driveID}/fs/lstat:
+    $ref: "./endpoints/fs.yaml#/lstat"
+
+  /v1/drives/{driveID}/fs/readlink:
+    $ref: "./endpoints/fs.yaml#/readlink"
+
   /v1/drives/{driveID}/fs/object:
     $ref: "./endpoints/fs.yaml#/object"
 

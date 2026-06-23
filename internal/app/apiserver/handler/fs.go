@@ -139,7 +139,7 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 	if err := h.vfs.WriteLarge(ctx, params.DriveID, r.Path, obj, r.Size); err != nil {
 		return nil, err
 	}
-	return &api.WriteLargeCreated{}, nil
+	return &api.WriteLargeOK{}, nil
 }
 
 func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {
@@ -167,6 +167,50 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 	if err != nil {
 		return nil, err
 	}
+	return statToAPI(n), nil
+}
+
+// Lstat is the no-symlink-follow variant of Stat (POSIX lstat(2)).
+// If the path resolves to a symlink, the returned metadata describes
+// the symlink itself, not its target.
+func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (*api.LstatOK, error) {
+	ref, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.requirePerm(ctx, permission.PermissionView, ref.DriveID); err != nil {
+		return nil, err
+	}
+	finalPath := ref.Path
+	if ref.DriveID != params.DriveID {
+		finalPath = "/" + ref.Path
+	}
+	res, err := h.vfs.Lstat(ctx, ref.DriveID, finalPath)
+	if err != nil {
+		return nil, err
+	}
+	return lstatToAPI(res.Node), nil
+}
+
+// Readlink returns the target path of a symbolic link (POSIX
+// readlink(2)). The path must resolve to a symlink; otherwise
+// ErrInvalidType is returned.
+func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (*api.ReadlinkOK, error) {
+	res, err := h.vfs.Lstat(ctx, params.DriveID, params.Path)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
+		return nil, err
+	}
+	target, err := res.Node.Readlink()
+	if err != nil {
+		return nil, err
+	}
+	return &api.ReadlinkOK{Target: target}, nil
+}
+
+func statToAPI(n *node.Node) *api.StatOK {
 	return &api.StatOK{
 		Type:     apputils.OptString(n.Type().String()),
 		Size:     api.OptInt64{Value: n.Size(), Set: true},
@@ -175,5 +219,17 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
 		Flags:    apputils.OptString(n.Flags().String()),
 		Revision: apputils.OptString(n.Revision().String()),
-	}, nil
+	}
+}
+
+func lstatToAPI(n *node.Node) *api.LstatOK {
+	return &api.LstatOK{
+		Type:     apputils.OptString(n.Type().String()),
+		Size:     api.OptInt64{Value: n.Size(), Set: true},
+		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
+		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
+		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
+		Flags:    apputils.OptString(n.Flags().String()),
+		Revision: apputils.OptString(n.Revision().String()),
+	}
 }

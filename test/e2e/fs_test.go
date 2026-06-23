@@ -23,7 +23,7 @@ func TestE2E_FSOperations(t *testing.T) {
 	resp, err := env.apiClient.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// The drive ID format is ULID. We get it from the list.
 	req = env.authReq("GET", "/v1/drives", nil)
@@ -40,14 +40,14 @@ func TestE2E_FSOperations(t *testing.T) {
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Touch
 	req = env.authReq("POST", "/v1/drives/"+driveID+"/fs/touch", bytes.NewReader([]byte(`{"path":"/docs/readme.md"}`)))
 	resp, err = env.apiClient.Do(req)
 	require.NoError(t, err)
 	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Write
 	req = env.authReq("PUT", "/v1/drives/"+driveID+"/fs/write", bytes.NewReader([]byte(`{"path":"/docs/readme.md","content":"# Hello E2E"}`)))

@@ -13,7 +13,7 @@ upload:
           schema:
             $ref: "../openapi.yaml#/components/schemas/PresignRequest"
     responses:
-      "201":
+      "200":
         description: Presigned upload URL created
         content:
           application/json:
@@ -45,7 +45,7 @@ uploadComplete:
           schema:
             $ref: "../openapi.yaml#/components/schemas/UploadCompleteRequest"
     responses:
-      "201":
+      "200":
         description: Object node created
         content:
           application/json:

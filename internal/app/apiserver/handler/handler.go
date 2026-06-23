@@ -35,6 +35,7 @@ type FSClient interface {
 	Write(ctx context.Context, driveID, path, content string) error
 	WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error
 	Stat(ctx context.Context, driveID, path string) (*node.Node, error)
+	Lstat(ctx context.Context, driveID, path string) (vfs.Resolved, error)
 	Ln(ctx context.Context, driveID, target, linkPath string, mode vfs.LinkMode) (*node.Node, error)
 }
 
