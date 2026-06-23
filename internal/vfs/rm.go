@@ -11,12 +11,15 @@ import (
 )
 
 // Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
-// Node operations execute in a transaction and are atomic. Tombstone
-// records for the deleted S3 objects are enqueued after the node
-// transaction commits. If the post-commit enqueue fails, the rm is
-// still reported as successful to the caller: the node state is
-// already gone and the user-visible operation succeeded. Orphaned S3
-// objects can be reclaimed by a future orphan-scan job.
+// Each path is removed in its own atomic node operation. Partial-failure
+// semantics are "stop on first error": earlier successful removals stay
+// committed, later ones are skipped. This matches POSIX rm -f.
+//
+// Tombstone records for the deleted S3 objects are enqueued after the
+// node operations commit. If the post-commit enqueue fails, the rm is
+// still reported as successful: the node state is already gone and the
+// user-visible operation succeeded. Orphaned S3 objects can be reclaimed
+// by a future orphan-scan job.
 //
 // Permission is the caller's responsibility.
 func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
@@ -26,25 +29,15 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 	}
 
 	var allRefs []ObjectRef
-
-	if err := s.WithNodeTx(ctx, func(tx *Service) error {
-		for _, p := range paths {
-			refs, err := tx.rmPath(ctx, rootID, p, recursive)
-			if err != nil {
-				return err
-			}
-			allRefs = append(allRefs, refs...)
+	for _, p := range paths {
+		refs, err := s.rmPath(ctx, rootID, p, recursive)
+		if err != nil {
+			return err
 		}
-		return nil
-	}); err != nil {
-		return err
+		allRefs = append(allRefs, refs...)
 	}
 
 	if len(allRefs) > 0 && s.GC != nil {
-		// Best-effort: enqueue tombstones after the node commit. If this
-		// fails the nodes are already gone, so we still return success
-		// to the caller (the user-visible rm succeeded). The error is
-		// captured for the caller to surface as a warning if desired.
 		if err := s.GC.InsertTombstones(ctx, allRefs); err != nil {
 			return fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err)
 		}

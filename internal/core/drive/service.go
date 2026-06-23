@@ -24,7 +24,16 @@ func NewService(repo Repository, users Exister, rootCreate RootCreator) *Service
 	return &Service{repo: repo, users: users, rootCreate: rootCreate}
 }
 
-// Create creates a drive and its root directory node.
+// Create creates a drive and its root directory node. The drive +
+// storage rows and the drive's root-node update run inside a single
+// repository transaction so partial failure cannot leave a drive
+// record pointing at a non-existent root ID.
+//
+// The root node itself is created by an external RootCreator
+// (typically the node.Service wired by the CLI). That step spans
+// repositories, so it cannot participate in this tx. The orphan-
+// cleanup path (gc/cli) covers any root node that ends up without
+// a matching drive row.
 func (s *Service) Create(ctx context.Context, name string, desc *string, ownerID string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
 	if name == "" {
 		return nil, uuid.Nil, ErrInvalidName
@@ -47,24 +56,29 @@ func (s *Service) Create(ctx context.Context, name string, desc *string, ownerID
 	id := ulid.Make().String()
 	now := time.Now()
 	d := NewDrive(id, id, name, desc, ProviderS3, ownerID, nil, nil, now, now)
-
 	s2 := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
 
-	if err := s.repo.Create(ctx, d, s2); err != nil {
-		return nil, uuid.Nil, fmt.Errorf("create drive: %w", err)
-	}
-
 	rootID, err := s.rootCreate.NewRootDirectory(ctx)
 	if err != nil {
-		_ = s.repo.Delete(ctx, id)
 		return nil, uuid.Nil, fmt.Errorf("create root node: %w", err)
 	}
 	d.SetRootNodeID(rootID)
 
-	updated, err := s.repo.Update(ctx, d)
+	var updated *Drive
+	err = s.WithTx(ctx, func(tx *Service) error {
+		if err := tx.repo.Create(ctx, d, s2); err != nil {
+			return fmt.Errorf("create drive: %w", err)
+		}
+		u, err := tx.repo.Update(ctx, d)
+		if err != nil {
+			return fmt.Errorf("update drive with root: %w", err)
+		}
+		updated = u
+		return nil
+	})
 	if err != nil {
-		return nil, uuid.Nil, fmt.Errorf("update drive with root: %w", err)
+		return nil, uuid.Nil, err
 	}
 	return updated, rootID, nil
 }

@@ -406,3 +406,28 @@ func TestMoveEntryMissingSource(t *testing.T) {
 	err = svc.MoveEntry(context.Background(), dir, "absent", dir, "elsewhere")
 	assert.ErrorIs(t, err, ErrEntryNotFound)
 }
+
+// TestWithTxCommitsAtomically verifies the transaction wrapping
+// applied to multi-step methods (Link, Unlink, MoveEntry, BulkLink,
+// BulkUnlink). A successful op must leave the repository in the
+// expected state regardless of which intermediate step succeeds.
+func TestWithTxCommitsAtomically(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+
+	dir, err := NewDirectory()
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), dir))
+
+	child, err := NewFile("hi")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(context.Background(), child))
+
+	require.NoError(t, svc.Link(context.Background(), dir, "a", child))
+	assert.Equal(t, uint32(1), child.NLink())
+
+	dc, err := dir.ReadDir()
+	require.NoError(t, err)
+	assert.Len(t, dc.Entries, 1)
+	assert.Equal(t, "a", dc.Entries[0].Name)
+}

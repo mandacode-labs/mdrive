@@ -26,13 +26,12 @@ func NewRepository(client *ent.Client, cipher crypto.Cipher) Repository {
 	return &EntRepository{client: client, cipher: cipher}
 }
 
+// Create persists a drive and its storage config. It is tx-transparent:
+// it uses whatever client the repository was constructed with. Callers
+// that need this op to participate in a larger transaction must wrap it
+// in WithTx at the service layer.
 func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error {
-	tx, err := r.client.Tx(ctx)
-	if err != nil {
-		return err
-	}
-
-	if _, err := tx.Drive.Create().
+	if _, err := r.client.Drive.Create().
 		SetID(d.ID()).
 		SetPublicID(d.PublicID()).
 		SetName(d.Name()).
@@ -41,17 +40,15 @@ func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetOwnerID(d.OwnerID()).
 		SetNillableRootNodeID(d.RootNodeID()).
 		Save(ctx); err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("create drive: %w", err)
 	}
 
 	secretKey, err := r.cipher.Encrypt([]byte(s.SecretKey()))
 	if err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("encrypt secret key: %w", err)
 	}
 
-	if _, err := tx.DriveStorage.Create().
+	if _, err := r.client.DriveStorage.Create().
 		SetDriveID(s.DriveID()).
 		SetBucket(s.Bucket()).
 		SetNillableEndpoint(s.Endpoint()).
@@ -60,11 +57,10 @@ func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetSecretKey(string(secretKey)).
 		SetUsePathStyle(s.UsePathStyle()).
 		Save(ctx); err != nil {
-		_ = tx.Rollback()
 		return fmt.Errorf("create drive storage: %w", err)
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 func (r *EntRepository) GetByID(ctx context.Context, id string) (*Drive, error) {
