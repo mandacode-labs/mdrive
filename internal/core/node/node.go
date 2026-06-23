@@ -211,6 +211,34 @@ func (n *Node) CRTime() time.Time  { return n.crtime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
 
+// StaleRev returns the revision that was current when the node was
+// loaded from the repository. The repository uses it to detect concurrent
+// modifications between Get and Save (optimistic concurrency).
+func (n *Node) StaleRev() Revision { return n.staleRev }
+
+// SetStaleRev records the revision that is currently persisted in the
+// repository. It is called by Repository implementations after a
+// successful Save to mark the in-memory node as in sync with storage.
+// Callers should not invoke this directly; the repository owns the
+// staleRev field.
+func (n *Node) SetStaleRev(r Revision) { n.staleRev = r }
+
+// Clone returns a deep copy of n. The content bytes are copied so
+// mutating either side does not affect the other; the revision and
+// staleRev are preserved (so this is a true snapshot of the node as
+// the repository would hand it back, with no spurious revision bump).
+// Repository implementations use this to materialize stored state
+// without going through SetContent (which would increment rev).
+func (n *Node) Clone() *Node {
+	c := *n
+	if n.content != nil {
+		buf := make(Content, len(n.content))
+		copy(buf, n.content)
+		c.content = buf
+	}
+	return &c
+}
+
 // Content is exported for repository serialization; not intended for direct mutation
 // by external callers. Type-specific Read methods are the public API.
 func (n *Node) Content() Content { return n.content }

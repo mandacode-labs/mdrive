@@ -25,11 +25,23 @@ func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*node.Node, error) {
 	if !ok {
 		return nil, node.ErrNotFound
 	}
-	return n, nil
+	c := n.Clone()
+	c.SetStaleRev(n.Revision())
+	return c, nil
 }
 
 func (r *fakeRepo) Save(_ context.Context, n *node.Node) error {
-	r.nodes[n.ID()] = n
+	existing, ok := r.nodes[n.ID()]
+	if !ok {
+		r.nodes[n.ID()] = n.Clone()
+		n.SetStaleRev(n.Revision())
+		return nil
+	}
+	if existing.Revision() != n.StaleRev() {
+		return node.ErrRevisionConflict
+	}
+	r.nodes[n.ID()] = n.Clone()
+	n.SetStaleRev(n.Revision())
 	return nil
 }
 
