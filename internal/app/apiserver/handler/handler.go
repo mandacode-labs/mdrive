@@ -54,7 +54,7 @@ type DriveClient interface {
 	Delete(ctx context.Context, actorID, id string) error
 	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)
 	ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error)
-	ListDeleted(ctx context.Context) ([]*drive.Drive, error)
+	ListDeleted(ctx context.Context, isAdmin bool) ([]*drive.Drive, error)
 }
 
 // AuthClient is the consumer-declared interface for authentication operations.

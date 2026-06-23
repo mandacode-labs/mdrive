@@ -104,7 +104,7 @@ func (s *stubDrive) ListByOwner(ctx context.Context, actorID string) ([]*drive.D
 	d := drive.NewDrive("d1", "pub1", "my-drive", nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
 	return []*drive.Drive{d}, nil
 }
-func (s *stubDrive) ListDeleted(ctx context.Context) ([]*drive.Drive, error) {
+func (s *stubDrive) ListDeleted(ctx context.Context, isAdmin bool) ([]*drive.Drive, error) {
 	rootID := uuid.New()
 	d := drive.NewDrive("d1", "pub1", "deleted-drive", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now())
 	return []*drive.Drive{d}, nil

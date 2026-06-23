@@ -155,6 +155,16 @@ func TestListByOwnerDoesNotCheckPermission(t *testing.T) {
 	assert.Len(t, drives, 1)
 }
 
+func TestListDeletedRequiresAdmin(t *testing.T) {
+	svc, _ := newService(t)
+	ctx := context.Background()
+	_, err := svc.ListDeleted(ctx, false)
+	assert.ErrorIs(t, err, ErrPermission, "non-admin must be rejected")
+	drives, err := svc.ListDeleted(ctx, true)
+	require.NoError(t, err, "admin must succeed")
+	assert.Empty(t, drives, "fakeClient has no deleted drives")
+}
+
 func TestNilPermAllowsAll(t *testing.T) {
 	c := newFakeClient()
 	svc := NewService(Config{Drive: c, Perm: nil})
