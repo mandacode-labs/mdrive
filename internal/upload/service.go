@@ -2,7 +2,6 @@ package upload
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path"
 	"time"
@@ -23,12 +22,6 @@ type PresignInfo struct {
 	Key       string
 	ExpiresAt time.Time
 }
-
-// Errors returned by the orchestration layer.
-var (
-	ErrUploadMismatch    = errors.New("upload: token does not match drive")
-	ErrObjectNotUploaded = errors.New("upload: S3 object was not uploaded")
-)
 
 // DriveLookup is the data-access contract for the storage config
 // of a drive. vfs.Service satisfies it via its embedded Drive
@@ -278,10 +271,3 @@ func (s *Service) checkAccess(ctx context.Context, userID, driveID string) error
 	}
 	return nil
 }
-
-// ErrPermission is returned when a permission check fails.
-var ErrPermission = errPermission{}
-
-type errPermission struct{}
-
-func (errPermission) Error() string { return "upload: permission denied" }

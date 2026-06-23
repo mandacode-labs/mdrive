@@ -18,7 +18,7 @@ import (
 // --- Fakes ---
 
 type fakeStore struct {
-	presignedURL  string
+	presignedURL string
 	objectExists bool
 	existsErr    error
 	uploadErr    error
@@ -167,12 +167,12 @@ func TestCompleteUploadTokenNotFound(t *testing.T) {
 func TestCompleteUploadDriveMismatch(t *testing.T) {
 	reg := NewMemoryRegistry()
 	_ = reg.Put(context.Background(), PresignMeta{
-		UploadID: "u1",
-		DriveID:  "d2",
-		UserID:   "user",
-		Path:     "/x",
-		Bucket:   "b",
-		Key:      "k",
+		UploadID:  "u1",
+		DriveID:   "d2",
+		UserID:    "user",
+		Path:      "/x",
+		Bucket:    "b",
+		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	svc := newTestService(t, reg, nil, nil)
@@ -185,13 +185,13 @@ func TestCompleteUploadSizeMismatch(t *testing.T) {
 	expiry := time.Now().Add(time.Hour)
 	size := int64(100)
 	_ = reg.Put(context.Background(), PresignMeta{
-		UploadID: "u1",
-		DriveID:  "d1",
-		UserID:   "user",
-		Path:     "/x",
-		Bucket:   "b",
-		Key:      "k",
-		Size:     &size,
+		UploadID:  "u1",
+		DriveID:   "d1",
+		UserID:    "user",
+		Path:      "/x",
+		Bucket:    "b",
+		Key:       "k",
+		Size:      &size,
 		ExpiresAt: expiry,
 	}, time.Hour)
 	svc := newTestService(t, reg, nil, nil)
@@ -203,12 +203,12 @@ func TestCompleteUploadSizeMismatch(t *testing.T) {
 func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 	reg := NewMemoryRegistry()
 	_ = reg.Put(context.Background(), PresignMeta{
-		UploadID: "u1",
-		DriveID:  "d1",
-		UserID:   "user",
-		Path:     "/x",
-		Bucket:   "b",
-		Key:      "k",
+		UploadID:  "u1",
+		DriveID:   "d1",
+		UserID:    "user",
+		Path:      "/x",
+		Bucket:    "b",
+		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	store := &fakeStore{objectExists: false}
@@ -220,12 +220,12 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 func TestCompleteUploadHappyPath(t *testing.T) {
 	reg := NewMemoryRegistry()
 	_ = reg.Put(context.Background(), PresignMeta{
-		UploadID: "u1",
-		DriveID:  "d1",
-		UserID:   "user",
-		Path:     "/x",
-		Bucket:   "b",
-		Key:      "k",
+		UploadID:  "u1",
+		DriveID:   "d1",
+		UserID:    "user",
+		Path:      "/x",
+		Bucket:    "b",
+		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	svc := newTestService(t, reg, nil, nil)
