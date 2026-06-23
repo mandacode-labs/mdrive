@@ -9,8 +9,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 type fakeRepo struct {
@@ -86,19 +84,6 @@ func (d *fakeDrive) ListDeleted(_ context.Context, _ time.Time, _ int) ([]*drive
 func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error) { return nil, nil }
 func (d *fakeDrive) now() time.Time                                                  { return time.Now() }
 
-type fakeUser struct{}
-
-func (u *fakeUser) UpsertFromOIDC(_ context.Context, _ *user.CreateCommand) (*user.User, error) {
-	return nil, nil
-}
-func (u *fakeUser) GetByID(_ context.Context, _ string) (*user.User, error)       { return nil, nil }
-func (u *fakeUser) GetByPublicID(_ context.Context, _ string) (*user.User, error) { return nil, nil }
-func (u *fakeUser) GetByProviderID(_ context.Context, _, _ string) (*user.User, error) {
-	return nil, nil
-}
-func (u *fakeUser) Update(_ context.Context, _ *user.User) (*user.User, error) { return nil, nil }
-func (u *fakeUser) Exists(_ context.Context, _ string) (bool, error)           { return true, nil }
-
 type fakeStore struct{}
 
 func (s *fakeStore) PutObject(_ context.Context, _, _ string, _ io.Reader, _ int64) error { return nil }
@@ -115,13 +100,6 @@ func (s *fakeStore) GetPresignedDownloadURL(_ context.Context, _, _ string, _ ti
 	return "https://s3.example.com/get", nil
 }
 
-type fakePerm struct{}
-
-func (p *fakePerm) Check(_ context.Context, _ string, _ permission.Permission, _, _ string) (bool, error) {
-	return true, nil
-}
-func (p *fakePerm) Grant(_ context.Context, _, _, _, _ string) error { return nil }
-
 func newTestService() *Service {
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
@@ -130,9 +108,7 @@ func newTestService() *Service {
 	return NewService(ServiceConfig{
 		Node:  nodeSvc,
 		Drive: d,
-		User:  &fakeUser{},
 		Store: &fakeStore{},
-		Perm:  &fakePerm{},
 	})
 }
 

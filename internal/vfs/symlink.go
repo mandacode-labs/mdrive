@@ -7,8 +7,9 @@ import (
 )
 
 // Symlink creates a symbolic link at linkPath pointing to target (like `ln -s /target /link`).
-func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath string) (*node.Node, error) {
-	_, parent, name, err := s.requireEditPath(ctx, "symlink", userID, driveID, linkPath)
+// Permission is the caller's responsibility.
+func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error) {
+	parent, name, err := s.requireEditPath(ctx, driveID, linkPath)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +17,7 @@ func (s *Service) Symlink(ctx context.Context, userID, driveID, target, linkPath
 	if err != nil {
 		return nil, err
 	}
-	if err := s.createAndLink(ctx, "symlink", n, parent, name); err != nil {
+	if err := s.createAndLink(ctx, n, parent, name); err != nil {
 		return nil, err
 	}
 	return n, nil

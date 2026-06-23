@@ -3,6 +3,7 @@ package permission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -72,6 +73,11 @@ const (
 
 // ErrInvalidAuthMode is returned when an unknown AuthMode is provided.
 var ErrInvalidAuthMode = fmt.Errorf("permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
+
+// ErrPermission is returned by the handler when a permission
+// check fails. vfs and drive have their own ErrPermission too;
+// the handler propagates whichever the called service returned.
+var ErrPermission = errors.New("permission: denied")
 
 // Config for OpenFGAChecker.
 type Config struct {

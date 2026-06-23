@@ -110,9 +110,7 @@ func TestResolveCrossDrive(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		Node:  nodeSvc,
 		Drive: fix.driveClient(),
-		User:  &fakeUser{},
 		Store: &fakeStore{},
-		Perm:  &fakePerm{},
 	})
 
 	res, err := svc.Resolve(context.Background(), fix.idA, "/mounts/team/shared.txt")
@@ -137,9 +135,7 @@ func TestResolveMountCycle(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		Node:  nodeSvc,
 		Drive: fix.driveClient(),
-		User:  &fakeUser{},
 		Store: &fakeStore{},
-		Perm:  &fakePerm{},
 	})
 
 	_, err = svc.Resolve(context.Background(), fix.idA, "/mount/back/mount")

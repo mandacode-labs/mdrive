@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Hardlink creates a new hardlink at linkPath pointing to the same node
@@ -13,15 +12,18 @@ import (
 // The new directory entry shares the inode of srcPath; the node's
 // nlink is incremented. Cross-drive hardlinks are rejected (POSIX
 // requires the source and target to be on the same filesystem).
-func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPath string) (*node.Node, error) {
-	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, driveID); err != nil {
-		return nil, err
-	}
+//
+// Permission is the caller's responsibility.
+func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error) {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
-	out, err := s.newResolver().resolve(ctx, rootID, srcPath)
+	// A single resolver instance collapses the src + link-path loads
+	// onto the same *Node pointer for any shared intermediate nodes,
+	// so a concurrent modification cannot produce a stale read.
+	r := s.newResolver()
+	out, err := r.resolve(ctx, rootID, srcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +33,7 @@ func (s *Service) Hardlink(ctx context.Context, userID, driveID, srcPath, linkPa
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
 		return nil, ErrHardlinkNotSupported
 	}
-	parent, name, err := s.newResolver().resolveParent(ctx, rootID, linkPath)
+	parent, name, err := r.resolveParent(ctx, rootID, linkPath)
 	if err != nil {
 		return nil, err
 	}

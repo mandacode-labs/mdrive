@@ -7,8 +7,9 @@ import (
 )
 
 // Mkdir creates a directory at path (like `mkdir /path/to/dir`).
-func (s *Service) Mkdir(ctx context.Context, userID, driveID, path string) (*node.Node, error) {
-	_, parent, name, err := s.requireEditPath(ctx, "mkdir", userID, driveID, path)
+// Permission is the caller's responsibility.
+func (s *Service) Mkdir(ctx context.Context, driveID, path string) (*node.Node, error) {
+	parent, name, err := s.requireEditPath(ctx, driveID, path)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +17,7 @@ func (s *Service) Mkdir(ctx context.Context, userID, driveID, path string) (*nod
 	if err != nil {
 		return nil, err
 	}
-	if err := s.createAndLink(ctx, "mkdir", dir, parent, name); err != nil {
+	if err := s.createAndLink(ctx, dir, parent, name); err != nil {
 		return nil, err
 	}
 	return dir, nil

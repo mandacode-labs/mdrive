@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Mv moves sources to dest (like `mv src1 src2 ... dest/`).
@@ -18,12 +17,11 @@ import (
 //   - Single source + existing-directory destination: move into it.
 //   - Multiple sources: destination must be an existing directory;
 //     each source's basename is used.
-func (s *Service) Mv(ctx context.Context, userID, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
+//
+// Permission is the caller's responsibility.
+func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
 		return ErrCrossDrive
-	}
-	if err := s.checkAccess(ctx, userID, permission.PermissionEdit, srcDriveID); err != nil {
-		return err
 	}
 
 	var overwriteRefs []ObjectRef

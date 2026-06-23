@@ -12,10 +12,10 @@ func TestWriteAndCat(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	err := svc.Write(ctx, "user1", "d1", "/data.txt", "hello world")
+	err := svc.Write(ctx, "d1", "/data.txt", "hello world")
 	require.NoError(t, err)
 
-	raw, err := svc.Cat(ctx, "user1", "d1", "/data.txt")
+	raw, err := svc.Cat(ctx, "d1", "/data.txt")
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(raw))
 }

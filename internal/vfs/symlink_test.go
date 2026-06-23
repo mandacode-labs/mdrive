@@ -12,10 +12,10 @@ func TestSymlink(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	_, err := svc.Touch(ctx, "user1", "d1", "/target")
+	_, err := svc.Touch(ctx, "d1", "/target")
 	require.NoError(t, err)
 
-	n, err := svc.Symlink(ctx, "user1", "d1", "/target", "/link")
+	n, err := svc.Symlink(ctx, "d1", "/target", "/link")
 	require.NoError(t, err)
 	assert.True(t, n.IsSymlink())
 
@@ -23,7 +23,7 @@ func TestSymlink(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "/target", target)
 
-	raw, err := svc.Cat(ctx, "user1", "d1", "/link")
+	raw, err := svc.Cat(ctx, "d1", "/link")
 	require.NoError(t, err)
 	assert.Equal(t, "/target", string(raw))
 }
