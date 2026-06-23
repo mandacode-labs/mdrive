@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthMe_NoAuthConfigured(t *testing.T) {
+func TestAuthMe_WithSession(t *testing.T) {
 	srv := newTestServer(t)
 	defer srv.Close()
 	req := authReq("GET", srv.URL+"/auth/me", nil)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	require.NoError(t, resp.Body.Close())
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

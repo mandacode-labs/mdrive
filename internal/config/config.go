@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,12 +62,13 @@ type CookieConfig struct {
 	TTL      time.Duration `mapstructure:"ttl"`
 }
 
-// SameSiteMode returns the http.SameSite value for the configured same_site string.
+// SameSiteMode returns the http.SameSite value for the
+// configured same_site string. Lax is the default.
 func (c CookieConfig) SameSiteMode() http.SameSite {
 	switch strings.ToLower(c.SameSite) {
 	case "strict":
 		return http.SameSiteStrictMode
-	case "lax":
+	case "lax", "":
 		return http.SameSiteLaxMode
 	case "none":
 		return http.SameSiteNoneMode
@@ -100,25 +102,13 @@ func (c DatabaseConfig) DSN() string {
 
 // StorageConfig holds S3/object-storage settings.
 type StorageConfig struct {
-	Region       string `mapstructure:"region"`
-	Endpoint     string `mapstructure:"endpoint"`
-	Bucket       string `mapstructure:"bucket"`
-	AccessKey    string `mapstructure:"access_key"`
-	SecretKey    string `mapstructure:"secret_key"`
-	UsePathStyle bool   `mapstructure:"use_path_style"`
-	PresignTTL   string `mapstructure:"presign_ttl"`
-}
-
-// PresignTTL returns the presigned URL TTL as a time.Duration.
-func (c StorageConfig) PresignTTLDuration() time.Duration {
-	if c.PresignTTL == "" {
-		return time.Hour
-	}
-	d, err := time.ParseDuration(c.PresignTTL)
-	if err != nil {
-		return time.Hour
-	}
-	return d
+	Region       string        `mapstructure:"region"`
+	Endpoint     string        `mapstructure:"endpoint"`
+	Bucket       string        `mapstructure:"bucket"`
+	AccessKey    string        `mapstructure:"access_key"`
+	SecretKey    string        `mapstructure:"secret_key"`
+	UsePathStyle bool          `mapstructure:"use_path_style"`
+	PresignTTL   time.Duration `mapstructure:"presign_ttl"`
 }
 
 // CryptoConfig holds at-rest encryption settings.
@@ -136,24 +126,12 @@ type ValkeyConfig struct {
 
 // AuthConfig holds authentication settings.
 type AuthConfig struct {
-	Provider    string `mapstructure:"provider"` // "zitadel", "keycloak"
-	Issuer      string `mapstructure:"issuer"`
-	ClientID    string `mapstructure:"client_id"`
-	JWKSURL     string `mapstructure:"jwks_url"`
-	SessionTTL  string `mapstructure:"session_ttl"`
-	FrontendURL string `mapstructure:"frontend_url"`
-}
-
-// SessionTTLDuration parses the session TTL string.
-func (c AuthConfig) SessionTTLDuration() time.Duration {
-	if c.SessionTTL == "" {
-		return 24 * time.Hour
-	}
-	d, err := time.ParseDuration(c.SessionTTL)
-	if err != nil {
-		return 24 * time.Hour
-	}
-	return d
+	Provider    string        `mapstructure:"provider"` // "zitadel", "keycloak"
+	Issuer      string        `mapstructure:"issuer"`
+	ClientID    string        `mapstructure:"client_id"`
+	JWKSURL     string        `mapstructure:"jwks_url"`
+	SessionTTL  time.Duration `mapstructure:"session_ttl"`
+	FrontendURL string        `mapstructure:"frontend_url"`
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -177,12 +155,8 @@ type OpenFGAConfig struct {
 	Audience             string `mapstructure:"audience"`
 }
 
-// Load reads the configuration from the given path.
-func Load(path string) (*Config, error) {
-	return LoadFromPath(path)
-}
-
 // LoadFromPath reads the configuration from the given file path.
+// Call Validate(env) afterwards to enforce production invariants.
 func LoadFromPath(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
@@ -256,3 +230,24 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("openfga.token_issuer", "")
 	v.SetDefault("openfga.audience", "")
 }
+
+// Validate enforces production-vs-development invariants. Returns
+// nil if the config is sound for the given environment; otherwise
+// an error describing the first violation.
+func (c *Config) Validate(env string) error {
+	isProd := env != "development"
+	if isProd {
+		if c.Crypto.MasterKey == "" {
+			return errProductionMasterKeyRequired
+		}
+		if c.OpenFGA.APIURL == "" {
+			return errProductionOpenFGARequired
+		}
+	}
+	return nil
+}
+
+var (
+	errProductionMasterKeyRequired = errors.New("config: crypto.master_key is required in production")
+	errProductionOpenFGARequired   = errors.New("config: openfga.api_url is required in production")
+)

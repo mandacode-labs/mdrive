@@ -14,10 +14,14 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// vfsObjectRef aliases vfs.ObjectRef to keep the GC logic readable.
-type vfsObjectRef = vfs.ObjectRef
-
 const defaultProcessLimit = 1000
+
+// Runner is the common interface for a GC job that runs to
+// completion when invoked. Each subcommand of the `gc` CLI
+// produces a Runner from a *app.App.
+type Runner interface {
+	Run(ctx context.Context) error
+}
 
 // TombstoneCleaner deletes S3 objects recorded in gc_tombstones.
 type TombstoneCleaner struct {
@@ -89,7 +93,7 @@ func NewDrivePurger(a *app.App, retention time.Duration) *DrivePurger {
 func (p *DrivePurger) Run(ctx context.Context) error {
 	p.log.Info().Dur("retention", p.retention).Msg("gc: purge-drives starting")
 	before := time.Now().Add(-p.retention)
-	drives, err := p.app.DriveSvc.ListDeleted(ctx, before, defaultProcessLimit)
+	drives, err := p.app.DriveSvc.ListDeletedForAdmin(ctx, true, before, defaultProcessLimit)
 	if err != nil {
 		return fmt.Errorf("gc: list deleted drives: %w", err)
 	}
@@ -150,7 +154,7 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 				s3err++
 				e.log.Warn().Err(err).Str("bucket", bucket).Str("key", key).Msg("gc: delete upload object failed")
 				if e.app.TombstoneInserter != nil {
-					_ = e.app.TombstoneInserter.InsertTombstones(ctx, []vfsObjectRef{{Bucket: bucket, Key: key}})
+					_ = e.app.TombstoneInserter.InsertTombstones(ctx, []vfs.ObjectRef{{Bucket: bucket, Key: key}})
 				}
 			}
 		}

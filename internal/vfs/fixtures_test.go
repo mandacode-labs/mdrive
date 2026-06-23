@@ -67,7 +67,7 @@ func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
 func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return d.GetByID(context.Background(), "")
 }
-func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
+func (d *fakeDrive) GetStorage(_ context.Context, _, _ string) (*drive.Storage, error) {
 	if d.storageOverride != nil {
 		return d.storageOverride, nil
 	}
@@ -86,14 +86,14 @@ func (d *fakeDrive) now() time.Time                                             
 
 type fakeStore struct{}
 
-func (s *fakeStore) PutObject(_ context.Context, _, _ string, _ io.Reader, _ int64) error { return nil }
-func (s *fakeStore) GetObject(_ context.Context, _, _ string) ([]byte, error)             { return nil, nil }
-func (s *fakeStore) DeleteObject(_ context.Context, _, _ string) error                    { return nil }
-func (s *fakeStore) DeleteObjects(_ context.Context, _ string, _ []string) error          { return nil }
-func (s *fakeStore) ObjectExists(_ context.Context, _, _ string) (bool, error)            { return true, nil }
-func (s *fakeStore) GetObjectSize(_ context.Context, _, _ string) (int64, error)          { return 0, nil }
-func (s *fakeStore) GetObjectChecksum(_ context.Context, _, _ string) (string, error)     { return "", nil }
-func (s *fakeStore) GetPresignedUploadURL(_ context.Context, _, _, _ string, _ int64, _ string, _ time.Duration) (string, error) {
+func (s *fakeStore) PutObject(_ context.Context, _, _ string, _ io.Reader) error      { return nil }
+func (s *fakeStore) GetObject(_ context.Context, _, _ string) ([]byte, error)         { return nil, nil }
+func (s *fakeStore) DeleteObject(_ context.Context, _, _ string) error                { return nil }
+func (s *fakeStore) DeleteObjects(_ context.Context, _ string, _ []string) error      { return nil }
+func (s *fakeStore) ObjectExists(_ context.Context, _, _ string) (bool, error)        { return true, nil }
+func (s *fakeStore) GetObjectSize(_ context.Context, _, _ string) (int64, error)      { return 0, nil }
+func (s *fakeStore) GetObjectChecksum(_ context.Context, _, _ string) (string, error) { return "", nil }
+func (s *fakeStore) GetPresignedUploadURL(_ context.Context, _, _ string, _ time.Duration) (string, error) {
 	return "https://s3.example.com/put", nil
 }
 func (s *fakeStore) GetPresignedDownloadURL(_ context.Context, _, _ string, _ time.Duration) (string, error) {
@@ -111,9 +111,3 @@ func newTestService() *Service {
 		Store: &fakeStore{},
 	})
 }
-
-func strPtr(s string) *string { return &s }
-func int64Ptr(i int64) *int64 { return &i }
-
-var _ = strPtr
-var _ = int64Ptr

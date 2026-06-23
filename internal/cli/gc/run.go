@@ -17,18 +17,29 @@ func NewCmd() *cobra.Command {
 		Use:   "gc",
 		Short: "Run garbage collection jobs",
 	}
-	cmd.AddCommand(newTombstonesCmd())
-	cmd.AddCommand(newPurgeDrivesCmd())
-	cmd.AddCommand(newExpireUploadsCmd())
-	cmd.AddCommand(newExpireSessionsCmd())
+	addJob(cmd, "tombstones", "Delete S3 objects recorded in gc_tombstones",
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewTombstoneCleaner(a) })
+	addJob(cmd, "purge-drives", "Permanently remove soft-deleted drives older than the retention period",
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewDrivePurger(a, 0) }, "retention", "0s", "minimum age of deleted drives to purge")
+	addJob(cmd, "expire-uploads", "Remove stale upload registrations",
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewUploadExpirer(a) })
+	addJob(cmd, "expire-sessions", "Remove expired sessions",
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewSessionExpirer(a) })
 	return cmd
 }
 
-func newTombstonesCmd() *cobra.Command {
+// addJob wires a subcommand with the standard config/app lifecycle.
+// The factory is called once the app is built, so failures during
+// app construction (config load, db connect, etc.) surface before
+// the job starts.
+//
+// Extra flagSpecs (name, default, usage) configure additional
+// job-specific flags beyond --config.
+func addJob(parent *cobra.Command, use, short string, factory func(*app.App) gcjobs.Runner, flagSpecs ...string) {
 	var configPath string
 	cmd := &cobra.Command{
-		Use:   "tombstones",
-		Short: "Delete S3 objects recorded in gc_tombstones",
+		Use:   use,
+		Short: short,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.LoadFromPath(configPath)
 			if err != nil {
@@ -39,79 +50,24 @@ func newTombstonesCmd() *cobra.Command {
 				return err
 			}
 			defer func() { _ = a.Close() }()
-			return gcjobs.NewTombstoneCleaner(a).Run(cmd.Context())
+			return factory(a).Run(cmd.Context())
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
-	return cmd
+	for i := 0; i+2 < len(flagSpecs); i += 3 {
+		flag, def, usage := flagSpecs[i], flagSpecs[i+1], flagSpecs[i+2]
+		cmd.Flags().Duration(flag, parseDurationOrZero(def), usage)
+	}
+	parent.AddCommand(cmd)
 }
 
-func newPurgeDrivesCmd() *cobra.Command {
-	var (
-		configPath string
-		retention  time.Duration
-	)
-	cmd := &cobra.Command{
-		Use:   "purge-drives",
-		Short: "Permanently remove soft-deleted drives older than the retention period",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config.LoadFromPath(configPath)
-			if err != nil {
-				return err
-			}
-			a, err := app.New(cmd.Context(), cfg)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = a.Close() }()
-			return gcjobs.NewDrivePurger(a, retention).Run(cmd.Context())
-		},
+func parseDurationOrZero(s string) time.Duration {
+	if s == "" || s == "0" || s == "0s" {
+		return 0
 	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
-	cmd.Flags().DurationVar(&retention, "retention", 0, "minimum age of deleted drives to purge (default 168h)")
-	return cmd
-}
-
-func newExpireUploadsCmd() *cobra.Command {
-	var configPath string
-	cmd := &cobra.Command{
-		Use:   "expire-uploads",
-		Short: "Remove stale upload registrations",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config.LoadFromPath(configPath)
-			if err != nil {
-				return err
-			}
-			a, err := app.New(cmd.Context(), cfg)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = a.Close() }()
-			return gcjobs.NewUploadExpirer(a).Run(cmd.Context())
-		},
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0
 	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
-	return cmd
-}
-
-func newExpireSessionsCmd() *cobra.Command {
-	var configPath string
-	cmd := &cobra.Command{
-		Use:   "expire-sessions",
-		Short: "Remove expired sessions",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config.LoadFromPath(configPath)
-			if err != nil {
-				return err
-			}
-			a, err := app.New(cmd.Context(), cfg)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = a.Close() }()
-			return gcjobs.NewSessionExpirer(a).Run(cmd.Context())
-		},
-	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
-	return cmd
+	return d
 }

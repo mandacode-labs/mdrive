@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
-	drivesvc "github.com/mandacode-labs/mdrive/internal/drive"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -94,15 +95,14 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
 	r := req.Value
-	namePtr := (*string)(nil)
-	descPtr := (*string)(nil)
+	var name, desc string
 	if r.Name.Set {
-		namePtr = &r.Name.Value
+		name = r.Name.Value
 	}
 	if r.Description.Set {
-		descPtr = &r.Description.Value
+		desc = r.Description.Value
 	}
-	drv, err := h.drive.Update(ctx, h.userID(ctx), params.DriveID, namePtr, descPtr)
+	drv, err := h.drive.Update(ctx, h.userID(ctx), params.DriveID, name, desc)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, drivesvc.ErrPermission
+		return nil, permission.ErrPermission
 	}
 	d, err := h.drive.Restore(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
@@ -125,8 +125,10 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 }
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
-	isAdmin := auth.IsAdmin(ctx)
-	drives, err := h.drive.ListDeleted(ctx, isAdmin)
+	if !auth.IsAdmin(ctx) {
+		return nil, permission.ErrPermission
+	}
+	drives, err := h.drive.ListDeletedForAdmin(ctx, true, time.Now(), 1000)
 	if err != nil {
 		return nil, err
 	}

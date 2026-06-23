@@ -67,23 +67,7 @@ func (m *multiDriveClient) GetByID(_ context.Context, id string) (*drive.Drive, 
 func (m *multiDriveClient) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return nil, nil
 }
-func (m *multiDriveClient) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
-	return nil, nil
-}
-func (m *multiDriveClient) Create(_ context.Context, _ string, _ *string, _ string, _ drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
-	return nil, uuid.Nil, nil
-}
-func (m *multiDriveClient) Update(_ context.Context, _ string, _, _ *string) (*drive.Drive, error) {
-	return nil, nil
-}
-func (m *multiDriveClient) Delete(_ context.Context, _ string) error { return nil }
-func (m *multiDriveClient) Restore(_ context.Context, _ string) (*drive.Drive, error) {
-	return nil, nil
-}
-func (m *multiDriveClient) ListDeleted(_ context.Context, _ time.Time, _ int) ([]*drive.Drive, error) {
-	return nil, nil
-}
-func (m *multiDriveClient) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error) {
+func (m *multiDriveClient) GetStorage(_ context.Context, _, _ string) (*drive.Storage, error) {
 	return nil, nil
 }
 
