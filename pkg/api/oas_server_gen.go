@@ -110,6 +110,12 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/fs/ls
 	Ls(ctx context.Context, params LsParams) (*DirContent, error)
+	// Lstat implements lstat operation.
+	//
+	// Get file metadata without following symlinks (POSIX lstat(2)).
+	//
+	// GET /v1/drives/{driveID}/fs/lstat
+	Lstat(ctx context.Context, params LstatParams) (*LstatOK, error)
 	// Mkdir implements mkdir operation.
 	//
 	// Create a directory.
@@ -128,6 +134,12 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/downloads
 	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
+	// Readlink implements readlink operation.
+	//
+	// Read a symbolic link's target (POSIX readlink(2)).
+	//
+	// GET /v1/drives/{driveID}/fs/readlink
+	Readlink(ctx context.Context, params ReadlinkParams) (*ReadlinkOK, error)
 	// RestoreDrive implements restoreDrive operation.
 	//
 	// Restore a soft-deleted drive.
@@ -142,7 +154,7 @@ type Handler interface {
 	Rm(ctx context.Context, req OptRmReq, params RmParams) error
 	// Stat implements stat operation.
 	//
-	// Get file metadata.
+	// Get file metadata (follows symlinks, POSIX stat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/stat
 	Stat(ctx context.Context, params StatParams) (*StatOK, error)

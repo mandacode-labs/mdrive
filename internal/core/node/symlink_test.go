@@ -13,7 +13,7 @@ func TestNewSymlink(t *testing.T) {
 
 	assert.Equal(t, NodeTypeSymlink, n.Type())
 
-	target, err := n.ReadSymlink()
+	target, err := n.Readlink()
 	require.NoError(t, err)
 	assert.Equal(t, "/target/path", target)
 }
@@ -30,7 +30,22 @@ func TestSymlinkUpdate(t *testing.T) {
 	err = n.WriteSymlink("/new")
 	require.NoError(t, err)
 
-	target, err := n.ReadSymlink()
+	target, err := n.Readlink()
 	require.NoError(t, err)
 	assert.Equal(t, "/new", target)
+}
+
+func TestReadlinkRejectsNonSymlink(t *testing.T) {
+	f, err := NewFile("content")
+	require.NoError(t, err)
+	_, err = f.Readlink()
+	assert.ErrorIs(t, err, ErrInvalidType)
+}
+
+func TestReadSymlinkAlias(t *testing.T) {
+	n, err := NewSymlink("/target")
+	require.NoError(t, err)
+	got, err := n.ReadSymlink()
+	require.NoError(t, err)
+	assert.Equal(t, "/target", got, "ReadSymlink must remain an alias for Readlink")
 }

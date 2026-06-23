@@ -51,7 +51,7 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 	// Use a single resolver so the resolve + resolveParent pair see
 	// the same *Node pointer for any shared intermediate nodes.
 	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, path)
+	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
 		return nil, fmt.Errorf("rm: %s: %w", path, err)
 	}

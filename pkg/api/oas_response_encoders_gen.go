@@ -61,8 +61,8 @@ func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWri
 	switch response := response.(type) {
 	case *UploadCompleteResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(201)
-		span.SetStatus(codes.Ok, http.StatusText(201))
+		w.WriteHeader(200)
+		span.SetStatus(codes.Ok, http.StatusText(200))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -114,8 +114,8 @@ func encodeCreateDriveResponse(response CreateDriveRes, w http.ResponseWriter, s
 	switch response := response.(type) {
 	case *Drive:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(201)
-		span.SetStatus(codes.Ok, http.StatusText(201))
+		w.WriteHeader(200)
+		span.SetStatus(codes.Ok, http.StatusText(200))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -251,8 +251,8 @@ func encodeInitiateUploadResponse(response InitiateUploadRes, w http.ResponseWri
 	switch response := response.(type) {
 	case *PresignResponse:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(201)
-		span.SetStatus(codes.Ok, http.StatusText(201))
+		w.WriteHeader(200)
+		span.SetStatus(codes.Ok, http.StatusText(200))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -366,9 +366,23 @@ func encodeLsResponse(response *DirContent, w http.ResponseWriter, span trace.Sp
 	return nil
 }
 
-func encodeMkdirResponse(response *MkdirCreated, w http.ResponseWriter, span trace.Span) error {
-	w.WriteHeader(201)
-	span.SetStatus(codes.Ok, http.StatusText(201))
+func encodeLstatResponse(response *LstatOK, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
+func encodeMkdirResponse(response *MkdirOK, w http.ResponseWriter, span trace.Span) error {
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
 
 	return nil
 }
@@ -433,6 +447,20 @@ func encodePresignDownloadResponse(response PresignDownloadRes, w http.ResponseW
 	}
 }
 
+func encodeReadlinkResponse(response *ReadlinkOK, w http.ResponseWriter, span trace.Span) error {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
+
+	e := new(jx.Encoder)
+	response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	return nil
+}
+
 func encodeRestoreDriveResponse(response *Drive, w http.ResponseWriter, span trace.Span) error {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(200)
@@ -468,16 +496,16 @@ func encodeStatResponse(response *StatOK, w http.ResponseWriter, span trace.Span
 	return nil
 }
 
-func encodeSymlinkResponse(response *SymlinkCreated, w http.ResponseWriter, span trace.Span) error {
-	w.WriteHeader(201)
-	span.SetStatus(codes.Ok, http.StatusText(201))
+func encodeSymlinkResponse(response *SymlinkOK, w http.ResponseWriter, span trace.Span) error {
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
 
 	return nil
 }
 
-func encodeTouchResponse(response *TouchCreated, w http.ResponseWriter, span trace.Span) error {
-	w.WriteHeader(201)
-	span.SetStatus(codes.Ok, http.StatusText(201))
+func encodeTouchResponse(response *TouchOK, w http.ResponseWriter, span trace.Span) error {
+	w.WriteHeader(200)
+	span.SetStatus(codes.Ok, http.StatusText(200))
 
 	return nil
 }
@@ -512,9 +540,9 @@ func encodeWriteResponse(response *WriteOK, w http.ResponseWriter, span trace.Sp
 
 func encodeWriteLargeResponse(response WriteLargeRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
-	case *WriteLargeCreated:
-		w.WriteHeader(201)
-		span.SetStatus(codes.Ok, http.StatusText(201))
+	case *WriteLargeOK:
+		w.WriteHeader(200)
+		span.SetStatus(codes.Ok, http.StatusText(200))
 
 		return nil
 

@@ -166,6 +166,15 @@ func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r *DirCont
 	return r, ht.ErrNotImplemented
 }
 
+// Lstat implements lstat operation.
+//
+// Get file metadata without following symlinks (POSIX lstat(2)).
+//
+// GET /v1/drives/{driveID}/fs/lstat
+func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r *LstatOK, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Mkdir implements mkdir operation.
 //
 // Create a directory.
@@ -193,6 +202,15 @@ func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignD
 	return r, ht.ErrNotImplemented
 }
 
+// Readlink implements readlink operation.
+//
+// Read a symbolic link's target (POSIX readlink(2)).
+//
+// GET /v1/drives/{driveID}/fs/readlink
+func (UnimplementedHandler) Readlink(ctx context.Context, params ReadlinkParams) (r *ReadlinkOK, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // RestoreDrive implements restoreDrive operation.
 //
 // Restore a soft-deleted drive.
@@ -213,7 +231,7 @@ func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParam
 
 // Stat implements stat operation.
 //
-// Get file metadata.
+// Get file metadata (follows symlinks, POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r *StatOK, _ error) {

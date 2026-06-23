@@ -5,10 +5,12 @@ import (
 	"fmt"
 )
 
-// Cat reads the content of a file, symlink target, or object (like `cat /path`).
-// Permission is the caller's responsibility: vfs does not check.
-// The caller should have already verified view permission on the
-// drive the path ultimately resolves to.
+// Cat reads the content of a file, symlink target, or object
+// (like `cat /path`). Symlinks are followed by the path resolver,
+// so the node Cat sees is the final target — a symlink should not
+// normally arrive here. Permission is the caller's responsibility;
+// vfs does not check. The caller should have already verified view
+// permission on the drive the path ultimately resolves to.
 func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
@@ -32,12 +34,6 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 			return nil, fmt.Errorf("cat: store: %w", err)
 		}
 		return data, nil
-	case n.IsSymlink():
-		target, err := n.ReadSymlink()
-		if err != nil {
-			return nil, fmt.Errorf("cat: read: %w", err)
-		}
-		return []byte(target), nil
 	default:
 		return nil, fmt.Errorf("cat: cannot read %s", n.Type())
 	}

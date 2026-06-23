@@ -100,8 +100,8 @@ func decodeCatResponse(resp *http.Response) (res CatOK, _ error) {
 
 func decodeCompleteUploadResponse(resp *http.Response) (res CompleteUploadRes, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
+	case 200:
+		// Code 200.
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -192,8 +192,8 @@ func decodeCompleteUploadResponse(resp *http.Response) (res CompleteUploadRes, _
 
 func decodeCreateDriveResponse(resp *http.Response) (res CreateDriveRes, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
+	case 200:
+		// Code 200.
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -507,8 +507,8 @@ func decodeHealthResponse(resp *http.Response) (res *HealthOK, _ error) {
 
 func decodeInitiateUploadResponse(resp *http.Response) (res InitiateUploadRes, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
+	case 200:
+		// Code 200.
 		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 		if err != nil {
 			return res, errors.Wrap(err, "parse media type")
@@ -754,11 +754,52 @@ func decodeLsResponse(resp *http.Response) (res *DirContent, _ error) {
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
 
-func decodeMkdirResponse(resp *http.Response) (res *MkdirCreated, _ error) {
+func decodeLstatResponse(resp *http.Response) (res *LstatOK, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
-		return &MkdirCreated{}, nil
+	case 200:
+		// Code 200.
+		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		if err != nil {
+			return res, errors.Wrap(err, "parse media type")
+		}
+		switch {
+		case ct == "application/json":
+			buf, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return res, err
+			}
+			d := jx.DecodeBytes(buf)
+
+			var response LstatOK
+			if err := func() error {
+				if err := response.Decode(d); err != nil {
+					return err
+				}
+				if err := d.Skip(); err != io.EOF {
+					return errors.New("unexpected trailing data")
+				}
+				return nil
+			}(); err != nil {
+				err = &ogenerrors.DecodeBodyError{
+					ContentType: ct,
+					Body:        buf,
+					Err:         err,
+				}
+				return res, err
+			}
+			return &response, nil
+		default:
+			return res, validate.InvalidContentType(ct)
+		}
+	}
+	return res, validate.UnexpectedStatusCodeWithResponse(resp)
+}
+
+func decodeMkdirResponse(resp *http.Response) (res *MkdirOK, _ error) {
+	switch resp.StatusCode {
+	case 200:
+		// Code 200.
+		return &MkdirOK{}, nil
 	}
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
@@ -864,6 +905,47 @@ func decodePresignDownloadResponse(resp *http.Response) (res PresignDownloadRes,
 	return res, nil
 }
 
+func decodeReadlinkResponse(resp *http.Response) (res *ReadlinkOK, _ error) {
+	switch resp.StatusCode {
+	case 200:
+		// Code 200.
+		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+		if err != nil {
+			return res, errors.Wrap(err, "parse media type")
+		}
+		switch {
+		case ct == "application/json":
+			buf, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return res, err
+			}
+			d := jx.DecodeBytes(buf)
+
+			var response ReadlinkOK
+			if err := func() error {
+				if err := response.Decode(d); err != nil {
+					return err
+				}
+				if err := d.Skip(); err != io.EOF {
+					return errors.New("unexpected trailing data")
+				}
+				return nil
+			}(); err != nil {
+				err = &ogenerrors.DecodeBodyError{
+					ContentType: ct,
+					Body:        buf,
+					Err:         err,
+				}
+				return res, err
+			}
+			return &response, nil
+		default:
+			return res, validate.InvalidContentType(ct)
+		}
+	}
+	return res, validate.UnexpectedStatusCodeWithResponse(resp)
+}
+
 func decodeRestoreDriveResponse(resp *http.Response) (res *Drive, _ error) {
 	switch resp.StatusCode {
 	case 200:
@@ -955,20 +1037,20 @@ func decodeStatResponse(resp *http.Response) (res *StatOK, _ error) {
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
 
-func decodeSymlinkResponse(resp *http.Response) (res *SymlinkCreated, _ error) {
+func decodeSymlinkResponse(resp *http.Response) (res *SymlinkOK, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
-		return &SymlinkCreated{}, nil
+	case 200:
+		// Code 200.
+		return &SymlinkOK{}, nil
 	}
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
 
-func decodeTouchResponse(resp *http.Response) (res *TouchCreated, _ error) {
+func decodeTouchResponse(resp *http.Response) (res *TouchOK, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
-		return &TouchCreated{}, nil
+	case 200:
+		// Code 200.
+		return &TouchOK{}, nil
 	}
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
@@ -1034,9 +1116,9 @@ func decodeWriteResponse(resp *http.Response) (res *WriteOK, _ error) {
 
 func decodeWriteLargeResponse(resp *http.Response) (res WriteLargeRes, _ error) {
 	switch resp.StatusCode {
-	case 201:
-		// Code 201.
-		return &WriteLargeCreated{}, nil
+	case 200:
+		// Code 200.
+		return &WriteLargeOK{}, nil
 	}
 	// Default response.
 	res, err := func() (res WriteLargeRes, err error) {
