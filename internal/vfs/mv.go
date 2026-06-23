@@ -8,9 +8,10 @@ import (
 )
 
 // Mv moves sources to dest (like `mv src1 src2 ... dest/`).
-// Same-drive only. Executes within a node transaction so partial moves
-// are automatically rolled back. If the destination entry exists as a
-// file, it is overwritten (POSIX behavior).
+// Same-drive only. The underlying node.Service.MoveEntry is atomic
+// on its own (it wraps its writes in WithTx), so vfs just orchestrates
+// the resolve + move and reports S3 references for any overwritten
+// object that should be tombstoned after commit.
 //
 // Semantics:
 //   - Single source + non-existent destination path: rename.
@@ -24,16 +25,16 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		return ErrCrossDrive
 	}
 
-	var overwriteRefs []ObjectRef
-	if err := s.WithNodeTx(ctx, func(tx *Service) error {
-		var err error
-		if len(srcPaths) == 1 {
-			overwriteRefs, err = tx.mvOne(ctx, srcDriveID, srcPaths[0], dstPath)
-			return err
-		}
-		overwriteRefs, err = tx.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
-		return err
-	}); err != nil {
+	var (
+		overwriteRefs []ObjectRef
+		err           error
+	)
+	if len(srcPaths) == 1 {
+		overwriteRefs, err = s.mvOne(ctx, srcDriveID, srcPaths[0], dstPath)
+	} else {
+		overwriteRefs, err = s.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -163,6 +164,12 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		}
 	}
 
+	// Each move is its own atomic operation. Partial-failure semantics
+	// for a multi-source batch are "stop on first error": earlier
+	// successful moves stay committed, later ones are skipped. This
+	// matches POSIX mv: a partial batch is not rolled back even when
+	// one source fails. Callers needing all-or-nothing semantics must
+	// stage sources into a temp directory and rename that atomically.
 	var overwriteRefs []ObjectRef
 	for _, si := range sources {
 		refs, err := s.applyMoveEntry(ctx, si.srcParent, si.srcName, dstDir, si.baseName)

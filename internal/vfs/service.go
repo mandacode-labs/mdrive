@@ -90,17 +90,6 @@ func (s *Service) newResolver() *resolver {
 	return newResolver(s.Node)
 }
 
-func (s *Service) WithNodeTx(ctx context.Context, fn func(tx *Service) error) error {
-	return s.Node.WithTx(ctx, func(txNode *node.Service) error {
-		return fn(&Service{
-			Node:  txNode,
-			Drive: s.Drive,
-			Store: s.Store,
-			GC:    s.GC,
-		})
-	})
-}
-
 type Resolved struct {
 	DriveID string
 	Node    *node.Node
