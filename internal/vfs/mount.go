@@ -3,6 +3,7 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
@@ -40,8 +41,19 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		return nil, err
 	}
 	if err := s.createAndLink(ctx, mount, parent, name); err != nil {
+		s.log().Debug("vfs.mount.failed",
+			slog.String("from_drive", driveID),
+			slog.String("to_drive", sourceDriveID),
+			slog.String("path", mountPath),
+			slog.String("err", err.Error()),
+		)
 		return nil, fmt.Errorf("mount: %w", err)
 	}
+	s.log().Info("vfs.mount.created",
+		slog.String("from_drive", driveID),
+		slog.String("to_drive", sourceDriveID),
+		slog.String("path", mountPath),
+	)
 	return mount, nil
 }
 
@@ -68,12 +80,23 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	if !n.IsMount() {
 		return fmt.Errorf("unmount: %s is not a mount", mountPath)
 	}
+	srcDrive, _ := n.ReadMount()
 	parent, name, err := r.resolveParent(ctx, rootID, mountPath)
 	if err != nil {
 		return fmt.Errorf("unmount: resolve parent: %w", err)
 	}
 	if _, err := s.Node.Unlink(ctx, parent, name); err != nil {
+		s.log().Debug("vfs.unmount.failed",
+			slog.String("drive_id", driveID),
+			slog.String("path", mountPath),
+			slog.String("err", err.Error()),
+		)
 		return fmt.Errorf("unmount: unlink: %w", err)
 	}
+	s.log().Info("vfs.unmount.completed",
+		slog.String("drive_id", driveID),
+		slog.String("path", mountPath),
+		slog.String("source_drive", srcDrive),
+	)
 	return nil
 }

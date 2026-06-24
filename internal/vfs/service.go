@@ -3,6 +3,7 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -60,25 +61,42 @@ type Service struct {
 	Drive DriveClient
 	Store Store
 	GC    TombstoneInserter
+	// Logger receives structured observability events for
+	// multi-step filesystem operations (mount traversal, GC
+	// tombstones, symlink cycles). Optional: nil means no-op.
+	Logger *slog.Logger
 }
 
 // ServiceConfig groups the dependencies of NewService. vfs is
 // filesystem-only: it has no user or permission dependencies.
 // Permission checks are the caller's responsibility (handler layer).
 type ServiceConfig struct {
-	Node  NodeClient
-	Drive DriveClient
-	Store Store
-	GC    TombstoneInserter
+	Node   NodeClient
+	Drive  DriveClient
+	Store  Store
+	GC     TombstoneInserter
+	Logger *slog.Logger
 }
 
 func NewService(cfg ServiceConfig) *Service {
 	return &Service{
-		Node:  cfg.Node,
-		Drive: cfg.Drive,
-		Store: cfg.Store,
-		GC:    cfg.GC,
+		Node:   cfg.Node,
+		Drive:  cfg.Drive,
+		Store:  cfg.Store,
+		GC:     cfg.GC,
+		Logger: cfg.Logger,
 	}
+}
+
+// log returns the Service's logger, or slog.Default() if none was
+// configured. Returning a non-nil logger means every call site can
+// log unconditionally; in tests the default logger discards
+// unless configured otherwise.
+func (s *Service) log() *slog.Logger {
+	if s.Logger != nil {
+		return s.Logger
+	}
+	return slog.Default()
 }
 
 // newResolver returns a fresh resolver backed by the Service's
