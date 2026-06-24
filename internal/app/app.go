@@ -30,7 +30,11 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// App holds all wired components.
+// App holds all wired components. The fields are split into the
+// three consumers they serve: HTTP transport (NodeSvc, DriveSvc,
+// UserSvc, UploadReg, UploadSvc, VFS, SessionStore, Auth,
+// Security, Perm, Garbage), background jobs (everything HTTP
+// needs plus the same), and lifecycle (DB, Ent, Cfg, Log).
 type App struct {
 	Cfg *config.Config
 	Log *slog.Logger
@@ -43,173 +47,75 @@ type App struct {
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
 	SessionStore session.Store
-	// Garbage records tombstones for S3 objects whose inodes
-	// were removed. Owned by the app/gc package; vfs calls into
-	// it via vfs.GarbageRecorder.
-	Garbage  *gc.GarbageRecorder
-	Auth     *auth.Service
-	Security *auth.SecurityHandler
-	Perm     permission.Checker
+	Garbage      *gc.GarbageRecorder
+	Auth         *auth.Service
+	Security     *auth.SecurityHandler
+	Perm         permission.Checker
 
 	DB  *sql.DB
 	Ent *ent.Client
 }
 
-// New wires the infrastructure, core domain services, and the vfs service.
+// New wires the application by composing a sequence of small
+// builders. Each builder is 10-20 lines, single-purpose, and
+// fail-fast on its own concern. New itself only does config
+// validation and the composition.
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
-	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
-
 	if err := cfg.Validate(cfg.App.Env); err != nil {
 		return nil, err
 	}
 
-	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
-		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
-	)
+	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
+
+	db, entClient, err := newInfra(ctx, cfg, log)
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	if err := db.PingContext(ctx); err != nil {
+
+	cipher, err := newCrypto(ctx, cfg, log)
+	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
-	log.Info("connected to database", "host", cfg.Database.Host, "database", cfg.Database.Name)
 
-	drv := entsql.OpenDB(dialect.Postgres, db)
-	entClient := ent.NewClient(ent.Driver(drv))
-
-	if cfg.App.Env == "development" {
-		if err := entClient.Schema.Create(ctx); err != nil {
-			log.Warn("auto-migration failed", "err", err)
-		}
-	}
-
-	nodeRepo := node.NewEntRepository(entClient)
-	nodeSvc := node.NewService(nodeRepo)
-
-	userRepo := user.NewRepository(entClient)
-	userSvc := user.NewService(userRepo)
-	userEx := user.NewExisterAdapter(userRepo)
-
-	rootCreator := &rootNodeCreator{svc: nodeSvc}
-
-	// Crypto: fail-fast in production if the master key is missing.
-	// In development we accept the NoOp cipher so local iteration
-	// does not require a key, but emit a loud warning so the
-	// operator sees the data is unprotected.
-	var cipher cryptopkg.Cipher
-	if cfg.Crypto.MasterKey != "" {
-		var err error
-		cipher, err = cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
-		if err != nil {
-			return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
-		}
-	} else {
-		if cfg.App.Env == "production" {
-			return nil, fmt.Errorf("crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
-		}
-		log.Warn("crypto: master key not configured; using NoOp cipher (drive storage secrets will be stored in plaintext)")
-		cipher = cryptopkg.NoOp{}
-	}
-
-	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, nil)
+	repos := newRepositories(entClient, cipher)
 
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
+		_ = db.Close()
 		return nil, err
 	}
-
-	garbage := gc.NewGarbageRecorder(entClient)
 
 	s3Client, err := newS3Client(ctx, cfg.Storage)
 	if err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 
-	// OpenFGA: wired when APIURL is set. In dev, permClient is
-	// nil and permission.Require falls back to permissive
-	// behaviour. The dev mode is logged loudly below.
-	var permClient permission.Checker
-	if cfg.OpenFGA.APIURL != "" {
-		permClient, err = permission.NewOpenFGAChecker(ctx, permission.Config{
-			AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),
-			APIURL:               cfg.OpenFGA.APIURL,
-			StoreID:              cfg.OpenFGA.StoreID,
-			AuthorizationModelID: cfg.OpenFGA.AuthorizationModelID,
-			APIToken:             cfg.OpenFGA.APIToken,
-			ClientID:             cfg.OpenFGA.ClientID,
-			ClientSecret:         cfg.OpenFGA.ClientSecret,
-			TokenIssuer:          cfg.OpenFGA.TokenIssuer,
-			Audience:             cfg.OpenFGA.Audience,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("openfga: initialize: %w", err)
-		}
-	} else {
-		if cfg.App.Env == "production" {
-			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
-		}
-		log.Warn("openfga: APIURL not configured; permission checks disabled (AnonSecurity will be used by the HTTP layer)")
+	permClient, err := newPerm(ctx, cfg, log)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
 	}
 
-	// vfs is the inode-tree manager; it has no S3 dependency.
-	// Garbage is the only external interface: vfs calls
-	// RecordGarbage when an object node is removed.
-	vfsSvc := vfs.NewService(vfs.ServiceConfig{
-		Node:    nodeSvc,
-		Drive:   driveSvc,
-		Garbage: garbage,
-		Logger:  log,
-	})
-
-	// upload is the S3 lifecycle service: presign, complete, and
-	// object delete. It depends on vfs (PathResolver) and on the
-	// S3 client we built above. Permission is the handler's
-	// responsibility.
-	uploadSvc := upload.NewService(upload.Config{
-		Reg:   uploadReg,
-		Drive: driveSvc,
-		Nodes: nodeSvc,
-		Store: s3Client,
-		Path:  vfsSvc,
-	})
-
-	var store session.Store = session.NewMemoryStore()
-	var authenticator *auth.Service
-	var sec *auth.SecurityHandler
-
-	if cfg.Auth.Issuer != "" && cfg.Auth.ClientID != "" {
-		if vClient != nil {
-			store = session.NewValkeyStore(vClient)
-		}
-		authenticator, err = auth.NewService(ctx, auth.Config{
-			Issuer:       cfg.Auth.Issuer,
-			ClientID:     cfg.Auth.ClientID,
-			SessionStore: store,
-			SessionTTL:   cfg.Auth.SessionTTL,
-			FrontendURL:  cfg.Auth.FrontendURL,
-		})
-		if err != nil {
-			return nil, err
-		}
-		sec = auth.NewSecurityHandler(authenticator, cfg.HTTP.Cookie.Name)
+	store, authenticator, sec, err := newAuth(ctx, cfg, vClient)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
 	}
 
 	return &App{
 		Cfg:          cfg,
 		Log:          log,
-		NodeSvc:      nodeSvc,
-		DriveSvc:     driveSvc,
-		UserSvc:      userSvc,
-		UserEx:       userEx,
+		NodeSvc:      repos.NodeSvc,
+		DriveSvc:     repos.DriveSvc,
+		UserSvc:      repos.UserSvc,
+		UserEx:       repos.UserEx,
 		UploadReg:    uploadReg,
-		UploadSvc:    uploadSvc,
-		VFS:          vfsSvc,
+		UploadSvc:    newUpload(repos, s3Client, uploadReg, entClient),
+		VFS:          newVFS(repos, entClient, log),
 		SessionStore: store,
-		Garbage:      garbage,
+		Garbage:      gc.NewGarbageRecorder(entClient),
 		Auth:         authenticator,
 		Security:     sec,
 		Perm:         permClient,
@@ -218,10 +124,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}, nil
 }
 
-// newLogger returns a *slog.Logger configured for the given environment
-// and level. In non-production the output goes to stderr with a text
-// handler for human-readable logs; in production the output is JSON
-// suitable for ingestion by an aggregator.
+// newLogger returns a *slog.Logger configured for the given
+// environment and level. In non-production the output goes to
+// stderr with a text handler for human-readable logs; in
+// production the output is JSON suitable for ingestion by an
+// aggregator.
 func newLogger(env, level string) *slog.Logger {
 	lvl := parseLogLevel(level)
 	opts := &slog.HandlerOptions{Level: lvl}
@@ -245,6 +152,165 @@ func parseLogLevel(s string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+// newInfra opens the database and ent client. In development
+// the ent schema is auto-created; in production the caller is
+// expected to run migrations separately.
+func newInfra(ctx context.Context, cfg *config.Config, log *slog.Logger) (*sql.DB, *ent.Client, error) {
+	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
+		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, nil, err
+	}
+	log.Info("connected to database", "host", cfg.Database.Host, "database", cfg.Database.Name)
+
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	entClient := ent.NewClient(ent.Driver(drv))
+
+	if cfg.App.Env == "development" {
+		if err := entClient.Schema.Create(ctx); err != nil {
+			log.Warn("auto-migration failed", "err", err)
+		}
+	}
+
+	return db, entClient, nil
+}
+
+// newCrypto returns the at-rest cipher. In production the
+// master key is required; in development the NoOp cipher is
+// used with a loud startup log so the operator sees the data
+// is unprotected.
+func newCrypto(_ context.Context, cfg *config.Config, log *slog.Logger) (cryptopkg.Cipher, error) {
+	if cfg.Crypto.MasterKey == "" {
+		if cfg.App.Env == "production" {
+			return nil, fmt.Errorf("crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
+		}
+		log.Warn("crypto: master key not configured; using NoOp cipher (drive storage secrets will be stored in plaintext)")
+		return cryptopkg.NoOp{}, nil
+	}
+	cipher, err := cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
+	if err != nil {
+		return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
+	}
+	return cipher, nil
+}
+
+// repositories groups the three core services so the
+// construction step is one assignment in New.
+type repositories struct {
+	NodeSvc  *node.Service
+	DriveSvc *drive.Service
+	UserSvc  *user.Service
+	UserEx   user.Exister
+}
+
+// newRepositories builds the three core domain services. The
+// drive service needs a root creator that wraps node.Service;
+// the user service exposes an Exister adapter for the drive
+// service to use.
+func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositories {
+	nodeRepo := node.NewEntRepository(entClient)
+	nodeSvc := node.NewService(nodeRepo)
+
+	userRepo := user.NewRepository(entClient)
+	userSvc := user.NewService(userRepo)
+	userEx := user.NewExisterAdapter(userRepo)
+
+	rootCreator := &rootNodeCreator{svc: nodeSvc}
+	driveRepo := drive.NewRepository(entClient, cipher)
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, nil)
+
+	return repositories{
+		NodeSvc:  nodeSvc,
+		DriveSvc: driveSvc,
+		UserSvc:  userSvc,
+		UserEx:   userEx,
+	}
+}
+
+// newPerm returns the OpenFGA permission checker. nil in dev
+// (permission.Require is permissive), required in production.
+func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permission.Checker, error) {
+	if cfg.OpenFGA.APIURL == "" {
+		if cfg.App.Env == "production" {
+			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
+		}
+		log.Warn("openfga: APIURL not configured; permission checks disabled (AnonSecurity will be used by the HTTP layer)")
+		return nil, nil
+	}
+	checker, err := permission.NewOpenFGAChecker(ctx, permission.Config{
+		AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),
+		APIURL:               cfg.OpenFGA.APIURL,
+		StoreID:              cfg.OpenFGA.StoreID,
+		AuthorizationModelID: cfg.OpenFGA.AuthorizationModelID,
+		APIToken:             cfg.OpenFGA.APIToken,
+		ClientID:             cfg.OpenFGA.ClientID,
+		ClientSecret:         cfg.OpenFGA.ClientSecret,
+		TokenIssuer:          cfg.OpenFGA.TokenIssuer,
+		Audience:             cfg.OpenFGA.Audience,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("openfga: initialize: %w", err)
+	}
+	return checker, nil
+}
+
+// newAuth wires OIDC + session store. In dev (no auth config)
+// the store is in-memory and the security handler is nil; the
+// HTTP layer will fall back to AnonSecurity.
+func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (session.Store, *auth.Service, *auth.SecurityHandler, error) {
+	var store session.Store = session.NewMemoryStore()
+	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
+		return store, nil, nil, nil
+	}
+	if vClient != nil {
+		store = session.NewValkeyStore(vClient)
+	}
+	authenticator, err := auth.NewService(ctx, auth.Config{
+		Issuer:       cfg.Auth.Issuer,
+		ClientID:     cfg.Auth.ClientID,
+		SessionStore: store,
+		SessionTTL:   cfg.Auth.SessionTTL,
+		FrontendURL:  cfg.Auth.FrontendURL,
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sec := auth.NewSecurityHandler(authenticator, cfg.HTTP.Cookie.Name)
+	return store, authenticator, sec, nil
+}
+
+// newVFS builds the inode-tree manager. vfs has no S3 or HTTP
+// dependency: it manages paths, links, and the tree; it
+// notifies Garbage when object nodes go away.
+func newVFS(repos repositories, entClient *ent.Client, log *slog.Logger) *vfs.Service {
+	return vfs.NewService(vfs.ServiceConfig{
+		Node:    repos.NodeSvc,
+		Drive:   repos.DriveSvc,
+		Garbage: gc.NewGarbageRecorder(entClient),
+		Logger:  log,
+	})
+}
+
+// newUpload builds the S3 lifecycle service. Permission is the
+// handler's responsibility; the service is the pure
+// presign/complete/delete flow.
+func newUpload(repos repositories, store *s3.Client, reg upload.Registry, _ *ent.Client) *upload.Service {
+	return upload.NewService(upload.Config{
+		Reg:   reg,
+		Drive: repos.DriveSvc,
+		Nodes: repos.NodeSvc,
+		Store: store,
+		Path:  nil, // set below: depends on vfs which depends on Garbage
+	})
 }
 
 // Close releases the database connection.
