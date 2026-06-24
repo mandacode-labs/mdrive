@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,10 @@ func TestEnt_Node_SaveGetRoundtrip(t *testing.T) {
 }
 
 func TestEnt_Node_RevisionConflict(t *testing.T) {
+	// Race scenario: two writers load the same inode, mutate
+	// independently, and Save concurrently. The optimistic-
+	// concurrency guard means exactly one Save wins; the other
+	// returns ErrRevisionConflict.
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)
@@ -37,22 +42,48 @@ func TestEnt_Node_RevisionConflict(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, repo.Save(ctx, dir))
 
-	// Bump the in-memory node's revision without saving; this
-	// simulates a concurrent Save in another process. A second
-	// Save with the original staleRev must return
-	// ErrRevisionConflict.
-	dir.SetMode(0o700)
-	require.NoError(t, repo.Save(ctx, dir), "first save with current rev should succeed")
-
-	// Reload to get the now-stale rev. Save again with the
-	// modified (in-memory) node should succeed only if the
-	// repo reads the latest rev. ErrRevisionConflict is the
-	// only expected signal for the stale-rev path; we are not
-	// racing here.
-	_, err = repo.Get(ctx, dir.ID())
+	// Two readers each load a fresh copy of the same inode.
+	// Both share the same staleRev until they Save.
+	a, err := repo.Get(ctx, dir.ID())
 	require.NoError(t, err)
-	// No contention injection in this test; a follow-up PR
-	// can add a tparallel-style race scenario.
+	b, err := repo.Get(ctx, dir.ID())
+	require.NoError(t, err)
+	require.Equal(t, a.Revision(), b.Revision(), "fresh reads should agree")
+
+	a.SetMode(0o600)
+	b.SetMode(0o700)
+
+	// Run the two saves concurrently. errgroup waits for both
+	// and surfaces the first non-nil error, but here we want
+	// to inspect both outcomes, so use plain goroutines.
+	type result struct {
+		who string
+		err error
+	}
+	done := make(chan result, 2)
+	go func() { done <- result{"a", repo.Save(ctx, a)} }()
+	go func() { done <- result{"b", repo.Save(ctx, b)} }()
+
+	var wins, conflicts int
+	for i := 0; i < 2; i++ {
+		r := <-done
+		switch {
+		case r.err == nil:
+			wins++
+		case errors.Is(r.err, node.ErrRevisionConflict):
+			conflicts++
+		default:
+			t.Errorf("writer %s returned unexpected error: %v", r.who, r.err)
+		}
+	}
+	assert.Equal(t, 1, wins, "exactly one writer must win")
+	assert.Equal(t, 1, conflicts, "exactly one writer must see ErrRevisionConflict")
+
+	// The winner's mutation is the one reflected in the DB.
+	final, err := repo.Get(ctx, dir.ID())
+	require.NoError(t, err)
+	assert.Equal(t, a.Mode()|b.Mode(), final.Mode(),
+		"the winner's mode (0o600 or 0o700) must be the persisted mode")
 }
 
 func TestEnt_Node_WithTxCommit(t *testing.T) {
