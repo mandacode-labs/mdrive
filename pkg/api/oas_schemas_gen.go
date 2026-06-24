@@ -647,10 +647,11 @@ func (s *MvReq) SetDestination(val string) {
 type NodeStat struct {
 	Type string `json:"type"`
 	Size int64  `json:"size"`
-	// POSIX permission bits and file type (chmod(2) bits | S_IFMT).
-	Mode int32 `json:"mode"`
-	// POSIX st_nlink (hardlink count).
-	Nlink int32 `json:"nlink"`
+	// POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and
+	// avoid the gosec G115 signed-overflow boundary.
+	Mode uint32 `json:"mode"`
+	// POSIX st_nlink (hardlink count). Unsigned 32-bit to match the internal representation.
+	Nlink uint32 `json:"nlink"`
 	// POSIX st_ino (inode id).
 	Ino uuid.UUID `json:"ino"`
 	// POSIX st_uid (owning user).
@@ -682,12 +683,12 @@ func (s *NodeStat) GetSize() int64 {
 }
 
 // GetMode returns the value of Mode.
-func (s *NodeStat) GetMode() int32 {
+func (s *NodeStat) GetMode() uint32 {
 	return s.Mode
 }
 
 // GetNlink returns the value of Nlink.
-func (s *NodeStat) GetNlink() int32 {
+func (s *NodeStat) GetNlink() uint32 {
 	return s.Nlink
 }
 
@@ -747,12 +748,12 @@ func (s *NodeStat) SetSize(val int64) {
 }
 
 // SetMode sets the value of Mode.
-func (s *NodeStat) SetMode(val int32) {
+func (s *NodeStat) SetMode(val uint32) {
 	s.Mode = val
 }
 
 // SetNlink sets the value of Nlink.
-func (s *NodeStat) SetNlink(val int32) {
+func (s *NodeStat) SetNlink(val uint32) {
 	s.Nlink = val
 }
 

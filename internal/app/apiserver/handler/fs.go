@@ -278,8 +278,8 @@ func statToAPI(n *node.Node) *api.NodeStat {
 	return &api.NodeStat{
 		Type:     n.Type().String(),
 		Size:     n.Size(),
-		Mode:     int32(n.Mode()),
-		Nlink:    int32(n.NLink()),
+		Mode:     n.Mode(),
+		Nlink:    n.NLink(),
 		Ino:      n.ID(),
 		UID:      apputils.OptString(n.UID()),
 		Gid:      apputils.OptString(n.GID()),

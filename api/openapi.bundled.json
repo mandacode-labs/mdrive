@@ -1580,13 +1580,13 @@
           },
           "mode": {
             "type": "integer",
-            "format": "int32",
-            "description": "POSIX permission bits and file type (chmod(2) bits | S_IFMT)."
+            "format": "uint32",
+            "description": "POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and avoid the gosec G115 signed-overflow boundary."
           },
           "nlink": {
             "type": "integer",
-            "format": "int32",
-            "description": "POSIX st_nlink (hardlink count)."
+            "format": "uint32",
+            "description": "POSIX st_nlink (hardlink count). Unsigned 32-bit to match the internal representation."
           },
           "ino": {
             "type": "string",

@@ -1589,11 +1589,11 @@ func (s *NodeStat) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("mode")
-		e.Int32(s.Mode)
+		e.UInt32(s.Mode)
 	}
 	{
 		e.FieldStart("nlink")
-		e.Int32(s.Nlink)
+		e.UInt32(s.Nlink)
 	}
 	{
 		e.FieldStart("ino")
@@ -1693,8 +1693,8 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 		case "mode":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := d.Int32()
-				s.Mode = int32(v)
+				v, err := d.UInt32()
+				s.Mode = uint32(v)
 				if err != nil {
 					return err
 				}
@@ -1705,8 +1705,8 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 		case "nlink":
 			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Int32()
-				s.Nlink = int32(v)
+				v, err := d.UInt32()
+				s.Nlink = uint32(v)
 				if err != nil {
 					return err
 				}
