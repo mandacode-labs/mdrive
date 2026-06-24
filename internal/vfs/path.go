@@ -275,14 +275,14 @@ func splitPath(p string) []string {
 // joinParts concatenates path components with "/". Used to
 // reconstruct the trailing path when a resolver stops at a mount.
 func joinParts(parts []string) string {
-	out := ""
+	var b strings.Builder
 	for i, p := range parts {
 		if i > 0 {
-			out += "/"
+			b.WriteByte('/')
 		}
-		out += p
+		b.WriteString(p)
 	}
-	return out
+	return b.String()
 }
 
 // cleanPath normalizes an absolute path. Uses path.Clean for collapse
