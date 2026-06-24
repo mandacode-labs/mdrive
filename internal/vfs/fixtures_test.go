@@ -56,13 +56,15 @@ func (r *fakeRepo) WithTx(_ context.Context, fn func(node.Repository) error) err
 type fakeDrive struct {
 	rootID          uuid.UUID
 	storageOverride *drive.Storage
+	deletedAt       *time.Time
 }
 
 func (d *fakeDrive) Create(_ context.Context, _ string, _ *string, _ string, _ drive.StorageConfig) (*drive.Drive, uuid.UUID, error) {
 	return nil, uuid.Nil, nil
 }
 func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
-	return drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, nil, d.now(), d.now()), nil
+	dr := drive.NewDrive("d1", "d1", "test", nil, drive.ProviderS3, "owner1", &d.rootID, d.deletedAt, d.now(), d.now())
+	return dr, nil
 }
 func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return d.GetByID(context.Background(), "")
