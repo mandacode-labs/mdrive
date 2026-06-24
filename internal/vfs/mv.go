@@ -175,15 +175,11 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		if err != nil {
 			return nil, fmt.Errorf("mv: %s: resolve parent: %w", srcPath, err)
 		}
-		base := sn
-		if base == "" {
-			base = srcPath
+		if _, dup := seen[sn]; dup {
+			return nil, fmt.Errorf("mv: duplicate source basename %q in batch", sn)
 		}
-		if _, dup := seen[base]; dup {
-			return nil, fmt.Errorf("mv: duplicate source basename %q in batch", base)
-		}
-		seen[base] = struct{}{}
-		sources = append(sources, srcInfo{node: srcOut.Node, baseName: base, srcParent: sp, srcName: sn})
+		seen[sn] = struct{}{}
+		sources = append(sources, srcInfo{node: srcOut.Node, baseName: sn, srcParent: sp, srcName: sn})
 	}
 
 	for _, si := range sources {
