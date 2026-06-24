@@ -18,8 +18,8 @@ var _ Handler = UnimplementedHandler{}
 // OAuth callback from Zitadel.
 //
 // GET /auth/callback
-func (UnimplementedHandler) AuthCallback(ctx context.Context, params AuthCallbackParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) AuthCallback(ctx context.Context, params AuthCallbackParams) (r AuthCallbackRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // AuthLogout implements authLogout operation.
@@ -27,8 +27,8 @@ func (UnimplementedHandler) AuthCallback(ctx context.Context, params AuthCallbac
 // Destroy the current session.
 //
 // POST /auth/logout
-func (UnimplementedHandler) AuthLogout(ctx context.Context) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) AuthLogout(ctx context.Context) (r AuthLogoutRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // AuthMe implements authMe operation.
@@ -36,7 +36,7 @@ func (UnimplementedHandler) AuthLogout(ctx context.Context) error {
 // Get the current authenticated user.
 //
 // GET /auth/me
-func (UnimplementedHandler) AuthMe(ctx context.Context) (r *User, _ error) {
+func (UnimplementedHandler) AuthMe(ctx context.Context) (r AuthMeRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -72,8 +72,8 @@ func (UnimplementedHandler) CreateDrive(ctx context.Context, req OptDriveCreate)
 // Soft-delete a drive.
 //
 // DELETE /v1/drives/{driveID}/root
-func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveParams) (r DeleteDriveRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // GetDrive implements getDrive operation.
@@ -81,7 +81,7 @@ func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveP
 // Get a drive by ID.
 //
 // GET /v1/drives/{driveID}/root
-func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams) (r *Drive, _ error) {
+func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams) (r GetDriveRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -90,7 +90,7 @@ func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams)
 // Get a drive's storage configuration.
 //
 // GET /v1/drives/{driveID}/storage
-func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (r *StorageConfig, _ error) {
+func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (r GetDriveStorageRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -99,7 +99,7 @@ func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDrive
 // Get current user.
 //
 // GET /v1/users
-func (UnimplementedHandler) GetUser(ctx context.Context) (r *User, _ error) {
+func (UnimplementedHandler) GetUser(ctx context.Context) (r GetUserRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -108,8 +108,8 @@ func (UnimplementedHandler) GetUser(ctx context.Context) (r *User, _ error) {
 // Initiate Google OAuth login (web).
 //
 // GET /auth/google
-func (UnimplementedHandler) GoogleLogin(ctx context.Context) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) GoogleLogin(ctx context.Context) (r *GoogleLoginFound, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // GoogleNativeLogin implements googleNativeLogin operation.
@@ -117,7 +117,7 @@ func (UnimplementedHandler) GoogleLogin(ctx context.Context) error {
 // Exchange a Google id_token for a mdrive session (mobile).
 //
 // POST /auth/google/native
-func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (r *GoogleNativeLoginOK, _ error) {
+func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (r GoogleNativeLoginRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -153,7 +153,7 @@ func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRe
 // List soft-deleted drives (admin only).
 //
 // GET /v1/admin/drives/deleted
-func (UnimplementedHandler) ListDeletedDrives(ctx context.Context) (r []Drive, _ error) {
+func (UnimplementedHandler) ListDeletedDrives(ctx context.Context) (r ListDeletedDrivesRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -162,7 +162,7 @@ func (UnimplementedHandler) ListDeletedDrives(ctx context.Context) (r []Drive, _
 // List drives owned by the authenticated user.
 //
 // GET /v1/drives
-func (UnimplementedHandler) ListDrives(ctx context.Context) (r []Drive, _ error) {
+func (UnimplementedHandler) ListDrives(ctx context.Context) (r ListDrivesRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -243,7 +243,7 @@ func (UnimplementedHandler) Realpath(ctx context.Context, params RealpathParams)
 // Restore a soft-deleted drive.
 //
 // POST /v1/drives/{driveID}/restore
-func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriveParams) (r *Drive, _ error) {
+func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriveParams) (r RestoreDriveRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -297,7 +297,7 @@ func (UnimplementedHandler) Unmount(ctx context.Context, params UnmountParams) (
 // Update a drive.
 //
 // PUT /v1/drives/{driveID}/root
-func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (r *Drive, _ error) {
+func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (r UpdateDriveRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -306,8 +306,8 @@ func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate,
 // Upsert a user from OIDC claims.
 //
 // POST /v1/users
-func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq) (r UpsertUserRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Write implements write operation.

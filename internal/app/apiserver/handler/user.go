@@ -23,23 +23,25 @@ func userToAPI(u *user.User) *api.User {
 	}
 }
 
-func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) error {
+func (h *Handler) UpsertUser(ctx context.Context, req api.OptUpsertUserReq) (api.UpsertUserRes, error) {
 	r := req.Value
 	var email *string
 	if r.Email.Set {
 		e := r.Email.Value
 		email = &e
 	}
-	_, err := h.users.UpsertFromOIDC(ctx, &user.CreateCommand{
+	if _, err := h.users.UpsertFromOIDC(ctx, &user.CreateCommand{
 		Name:       r.Name,
 		Email:      email,
 		Provider:   r.Provider,
 		ProviderID: r.ProviderID,
-	})
-	return err
+	}); err != nil {
+		return nil, err
+	}
+	return &api.UpsertUserOK{}, nil
 }
 
-func (h *Handler) GetUser(ctx context.Context) (*api.User, error) {
+func (h *Handler) GetUser(ctx context.Context) (api.GetUserRes, error) {
 	uid := h.userID(ctx)
 	u, err := h.users.GetByID(ctx, uid)
 	if err != nil {

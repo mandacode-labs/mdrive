@@ -32,6 +32,12 @@ drives:
               type: array
               items:
                 $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 drive:
   get:
@@ -41,8 +47,7 @@ drive:
       - name: driveID
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
     responses:
       "200":
         description: Drive
@@ -50,6 +55,12 @@ drive:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
   put:
     operationId: updateDrive
     summary: Update a drive
@@ -57,8 +68,7 @@ drive:
       - name: driveID
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
     requestBody:
       content:
         application/json:
@@ -71,6 +81,12 @@ drive:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
   delete:
     operationId: deleteDrive
     summary: Soft-delete a drive
@@ -78,11 +94,16 @@ drive:
       - name: driveID
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
     responses:
       "204":
         description: Deleted
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 restoreDrive:
   post:
@@ -92,8 +113,7 @@ restoreDrive:
       - name: driveID
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
     responses:
       "200":
         description: Restored drive
@@ -101,6 +121,12 @@ restoreDrive:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 adminDrives:
   get:
@@ -115,6 +141,12 @@ adminDrives:
               type: array
               items:
                 $ref: "../openapi.yaml#/components/schemas/Drive"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 storage:
   get:
@@ -124,8 +156,7 @@ storage:
       - name: driveID
         in: path
         required: true
-        schema:
-          type: string
+        schema: { type: string }
     responses:
       "200":
         description: Storage config
@@ -133,3 +164,9 @@ storage:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/StorageConfig"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

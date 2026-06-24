@@ -33,19 +33,19 @@ type Invoker interface {
 	// OAuth callback from Zitadel.
 	//
 	// GET /auth/callback
-	AuthCallback(ctx context.Context, params AuthCallbackParams) error
+	AuthCallback(ctx context.Context, params AuthCallbackParams) (AuthCallbackRes, error)
 	// AuthLogout invokes authLogout operation.
 	//
 	// Destroy the current session.
 	//
 	// POST /auth/logout
-	AuthLogout(ctx context.Context) error
+	AuthLogout(ctx context.Context) (AuthLogoutRes, error)
 	// AuthMe invokes authMe operation.
 	//
 	// Get the current authenticated user.
 	//
 	// GET /auth/me
-	AuthMe(ctx context.Context) (*User, error)
+	AuthMe(ctx context.Context) (AuthMeRes, error)
 	// Cat invokes cat operation.
 	//
 	// Read file contents (POSIX open(O_RDONLY)).
@@ -69,37 +69,37 @@ type Invoker interface {
 	// Soft-delete a drive.
 	//
 	// DELETE /v1/drives/{driveID}/root
-	DeleteDrive(ctx context.Context, params DeleteDriveParams) error
+	DeleteDrive(ctx context.Context, params DeleteDriveParams) (DeleteDriveRes, error)
 	// GetDrive invokes getDrive operation.
 	//
 	// Get a drive by ID.
 	//
 	// GET /v1/drives/{driveID}/root
-	GetDrive(ctx context.Context, params GetDriveParams) (*Drive, error)
+	GetDrive(ctx context.Context, params GetDriveParams) (GetDriveRes, error)
 	// GetDriveStorage invokes getDriveStorage operation.
 	//
 	// Get a drive's storage configuration.
 	//
 	// GET /v1/drives/{driveID}/storage
-	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (*StorageConfig, error)
+	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error)
 	// GetUser invokes getUser operation.
 	//
 	// Get current user.
 	//
 	// GET /v1/users
-	GetUser(ctx context.Context) (*User, error)
+	GetUser(ctx context.Context) (GetUserRes, error)
 	// GoogleLogin invokes googleLogin operation.
 	//
 	// Initiate Google OAuth login (web).
 	//
 	// GET /auth/google
-	GoogleLogin(ctx context.Context) error
+	GoogleLogin(ctx context.Context) (*GoogleLoginFound, error)
 	// GoogleNativeLogin invokes googleNativeLogin operation.
 	//
 	// Exchange a Google id_token for a mdrive session (mobile).
 	//
 	// POST /auth/google/native
-	GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
+	GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (GoogleNativeLoginRes, error)
 	// Hardlink invokes hardlink operation.
 	//
 	// Create a hard link (POSIX link(2)).
@@ -123,13 +123,13 @@ type Invoker interface {
 	// List soft-deleted drives (admin only).
 	//
 	// GET /v1/admin/drives/deleted
-	ListDeletedDrives(ctx context.Context) ([]Drive, error)
+	ListDeletedDrives(ctx context.Context) (ListDeletedDrivesRes, error)
 	// ListDrives invokes listDrives operation.
 	//
 	// List drives owned by the authenticated user.
 	//
 	// GET /v1/drives
-	ListDrives(ctx context.Context) ([]Drive, error)
+	ListDrives(ctx context.Context) (ListDrivesRes, error)
 	// Ls invokes ls operation.
 	//
 	// List directory contents (POSIX opendir/readdir).
@@ -183,7 +183,7 @@ type Invoker interface {
 	// Restore a soft-deleted drive.
 	//
 	// POST /v1/drives/{driveID}/restore
-	RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error)
+	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
 	// Rm invokes rm operation.
 	//
 	// Remove files or directories (POSIX unlink/rmdir(2)).
@@ -219,13 +219,13 @@ type Invoker interface {
 	// Update a drive.
 	//
 	// PUT /v1/drives/{driveID}/root
-	UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (*Drive, error)
+	UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
 	// UpsertUser invokes upsertUser operation.
 	//
 	// Upsert a user from OIDC claims.
 	//
 	// POST /v1/users
-	UpsertUser(ctx context.Context, request OptUpsertUserReq) error
+	UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error)
 	// Write invokes write operation.
 	//
 	// Write inline content to a file.
@@ -286,12 +286,12 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 // OAuth callback from Zitadel.
 //
 // GET /auth/callback
-func (c *Client) AuthCallback(ctx context.Context, params AuthCallbackParams) error {
-	_, err := c.sendAuthCallback(ctx, params)
-	return err
+func (c *Client) AuthCallback(ctx context.Context, params AuthCallbackParams) (AuthCallbackRes, error) {
+	res, err := c.sendAuthCallback(ctx, params)
+	return res, err
 }
 
-func (c *Client) sendAuthCallback(ctx context.Context, params AuthCallbackParams) (res *AuthCallbackFound, err error) {
+func (c *Client) sendAuthCallback(ctx context.Context, params AuthCallbackParams) (res AuthCallbackRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("authCallback"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -392,12 +392,12 @@ func (c *Client) sendAuthCallback(ctx context.Context, params AuthCallbackParams
 // Destroy the current session.
 //
 // POST /auth/logout
-func (c *Client) AuthLogout(ctx context.Context) error {
-	_, err := c.sendAuthLogout(ctx)
-	return err
+func (c *Client) AuthLogout(ctx context.Context) (AuthLogoutRes, error) {
+	res, err := c.sendAuthLogout(ctx)
+	return res, err
 }
 
-func (c *Client) sendAuthLogout(ctx context.Context) (res *AuthLogoutNoContent, err error) {
+func (c *Client) sendAuthLogout(ctx context.Context) (res AuthLogoutRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("authLogout"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -499,12 +499,12 @@ func (c *Client) sendAuthLogout(ctx context.Context) (res *AuthLogoutNoContent, 
 // Get the current authenticated user.
 //
 // GET /auth/me
-func (c *Client) AuthMe(ctx context.Context) (*User, error) {
+func (c *Client) AuthMe(ctx context.Context) (AuthMeRes, error) {
 	res, err := c.sendAuthMe(ctx)
 	return res, err
 }
 
-func (c *Client) sendAuthMe(ctx context.Context) (res *User, err error) {
+func (c *Client) sendAuthMe(ctx context.Context) (res AuthMeRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("authMe"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1008,12 +1008,12 @@ func (c *Client) sendCreateDrive(ctx context.Context, request OptDriveCreate) (r
 // Soft-delete a drive.
 //
 // DELETE /v1/drives/{driveID}/root
-func (c *Client) DeleteDrive(ctx context.Context, params DeleteDriveParams) error {
-	_, err := c.sendDeleteDrive(ctx, params)
-	return err
+func (c *Client) DeleteDrive(ctx context.Context, params DeleteDriveParams) (DeleteDriveRes, error) {
+	res, err := c.sendDeleteDrive(ctx, params)
+	return res, err
 }
 
-func (c *Client) sendDeleteDrive(ctx context.Context, params DeleteDriveParams) (res *DeleteDriveNoContent, err error) {
+func (c *Client) sendDeleteDrive(ctx context.Context, params DeleteDriveParams) (res DeleteDriveRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("deleteDrive"),
 		semconv.HTTPRequestMethodKey.String("DELETE"),
@@ -1134,12 +1134,12 @@ func (c *Client) sendDeleteDrive(ctx context.Context, params DeleteDriveParams) 
 // Get a drive by ID.
 //
 // GET /v1/drives/{driveID}/root
-func (c *Client) GetDrive(ctx context.Context, params GetDriveParams) (*Drive, error) {
+func (c *Client) GetDrive(ctx context.Context, params GetDriveParams) (GetDriveRes, error) {
 	res, err := c.sendGetDrive(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendGetDrive(ctx context.Context, params GetDriveParams) (res *Drive, err error) {
+func (c *Client) sendGetDrive(ctx context.Context, params GetDriveParams) (res GetDriveRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getDrive"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1260,12 +1260,12 @@ func (c *Client) sendGetDrive(ctx context.Context, params GetDriveParams) (res *
 // Get a drive's storage configuration.
 //
 // GET /v1/drives/{driveID}/storage
-func (c *Client) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (*StorageConfig, error) {
+func (c *Client) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error) {
 	res, err := c.sendGetDriveStorage(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendGetDriveStorage(ctx context.Context, params GetDriveStorageParams) (res *StorageConfig, err error) {
+func (c *Client) sendGetDriveStorage(ctx context.Context, params GetDriveStorageParams) (res GetDriveStorageRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getDriveStorage"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1386,12 +1386,12 @@ func (c *Client) sendGetDriveStorage(ctx context.Context, params GetDriveStorage
 // Get current user.
 //
 // GET /v1/users
-func (c *Client) GetUser(ctx context.Context) (*User, error) {
+func (c *Client) GetUser(ctx context.Context) (GetUserRes, error) {
 	res, err := c.sendGetUser(ctx)
 	return res, err
 }
 
-func (c *Client) sendGetUser(ctx context.Context) (res *User, err error) {
+func (c *Client) sendGetUser(ctx context.Context) (res GetUserRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("getUser"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1493,9 +1493,9 @@ func (c *Client) sendGetUser(ctx context.Context) (res *User, err error) {
 // Initiate Google OAuth login (web).
 //
 // GET /auth/google
-func (c *Client) GoogleLogin(ctx context.Context) error {
-	_, err := c.sendGoogleLogin(ctx)
-	return err
+func (c *Client) GoogleLogin(ctx context.Context) (*GoogleLoginFound, error) {
+	res, err := c.sendGoogleLogin(ctx)
+	return res, err
 }
 
 func (c *Client) sendGoogleLogin(ctx context.Context) (res *GoogleLoginFound, err error) {
@@ -1567,12 +1567,12 @@ func (c *Client) sendGoogleLogin(ctx context.Context) (res *GoogleLoginFound, er
 // Exchange a Google id_token for a mdrive session (mobile).
 //
 // POST /auth/google/native
-func (c *Client) GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error) {
+func (c *Client) GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (GoogleNativeLoginRes, error) {
 	res, err := c.sendGoogleNativeLogin(ctx, request)
 	return res, err
 }
 
-func (c *Client) sendGoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (res *GoogleNativeLoginOK, err error) {
+func (c *Client) sendGoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (res GoogleNativeLoginRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("googleNativeLogin"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -1976,12 +1976,12 @@ func (c *Client) sendInitiateUpload(ctx context.Context, request OptPresignReque
 // List soft-deleted drives (admin only).
 //
 // GET /v1/admin/drives/deleted
-func (c *Client) ListDeletedDrives(ctx context.Context) ([]Drive, error) {
+func (c *Client) ListDeletedDrives(ctx context.Context) (ListDeletedDrivesRes, error) {
 	res, err := c.sendListDeletedDrives(ctx)
 	return res, err
 }
 
-func (c *Client) sendListDeletedDrives(ctx context.Context) (res []Drive, err error) {
+func (c *Client) sendListDeletedDrives(ctx context.Context) (res ListDeletedDrivesRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("listDeletedDrives"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -2083,12 +2083,12 @@ func (c *Client) sendListDeletedDrives(ctx context.Context) (res []Drive, err er
 // List drives owned by the authenticated user.
 //
 // GET /v1/drives
-func (c *Client) ListDrives(ctx context.Context) ([]Drive, error) {
+func (c *Client) ListDrives(ctx context.Context) (ListDrivesRes, error) {
 	res, err := c.sendListDrives(ctx)
 	return res, err
 }
 
-func (c *Client) sendListDrives(ctx context.Context) (res []Drive, err error) {
+func (c *Client) sendListDrives(ctx context.Context) (res ListDrivesRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("listDrives"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -3297,12 +3297,12 @@ func (c *Client) sendRealpath(ctx context.Context, params RealpathParams) (res R
 // Restore a soft-deleted drive.
 //
 // POST /v1/drives/{driveID}/restore
-func (c *Client) RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error) {
+func (c *Client) RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error) {
 	res, err := c.sendRestoreDrive(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendRestoreDrive(ctx context.Context, params RestoreDriveParams) (res *Drive, err error) {
+func (c *Client) sendRestoreDrive(ctx context.Context, params RestoreDriveParams) (res RestoreDriveRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("restoreDrive"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -4098,12 +4098,12 @@ func (c *Client) sendUnmount(ctx context.Context, params UnmountParams) (res Unm
 // Update a drive.
 //
 // PUT /v1/drives/{driveID}/root
-func (c *Client) UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (*Drive, error) {
+func (c *Client) UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error) {
 	res, err := c.sendUpdateDrive(ctx, request, params)
 	return res, err
 }
 
-func (c *Client) sendUpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (res *Drive, err error) {
+func (c *Client) sendUpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (res UpdateDriveRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("updateDrive"),
 		semconv.HTTPRequestMethodKey.String("PUT"),
@@ -4227,12 +4227,12 @@ func (c *Client) sendUpdateDrive(ctx context.Context, request OptDriveUpdate, pa
 // Upsert a user from OIDC claims.
 //
 // POST /v1/users
-func (c *Client) UpsertUser(ctx context.Context, request OptUpsertUserReq) error {
-	_, err := c.sendUpsertUser(ctx, request)
-	return err
+func (c *Client) UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error) {
+	res, err := c.sendUpsertUser(ctx, request)
+	return res, err
 }
 
-func (c *Client) sendUpsertUser(ctx context.Context, request OptUpsertUserReq) (res *UpsertUserOK, err error) {
+func (c *Client) sendUpsertUser(ctx context.Context, request OptUpsertUserReq) (res UpsertUserRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("upsertUser"),
 		semconv.HTTPRequestMethodKey.String("POST"),

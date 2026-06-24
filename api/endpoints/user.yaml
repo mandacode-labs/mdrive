@@ -9,6 +9,12 @@ users:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/User"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
   post:
     operationId: upsertUser
@@ -27,3 +33,9 @@ users:
     responses:
       "200":
         description: User created or updated
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

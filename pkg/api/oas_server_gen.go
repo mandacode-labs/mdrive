@@ -13,19 +13,19 @@ type Handler interface {
 	// OAuth callback from Zitadel.
 	//
 	// GET /auth/callback
-	AuthCallback(ctx context.Context, params AuthCallbackParams) error
+	AuthCallback(ctx context.Context, params AuthCallbackParams) (AuthCallbackRes, error)
 	// AuthLogout implements authLogout operation.
 	//
 	// Destroy the current session.
 	//
 	// POST /auth/logout
-	AuthLogout(ctx context.Context) error
+	AuthLogout(ctx context.Context) (AuthLogoutRes, error)
 	// AuthMe implements authMe operation.
 	//
 	// Get the current authenticated user.
 	//
 	// GET /auth/me
-	AuthMe(ctx context.Context) (*User, error)
+	AuthMe(ctx context.Context) (AuthMeRes, error)
 	// Cat implements cat operation.
 	//
 	// Read file contents (POSIX open(O_RDONLY)).
@@ -49,37 +49,37 @@ type Handler interface {
 	// Soft-delete a drive.
 	//
 	// DELETE /v1/drives/{driveID}/root
-	DeleteDrive(ctx context.Context, params DeleteDriveParams) error
+	DeleteDrive(ctx context.Context, params DeleteDriveParams) (DeleteDriveRes, error)
 	// GetDrive implements getDrive operation.
 	//
 	// Get a drive by ID.
 	//
 	// GET /v1/drives/{driveID}/root
-	GetDrive(ctx context.Context, params GetDriveParams) (*Drive, error)
+	GetDrive(ctx context.Context, params GetDriveParams) (GetDriveRes, error)
 	// GetDriveStorage implements getDriveStorage operation.
 	//
 	// Get a drive's storage configuration.
 	//
 	// GET /v1/drives/{driveID}/storage
-	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (*StorageConfig, error)
+	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error)
 	// GetUser implements getUser operation.
 	//
 	// Get current user.
 	//
 	// GET /v1/users
-	GetUser(ctx context.Context) (*User, error)
+	GetUser(ctx context.Context) (GetUserRes, error)
 	// GoogleLogin implements googleLogin operation.
 	//
 	// Initiate Google OAuth login (web).
 	//
 	// GET /auth/google
-	GoogleLogin(ctx context.Context) error
+	GoogleLogin(ctx context.Context) (*GoogleLoginFound, error)
 	// GoogleNativeLogin implements googleNativeLogin operation.
 	//
 	// Exchange a Google id_token for a mdrive session (mobile).
 	//
 	// POST /auth/google/native
-	GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
+	GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (GoogleNativeLoginRes, error)
 	// Hardlink implements hardlink operation.
 	//
 	// Create a hard link (POSIX link(2)).
@@ -103,13 +103,13 @@ type Handler interface {
 	// List soft-deleted drives (admin only).
 	//
 	// GET /v1/admin/drives/deleted
-	ListDeletedDrives(ctx context.Context) ([]Drive, error)
+	ListDeletedDrives(ctx context.Context) (ListDeletedDrivesRes, error)
 	// ListDrives implements listDrives operation.
 	//
 	// List drives owned by the authenticated user.
 	//
 	// GET /v1/drives
-	ListDrives(ctx context.Context) ([]Drive, error)
+	ListDrives(ctx context.Context) (ListDrivesRes, error)
 	// Ls implements ls operation.
 	//
 	// List directory contents (POSIX opendir/readdir).
@@ -163,7 +163,7 @@ type Handler interface {
 	// Restore a soft-deleted drive.
 	//
 	// POST /v1/drives/{driveID}/restore
-	RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error)
+	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
 	// Rm implements rm operation.
 	//
 	// Remove files or directories (POSIX unlink/rmdir(2)).
@@ -199,13 +199,13 @@ type Handler interface {
 	// Update a drive.
 	//
 	// PUT /v1/drives/{driveID}/root
-	UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (*Drive, error)
+	UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
 	// UpsertUser implements upsertUser operation.
 	//
 	// Upsert a user from OIDC claims.
 	//
 	// POST /v1/users
-	UpsertUser(ctx context.Context, req OptUpsertUserReq) error
+	UpsertUser(ctx context.Context, req OptUpsertUserReq) (UpsertUserRes, error)
 	// Write implements write operation.
 	//
 	// Write inline content to a file.

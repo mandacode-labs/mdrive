@@ -85,7 +85,7 @@ func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 	}
 }
 
-func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
+func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.GetDriveRes, error) {
 	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api
 	return driveToAPI(d), nil
 }
 
-func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
+func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (api.UpdateDriveRes, error) {
 	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
@@ -115,11 +115,17 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 	return driveToAPI(drv), nil
 }
 
-func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) error {
-	return h.drive.Delete(ctx, h.userID(ctx), params.DriveID)
+func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) (api.DeleteDriveRes, error) {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
+	if err := h.drive.Delete(ctx, h.userID(ctx), params.DriveID); err != nil {
+		return nil, err
+	}
+	return &api.DeleteDriveNoContent{}, nil
 }
 
-func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (*api.Drive, error) {
+func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (api.RestoreDriveRes, error) {
 	if !auth.IsAdmin(ctx) {
 		return nil, permission.ErrPermission
 	}
@@ -130,7 +136,7 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 	return driveToAPI(d), nil
 }
 
-func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
+func (h *Handler) ListDeletedDrives(ctx context.Context) (api.ListDeletedDrivesRes, error) {
 	if !auth.IsAdmin(ctx) {
 		return nil, permission.ErrPermission
 	}
@@ -142,10 +148,11 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
 	for i, d := range drives {
 		result[i] = *driveToAPI(d)
 	}
-	return result, nil
+	r := api.ListDeletedDrivesOKApplicationJSON(result)
+	return &r, nil
 }
 
-func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
+func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (api.GetDriveStorageRes, error) {
 	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
 		return nil, err
 	}
@@ -163,7 +170,7 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	}, nil
 }
 
-func (h *Handler) ListDrives(ctx context.Context) ([]api.Drive, error) {
+func (h *Handler) ListDrives(ctx context.Context) (api.ListDrivesRes, error) {
 	drives, err := h.drive.ListByOwner(ctx, h.userID(ctx))
 	if err != nil {
 		return nil, err
@@ -172,5 +179,6 @@ func (h *Handler) ListDrives(ctx context.Context) ([]api.Drive, error) {
 	for i, d := range drives {
 		result[i] = *driveToAPI(d)
 	}
-	return result, nil
+	r := api.ListDrivesOKApplicationJSON(result)
+	return &r, nil
 }

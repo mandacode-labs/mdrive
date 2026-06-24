@@ -74,6 +74,22 @@ func (s *ErrorStatusCode) Validate() error {
 	return nil
 }
 
+func (s ListDeletedDrivesOKApplicationJSON) Validate() error {
+	alias := ([]Drive)(s)
+	if alias == nil {
+		return errors.New("nil is invalid value")
+	}
+	return nil
+}
+
+func (s ListDrivesOKApplicationJSON) Validate() error {
+	alias := ([]Drive)(s)
+	if alias == nil {
+		return errors.New("nil is invalid value")
+	}
+	return nil
+}
+
 func (s *MvReq) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer

@@ -12,10 +12,49 @@ import (
 )
 
 // AuthCallbackFound is response for AuthCallback operation.
-type AuthCallbackFound struct{}
+type AuthCallbackFound struct {
+	Location  string
+	SetCookie string
+}
+
+// GetLocation returns the value of Location.
+func (s *AuthCallbackFound) GetLocation() string {
+	return s.Location
+}
+
+// GetSetCookie returns the value of SetCookie.
+func (s *AuthCallbackFound) GetSetCookie() string {
+	return s.SetCookie
+}
+
+// SetLocation sets the value of Location.
+func (s *AuthCallbackFound) SetLocation(val string) {
+	s.Location = val
+}
+
+// SetSetCookie sets the value of SetCookie.
+func (s *AuthCallbackFound) SetSetCookie(val string) {
+	s.SetCookie = val
+}
+
+func (*AuthCallbackFound) authCallbackRes() {}
 
 // AuthLogoutNoContent is response for AuthLogout operation.
-type AuthLogoutNoContent struct{}
+type AuthLogoutNoContent struct {
+	SetCookie string
+}
+
+// GetSetCookie returns the value of SetCookie.
+func (s *AuthLogoutNoContent) GetSetCookie() string {
+	return s.SetCookie
+}
+
+// SetSetCookie sets the value of SetCookie.
+func (s *AuthLogoutNoContent) SetSetCookie(val string) {
+	s.SetCookie = val
+}
+
+func (*AuthLogoutNoContent) authLogoutRes() {}
 
 type BearerAuth struct {
 	Token string
@@ -60,6 +99,8 @@ func (*CatOK) catRes() {}
 
 // DeleteDriveNoContent is response for DeleteDrive operation.
 type DeleteDriveNoContent struct{}
+
+func (*DeleteDriveNoContent) deleteDriveRes() {}
 
 // Ref: #/components/schemas/DirContent
 type DirContent struct {
@@ -257,7 +298,10 @@ func (s *Drive) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
 
-func (*Drive) createDriveRes() {}
+func (*Drive) createDriveRes()  {}
+func (*Drive) getDriveRes()     {}
+func (*Drive) restoreDriveRes() {}
+func (*Drive) updateDriveRes()  {}
 
 // Ref: #/components/schemas/DriveCreate
 type DriveCreate struct {
@@ -453,29 +497,54 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*ErrorStatusCode) catRes()             {}
-func (*ErrorStatusCode) completeUploadRes()  {}
-func (*ErrorStatusCode) createDriveRes()     {}
-func (*ErrorStatusCode) hardlinkRes()        {}
-func (*ErrorStatusCode) initiateUploadRes()  {}
-func (*ErrorStatusCode) lsRes()              {}
-func (*ErrorStatusCode) lstatRes()           {}
-func (*ErrorStatusCode) mkdirRes()           {}
-func (*ErrorStatusCode) mountRes()           {}
-func (*ErrorStatusCode) mvRes()              {}
-func (*ErrorStatusCode) presignDownloadRes() {}
-func (*ErrorStatusCode) readlinkRes()        {}
-func (*ErrorStatusCode) realpathRes()        {}
-func (*ErrorStatusCode) rmRes()              {}
-func (*ErrorStatusCode) statRes()            {}
-func (*ErrorStatusCode) symlinkRes()         {}
-func (*ErrorStatusCode) touchRes()           {}
-func (*ErrorStatusCode) unmountRes()         {}
-func (*ErrorStatusCode) writeLargeRes()      {}
-func (*ErrorStatusCode) writeRes()           {}
+func (*ErrorStatusCode) authCallbackRes()      {}
+func (*ErrorStatusCode) authLogoutRes()        {}
+func (*ErrorStatusCode) authMeRes()            {}
+func (*ErrorStatusCode) catRes()               {}
+func (*ErrorStatusCode) completeUploadRes()    {}
+func (*ErrorStatusCode) createDriveRes()       {}
+func (*ErrorStatusCode) deleteDriveRes()       {}
+func (*ErrorStatusCode) getDriveRes()          {}
+func (*ErrorStatusCode) getDriveStorageRes()   {}
+func (*ErrorStatusCode) getUserRes()           {}
+func (*ErrorStatusCode) googleNativeLoginRes() {}
+func (*ErrorStatusCode) hardlinkRes()          {}
+func (*ErrorStatusCode) initiateUploadRes()    {}
+func (*ErrorStatusCode) listDeletedDrivesRes() {}
+func (*ErrorStatusCode) listDrivesRes()        {}
+func (*ErrorStatusCode) lsRes()                {}
+func (*ErrorStatusCode) lstatRes()             {}
+func (*ErrorStatusCode) mkdirRes()             {}
+func (*ErrorStatusCode) mountRes()             {}
+func (*ErrorStatusCode) mvRes()                {}
+func (*ErrorStatusCode) presignDownloadRes()   {}
+func (*ErrorStatusCode) readlinkRes()          {}
+func (*ErrorStatusCode) realpathRes()          {}
+func (*ErrorStatusCode) restoreDriveRes()      {}
+func (*ErrorStatusCode) rmRes()                {}
+func (*ErrorStatusCode) statRes()              {}
+func (*ErrorStatusCode) symlinkRes()           {}
+func (*ErrorStatusCode) touchRes()             {}
+func (*ErrorStatusCode) unmountRes()           {}
+func (*ErrorStatusCode) updateDriveRes()       {}
+func (*ErrorStatusCode) upsertUserRes()        {}
+func (*ErrorStatusCode) writeLargeRes()        {}
+func (*ErrorStatusCode) writeRes()             {}
 
 // GoogleLoginFound is response for GoogleLogin operation.
-type GoogleLoginFound struct{}
+type GoogleLoginFound struct {
+	Location string
+}
+
+// GetLocation returns the value of Location.
+func (s *GoogleLoginFound) GetLocation() string {
+	return s.Location
+}
+
+// SetLocation sets the value of Location.
+func (s *GoogleLoginFound) SetLocation(val string) {
+	s.Location = val
+}
 
 type GoogleNativeLoginOK struct {
 	Token OptString `json:"token"`
@@ -501,6 +570,8 @@ func (s *GoogleNativeLoginOK) SetToken(val OptString) {
 func (s *GoogleNativeLoginOK) SetUser(val OptUser) {
 	s.User = val
 }
+
+func (*GoogleNativeLoginOK) googleNativeLoginRes() {}
 
 type GoogleNativeLoginReq struct {
 	IdToken string `json:"idToken"`
@@ -559,6 +630,14 @@ func (s *HealthOK) GetStatus() OptString {
 func (s *HealthOK) SetStatus(val OptString) {
 	s.Status = val
 }
+
+type ListDeletedDrivesOKApplicationJSON []Drive
+
+func (*ListDeletedDrivesOKApplicationJSON) listDeletedDrivesRes() {}
+
+type ListDrivesOKApplicationJSON []Drive
+
+func (*ListDrivesOKApplicationJSON) listDrivesRes() {}
 
 // MkdirOK is response for Mkdir operation.
 type MkdirOK struct{}
@@ -2136,6 +2215,8 @@ func (s *StorageConfig) SetUsePathStyle(val OptBool) {
 	s.UsePathStyle = val
 }
 
+func (*StorageConfig) getDriveStorageRes() {}
+
 // SymlinkOK is response for Symlink operation.
 type SymlinkOK struct{}
 
@@ -2270,6 +2351,8 @@ func (*UploadCompleteResponse) completeUploadRes() {}
 
 // UpsertUserOK is response for UpsertUser operation.
 type UpsertUserOK struct{}
+
+func (*UpsertUserOK) upsertUserRes() {}
 
 type UpsertUserReq struct {
 	Name       string    `json:"name"`
@@ -2409,6 +2492,9 @@ func (s *User) SetCreatedAt(val OptDateTime) {
 func (s *User) SetUpdatedAt(val OptDateTime) {
 	s.UpdatedAt = val
 }
+
+func (*User) authMeRes()  {}
+func (*User) getUserRes() {}
 
 // WriteLargeOK is response for WriteLarge operation.
 type WriteLargeOK struct{}

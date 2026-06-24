@@ -122,7 +122,7 @@ func (s *Server) handleAuthCallbackRequest(args [0]string, argsEscaped bool, w h
 
 	var rawBody []byte
 
-	var response *AuthCallbackFound
+	var response AuthCallbackRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -147,7 +147,7 @@ func (s *Server) handleAuthCallbackRequest(args [0]string, argsEscaped bool, w h
 		type (
 			Request  = struct{}
 			Params   = AuthCallbackParams
-			Response = *AuthCallbackFound
+			Response = AuthCallbackRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -158,12 +158,12 @@ func (s *Server) handleAuthCallbackRequest(args [0]string, argsEscaped bool, w h
 			mreq,
 			unpackAuthCallbackParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.AuthCallback(ctx, params)
+				response, err = s.h.AuthCallback(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.AuthCallback(ctx, params)
+		response, err = s.h.AuthCallback(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -303,7 +303,7 @@ func (s *Server) handleAuthLogoutRequest(args [0]string, argsEscaped bool, w htt
 
 	var rawBody []byte
 
-	var response *AuthLogoutNoContent
+	var response AuthLogoutRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -319,7 +319,7 @@ func (s *Server) handleAuthLogoutRequest(args [0]string, argsEscaped bool, w htt
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *AuthLogoutNoContent
+			Response = AuthLogoutRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -330,12 +330,12 @@ func (s *Server) handleAuthLogoutRequest(args [0]string, argsEscaped bool, w htt
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.AuthLogout(ctx)
+				response, err = s.h.AuthLogout(ctx)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.AuthLogout(ctx)
+		response, err = s.h.AuthLogout(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -475,7 +475,7 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 
 	var rawBody []byte
 
-	var response *User
+	var response AuthMeRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -491,7 +491,7 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *User
+			Response = AuthMeRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1241,7 +1241,7 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 
 	var rawBody []byte
 
-	var response *DeleteDriveNoContent
+	var response DeleteDriveRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -1262,7 +1262,7 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 		type (
 			Request  = struct{}
 			Params   = DeleteDriveParams
-			Response = *DeleteDriveNoContent
+			Response = DeleteDriveRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1273,12 +1273,12 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 			mreq,
 			unpackDeleteDriveParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.DeleteDrive(ctx, params)
+				response, err = s.h.DeleteDrive(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.DeleteDrive(ctx, params)
+		response, err = s.h.DeleteDrive(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -1428,7 +1428,7 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 
 	var rawBody []byte
 
-	var response *Drive
+	var response GetDriveRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -1449,7 +1449,7 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 		type (
 			Request  = struct{}
 			Params   = GetDriveParams
-			Response = *Drive
+			Response = GetDriveRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1615,7 +1615,7 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 
 	var rawBody []byte
 
-	var response *StorageConfig
+	var response GetDriveStorageRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -1636,7 +1636,7 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 		type (
 			Request  = struct{}
 			Params   = GetDriveStorageParams
-			Response = *StorageConfig
+			Response = GetDriveStorageRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1792,7 +1792,7 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 
 	var rawBody []byte
 
-	var response *User
+	var response GetUserRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -1808,7 +1808,7 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *User
+			Response = GetUserRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -1943,12 +1943,12 @@ func (s *Server) handleGoogleLoginRequest(args [0]string, argsEscaped bool, w ht
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.GoogleLogin(ctx)
+				response, err = s.h.GoogleLogin(ctx)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.GoogleLogin(ctx)
+		response, err = s.h.GoogleLogin(ctx)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -2059,7 +2059,7 @@ func (s *Server) handleGoogleNativeLoginRequest(args [0]string, argsEscaped bool
 		}
 	}()
 
-	var response *GoogleNativeLoginOK
+	var response GoogleNativeLoginRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -2075,7 +2075,7 @@ func (s *Server) handleGoogleNativeLoginRequest(args [0]string, argsEscaped bool
 		type (
 			Request  = OptGoogleNativeLoginReq
 			Params   = struct{}
-			Response = *GoogleNativeLoginOK
+			Response = GoogleNativeLoginRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2759,7 +2759,7 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 
 	var rawBody []byte
 
-	var response []Drive
+	var response ListDeletedDrivesRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -2775,7 +2775,7 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = []Drive
+			Response = ListDeletedDrivesRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2931,7 +2931,7 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 
 	var rawBody []byte
 
-	var response []Drive
+	var response ListDrivesRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -2947,7 +2947,7 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = []Drive
+			Response = ListDrivesRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4674,7 +4674,7 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 
 	var rawBody []byte
 
-	var response *Drive
+	var response RestoreDriveRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4695,7 +4695,7 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 		type (
 			Request  = struct{}
 			Params   = RestoreDriveParams
-			Response = *Drive
+			Response = RestoreDriveRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5864,7 +5864,7 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 		}
 	}()
 
-	var response *Drive
+	var response UpdateDriveRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -5885,7 +5885,7 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 		type (
 			Request  = OptDriveUpdate
 			Params   = UpdateDriveParams
-			Response = *Drive
+			Response = UpdateDriveRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -6056,7 +6056,7 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 		}
 	}()
 
-	var response *UpsertUserOK
+	var response UpsertUserRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -6072,7 +6072,7 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 		type (
 			Request  = OptUpsertUserReq
 			Params   = struct{}
-			Response = *UpsertUserOK
+			Response = UpsertUserRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -6083,12 +6083,12 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 			mreq,
 			nil,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.UpsertUser(ctx, request)
+				response, err = s.h.UpsertUser(ctx, request)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.UpsertUser(ctx, request)
+		response, err = s.h.UpsertUser(ctx, request)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
