@@ -49,6 +49,7 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, node.ErrInvalidSize),
 		errors.Is(err, node.ErrNotDirectory),
 		errors.Is(err, node.ErrIsDirectory),
+		errors.Is(err, node.ErrIsObject),
 		errors.Is(err, node.ErrInvalidMoveOverwrite),
 		errors.Is(err, node.ErrInvalidMountReference),
 		errors.Is(err, node.ErrContentTooLarge),

@@ -47,20 +47,35 @@ type DriveClient interface {
 	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
 }
 
-type TombstoneInserter interface {
-	InsertTombstones(ctx context.Context, refs []ObjectRef) error
-}
-
-type ObjectRef struct {
+// GarbageRef points at an external (S3) object that needs cleanup
+// when an inode is removed. vfs only knows that something must
+// eventually delete this object; the actual S3 call is owned by
+// upload.Service, which implements GarbageRecorder.
+type GarbageRef struct {
 	Bucket string
 	Key    string
+}
+
+// GarbageRecorder is the consumer-declared interface for marking
+// external objects as garbage. vfs calls it when an inode's nlink
+// hits 0; the implementation (typically upload.Service) writes a
+// tombstone row that the gc.TombstoneCleaner job later drains.
+//
+// A nil GarbageRecorder means vfs will return an error if a
+// tombstone would have been recorded. Production wires a real
+// implementation; tests can leave it nil and only call paths that
+// never produce tombstones.
+type GarbageRecorder interface {
+	RecordGarbage(ctx context.Context, refs []GarbageRef) error
 }
 
 type Service struct {
 	Node  NodeClient
 	Drive DriveClient
-	Store Store
-	GC    TombstoneInserter
+	// Garbage records external objects (S3) whose inode was
+	// removed. nil is tolerated only when no vfs op produces
+	// tombstones (e.g. tests with no object nodes).
+	Garbage GarbageRecorder
 	// Logger receives structured observability events for
 	// multi-step filesystem operations (mount traversal, GC
 	// tombstones, symlink cycles). Optional: nil means no-op.
@@ -71,20 +86,18 @@ type Service struct {
 // filesystem-only: it has no user or permission dependencies.
 // Permission checks are the caller's responsibility (handler layer).
 type ServiceConfig struct {
-	Node   NodeClient
-	Drive  DriveClient
-	Store  Store
-	GC     TombstoneInserter
-	Logger *slog.Logger
+	Node    NodeClient
+	Drive   DriveClient
+	Garbage GarbageRecorder
+	Logger  *slog.Logger
 }
 
 func NewService(cfg ServiceConfig) *Service {
 	return &Service{
-		Node:   cfg.Node,
-		Drive:  cfg.Drive,
-		Store:  cfg.Store,
-		GC:     cfg.GC,
-		Logger: cfg.Logger,
+		Node:    cfg.Node,
+		Drive:   cfg.Drive,
+		Garbage: cfg.Garbage,
+		Logger:  cfg.Logger,
 	}
 }
 

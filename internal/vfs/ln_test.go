@@ -26,9 +26,9 @@ func TestHardlink(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: &fakeDrive{rootID: root.ID()},
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  &fakeDrive{rootID: root.ID()},
+		Logger: nil,
 	})
 
 	src, err := svc.Node.CreateFile(ctx, "hello")

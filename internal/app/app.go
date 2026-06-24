@@ -16,6 +16,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/mandacode-labs/mdrive/ent"
+	"github.com/mandacode-labs/mdrive/internal/app/gc"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
@@ -24,8 +25,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/permission"
-	"github.com/mandacode-labs/mdrive/internal/storage/s3"
 	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/mandacode-labs/mdrive/internal/upload/s3"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
@@ -34,17 +35,21 @@ type App struct {
 	Cfg *config.Config
 	Log *slog.Logger
 
-	NodeSvc           *node.Service
-	DriveSvc          *drive.Service
-	UserSvc           *user.Service
-	UserEx            user.Exister
-	UploadReg         upload.Registry
-	SessionStore      session.Store
-	Store             vfs.Store
-	TombstoneInserter vfs.TombstoneInserter
-	Auth              *auth.Service
-	Security          *auth.SecurityHandler
-	Perm              permission.Checker
+	NodeSvc      *node.Service
+	DriveSvc     *drive.Service
+	UserSvc      *user.Service
+	UserEx       user.Exister
+	UploadReg    upload.Registry
+	UploadSvc    *upload.Service
+	VFS          *vfs.Service
+	SessionStore session.Store
+	// Garbage records tombstones for S3 objects whose inodes
+	// were removed. Owned by the app/gc package; vfs calls into
+	// it via vfs.GarbageRecorder.
+	Garbage  *gc.GarbageRecorder
+	Auth     *auth.Service
+	Security *auth.SecurityHandler
+	Perm     permission.Checker
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -110,9 +115,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	gc := newTombstoneInserter(entClient)
+	garbage := gc.NewGarbageRecorder(entClient)
 
-	storageStore, err := newStore(ctx, cfg.Storage)
+	s3Client, err := newS3Client(ctx, cfg.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +146,28 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	// gc uses ListDeleted with isAdmin gated at the handler).
 	driveSvc = drive.NewService(driveRepo, userEx, rootCreator, permClient)
 
+	// vfs is the inode-tree manager; it has no S3 dependency.
+	// Garbage is the only external interface: vfs calls
+	// RecordGarbage when an object node is removed.
+	vfsSvc := vfs.NewService(vfs.ServiceConfig{
+		Node:    nodeSvc,
+		Drive:   driveSvc,
+		Garbage: garbage,
+		Logger:  log,
+	})
+
+	// upload is the S3 lifecycle service: presign, complete, and
+	// object delete. It depends on vfs (PathResolver) and on the
+	// S3 client we built above.
+	uploadSvc := upload.NewService(upload.Config{
+		Reg:   uploadReg,
+		Drive: driveSvc,
+		Nodes: nodeSvc,
+		Store: s3Client,
+		Path:  vfsSvc,
+		Perm:  permClient,
+	})
+
 	var store session.Store = session.NewMemoryStore()
 	var authenticator *auth.Service
 	var sec *auth.SecurityHandler
@@ -163,21 +190,22 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	return &App{
-		Cfg:               cfg,
-		Log:               log,
-		NodeSvc:           nodeSvc,
-		DriveSvc:          driveSvc,
-		UserSvc:           userSvc,
-		UserEx:            userEx,
-		UploadReg:         uploadReg,
-		SessionStore:      store,
-		Store:             storageStore,
-		TombstoneInserter: gc,
-		Auth:              authenticator,
-		Security:          sec,
-		Perm:              permClient,
-		DB:                db,
-		Ent:               entClient,
+		Cfg:          cfg,
+		Log:          log,
+		NodeSvc:      nodeSvc,
+		DriveSvc:     driveSvc,
+		UserSvc:      userSvc,
+		UserEx:       userEx,
+		UploadReg:    uploadReg,
+		UploadSvc:    uploadSvc,
+		VFS:          vfsSvc,
+		SessionStore: store,
+		Garbage:      garbage,
+		Auth:         authenticator,
+		Security:     sec,
+		Perm:         permClient,
+		DB:           db,
+		Ent:          entClient,
 	}, nil
 }
 
@@ -234,7 +262,10 @@ func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, erro
 	return root.ID(), nil
 }
 
-func newStore(ctx context.Context, cfg config.StorageConfig) (vfs.Store, error) {
+// newS3Client builds an upload/s3 client. The same instance is
+// shared by upload.Service (presign + delete) and the gc
+// tombstone cleaner.
+func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
 	endpoint := (*string)(nil)
 	if cfg.Endpoint != "" {
 		endpoint = &cfg.Endpoint

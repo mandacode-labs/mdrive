@@ -40,6 +40,10 @@ func (f *fakeStore) ObjectExists(context.Context, string, string) (bool, error) 
 	return f.objectExists, nil
 }
 
+func (f *fakeStore) DeleteObject(context.Context, string, string) error {
+	return nil
+}
+
 type fakeDrive struct {
 	storage *coredrive.Storage
 	getErr  error

@@ -3,14 +3,17 @@ package vfs
 import (
 	"context"
 	"fmt"
+
+	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-// Cat reads the content of a file, symlink target, or object
-// (like `cat /path`). Symlinks are followed by the path resolver,
-// so the node Cat sees is the final target — a symlink should not
-// normally arrive here. Permission is the caller's responsibility;
-// vfs does not check. The caller should have already verified view
-// permission on the drive the path ultimately resolves to.
+// Cat returns the inline bytes of a file node. The path is resolved
+// with symlinks followed (POSIX cat(1) semantics). vfs is the inode
+// tree manager and does not perform S3 I/O: for object nodes
+// Cat returns ErrIsObject so the handler can route the request to
+// the download/presign flow owned by upload.Service.
+//
+// Permission is the caller's responsibility.
 func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
@@ -25,15 +28,9 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 		}
 		return []byte(raw), nil
 	case n.IsObject():
-		oc, err := n.ReadObject()
-		if err != nil {
-			return nil, err
-		}
-		data, err := s.Store.GetObject(ctx, oc.Bucket, oc.Key)
-		if err != nil {
-			return nil, fmt.Errorf("cat: store: %w", err)
-		}
-		return data, nil
+		return nil, node.ErrIsObject
+	case n.IsDir():
+		return nil, node.ErrIsDirectory
 	default:
 		return nil, fmt.Errorf("cat: cannot read %s", n.Type())
 	}

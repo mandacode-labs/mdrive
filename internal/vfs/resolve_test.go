@@ -92,9 +92,9 @@ func TestResolveCrossDrive(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "shared.txt", fileB))
 
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: fix.driveClient(),
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  fix.driveClient(),
+		Logger: nil,
 	})
 
 	res, err := svc.Resolve(context.Background(), fix.idA, "/mounts/team/shared.txt")
@@ -117,9 +117,9 @@ func TestResolveMountCycle(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "back", back))
 
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: fix.driveClient(),
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  fix.driveClient(),
+		Logger: nil,
 	})
 
 	_, err = svc.Resolve(context.Background(), fix.idA, "/mount/back/mount")

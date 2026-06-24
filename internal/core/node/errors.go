@@ -43,6 +43,12 @@ var (
 	// non-directory).
 	ErrIsDirectory = errors.New("node: target is a directory")
 
+	// ErrIsObject is returned when a caller asks vfs to inline the
+	// bytes of an S3-backed object node. vfs is the inode-tree
+	// manager and does not do S3 I/O; object-node bytes are reached
+	// through the upload presign-download flow.
+	ErrIsObject = errors.New("node: target is an S3 object; use the presign-download endpoint")
+
 	// ErrInvalidMoveOverwrite is returned when a move would overwrite
 	// an entry whose type does not match the source (e.g. moving a
 	// file onto a directory or vice versa).
