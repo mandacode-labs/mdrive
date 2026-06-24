@@ -11,19 +11,15 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
-// Service provides domain-level drive operations. It is the single
-// canonical drive service: permission checks are integrated via
-// the Perm field. Callers (handler, vfs) do not need a separate
-// "drive.Service" wrapper to add permission semantics.
+// Service provides domain-level drive operations. Permission
+// checks are the caller's responsibility (the handler layer);
+// drive.Service is the pure domain logic. ListDeletedForAdmin
+// still accepts an isAdmin flag — that gate is the *administrative*
+// role, not a per-drive permission check, and the handler
+// sources it from the session.
 //
-// Permission is checked in Create, Update, Delete, and Restore.
-// ListDeleted requires an explicit isAdmin flag (the handler
-// sources this from the session admin role). ListByOwner and
-// GetByID/PublicID are by-design unprotected — the handler
-// decides whether the caller may see another user's data.
-//
-// A nil Perm (development mode) is tolerated; all permission
-// checks become no-ops.
+// A nil Perm passed at construction time is silently ignored;
+// permission checks are done by the caller via permission.Require.
 type Service struct {
 	repo       Repository
 	users      Exister
@@ -31,8 +27,10 @@ type Service struct {
 	perm       permission.Checker
 }
 
-// NewService creates a new Service. Perm is optional; pass nil in
-// development to skip all permission checks.
+// NewService creates a new Service. The Perm parameter is kept
+// only for compatibility with existing call sites; permission
+// checks are the handler's responsibility and this field is not
+// used internally any more.
 func NewService(repo Repository, users Exister, rootCreate RootCreator, perm permission.Checker) *Service {
 	return &Service{repo: repo, users: users, rootCreate: rootCreate, perm: perm}
 }
@@ -154,13 +152,13 @@ func (s *Service) GetStorage(ctx context.Context, _, driveID string) (*Storage, 
 	return st, nil
 }
 
-// Update updates mutable drive fields. Requires edit permission.
+// Update updates mutable drive fields. Permission is the
+// caller's responsibility; the handler gates on edit.
+//
 // Empty name or description means "leave unchanged"; pass an
 // explicit value to override.
 func (s *Service) Update(ctx context.Context, actorID, id string, name, description string) (*Drive, error) {
-	if err := s.requirePerm(ctx, actorID, permission.PermissionEdit, id); err != nil {
-		return nil, err
-	}
+	_ = actorID
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -184,23 +182,20 @@ func (s *Service) Update(ctx context.Context, actorID, id string, name, descript
 	return s.repo.Update(ctx, updated)
 }
 
-// Delete soft-deletes a drive. Requires delete permission.
+// Delete soft-deletes a drive. Permission is the caller's
+// responsibility; the handler gates on delete.
 func (s *Service) Delete(ctx context.Context, actorID, id string) error {
-	if err := s.requirePerm(ctx, actorID, permission.PermissionDelete, id); err != nil {
-		return err
-	}
+	_ = actorID
 	if _, err := s.GetByID(ctx, id); err != nil {
 		return err
 	}
 	return s.repo.SoftDelete(ctx, id)
 }
 
-// Restore reactivates a soft-deleted drive. Requires manage
-// permission; the handler additionally gates on session admin.
+// Restore reactivates a soft-deleted drive. Permission is the
+// caller's responsibility; the handler gates on manage + admin.
 func (s *Service) Restore(ctx context.Context, actorID, id string) (*Drive, error) {
-	if err := s.requirePerm(ctx, actorID, permission.PermissionManage, id); err != nil {
-		return nil, err
-	}
+	_ = actorID
 	d, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -246,12 +241,6 @@ func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
 		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate, perm: s.perm})
 	})
-}
-
-// requirePerm is the canonical permission check. Nil perm
-// (development mode) is tolerated.
-func (s *Service) requirePerm(ctx context.Context, actorID string, perm permission.Permission, driveID string) error {
-	return permission.Require(ctx, s.perm, actorID, perm, permission.ObjectTypeDrive, driveID)
 }
 
 func storageCfgValid(cfg *StorageConfig) bool {

@@ -117,7 +117,6 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Nodes: fs.Node,
 		Store: nil,
 		Path:  fs,
-		Perm:  nil,
 	})
 
 	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, nil, nil, "",

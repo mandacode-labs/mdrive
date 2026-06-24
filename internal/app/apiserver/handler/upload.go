@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // --- Presigned upload/download handlers ---
 
 func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest, params api.InitiateUploadParams) (api.InitiateUploadRes, error) {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
 	r := req.Value
 	var contentType *string
 	if r.ContentType.Set {
@@ -41,6 +45,9 @@ func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest,
 }
 
 func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteRequest, params api.CompleteUploadParams) (api.CompleteUploadRes, error) {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
 	r := req.Value
 	var cs *string
 	if r.Checksum.Set {
@@ -60,6 +67,9 @@ func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteR
 }
 
 func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloadParams) (api.PresignDownloadRes, error) {
+	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+		return nil, err
+	}
 	info, err := h.upload.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, h.presignTTL)
 	if err != nil {
 		return nil, err

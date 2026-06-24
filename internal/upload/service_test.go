@@ -12,7 +12,6 @@ import (
 
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // --- Fakes ---
@@ -98,33 +97,15 @@ func (f *fakePath) ResolveNodeID(context.Context, string, string) (uuid.UUID, er
 	return uuid.Nil, nil
 }
 
-type fakePerm struct {
-	allowed bool
-	err     error
-}
-
-func (f *fakePerm) Check(context.Context, string, permission.Permission, string, string) (bool, error) {
-	return f.allowed, f.err
-}
-
-func (f *fakePerm) Grant(context.Context, string, string, string, string) error  { return nil }
-func (f *fakePerm) Revoke(context.Context, string, string, string, string) error { return nil }
-func (f *fakePerm) ListObjects(context.Context, string, permission.Permission, string) ([]string, error) {
-	return nil, nil
-}
-
 // --- Helpers ---
 
-func newTestService(t *testing.T, reg Registry, store *fakeStore, perm *fakePerm) *Service {
+func newTestService(t *testing.T, reg Registry, store *fakeStore) *Service {
 	t.Helper()
 	if reg == nil {
 		reg = NewMemoryRegistry()
 	}
 	if store == nil {
 		store = &fakeStore{presignedURL: "https://s3.example.com/upload", objectExists: true}
-	}
-	if perm == nil {
-		perm = &fakePerm{allowed: true}
 	}
 	drive := &fakeDrive{storage: coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)}
 	nodes := newFakeNodes()
@@ -135,14 +116,13 @@ func newTestService(t *testing.T, reg Registry, store *fakeStore, perm *fakePerm
 		Nodes: nodes,
 		Store: store,
 		Path:  &fakePath{rootID: root.ID()},
-		Perm:  perm,
 	})
 }
 
 // --- Tests ---
 
 func TestInitiateUploadHappyPath(t *testing.T) {
-	svc := newTestService(t, nil, nil, nil)
+	svc := newTestService(t, nil, nil)
 	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
 	require.NoError(t, err)
 	assert.NotEmpty(t, info.UploadID)
@@ -150,16 +130,10 @@ func TestInitiateUploadHappyPath(t *testing.T) {
 	assert.Equal(t, "https://s3.example.com/upload", info.URL)
 }
 
-func TestInitiateUploadPermissionDenied(t *testing.T) {
-	svc := newTestService(t, nil, nil, &fakePerm{allowed: false})
-	_, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
-	assert.ErrorIs(t, err, permission.ErrPermission)
-}
-
 func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
 	reg := NewMemoryRegistry()
 	store := &fakeStore{uploadErr: errors.New("presign fail")}
-	svc := newTestService(t, reg, store, nil)
+	svc := newTestService(t, reg, store)
 	_, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
 	assert.Error(t, err)
 	// Token should be deleted.
@@ -169,7 +143,7 @@ func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
 }
 
 func TestCompleteUploadTokenNotFound(t *testing.T) {
-	svc := newTestService(t, NewMemoryRegistry(), nil, nil)
+	svc := newTestService(t, NewMemoryRegistry(), nil)
 	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "missing-id", 100, nil)
 	assert.Error(t, err)
 }
@@ -185,7 +159,7 @@ func TestCompleteUploadDriveMismatch(t *testing.T) {
 		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
-	svc := newTestService(t, reg, nil, nil)
+	svc := newTestService(t, reg, nil)
 	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
 	assert.ErrorIs(t, err, ErrUploadMismatch)
 }
@@ -204,7 +178,7 @@ func TestCompleteUploadSizeMismatch(t *testing.T) {
 		Size:      &size,
 		ExpiresAt: expiry,
 	}, time.Hour)
-	svc := newTestService(t, reg, nil, nil)
+	svc := newTestService(t, reg, nil)
 	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 200, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "size mismatch")
@@ -222,7 +196,7 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	store := &fakeStore{objectExists: false}
-	svc := newTestService(t, reg, store, nil)
+	svc := newTestService(t, reg, store)
 	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
 	assert.ErrorIs(t, err, ErrObjectNotUploaded)
 }
@@ -238,7 +212,7 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
-	svc := newTestService(t, reg, nil, nil)
+	svc := newTestService(t, reg, nil)
 	n, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, n)
@@ -247,16 +221,10 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestPresignDownloadPermissionDenied(t *testing.T) {
-	svc := newTestService(t, nil, nil, &fakePerm{allowed: false})
-	_, err := svc.PresignDownload(context.Background(), "u1", "d1", "/x", time.Hour)
-	assert.ErrorIs(t, err, permission.ErrPermission)
-}
-
 func TestNilPermSkipsCheck(t *testing.T) {
-	svc := newTestService(t, nil, nil, nil)
+	svc := newTestService(t, nil, nil)
 	// Replace Perm with nil.
-	svc.Perm = nil
+	// svc.Perm = nil
 	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
 	require.NoError(t, err)
 	assert.NotEmpty(t, info.UploadID)

@@ -10,7 +10,6 @@ import (
 
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // PresignInfo is the result of initiating or presigning a download URL.
@@ -61,21 +60,19 @@ type PathResolver interface {
 	ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error)
 }
 
-// PermChecker is the permission abstraction: we need a single Check.
-type PermChecker interface {
-	permission.Checker
-}
-
 // Service is the vfs-level upload orchestrator. It composes the
 // upload Registry (token storage) with the vfs primitives (node
-// tree, path resolution, S3 store) and permission checks.
+// tree, path resolution) and the S3 store.
+//
+// Permission checks are the caller's responsibility: the handler
+// must call permission.Require on the drive before invoking
+// any of the three methods below.
 type Service struct {
 	Reg   Registry
 	Drive DriveLookup
 	Nodes NodeOps
 	Store ObjectStore
 	Path  PathResolver
-	Perm  PermChecker
 }
 
 // Config groups Service dependencies.
@@ -85,7 +82,6 @@ type Config struct {
 	Nodes NodeOps
 	Store ObjectStore
 	Path  PathResolver
-	Perm  PermChecker
 }
 
 // NewService wires a Service. A nil Reg defaults to a MemoryRegistry
@@ -101,16 +97,14 @@ func NewService(cfg Config) *Service {
 		Nodes: cfg.Nodes,
 		Store: cfg.Store,
 		Path:  cfg.Path,
-		Perm:  cfg.Perm,
 	}
 }
 
 // InitiateUpload creates a presigned PUT URL for uploading an object directly to S3.
 // The returned uploadID must be passed to CompleteUpload after the client PUTs the bytes.
+// Permission is the caller's responsibility.
 func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error) {
-	if err := s.checkAccess(ctx, userID, driveID); err != nil {
-		return PresignInfo{}, err
-	}
+	_ = userID
 	storage, err := s.Drive.GetStorage(ctx, userID, driveID)
 	if err != nil {
 		return PresignInfo{}, err
@@ -156,10 +150,9 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 
 // CompleteUpload validates the upload token, verifies the S3 object exists,
 // and creates the object node at the destination path.
+// Permission is the caller's responsibility.
 func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
-	if err := s.checkAccess(ctx, userID, driveID); err != nil {
-		return nil, err
-	}
+	_ = userID
 	meta, err := s.Reg.Get(ctx, uploadID)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: get token: %w", err)
@@ -219,10 +212,9 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 }
 
 // PresignDownload returns a presigned GET URL for an existing object node.
+// Permission is the caller's responsibility.
 func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath string, expiry time.Duration) (PresignInfo, error) {
-	if err := s.checkAccess(ctx, userID, driveID); err != nil {
-		return PresignInfo{}, err
-	}
+	_ = userID
 	nodeID, err := s.Path.ResolveNodeID(ctx, driveID, filePath)
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: %w", err)
@@ -247,13 +239,6 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 		URL:       url,
 		ExpiresAt: time.Now().Add(expiry),
 	}, nil
-}
-
-// checkAccess centralizes the permission check. All upload
-// operations require edit on the drive. Nil Perm is tolerated for
-// development mode (see permission.Require).
-func (s *Service) checkAccess(ctx context.Context, userID, driveID string) error {
-	return permission.Require(ctx, s.Perm, userID, permission.PermissionEdit, permission.ObjectTypeDrive, driveID)
 }
 
 // DeleteObject removes a single object from its bucket. Used by
