@@ -95,20 +95,27 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	rootCreator := &rootNodeCreator{svc: nodeSvc}
 
-	var cipher cryptopkg.Cipher = cryptopkg.NoOp{}
+	// Crypto: fail-fast in production if the master key is missing.
+	// In development we accept the NoOp cipher so local iteration
+	// does not require a key, but emit a loud warning so the
+	// operator sees the data is unprotected.
+	var cipher cryptopkg.Cipher
 	if cfg.Crypto.MasterKey != "" {
 		var err error
 		cipher, err = cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
 		if err != nil {
 			return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
 		}
+	} else {
+		if cfg.App.Env == "production" {
+			return nil, fmt.Errorf("crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
+		}
+		log.Warn("crypto: master key not configured; using NoOp cipher (drive storage secrets will be stored in plaintext)")
+		cipher = cryptopkg.NoOp{}
 	}
 
 	driveRepo := drive.NewRepository(entClient, cipher)
-	// driveSvc is finalized below once permClient is constructed;
-	// this declaration is a placeholder so the vfs+gc init below
-	// can run before the Perm wiring point.
-	var driveSvc *drive.Service
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, nil)
 
 	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
 	if err != nil {
@@ -122,6 +129,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	// OpenFGA: wired when APIURL is set. In dev, permClient is
+	// nil and permission.Require falls back to permissive
+	// behaviour. The dev mode is logged loudly below.
 	var permClient permission.Checker
 	if cfg.OpenFGA.APIURL != "" {
 		permClient, err = permission.NewOpenFGAChecker(ctx, permission.Config{
@@ -138,13 +148,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		if err != nil {
 			return nil, fmt.Errorf("openfga: initialize: %w", err)
 		}
+	} else {
+		if cfg.App.Env == "production" {
+			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
+		}
+		log.Warn("openfga: APIURL not configured; permission checks disabled (AnonSecurity will be used by the HTTP layer)")
 	}
-
-	// Rebuild the drive service with the real permission checker.
-	// vfs+gc hold a pointer to the previous (no-perm) instance;
-	// they don't need permission checks (vfs is filesystem-only,
-	// gc uses ListDeleted with isAdmin gated at the handler).
-	driveSvc = drive.NewService(driveRepo, userEx, rootCreator, permClient)
 
 	// vfs is the inode-tree manager; it has no S3 dependency.
 	// Garbage is the only external interface: vfs calls
@@ -158,14 +167,14 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	// upload is the S3 lifecycle service: presign, complete, and
 	// object delete. It depends on vfs (PathResolver) and on the
-	// S3 client we built above.
+	// S3 client we built above. Permission is the handler's
+	// responsibility.
 	uploadSvc := upload.NewService(upload.Config{
 		Reg:   uploadReg,
 		Drive: driveSvc,
 		Nodes: nodeSvc,
 		Store: s3Client,
 		Path:  vfsSvc,
-		Perm:  permClient,
 	})
 
 	var store session.Store = session.NewMemoryStore()
