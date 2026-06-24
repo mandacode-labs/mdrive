@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"os"
+	"strings"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -20,7 +23,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
-	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/storage/s3"
 	"github.com/mandacode-labs/mdrive/internal/upload"
@@ -30,7 +32,7 @@ import (
 // App holds all wired components.
 type App struct {
 	Cfg *config.Config
-	Log *logging.Logger
+	Log *slog.Logger
 
 	NodeSvc           *node.Service
 	DriveSvc          *drive.Service
@@ -50,7 +52,7 @@ type App struct {
 
 // New wires the infrastructure, core domain services, and the vfs service.
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
-	log := logging.NewLogger(cfg.App.Env, cfg.App.LogLevel)
+	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
 
 	if err := cfg.Validate(cfg.App.Env); err != nil {
 		return nil, err
@@ -68,14 +70,14 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	log.Info().Str("host", cfg.Database.Host).Str("database", cfg.Database.Name).Msg("connected to database")
+	log.Info("connected to database", "host", cfg.Database.Host, "database", cfg.Database.Name)
 
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	entClient := ent.NewClient(ent.Driver(drv))
 
 	if cfg.App.Env == "development" {
 		if err := entClient.Schema.Create(ctx); err != nil {
-			log.Warn().Err(err).Msg("auto-migration failed")
+			log.Warn("auto-migration failed", "err", err)
 		}
 	}
 
@@ -177,6 +179,35 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		DB:                db,
 		Ent:               entClient,
 	}, nil
+}
+
+// newLogger returns a *slog.Logger configured for the given environment
+// and level. In non-production the output goes to stderr with a text
+// handler for human-readable logs; in production the output is JSON
+// suitable for ingestion by an aggregator.
+func newLogger(env, level string) *slog.Logger {
+	lvl := parseLogLevel(level)
+	opts := &slog.HandlerOptions{Level: lvl}
+	var h slog.Handler
+	if env == "production" {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	} else {
+		h = slog.NewTextHandler(os.Stderr, opts)
+	}
+	return slog.New(h).With("env", env)
+}
+
+func parseLogLevel(s string) slog.Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
 
 // Close releases the database connection.

@@ -59,21 +59,27 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		handler.WithHealthDeps(healthDeps),
 	)
 
-	var securityHandler api.SecurityHandler = &noopSecurity{}
+	var securityHandler api.SecurityHandler = &AnonSecurity{}
 	if a.Security != nil {
 		securityHandler = a.Security
 	}
 
 	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(errorHandler))
 	if err != nil {
-		a.Log.Fatal().Err(err).Msg("failed to create ogen server")
+		a.Log.Error("failed to create ogen server", "err", err)
+		os.Exit(1)
 	}
 
-	var finalHandler = RequestIDMiddleware(ogenServer)
+	// Build the middleware chain once. With SessionSecurity the
+	// session-auth middleware wraps the ogen server; with
+	// AnonSecurity it is a no-op. The requestID and CORS middlewares
+	// are applied in the same chain.
+	var finalHandler http.Handler = ogenServer
 	if a.Security != nil {
-		finalHandler = RequestIDMiddleware(a.Security.Middleware(ogenServer))
+		finalHandler = a.Security.Middleware(ogenServer)
 	}
-	finalHandler = RequestIDMiddleware(withCORS(finalHandler, a.Cfg.HTTP.CORS))
+	finalHandler = RequestIDMiddleware(finalHandler)
+	finalHandler = withCORS(finalHandler, a.Cfg.HTTP.CORS)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Cfg.HTTP.Host, a.Cfg.HTTP.Port),
@@ -95,17 +101,17 @@ func (s *Server) Run() error {
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", s.addr, err)
 	}
-	s.app.Log.Info().Str("addr", s.addr).Msg("starting api server")
+	s.app.Log.Info("starting api server", "addr", s.addr)
 	go func() {
 		if err := s.http.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			s.app.Log.Error().Err(err).Msg("server error")
+			s.app.Log.Error("server error", "err", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	s.app.Log.Info().Msg("received shutdown signal")
+	s.app.Log.Info("received shutdown signal")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -114,23 +120,17 @@ func (s *Server) Run() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.http.Shutdown(ctx); err != nil {
-		s.app.Log.Error().Err(err).Msg("http shutdown error")
+		s.app.Log.Error("http shutdown error", "err", err)
 	}
 	if err := s.app.Close(); err != nil {
-		s.app.Log.Error().Err(err).Msg("app close error")
+		s.app.Log.Error("app close error", "err", err)
 	}
-	s.app.Log.Info().Msg("api server stopped")
+	s.app.Log.Info("api server stopped")
 	return nil
 }
 
 func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 	WriteError(w, err)
-}
-
-type noopSecurity struct{}
-
-func (n *noopSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	return ctx, nil
 }
 
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
