@@ -38,11 +38,19 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, node.ErrRevisionConflict):
 		return http.StatusConflict, api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}
 
+	case errors.Is(err, node.ErrSymlinkCycle),
+		errors.Is(err, vfs.ErrMountCycle),
+		errors.Is(err, vfs.ErrPathTooDeep):
+		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
+
 	case errors.Is(err, node.ErrInvalidName),
 		errors.Is(err, node.ErrInvalidType),
 		errors.Is(err, node.ErrInvalidReference),
 		errors.Is(err, node.ErrInvalidSize),
 		errors.Is(err, node.ErrNotDirectory),
+		errors.Is(err, node.ErrIsDirectory),
+		errors.Is(err, node.ErrInvalidMoveOverwrite),
+		errors.Is(err, node.ErrInvalidMountReference),
 		errors.Is(err, node.ErrContentTooLarge),
 		errors.Is(err, drive.ErrInvalidName),
 		errors.Is(err, drive.ErrInvalidBucket),
@@ -53,7 +61,10 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, user.ErrNameRequired),
 		errors.Is(err, vfs.ErrInvalidPath),
 		errors.Is(err, vfs.ErrCrossDrive),
-		errors.Is(err, upload.ErrUploadMismatch):
+		errors.Is(err, vfs.ErrHardlinkNotSupported),
+		errors.Is(err, upload.ErrUploadMismatch),
+		errors.Is(err, upload.ErrNotFound),
+		errors.Is(err, upload.ErrTokenExists):
 		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
 	}
 
