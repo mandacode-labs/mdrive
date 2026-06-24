@@ -93,15 +93,16 @@ func NewService(cfg ServiceConfig) *Service {
 	}
 }
 
-// log returns the Service's logger, or slog.Default() if none was
-// configured. Returning a non-nil logger means every call site can
-// log unconditionally; in tests the default logger discards
-// unless configured otherwise.
+// log returns the Service's logger. If none was configured (the
+// common case for tests that do not assert on log output) a
+// DiscardHandler is returned so the call sites can log
+// unconditionally without polluting the test output. Production
+// code wires a real logger in app.New.
 func (s *Service) log() *slog.Logger {
 	if s.Logger != nil {
 		return s.Logger
 	}
-	return slog.Default()
+	return slog.New(slog.DiscardHandler)
 }
 
 // newResolver returns a fresh resolver backed by the Service's
