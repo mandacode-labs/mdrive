@@ -173,29 +173,11 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 // skipped. Used by callers that need the resolved node itself
 // (e.g. the readlink handler).
 func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, error) {
-	r := s.newResolver()
-	rootID, err := s.rootNodeID(ctx, driveID)
+	d, n, err := s.resolveCross(ctx, driveID, path, false)
 	if err != nil {
 		return Resolved{}, err
 	}
-	out, err := r.resolve(ctx, rootID, path, false)
-	if err != nil {
-		return Resolved{}, err
-	}
-	if out.Remaining != "" {
-		// Path crossed a mount: re-resolve inside the source
-		// drive (still no symlink follow).
-		srcDriveID, err := out.Node.ReadMount()
-		if err != nil {
-			return Resolved{}, err
-		}
-		drive2, n2, err := s.resolveCross(ctx, srcDriveID, out.Remaining, false)
-		if err != nil {
-			return Resolved{}, err
-		}
-		return Resolved{DriveID: drive2, Node: n2}, nil
-	}
-	return Resolved{DriveID: driveID, Node: out.Node}, nil
+	return Resolved{DriveID: d, Node: n}, nil
 }
 
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
