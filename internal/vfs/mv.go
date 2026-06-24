@@ -29,7 +29,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 
 	start := time.Now()
 	var (
-		overwriteRefs []ObjectRef
+		overwriteRefs []GarbageRef
 		err           error
 	)
 	if len(srcPaths) == 1 {
@@ -47,8 +47,8 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		return err
 	}
 
-	if len(overwriteRefs) > 0 && s.GC != nil {
-		if err := s.GC.InsertTombstones(ctx, overwriteRefs); err != nil {
+	if len(overwriteRefs) > 0 && s.Garbage != nil {
+		if err := s.Garbage.RecordGarbage(ctx, overwriteRefs); err != nil {
 			s.log().Error("vfs.mv.tombstone_failed",
 				slog.String("drive_id", srcDriveID),
 				slog.Int("ref_count", len(overwriteRefs)),
@@ -78,7 +78,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 // may traverse mounts but the resolved source must live in driveID
 // (cross-drive moves are still rejected as ErrCrossDrive).
 //
-// Returns ObjectRef slices for any S3 objects that should be
+// Returns GarbageRef slices for any S3 objects that should be
 // tombstoned (target overwritten, nlink hit zero). The caller is
 // responsible for enqueueing them after the node transaction commits.
 //
@@ -94,7 +94,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 // return the same *Node pointer. MoveEntry is responsible for
 // updating both parents atomically; the resolver cache keeps the
 // optimistic-concurrency check in node.Repository.Save consistent.
-func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]ObjectRef, error) {
+func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 // inode's nlink is preserved. A single fresh resolver is shared
 // across the resolveParent calls so multiple sources that share
 // a parent directory see the same *Node pointer.
-func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]ObjectRef, error) {
+func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	// matches POSIX mv: a partial batch is not rolled back even when
 	// one source fails. Callers needing all-or-nothing semantics must
 	// stage sources into a temp directory and rename that atomically.
-	var overwriteRefs []ObjectRef
+	var overwriteRefs []GarbageRef
 	for _, si := range sources {
 		refs, err := s.applyMoveEntry(ctx, si.srcParent, si.srcName, dstDir, si.baseName)
 		if err != nil {
@@ -213,15 +213,15 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 // detecting when the overwrite target is an S3-backed object (whose
 // bucket+key must be tombstoned for GC) and translating node errors
 // into vfs errors.
-func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]ObjectRef, error) {
+func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]GarbageRef, error) {
 	// Capture the overwrite target's S3 reference (if any) before
 	// MoveEntry removes it. After the call the inode may be gone
 	// (nlink hit 0), so we need the reference pre-emptively.
-	var overwriteRef *ObjectRef
+	var overwriteRef *GarbageRef
 	if existing, err := dstParent.Lookup(dstName); err == nil && existing != nil {
 		if existingChild, err := s.Node.GetByID(ctx, existing.InodeID); err == nil && existingChild.IsObject() {
 			if oc, err := existingChild.ReadObject(); err == nil && oc.Bucket != "" && oc.Key != "" {
-				overwriteRef = &ObjectRef{Bucket: oc.Bucket, Key: oc.Key}
+				overwriteRef = &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}
 			}
 		}
 	}
@@ -231,7 +231,7 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	}
 
 	if overwriteRef != nil {
-		return []ObjectRef{*overwriteRef}, nil
+		return []GarbageRef{*overwriteRef}, nil
 	}
 	return nil, nil
 }

@@ -18,13 +18,15 @@ func NewCmd() *cobra.Command {
 		Short: "Run garbage collection jobs",
 	}
 	addJob(cmd, "tombstones", "Delete S3 objects recorded in gc_tombstones",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewTombstoneCleaner(a) })
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewTombstoneCleaner(a.Ent, a.Log) })
 	addJob(cmd, "purge-drives", "Permanently remove soft-deleted drives older than the retention period",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewDrivePurger(a, 0) }, "retention", "0s", "minimum age of deleted drives to purge")
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewDrivePurger(a.DriveSvc, a.Log, 0) }, "retention", "0s", "minimum age of deleted drives to purge")
 	addJob(cmd, "expire-uploads", "Remove stale upload registrations",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewUploadExpirer(a) })
+		func(a *app.App) gcjobs.Runner {
+			return gcjobs.NewUploadExpirer(a.UploadReg, a.UploadSvc, a.Garbage, a.Log)
+		})
 	addJob(cmd, "expire-sessions", "Remove expired sessions",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewSessionExpirer(a) })
+		func(a *app.App) gcjobs.Runner { return gcjobs.NewSessionExpirer(a.SessionStore, a.Log) })
 	return cmd
 }
 

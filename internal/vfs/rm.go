@@ -31,7 +31,7 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 	}
 
 	start := time.Now()
-	var allRefs []ObjectRef
+	var allRefs []GarbageRef
 	for _, p := range paths {
 		refs, err := s.rmPath(ctx, rootID, p, recursive)
 		if err != nil {
@@ -45,8 +45,8 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 		allRefs = append(allRefs, refs...)
 	}
 
-	if len(allRefs) > 0 && s.GC != nil {
-		if err := s.GC.InsertTombstones(ctx, allRefs); err != nil {
+	if len(allRefs) > 0 && s.Garbage != nil {
+		if err := s.Garbage.RecordGarbage(ctx, allRefs); err != nil {
 			// Logged at error: this leaves orphan S3 objects that
 			// must be reclaimed by the gc orphan-scan job.
 			s.log().Error("vfs.rm.tombstone_failed",
@@ -73,7 +73,7 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 }
 
 // rmPath resolves the path and dispatches to the appropriate internal handler.
-func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]ObjectRef, error) {
+func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
 	// Use a single resolver so the resolve + resolveParent pair see
 	// the same *Node pointer for any shared intermediate nodes.
 	r := s.newResolver()
@@ -94,8 +94,8 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 // rm removes a single file node. Returns S3 references that need cleanup.
 // The unlink delegates nlink management to node.Service; when the last
 // hardlink is removed the child is deleted and any object body is
-// returned as ObjectRef for tombstone registration.
-func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]ObjectRef, error) {
+// returned as GarbageRef for tombstone registration.
+func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]GarbageRef, error) {
 	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, fmt.Errorf("rm: resolve parent: %w", err)
@@ -108,7 +108,7 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 		return nil, fmt.Errorf("rm: unlink: %w", err)
 	}
 
-	var refs []ObjectRef
+	var refs []GarbageRef
 	target := n
 	if deleted != nil {
 		target = deleted
@@ -116,7 +116,7 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 	if target.IsObject() {
 		oc, err := target.ReadObject()
 		if err == nil && oc.Bucket != "" && oc.Key != "" {
-			refs = append(refs, ObjectRef{Bucket: oc.Bucket, Key: oc.Key})
+			refs = append(refs, GarbageRef{Bucket: oc.Bucket, Key: oc.Key})
 		}
 	}
 	return refs, nil
@@ -124,7 +124,7 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 
 // rmRecursive removes a directory and all its children. Returns S3 references
 // from all object nodes discovered during the traversal.
-func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]ObjectRef, error) {
+func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
 	// Use a single resolver for the whole traversal so the recursive
 	// child loads share the cache with each other.
 	r := s.newResolver()
@@ -133,7 +133,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 		return nil, fmt.Errorf("rm: read dir: %w", err)
 	}
 
-	var allRefs []ObjectRef
+	var allRefs []GarbageRef
 	for _, e := range dc.Entries {
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
 		var child *node.Node
@@ -146,7 +146,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 				return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
 			}
 		}
-		var refs []ObjectRef
+		var refs []GarbageRef
 		if child.IsDir() {
 			refs, err = s.rmRecursive(ctx, rootID, child, childPath)
 		} else {

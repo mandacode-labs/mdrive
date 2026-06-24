@@ -43,11 +43,14 @@ type NodeOps interface {
 }
 
 // ObjectStore is the S3 abstraction the upload flow needs: presigned
-// URLs and object existence check.
+// URLs, object existence check, and direct delete. The DeleteObject
+// method is exposed because gc.UploadExpirer uses it to clean up
+// objects the client uploaded but never completed.
 type ObjectStore interface {
 	GetPresignedUploadURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
 	GetPresignedDownloadURL(ctx context.Context, bucket, key string, expiry time.Duration) (string, error)
 	ObjectExists(ctx context.Context, bucket, key string) (bool, error)
+	DeleteObject(ctx context.Context, bucket, key string) error
 }
 
 // PathResolver provides drive-root lookup and path resolution.
@@ -251,4 +254,12 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 // development mode (see permission.Require).
 func (s *Service) checkAccess(ctx context.Context, userID, driveID string) error {
 	return permission.Require(ctx, s.Perm, userID, permission.PermissionEdit, permission.ObjectTypeDrive, driveID)
+}
+
+// DeleteObject removes a single object from its bucket. Used by
+// gc.UploadExpirer to clean up objects the client uploaded but
+// never completed. Does not touch the node tree or the upload
+// registry — callers handle those.
+func (s *Service) DeleteObject(ctx context.Context, bucket, key string) error {
+	return s.Store.DeleteObject(ctx, bucket, key)
 }

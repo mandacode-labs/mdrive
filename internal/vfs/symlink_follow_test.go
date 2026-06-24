@@ -19,9 +19,9 @@ func TestSymlinkFollowAbsoluteTarget(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: &fakeDrive{rootID: root.ID()},
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  &fakeDrive{rootID: root.ID()},
+		Logger: nil,
 	})
 
 	_, err = svc.Mkdir(ctx, "d1", "/data")
@@ -60,9 +60,9 @@ func TestSymlinkCycle(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: &fakeDrive{rootID: root.ID()},
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  &fakeDrive{rootID: root.ID()},
+		Logger: nil,
 	})
 
 	_, err = svc.Symlink(ctx, "d1", "/loop", "/loop")
@@ -81,9 +81,9 @@ func TestSymlinkChain(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: &fakeDrive{rootID: root.ID()},
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  &fakeDrive{rootID: root.ID()},
+		Logger: nil,
 	})
 
 	_, err = svc.Touch(ctx, "d1", "/real.txt")

@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/google/uuid"
@@ -86,30 +85,14 @@ func (d *fakeDrive) ListDeleted(_ context.Context, _ time.Time, _ int) ([]*drive
 func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, error) { return nil, nil }
 func (d *fakeDrive) now() time.Time                                                  { return time.Now() }
 
-type fakeStore struct{}
-
-func (s *fakeStore) PutObject(_ context.Context, _, _ string, _ io.Reader) error      { return nil }
-func (s *fakeStore) GetObject(_ context.Context, _, _ string) ([]byte, error)         { return nil, nil }
-func (s *fakeStore) DeleteObject(_ context.Context, _, _ string) error                { return nil }
-func (s *fakeStore) DeleteObjects(_ context.Context, _ string, _ []string) error      { return nil }
-func (s *fakeStore) ObjectExists(_ context.Context, _, _ string) (bool, error)        { return true, nil }
-func (s *fakeStore) GetObjectSize(_ context.Context, _, _ string) (int64, error)      { return 0, nil }
-func (s *fakeStore) GetObjectChecksum(_ context.Context, _, _ string) (string, error) { return "", nil }
-func (s *fakeStore) GetPresignedUploadURL(_ context.Context, _, _ string, _ time.Duration) (string, error) {
-	return "https://s3.example.com/put", nil
-}
-func (s *fakeStore) GetPresignedDownloadURL(_ context.Context, _, _ string, _ time.Duration) (string, error) {
-	return "https://s3.example.com/get", nil
-}
-
 func newTestService() *Service {
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
 	return NewService(ServiceConfig{
-		Node:  nodeSvc,
-		Drive: d,
-		Store: &fakeStore{},
+		Node:   nodeSvc,
+		Drive:  d,
+		Logger: nil,
 	})
 }

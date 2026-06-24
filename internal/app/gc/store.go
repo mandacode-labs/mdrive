@@ -1,4 +1,4 @@
-package app
+package gc
 
 import (
 	"context"
@@ -7,26 +7,39 @@ import (
 	"github.com/mandacode-labs/mdrive/ent"
 	entdrivestorage "github.com/mandacode-labs/mdrive/ent/drivestorage"
 	entgctombstone "github.com/mandacode-labs/mdrive/ent/gctombstone"
-
-	"github.com/mandacode-labs/mdrive/internal/storage/s3"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// gcClient implements vfs.TombstoneInserter using the ent client.
-type gcClient struct {
+// Tombstone is a single pending S3 deletion that has been written
+// to the gc_tombstones table. The Bucket/Key describe the S3
+// object the gc.TombstoneCleaner job will pass to the S3 client;
+// ID is the database row that records the work to be done.
+type Tombstone struct {
+	ID     int
+	Bucket string
+	Key    string
+}
+
+// GarbageRecorder writes tombstone rows for S3 objects whose
+// nodes have been removed. It implements vfs.GarbageRecorder:
+// vfs calls RecordGarbage on every unlink whose target was an
+// object node.
+type GarbageRecorder struct {
 	client *ent.Client
 }
 
-func newTombstoneInserter(client *ent.Client) vfs.TombstoneInserter {
-	return &gcClient{client: client}
+// NewGarbageRecorder returns a vfs.GarbageRecorder backed by the
+// gc_tombstones ent table.
+func NewGarbageRecorder(client *ent.Client) *GarbageRecorder {
+	return &GarbageRecorder{client: client}
 }
 
-// InsertTombstones writes tombstone records for S3 objects whose nodes
-// have been deleted. The writes commit independently of the node
-// transaction that deleted the source nodes; on failure the caller
-// must accept that the S3 objects are orphaned (a future orphan-scan
-// job can reclaim them).
-func (g *gcClient) InsertTombstones(ctx context.Context, refs []vfs.ObjectRef) error {
+// RecordGarbage writes one tombstone row per ref. The writes
+// commit independently of the node transaction that deleted the
+// source nodes; on failure the caller must accept that the S3
+// objects are orphaned (a future orphan-scan job can reclaim
+// them).
+func (g *GarbageRecorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
@@ -48,7 +61,9 @@ type TombstoneGroup struct {
 	IDs    []int
 }
 
-// QueryTombstones returns up to limit tombstone records grouped by bucket.
+// QueryTombstones returns up to limit tombstone records grouped by
+// bucket. The TombstoneCleaner job processes each group in one
+// S3 DeleteObjects call.
 func QueryTombstones(ctx context.Context, client *ent.Client, limit int) ([]TombstoneGroup, error) {
 	rows, err := client.GCTombstone.Query().
 		Order(ent.Asc(entgctombstone.FieldCreateTime)).
@@ -77,7 +92,7 @@ func QueryTombstones(ctx context.Context, client *ent.Client, limit int) ([]Tomb
 	return groups, nil
 }
 
-// DeleteTombstones removes processed tombstone records by their IDs.
+// DeleteTombstones removes processed tombstone rows by their IDs.
 func DeleteTombstones(ctx context.Context, client *ent.Client, ids []int) error {
 	if len(ids) == 0 {
 		return nil
@@ -89,19 +104,31 @@ func DeleteTombstones(ctx context.Context, client *ent.Client, ids []int) error 
 	return nil
 }
 
-// FindStorageByBucket returns the S3 client config for the first drive using the given bucket.
-func FindStorageByBucket(ctx context.Context, client *ent.Client, bucket string) (s3.Config, error) {
+// StorageForBucket returns the S3 client config for the first drive
+// using the given bucket. The TombstoneCleaner uses this to construct
+// an S3 client per bucket group.
+type StorageForBucket struct {
+	Region       string
+	Endpoint     string
+	AccessKey    string
+	SecretKey    string
+	UsePathStyle bool
+}
+
+// FindStorageByBucket returns the S3 client config for the first
+// drive using the given bucket.
+func FindStorageByBucket(ctx context.Context, client *ent.Client, bucket string) (StorageForBucket, error) {
 	s, err := client.DriveStorage.Query().Where(entdrivestorage.BucketEQ(bucket)).First(ctx)
 	if err != nil {
-		return s3.Config{}, fmt.Errorf("gc: storage for bucket %s: %w", bucket, err)
+		return StorageForBucket{}, fmt.Errorf("gc: storage for bucket %s: %w", bucket, err)
 	}
-	endpoint := ""
+	var endpoint string
 	if s.Endpoint != nil {
 		endpoint = *s.Endpoint
 	}
-	return s3.Config{
+	return StorageForBucket{
 		Region:       s.Region,
-		Endpoint:     &endpoint,
+		Endpoint:     endpoint,
 		AccessKey:    s.AccessKey,
 		SecretKey:    s.SecretKey,
 		UsePathStyle: s.UsePathStyle,
