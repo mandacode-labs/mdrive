@@ -385,16 +385,13 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 	return n, nil
 }
 
-// Update saves a node after its content has been mutated.
-func (s *Service) Update(ctx context.Context, n *Node) error {
-	if n == nil {
-		return fmt.Errorf("node: update: nil node")
-	}
-	return s.repo.Save(ctx, n)
-}
-
-// Save persists the node (alias for Update).
+// Save persists a node after its content has been mutated. The
+// repository's Save handles both insert (for a fresh inode) and
+// update (for an existing one) based on the node's staleRev.
 func (s *Service) Save(ctx context.Context, n *Node) error {
+	if n == nil {
+		return fmt.Errorf("node: save: nil node")
+	}
 	return s.repo.Save(ctx, n)
 }
 

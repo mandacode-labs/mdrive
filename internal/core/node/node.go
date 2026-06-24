@@ -245,13 +245,11 @@ func (n *Node) CRTime() time.Time  { return n.crtime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
 
-// SetMode updates the permission bits and bumps ctime. Returns
-// ErrInvalidType if the node is not a filesystem entity.
-func (n *Node) SetMode(mode uint32) error {
+// SetMode updates the permission bits and bumps ctime.
+func (n *Node) SetMode(mode uint32) {
 	n.mode = mode
 	n.ctime = time.Now()
 	n.rev = n.rev.Next()
-	return nil
 }
 
 // SetUID updates the owning user and bumps ctime.
@@ -306,6 +304,7 @@ func (n *Node) IsDir() bool     { return n.typ == NodeTypeDirectory }
 func (n *Node) IsFile() bool    { return n.typ == NodeTypeFile }
 func (n *Node) IsSymlink() bool { return n.typ == NodeTypeSymlink }
 func (n *Node) IsObject() bool  { return n.typ == NodeTypeObject }
+func (n *Node) IsMount() bool   { return n.typ == NodeTypeMount }
 
 // write replaces the node's content and updates mtime/ctime/rev.
 // Private: type-specific Write methods in file.go / dir.go / symlink.go / object.go

@@ -15,8 +15,8 @@ type entRepository struct {
 	client *ent.Client
 }
 
-// NewEntRepository creates a new Ent-backed Repository.
-func NewEntRepository(client *ent.Client) Repository {
+// NewRepository creates a new Ent-backed Repository.
+func NewRepository(client *ent.Client) Repository {
 	return &entRepository{client: client}
 }
 

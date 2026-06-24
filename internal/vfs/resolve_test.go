@@ -67,7 +67,7 @@ func (m *multiDriveClient) GetByID(_ context.Context, id string) (*drive.Drive, 
 func (m *multiDriveClient) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return nil, nil
 }
-func (m *multiDriveClient) GetStorage(_ context.Context, _, _ string) (*drive.Storage, error) {
+func (m *multiDriveClient) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
 	return nil, nil
 }
 

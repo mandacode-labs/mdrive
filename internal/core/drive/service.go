@@ -17,22 +17,16 @@ import (
 // still accepts an isAdmin flag — that gate is the *administrative*
 // role, not a per-drive permission check, and the handler
 // sources it from the session.
-//
-// A nil Perm passed at construction time is silently ignored;
-// permission checks are done by the caller via permission.Require.
 type Service struct {
 	repo       Repository
 	users      Exister
 	rootCreate RootCreator
-	perm       permission.Checker
 }
 
-// NewService creates a new Service. The Perm parameter is kept
-// only for compatibility with existing call sites; permission
-// checks are the handler's responsibility and this field is not
-// used internally any more.
-func NewService(repo Repository, users Exister, rootCreate RootCreator, perm permission.Checker) *Service {
-	return &Service{repo: repo, users: users, rootCreate: rootCreate, perm: perm}
+// NewService creates a new Service. Permission checks live in the
+// handler; the service is the pure domain layer.
+func NewService(repo Repository, users Exister, rootCreate RootCreator) *Service {
+	return &Service{repo: repo, users: users, rootCreate: rootCreate}
 }
 
 // Create creates a drive and its root directory node. The drive +
@@ -56,8 +50,8 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	if actorID == "" {
 		return nil, uuid.Nil, fmt.Errorf("drive: owner_id is required")
 	}
-	if !storageCfgValid(&cfg) {
-		return nil, uuid.Nil, ErrInvalidCredentials
+	if err := storageCfgValid(&cfg); err != nil {
+		return nil, uuid.Nil, err
 	}
 
 	exists, err := s.users.Exists(ctx, actorID)
@@ -107,10 +101,6 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 // handler decides whether the caller may see a drive), but the
 // parameter exists to keep the call site uniform with the
 // permission-bearing methods.
-func (s *Service) Get(ctx context.Context, _, id string) (*Drive, error) {
-	return s.GetByID(ctx, id)
-}
-
 // GetByID returns a drive by its private ID.
 func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
@@ -136,12 +126,9 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, e
 }
 
 // GetStorage returns the storage configuration for a drive.
-// The actorID is currently unused (storage config contains
-// credentials; the handler's permission policy is to gate
-// access to the drive, not the storage record), but the
-// parameter exists to keep the call site uniform with the
-// permission-bearing methods.
-func (s *Service) GetStorage(ctx context.Context, _, driveID string) (*Storage, error) {
+// The handler gates this call with requirePerm; the service
+// itself does not check ownership.
+func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
 	st, err := s.repo.GetStorage(ctx, driveID)
 	if err != nil {
 		return nil, err
@@ -239,10 +226,16 @@ func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate, perm: s.perm})
+		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate})
 	})
 }
 
-func storageCfgValid(cfg *StorageConfig) bool {
-	return cfg.Bucket != "" && cfg.Region != ""
+func storageCfgValid(cfg *StorageConfig) error {
+	if cfg.Bucket == "" {
+		return ErrInvalidBucket
+	}
+	if cfg.Region == "" {
+		return ErrInvalidRegion
+	}
+	return nil
 }

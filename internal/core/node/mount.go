@@ -50,6 +50,3 @@ func (n *Node) ReadMount() (string, error) {
 	}
 	return mc.SourceDriveID, nil
 }
-
-// IsMount reports whether the node is a mount.
-func (n *Node) IsMount() bool { return n.typ == NodeTypeMount }

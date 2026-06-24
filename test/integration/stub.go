@@ -82,11 +82,11 @@ func (s *stubDrive) Create(ctx context.Context, actorID, name, description strin
 	d := drive.NewDrive("d1", "pub1", name, nil, drive.ProviderS3, actorID, &rootID, nil, time.Now(), time.Now())
 	return d, rootID, nil
 }
-func (s *stubDrive) Get(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+func (s *stubDrive) GetByID(ctx context.Context, id string) (*drive.Drive, error) {
 	rootID := uuid.New()
 	return drive.NewDrive(id, "pub1", "test", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
-func (s *stubDrive) GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error) {
+func (s *stubDrive) GetStorage(ctx context.Context, driveID string) (*drive.Storage, error) {
 	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
 }
 func (s *stubDrive) Update(ctx context.Context, actorID, id string, name, description string) (*drive.Drive, error) {

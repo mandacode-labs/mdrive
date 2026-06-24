@@ -45,8 +45,8 @@ type FSClient interface {
 // DriveClient is the consumer-declared interface for drive CRUD.
 type DriveClient interface {
 	Create(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
-	Get(ctx context.Context, actorID, id string) (*drive.Drive, error)
-	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
+	GetByID(ctx context.Context, id string) (*drive.Drive, error)
+	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
 	Update(ctx context.Context, actorID, id string, name, description string) (*drive.Drive, error)
 	Delete(ctx context.Context, actorID, id string) error
 	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)

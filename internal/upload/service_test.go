@@ -48,7 +48,7 @@ type fakeDrive struct {
 	getErr  error
 }
 
-func (f *fakeDrive) GetStorage(context.Context, string, string) (*coredrive.Storage, error) {
+func (f *fakeDrive) GetStorage(context.Context, string) (*coredrive.Storage, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}

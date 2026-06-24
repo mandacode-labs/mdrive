@@ -36,15 +36,12 @@ type NodeClient interface {
 }
 
 // DriveClient is the data-access contract vfs needs from a drive
-// service. vfs only needs read paths. The actorID parameter is
-// unused for these read methods (by-design unprotected: the
-// handler decides whether the caller may see the data), but the
-// interface is shaped to the underlying drive service so a real
-// *drive.Service satisfies it.
+// service. vfs only needs read paths; permission checks are
+// the caller's responsibility.
 type DriveClient interface {
 	GetByID(ctx context.Context, id string) (*drive.Drive, error)
 	GetByPublicID(ctx context.Context, pubID string) (*drive.Drive, error)
-	GetStorage(ctx context.Context, actorID, driveID string) (*drive.Storage, error)
+	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
 }
 
 // GarbageRef points at an external (S3) object that needs cleanup

@@ -58,7 +58,7 @@ func (d *errDrive) GetByID(context.Context, string) (*drive.Drive, error) { retu
 func (d *errDrive) GetByPublicID(context.Context, string) (*drive.Drive, error) {
 	return nil, d.err
 }
-func (d *errDrive) GetStorage(context.Context, string, string) (*drive.Storage, error) {
+func (d *errDrive) GetStorage(context.Context, string) (*drive.Storage, error) {
 	return nil, d.err
 }
 

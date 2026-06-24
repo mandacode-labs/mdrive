@@ -15,7 +15,7 @@ import (
 func TestEnt_Node_SaveGetRoundtrip(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
-	repo := node.NewEntRepository(client)
+	repo := node.NewRepository(client)
 
 	dir, err := node.NewDirectory()
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestEnt_Node_SaveGetRoundtrip(t *testing.T) {
 func TestEnt_Node_RevisionConflict(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
-	repo := node.NewEntRepository(client)
+	repo := node.NewRepository(client)
 
 	dir, err := node.NewDirectory()
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestEnt_Node_RevisionConflict(t *testing.T) {
 func TestEnt_Node_WithTxCommit(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
-	repo := node.NewEntRepository(client)
+	repo := node.NewRepository(client)
 
 	var dirID string
 	require.NoError(t, repo.WithTx(ctx, func(tx node.Repository) error {
@@ -81,7 +81,7 @@ func TestEnt_Node_WithTxCommit(t *testing.T) {
 func TestEnt_Node_WithTxRollback(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
-	repo := node.NewEntRepository(client)
+	repo := node.NewRepository(client)
 
 	var dirID string
 	err := repo.WithTx(ctx, func(tx node.Repository) error {
