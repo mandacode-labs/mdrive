@@ -9,8 +9,6 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// --- Presigned upload/download handlers ---
-
 func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest, params api.InitiateUploadParams) (api.InitiateUploadRes, error) {
 	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return nil, err

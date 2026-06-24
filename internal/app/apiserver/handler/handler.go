@@ -55,8 +55,6 @@ type DriveClient interface {
 }
 
 // UserClient is the consumer-declared interface for user CRUD.
-// vfs no longer manages users: user operations live in core/user
-// and are exposed directly to the handler.
 type UserClient = *user.Service
 
 // UploadClient is the consumer-declared interface for the
@@ -158,6 +156,5 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Permission, d
 	return permission.Require(ctx, h.perm, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
-// Compile-time checks.
 var _ api.Handler = (*Handler)(nil)
 var _ AuthClient = (*auth.Service)(nil)
