@@ -1236,6 +1236,106 @@ func (s *HealthOK) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes ListDeletedDrivesOKApplicationJSON as json.
+func (s ListDeletedDrivesOKApplicationJSON) Encode(e *jx.Encoder) {
+	unwrapped := []Drive(s)
+
+	e.ArrStart()
+	for _, elem := range unwrapped {
+		elem.Encode(e)
+	}
+	e.ArrEnd()
+}
+
+// Decode decodes ListDeletedDrivesOKApplicationJSON from json.
+func (s *ListDeletedDrivesOKApplicationJSON) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListDeletedDrivesOKApplicationJSON to nil")
+	}
+	var unwrapped []Drive
+	if err := func() error {
+		unwrapped = make([]Drive, 0)
+		if err := d.Arr(func(d *jx.Decoder) error {
+			var elem Drive
+			if err := elem.Decode(d); err != nil {
+				return err
+			}
+			unwrapped = append(unwrapped, elem)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListDeletedDrivesOKApplicationJSON(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ListDeletedDrivesOKApplicationJSON) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListDeletedDrivesOKApplicationJSON) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListDrivesOKApplicationJSON as json.
+func (s ListDrivesOKApplicationJSON) Encode(e *jx.Encoder) {
+	unwrapped := []Drive(s)
+
+	e.ArrStart()
+	for _, elem := range unwrapped {
+		elem.Encode(e)
+	}
+	e.ArrEnd()
+}
+
+// Decode decodes ListDrivesOKApplicationJSON from json.
+func (s *ListDrivesOKApplicationJSON) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListDrivesOKApplicationJSON to nil")
+	}
+	var unwrapped []Drive
+	if err := func() error {
+		unwrapped = make([]Drive, 0)
+		if err := d.Arr(func(d *jx.Decoder) error {
+			var elem Drive
+			if err := elem.Decode(d); err != nil {
+				return err
+			}
+			unwrapped = append(unwrapped, elem)
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListDrivesOKApplicationJSON(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ListDrivesOKApplicationJSON) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListDrivesOKApplicationJSON) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *MkdirReq) Encode(e *jx.Encoder) {
 	e.ObjStart()

@@ -6,6 +6,10 @@ google:
     responses:
       "302":
         description: Redirect to Zitadel with idp_id=google
+        headers:
+          Location:
+            schema: { type: string }
+            required: true
 
 googleNative:
   post:
@@ -31,6 +35,12 @@ googleNative:
                 token: { type: string }
                 user:
                   $ref: "../openapi.yaml#/components/schemas/User"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 callback:
   get:
@@ -49,6 +59,19 @@ callback:
     responses:
       "302":
         description: Redirect to frontend with session cookie set
+        headers:
+          Location:
+            schema: { type: string }
+            required: true
+          Set-Cookie:
+            schema: { type: string }
+            required: true
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 logout:
   post:
@@ -57,6 +80,16 @@ logout:
     responses:
       "204":
         description: Session destroyed
+        headers:
+          Set-Cookie:
+            schema: { type: string }
+            required: true
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 me:
   get:
@@ -69,3 +102,9 @@ me:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/User"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

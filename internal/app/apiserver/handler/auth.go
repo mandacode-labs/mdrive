@@ -19,33 +19,29 @@ import (
 
 const providerGoogle = "google"
 
-func (h *Handler) GoogleLogin(ctx context.Context) error {
+func (h *Handler) GoogleLogin(ctx context.Context) (*api.GoogleLoginFound, error) {
 	if h.auth == nil {
-		return fmt.Errorf("authentication not configured")
+		return nil, fmt.Errorf("authentication not configured")
 	}
 	state, err := randomHex(32)
 	if err != nil {
-		return fmt.Errorf("random state: %w", err)
+		return nil, fmt.Errorf("random state: %w", err)
 	}
 	verifier, challenge, err := generatePKCE()
 	if err != nil {
-		return fmt.Errorf("generate pkce: %w", err)
+		return nil, fmt.Errorf("generate pkce: %w", err)
 	}
 	if err := h.auth.StorePKCE(ctx, state, verifier); err != nil {
-		return fmt.Errorf("store pkce: %w", err)
+		return nil, fmt.Errorf("store pkce: %w", err)
 	}
 	authURL, err := h.auth.AuthorizeURL(ctx, providerGoogle, h.frontendURL+"/auth/callback", state, challenge)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	w := ctxResponseWriter(ctx)
-	if w != nil {
-		http.Redirect(w, ctxRequest(ctx), authURL, http.StatusFound)
-	}
-	return nil
+	return &api.GoogleLoginFound{Location: authURL}, nil
 }
 
-func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNativeLoginReq) (*api.GoogleNativeLoginOK, error) {
+func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNativeLoginReq) (api.GoogleNativeLoginRes, error) {
 	if h.auth == nil {
 		return nil, fmt.Errorf("authentication not configured")
 	}
@@ -72,51 +68,45 @@ func (h *Handler) GoogleNativeLogin(ctx context.Context, req api.OptGoogleNative
 	}, nil
 }
 
-func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParams) error {
+func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParams) (api.AuthCallbackRes, error) {
 	if h.auth == nil {
-		return fmt.Errorf("authentication not configured")
+		return nil, fmt.Errorf("authentication not configured")
 	}
 	verifier, err := h.auth.GetPKCE(ctx, params.State)
 	if err != nil {
-		return fmt.Errorf("pkce verifier: %w", err)
+		return nil, fmt.Errorf("pkce verifier: %w", err)
 	}
 	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.frontendURL+"/auth/callback", verifier)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	claims, err := h.auth.VerifyIDToken(ctx, tokens.IDToken)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	u, err := h.createOrUpdateUser(ctx, claims.GetSubject(), claims.Name, claims.Email, providerGoogle)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sess, err := h.auth.CreateSession(ctx, u.ID(), providerGoogle, auth.IsAdminClaim(claims))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	w := ctxResponseWriter(ctx)
-	if w != nil {
-		http.SetCookie(w, h.sessionCookie(sess.ID, sess.ExpiresAt))
-		http.Redirect(w, ctxRequest(ctx), h.frontendURL, http.StatusFound)
-	}
-	return nil
+	return &api.AuthCallbackFound{
+		Location:  h.frontendURL,
+		SetCookie: h.sessionCookie(sess.ID, sess.ExpiresAt).String(),
+	}, nil
 }
 
-func (h *Handler) AuthLogout(ctx context.Context) error {
+func (h *Handler) AuthLogout(ctx context.Context) (api.AuthLogoutRes, error) {
 	sess := auth.SessionFromContext(ctx)
 	if sess != nil && h.auth != nil {
 		_ = h.auth.DeleteSession(ctx, sess.ID)
 	}
-	w := ctxResponseWriter(ctx)
-	if w != nil {
-		http.SetCookie(w, h.expiredCookie())
-	}
-	return nil
+	return &api.AuthLogoutNoContent{SetCookie: h.expiredCookie().String()}, nil
 }
 
-func (h *Handler) AuthMe(ctx context.Context) (*api.User, error) {
+func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	sess := auth.SessionFromContext(ctx)
 	if sess == nil {
 		return nil, ogenerrors.ErrSecurityRequirementIsNotSatisfied
@@ -191,27 +181,4 @@ func (h *Handler) expiredCookie() *http.Cookie {
 		SameSite: h.cookieConfig.SameSite,
 		MaxAge:   -1,
 	}
-}
-
-// responseWriterProvider is the interface ogen wraps around the real
-// http.ResponseWriter. The auth flow needs direct access to call
-// http.Redirect for browser flows, so we extract it from the context.
-type responseWriterProvider interface{ ResponseWriter() http.ResponseWriter }
-
-// requestProvider is the ogen interface for retrieving the underlying
-// *http.Request from the context.
-type requestProvider interface{ Request() *http.Request }
-
-func ctxResponseWriter(ctx context.Context) http.ResponseWriter {
-	if r, ok := ctx.(responseWriterProvider); ok {
-		return r.ResponseWriter()
-	}
-	return nil
-}
-
-func ctxRequest(ctx context.Context) *http.Request {
-	if r, ok := ctx.(requestProvider); ok {
-		return r.Request()
-	}
-	return nil
 }
