@@ -110,9 +110,6 @@ func (n *Node) AddEntry(name string, child *Node) error {
 // AddEntries adds multiple child entries in a single DirContent write,
 // persisting the directory exactly once. Fails atomically: if any name
 // is empty or already present, no entries are added.
-//
-// Returns the map of name -> child ID for callers that need to track
-// what was inserted (e.g. tombstone association).
 func (n *Node) AddEntries(entries map[string]*Node) error {
 	if n.typ != NodeTypeDirectory {
 		return ErrNotDirectory

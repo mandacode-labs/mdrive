@@ -96,12 +96,9 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	return updated, rootID, nil
 }
 
-// Get is the permission-checked alias of GetByID. The actorID
-// is currently unused (GetByID is by-design unprotected — the
-// handler decides whether the caller may see a drive), but the
-// parameter exists to keep the call site uniform with the
-// permission-bearing methods.
-// GetByID returns a drive by its private ID.
+// GetByID returns a drive by its private ID. Permission is the
+// caller's responsibility; the handler gates on view before
+// reaching this method.
 func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
