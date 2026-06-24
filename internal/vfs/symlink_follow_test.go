@@ -30,7 +30,7 @@ func TestSymlinkFollowAbsoluteTarget(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, svc.Write(ctx, "d1", "/data/target.txt", "hello"))
 
-	_, err = svc.Ln(ctx, "d1", "/data/target.txt", "/link-to-target", Symlink)
+	_, err = svc.Symlink(ctx, "d1", "/data/target.txt", "/link-to-target")
 	require.NoError(t, err)
 
 	// Resolve follows the symlink and returns the target node.
@@ -65,7 +65,7 @@ func TestSymlinkCycle(t *testing.T) {
 		Store: &fakeStore{},
 	})
 
-	_, err = svc.Ln(ctx, "d1", "/loop", "/loop", Symlink)
+	_, err = svc.Symlink(ctx, "d1", "/loop", "/loop")
 	require.NoError(t, err)
 
 	_, err = svc.Resolve(ctx, "d1", "/loop")
@@ -90,11 +90,11 @@ func TestSymlinkChain(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, svc.Write(ctx, "d1", "/real.txt", "real"))
 
-	_, err = svc.Ln(ctx, "d1", "/real.txt", "/link1", Symlink)
+	_, err = svc.Symlink(ctx, "d1", "/real.txt", "/link1")
 	require.NoError(t, err)
-	_, err = svc.Ln(ctx, "d1", "/link1", "/link2", Symlink)
+	_, err = svc.Symlink(ctx, "d1", "/link1", "/link2")
 	require.NoError(t, err)
-	_, err = svc.Ln(ctx, "d1", "/link2", "/link3", Symlink)
+	_, err = svc.Symlink(ctx, "d1", "/link2", "/link3")
 	require.NoError(t, err)
 
 	res, err := svc.Resolve(ctx, "d1", "/link3")

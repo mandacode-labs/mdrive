@@ -36,7 +36,10 @@ type FSClient interface {
 	WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error
 	Stat(ctx context.Context, driveID, path string) (*node.Node, error)
 	Lstat(ctx context.Context, driveID, path string) (vfs.Resolved, error)
-	Ln(ctx context.Context, driveID, target, linkPath string, mode vfs.LinkMode) (*node.Node, error)
+	Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error)
+	Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error)
+	Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) (*node.Node, error)
+	Unmount(ctx context.Context, driveID, mountPath string) error
 }
 
 // DriveClient is the consumer-declared interface for drive CRUD.

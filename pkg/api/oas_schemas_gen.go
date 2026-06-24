@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/google/uuid"
 )
 
 // AuthCallbackFound is response for AuthCallback operation.
@@ -55,6 +56,8 @@ func (s CatOK) Read(p []byte) (n int, err error) {
 	return s.Data.Read(p)
 }
 
+func (*CatOK) catRes() {}
+
 // DeleteDriveNoContent is response for DeleteDrive operation.
 type DeleteDriveNoContent struct{}
 
@@ -72,6 +75,8 @@ func (s *DirContent) GetEntries() []DirEntry {
 func (s *DirContent) SetEntries(val []DirEntry) {
 	s.Entries = val
 }
+
+func (*DirContent) lsRes() {}
 
 // Ref: #/components/schemas/DirEntry
 type DirEntry struct {
@@ -448,11 +453,26 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ErrorStatusCode) catRes()             {}
 func (*ErrorStatusCode) completeUploadRes()  {}
 func (*ErrorStatusCode) createDriveRes()     {}
+func (*ErrorStatusCode) hardlinkRes()        {}
 func (*ErrorStatusCode) initiateUploadRes()  {}
+func (*ErrorStatusCode) lsRes()              {}
+func (*ErrorStatusCode) lstatRes()           {}
+func (*ErrorStatusCode) mkdirRes()           {}
+func (*ErrorStatusCode) mountRes()           {}
+func (*ErrorStatusCode) mvRes()              {}
 func (*ErrorStatusCode) presignDownloadRes() {}
+func (*ErrorStatusCode) readlinkRes()        {}
+func (*ErrorStatusCode) realpathRes()        {}
+func (*ErrorStatusCode) rmRes()              {}
+func (*ErrorStatusCode) statRes()            {}
+func (*ErrorStatusCode) symlinkRes()         {}
+func (*ErrorStatusCode) touchRes()           {}
+func (*ErrorStatusCode) unmountRes()         {}
 func (*ErrorStatusCode) writeLargeRes()      {}
+func (*ErrorStatusCode) writeRes()           {}
 
 // GoogleLoginFound is response for GoogleLogin operation.
 type GoogleLoginFound struct{}
@@ -496,6 +516,36 @@ func (s *GoogleNativeLoginReq) SetIdToken(val string) {
 	s.IdToken = val
 }
 
+// HardlinkOK is response for Hardlink operation.
+type HardlinkOK struct{}
+
+func (*HardlinkOK) hardlinkRes() {}
+
+type HardlinkReq struct {
+	SrcPath  string `json:"srcPath"`
+	LinkPath string `json:"linkPath"`
+}
+
+// GetSrcPath returns the value of SrcPath.
+func (s *HardlinkReq) GetSrcPath() string {
+	return s.SrcPath
+}
+
+// GetLinkPath returns the value of LinkPath.
+func (s *HardlinkReq) GetLinkPath() string {
+	return s.LinkPath
+}
+
+// SetSrcPath sets the value of SrcPath.
+func (s *HardlinkReq) SetSrcPath(val string) {
+	s.SrcPath = val
+}
+
+// SetLinkPath sets the value of LinkPath.
+func (s *HardlinkReq) SetLinkPath(val string) {
+	s.LinkPath = val
+}
+
 type HealthOK struct {
 	Status OptString `json:"status"`
 }
@@ -510,88 +560,10 @@ func (s *HealthOK) SetStatus(val OptString) {
 	s.Status = val
 }
 
-type LstatOK struct {
-	Type     OptString   `json:"type"`
-	Size     OptInt64    `json:"size"`
-	Atime    OptDateTime `json:"atime"`
-	Mtime    OptDateTime `json:"mtime"`
-	Ctime    OptDateTime `json:"ctime"`
-	Flags    OptString   `json:"flags"`
-	Revision OptString   `json:"revision"`
-}
-
-// GetType returns the value of Type.
-func (s *LstatOK) GetType() OptString {
-	return s.Type
-}
-
-// GetSize returns the value of Size.
-func (s *LstatOK) GetSize() OptInt64 {
-	return s.Size
-}
-
-// GetAtime returns the value of Atime.
-func (s *LstatOK) GetAtime() OptDateTime {
-	return s.Atime
-}
-
-// GetMtime returns the value of Mtime.
-func (s *LstatOK) GetMtime() OptDateTime {
-	return s.Mtime
-}
-
-// GetCtime returns the value of Ctime.
-func (s *LstatOK) GetCtime() OptDateTime {
-	return s.Ctime
-}
-
-// GetFlags returns the value of Flags.
-func (s *LstatOK) GetFlags() OptString {
-	return s.Flags
-}
-
-// GetRevision returns the value of Revision.
-func (s *LstatOK) GetRevision() OptString {
-	return s.Revision
-}
-
-// SetType sets the value of Type.
-func (s *LstatOK) SetType(val OptString) {
-	s.Type = val
-}
-
-// SetSize sets the value of Size.
-func (s *LstatOK) SetSize(val OptInt64) {
-	s.Size = val
-}
-
-// SetAtime sets the value of Atime.
-func (s *LstatOK) SetAtime(val OptDateTime) {
-	s.Atime = val
-}
-
-// SetMtime sets the value of Mtime.
-func (s *LstatOK) SetMtime(val OptDateTime) {
-	s.Mtime = val
-}
-
-// SetCtime sets the value of Ctime.
-func (s *LstatOK) SetCtime(val OptDateTime) {
-	s.Ctime = val
-}
-
-// SetFlags sets the value of Flags.
-func (s *LstatOK) SetFlags(val OptString) {
-	s.Flags = val
-}
-
-// SetRevision sets the value of Revision.
-func (s *LstatOK) SetRevision(val OptString) {
-	s.Revision = val
-}
-
 // MkdirOK is response for Mkdir operation.
 type MkdirOK struct{}
+
+func (*MkdirOK) mkdirRes() {}
 
 type MkdirReq struct {
 	Path string `json:"path"`
@@ -607,8 +579,40 @@ func (s *MkdirReq) SetPath(val string) {
 	s.Path = val
 }
 
+// MountOK is response for Mount operation.
+type MountOK struct{}
+
+func (*MountOK) mountRes() {}
+
+type MountReq struct {
+	MountPath     string `json:"mountPath"`
+	SourceDriveID string `json:"sourceDriveID"`
+}
+
+// GetMountPath returns the value of MountPath.
+func (s *MountReq) GetMountPath() string {
+	return s.MountPath
+}
+
+// GetSourceDriveID returns the value of SourceDriveID.
+func (s *MountReq) GetSourceDriveID() string {
+	return s.SourceDriveID
+}
+
+// SetMountPath sets the value of MountPath.
+func (s *MountReq) SetMountPath(val string) {
+	s.MountPath = val
+}
+
+// SetSourceDriveID sets the value of SourceDriveID.
+func (s *MountReq) SetSourceDriveID(val string) {
+	s.SourceDriveID = val
+}
+
 // MvOK is response for Mv operation.
 type MvOK struct{}
+
+func (*MvOK) mvRes() {}
 
 type MvReq struct {
 	Sources     []string `json:"sources"`
@@ -634,6 +638,172 @@ func (s *MvReq) SetSources(val []string) {
 func (s *MvReq) SetDestination(val string) {
 	s.Destination = val
 }
+
+// POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
+// (chmod(2) bits | S_IFMT); ino is the inode id; the four
+// timestamps follow ext4 semantics. nlink is 0 for symlinks
+// and other special nodes.
+// Ref: #/components/schemas/NodeStat
+type NodeStat struct {
+	Type string `json:"type"`
+	Size int64  `json:"size"`
+	// POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and
+	// avoid the gosec G115 signed-overflow boundary.
+	Mode uint32 `json:"mode"`
+	// POSIX st_nlink (hardlink count). Unsigned 32-bit to match the internal representation.
+	Nlink uint32 `json:"nlink"`
+	// POSIX st_ino (inode id).
+	Ino uuid.UUID `json:"ino"`
+	// POSIX st_uid (owning user).
+	UID OptString `json:"uid"`
+	// POSIX st_gid (owning group).
+	Gid OptString `json:"gid"`
+	// POSIX st_atime.
+	Atime time.Time `json:"atime"`
+	// POSIX st_mtime.
+	Mtime time.Time `json:"mtime"`
+	// POSIX st_ctime (inode change time, not creation).
+	Ctime time.Time `json:"ctime"`
+	// Creation time (ext4 st_crtime).
+	Crtime time.Time `json:"crtime"`
+	// Ext4-style i_flags bitmask (hex).
+	Flags OptString `json:"flags"`
+	// Internal revision token (ULID) for optimistic concurrency.
+	Revision OptString `json:"revision"`
+}
+
+// GetType returns the value of Type.
+func (s *NodeStat) GetType() string {
+	return s.Type
+}
+
+// GetSize returns the value of Size.
+func (s *NodeStat) GetSize() int64 {
+	return s.Size
+}
+
+// GetMode returns the value of Mode.
+func (s *NodeStat) GetMode() uint32 {
+	return s.Mode
+}
+
+// GetNlink returns the value of Nlink.
+func (s *NodeStat) GetNlink() uint32 {
+	return s.Nlink
+}
+
+// GetIno returns the value of Ino.
+func (s *NodeStat) GetIno() uuid.UUID {
+	return s.Ino
+}
+
+// GetUID returns the value of UID.
+func (s *NodeStat) GetUID() OptString {
+	return s.UID
+}
+
+// GetGid returns the value of Gid.
+func (s *NodeStat) GetGid() OptString {
+	return s.Gid
+}
+
+// GetAtime returns the value of Atime.
+func (s *NodeStat) GetAtime() time.Time {
+	return s.Atime
+}
+
+// GetMtime returns the value of Mtime.
+func (s *NodeStat) GetMtime() time.Time {
+	return s.Mtime
+}
+
+// GetCtime returns the value of Ctime.
+func (s *NodeStat) GetCtime() time.Time {
+	return s.Ctime
+}
+
+// GetCrtime returns the value of Crtime.
+func (s *NodeStat) GetCrtime() time.Time {
+	return s.Crtime
+}
+
+// GetFlags returns the value of Flags.
+func (s *NodeStat) GetFlags() OptString {
+	return s.Flags
+}
+
+// GetRevision returns the value of Revision.
+func (s *NodeStat) GetRevision() OptString {
+	return s.Revision
+}
+
+// SetType sets the value of Type.
+func (s *NodeStat) SetType(val string) {
+	s.Type = val
+}
+
+// SetSize sets the value of Size.
+func (s *NodeStat) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetMode sets the value of Mode.
+func (s *NodeStat) SetMode(val uint32) {
+	s.Mode = val
+}
+
+// SetNlink sets the value of Nlink.
+func (s *NodeStat) SetNlink(val uint32) {
+	s.Nlink = val
+}
+
+// SetIno sets the value of Ino.
+func (s *NodeStat) SetIno(val uuid.UUID) {
+	s.Ino = val
+}
+
+// SetUID sets the value of UID.
+func (s *NodeStat) SetUID(val OptString) {
+	s.UID = val
+}
+
+// SetGid sets the value of Gid.
+func (s *NodeStat) SetGid(val OptString) {
+	s.Gid = val
+}
+
+// SetAtime sets the value of Atime.
+func (s *NodeStat) SetAtime(val time.Time) {
+	s.Atime = val
+}
+
+// SetMtime sets the value of Mtime.
+func (s *NodeStat) SetMtime(val time.Time) {
+	s.Mtime = val
+}
+
+// SetCtime sets the value of Ctime.
+func (s *NodeStat) SetCtime(val time.Time) {
+	s.Ctime = val
+}
+
+// SetCrtime sets the value of Crtime.
+func (s *NodeStat) SetCrtime(val time.Time) {
+	s.Crtime = val
+}
+
+// SetFlags sets the value of Flags.
+func (s *NodeStat) SetFlags(val OptString) {
+	s.Flags = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *NodeStat) SetRevision(val OptString) {
+	s.Revision = val
+}
+
+func (*NodeStat) lstatRes() {}
+func (*NodeStat) statRes()  {}
 
 // Ref: #/components/schemas/ObjectContent
 type ObjectContent struct {
@@ -913,6 +1083,52 @@ func (o OptGoogleNativeLoginReq) Or(d GoogleNativeLoginReq) GoogleNativeLoginReq
 	return d
 }
 
+// NewOptHardlinkReq returns new OptHardlinkReq with value set to v.
+func NewOptHardlinkReq(v HardlinkReq) OptHardlinkReq {
+	return OptHardlinkReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptHardlinkReq is optional HardlinkReq.
+type OptHardlinkReq struct {
+	Value HardlinkReq
+	Set   bool
+}
+
+// IsSet returns true if OptHardlinkReq was set.
+func (o OptHardlinkReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptHardlinkReq) Reset() {
+	var v HardlinkReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptHardlinkReq) SetTo(v HardlinkReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptHardlinkReq) Get() (v HardlinkReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptHardlinkReq) Or(d HardlinkReq) HardlinkReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt64 returns new OptInt64 with value set to v.
 func NewOptInt64(v int64) OptInt64 {
 	return OptInt64{
@@ -999,6 +1215,52 @@ func (o OptMkdirReq) Get() (v MkdirReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptMkdirReq) Or(d MkdirReq) MkdirReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptMountReq returns new OptMountReq with value set to v.
+func NewOptMountReq(v MountReq) OptMountReq {
+	return OptMountReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptMountReq is optional MountReq.
+type OptMountReq struct {
+	Value MountReq
+	Set   bool
+}
+
+// IsSet returns true if OptMountReq was set.
+func (o OptMountReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptMountReq) Reset() {
+	var v MountReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptMountReq) SetTo(v MountReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptMountReq) Get() (v MountReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptMountReq) Or(d MountReq) MountReq {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1745,8 +2007,39 @@ func (s *ReadlinkOK) SetTarget(val string) {
 	s.Target = val
 }
 
+func (*ReadlinkOK) readlinkRes() {}
+
+type RealpathOK struct {
+	DriveID string `json:"driveID"`
+	Path    string `json:"path"`
+}
+
+// GetDriveID returns the value of DriveID.
+func (s *RealpathOK) GetDriveID() string {
+	return s.DriveID
+}
+
+// GetPath returns the value of Path.
+func (s *RealpathOK) GetPath() string {
+	return s.Path
+}
+
+// SetDriveID sets the value of DriveID.
+func (s *RealpathOK) SetDriveID(val string) {
+	s.DriveID = val
+}
+
+// SetPath sets the value of Path.
+func (s *RealpathOK) SetPath(val string) {
+	s.Path = val
+}
+
+func (*RealpathOK) realpathRes() {}
+
 // RmNoContent is response for Rm operation.
 type RmNoContent struct{}
+
+func (*RmNoContent) rmRes() {}
 
 type RmReq struct {
 	Paths     []string `json:"paths"`
@@ -1771,86 +2064,6 @@ func (s *RmReq) SetPaths(val []string) {
 // SetRecursive sets the value of Recursive.
 func (s *RmReq) SetRecursive(val OptBool) {
 	s.Recursive = val
-}
-
-type StatOK struct {
-	Type     OptString   `json:"type"`
-	Size     OptInt64    `json:"size"`
-	Atime    OptDateTime `json:"atime"`
-	Mtime    OptDateTime `json:"mtime"`
-	Ctime    OptDateTime `json:"ctime"`
-	Flags    OptString   `json:"flags"`
-	Revision OptString   `json:"revision"`
-}
-
-// GetType returns the value of Type.
-func (s *StatOK) GetType() OptString {
-	return s.Type
-}
-
-// GetSize returns the value of Size.
-func (s *StatOK) GetSize() OptInt64 {
-	return s.Size
-}
-
-// GetAtime returns the value of Atime.
-func (s *StatOK) GetAtime() OptDateTime {
-	return s.Atime
-}
-
-// GetMtime returns the value of Mtime.
-func (s *StatOK) GetMtime() OptDateTime {
-	return s.Mtime
-}
-
-// GetCtime returns the value of Ctime.
-func (s *StatOK) GetCtime() OptDateTime {
-	return s.Ctime
-}
-
-// GetFlags returns the value of Flags.
-func (s *StatOK) GetFlags() OptString {
-	return s.Flags
-}
-
-// GetRevision returns the value of Revision.
-func (s *StatOK) GetRevision() OptString {
-	return s.Revision
-}
-
-// SetType sets the value of Type.
-func (s *StatOK) SetType(val OptString) {
-	s.Type = val
-}
-
-// SetSize sets the value of Size.
-func (s *StatOK) SetSize(val OptInt64) {
-	s.Size = val
-}
-
-// SetAtime sets the value of Atime.
-func (s *StatOK) SetAtime(val OptDateTime) {
-	s.Atime = val
-}
-
-// SetMtime sets the value of Mtime.
-func (s *StatOK) SetMtime(val OptDateTime) {
-	s.Mtime = val
-}
-
-// SetCtime sets the value of Ctime.
-func (s *StatOK) SetCtime(val OptDateTime) {
-	s.Ctime = val
-}
-
-// SetFlags sets the value of Flags.
-func (s *StatOK) SetFlags(val OptString) {
-	s.Flags = val
-}
-
-// SetRevision sets the value of Revision.
-func (s *StatOK) SetRevision(val OptString) {
-	s.Revision = val
 }
 
 // Ref: #/components/schemas/StorageConfig
@@ -1926,6 +2139,8 @@ func (s *StorageConfig) SetUsePathStyle(val OptBool) {
 // SymlinkOK is response for Symlink operation.
 type SymlinkOK struct{}
 
+func (*SymlinkOK) symlinkRes() {}
+
 type SymlinkReq struct {
 	Target   string `json:"target"`
 	LinkPath string `json:"linkPath"`
@@ -1954,6 +2169,8 @@ func (s *SymlinkReq) SetLinkPath(val string) {
 // TouchOK is response for Touch operation.
 type TouchOK struct{}
 
+func (*TouchOK) touchRes() {}
+
 type TouchReq struct {
 	Path string `json:"path"`
 }
@@ -1967,6 +2184,11 @@ func (s *TouchReq) GetPath() string {
 func (s *TouchReq) SetPath(val string) {
 	s.Path = val
 }
+
+// UnmountNoContent is response for Unmount operation.
+type UnmountNoContent struct{}
+
+func (*UnmountNoContent) unmountRes() {}
 
 // Ref: #/components/schemas/UploadCompleteRequest
 type UploadCompleteRequest struct {
@@ -2231,6 +2453,8 @@ func (s *WriteLargeReq) SetObject(val ObjectContent) {
 
 // WriteOK is response for Write operation.
 type WriteOK struct{}
+
+func (*WriteOK) writeRes() {}
 
 type WriteReq struct {
 	Path    string `json:"path"`

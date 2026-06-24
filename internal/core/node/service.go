@@ -67,6 +67,11 @@ func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node,
 // Centralizing the Save + error wrapping removes the five-line
 // "NewX, fmt.Errorf, repo.Save, fmt.Errorf" pattern that would
 // otherwise be repeated for each node type.
+//
+// Callers that need atomic create+link (i.e. so a partial failure
+// cannot leave an orphan node) must construct the node via
+// newNode() directly and pass it to Link, which inserts the
+// child inside the same transaction as the parent update.
 func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
 	n, err := factory()
 	if err != nil {

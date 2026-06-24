@@ -35,13 +35,12 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 	if err != nil {
 		return nil, fmt.Errorf("mount: %w", err)
 	}
-	mount, err := s.Node.CreateMount(ctx, sourceDriveID)
+	mount, err := node.NewMount(sourceDriveID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.Node.Link(ctx, parent, name, mount); err != nil {
-		_ = s.Node.Delete(ctx, mount.ID())
-		return nil, fmt.Errorf("mount: link: %w", err)
+	if err := s.createAndLink(ctx, mount, parent, name); err != nil {
+		return nil, fmt.Errorf("mount: %w", err)
 	}
 	return mount, nil
 }

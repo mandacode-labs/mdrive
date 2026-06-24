@@ -143,18 +143,6 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 	return ResolvedRef{DriveID: driveID, Path: path}, nil
 }
 
-// LstatForPermission is the no-symlink-follow variant of
-// ResolveForPermission (POSIX lstat(2)). It returns the
-// (DriveID, Path) pair for the permission check without
-// traversing symlinks.
-func (s *Service) LstatForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
-	res, err := s.Lstat(ctx, driveID, path)
-	if err != nil {
-		return ResolvedRef{}, err
-	}
-	return ResolvedRef{DriveID: res.DriveID, Path: path}, nil
-}
-
 // Lstat is the standalone no-symlink-follow variant. It returns
 // the final node without traversing symlinks (POSIX lstat(2)).
 // Mount traversal still happens; only the symlink follow is

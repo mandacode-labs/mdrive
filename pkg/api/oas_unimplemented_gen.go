@@ -42,10 +42,10 @@ func (UnimplementedHandler) AuthMe(ctx context.Context) (r *User, _ error) {
 
 // Cat implements cat operation.
 //
-// Read file contents.
+// Read file contents (POSIX open(O_RDONLY)).
 //
 // GET /v1/drives/{driveID}/fs/cat
-func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatOK, _ error) {
+func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -121,6 +121,15 @@ func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogle
 	return r, ht.ErrNotImplemented
 }
 
+// Hardlink implements hardlink operation.
+//
+// Create a hard link (POSIX link(2)).
+//
+// POST /v1/drives/{driveID}/fs/hardlink
+func (UnimplementedHandler) Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (r HardlinkRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Health implements health operation.
 //
 // Health check.
@@ -159,10 +168,10 @@ func (UnimplementedHandler) ListDrives(ctx context.Context) (r []Drive, _ error)
 
 // Ls implements ls operation.
 //
-// List directory contents.
+// List directory contents (POSIX opendir/readdir).
 //
 // GET /v1/drives/{driveID}/fs/ls
-func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r *DirContent, _ error) {
+func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r LsRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -171,26 +180,35 @@ func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r *DirCont
 // Get file metadata without following symlinks (POSIX lstat(2)).
 //
 // GET /v1/drives/{driveID}/fs/lstat
-func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r *LstatOK, _ error) {
+func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r LstatRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
 // Mkdir implements mkdir operation.
 //
-// Create a directory.
+// Create a directory (POSIX mkdir(2)).
 //
 // POST /v1/drives/{driveID}/fs/mkdir
-func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) (r MkdirRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Mount implements mount operation.
+//
+// Bind-mount another drive at a path (POSIX mount-like).
+//
+// POST /v1/drives/{driveID}/fs/mount
+func (UnimplementedHandler) Mount(ctx context.Context, req OptMountReq, params MountParams) (r MountRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Mv implements mv operation.
 //
-// Move files or directories.
+// Move files or directories (POSIX rename(2)).
 //
 // POST /v1/drives/{driveID}/fs/mv
-func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParams) (r MvRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // PresignDownload implements presignDownload operation.
@@ -207,7 +225,16 @@ func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignD
 // Read a symbolic link's target (POSIX readlink(2)).
 //
 // GET /v1/drives/{driveID}/fs/readlink
-func (UnimplementedHandler) Readlink(ctx context.Context, params ReadlinkParams) (r *ReadlinkOK, _ error) {
+func (UnimplementedHandler) Readlink(ctx context.Context, params ReadlinkParams) (r ReadlinkRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Realpath implements realpath operation.
+//
+// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+//
+// GET /v1/drives/{driveID}/fs/realpath
+func (UnimplementedHandler) Realpath(ctx context.Context, params RealpathParams) (r RealpathRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -222,38 +249,47 @@ func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriv
 
 // Rm implements rm operation.
 //
-// Remove files or directories.
+// Remove files or directories (POSIX unlink/rmdir(2)).
 //
 // DELETE /v1/drives/{driveID}/fs
-func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParams) (r RmRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Stat implements stat operation.
 //
-// Get file metadata (follows symlinks, POSIX stat(2)).
+// Get file metadata, following symlinks (POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
-func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r *StatOK, _ error) {
+func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r StatRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
 // Symlink implements symlink operation.
 //
-// Create a symbolic link.
+// Create a symbolic link (POSIX symlink(2)).
 //
 // POST /v1/drives/{driveID}/fs/symlink
-func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) (r SymlinkRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Touch implements touch operation.
 //
-// Create an empty file.
+// Create an empty file (POSIX open(O_CREAT)).
 //
 // POST /v1/drives/{driveID}/fs/touch
-func (UnimplementedHandler) Touch(ctx context.Context, req OptTouchReq, params TouchParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Touch(ctx context.Context, req OptTouchReq, params TouchParams) (r TouchRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
+// Unmount implements unmount operation.
+//
+// Remove a bind mount (POSIX umount-like).
+//
+// DELETE /v1/drives/{driveID}/fs/unmount
+func (UnimplementedHandler) Unmount(ctx context.Context, params UnmountParams) (r UnmountRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // UpdateDrive implements updateDrive operation.
@@ -279,8 +315,8 @@ func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq
 // Write inline content to a file.
 //
 // PUT /v1/drives/{driveID}/fs/write
-func (UnimplementedHandler) Write(ctx context.Context, req OptWriteReq, params WriteParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Write(ctx context.Context, req OptWriteReq, params WriteParams) (r WriteRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // WriteLarge implements writeLarge operation.

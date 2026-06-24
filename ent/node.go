@@ -28,6 +28,12 @@ type Node struct {
 	Size int64 `json:"size,omitempty"`
 	// Nlink holds the value of the "nlink" field.
 	Nlink uint32 `json:"nlink,omitempty"`
+	// Mode holds the value of the "mode" field.
+	Mode uint32 `json:"mode,omitempty"`
+	// UID holds the value of the "uid" field.
+	UID string `json:"uid,omitempty"`
+	// Gid holds the value of the "gid" field.
+	Gid string `json:"gid,omitempty"`
 	// Content holds the value of the "content" field.
 	Content *[]byte `json:"content,omitempty"`
 	// Atime holds the value of the "atime" field.
@@ -52,9 +58,9 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case node.FieldContent:
 			values[i] = new([]byte)
-		case node.FieldSize, node.FieldNlink, node.FieldFlags:
+		case node.FieldSize, node.FieldNlink, node.FieldMode, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldType, node.FieldRevision:
+		case node.FieldType, node.FieldUID, node.FieldGid, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
 			values[i] = new(sql.NullTime)
@@ -110,6 +116,24 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field nlink", values[i])
 			} else if value.Valid {
 				_m.Nlink = uint32(value.Int64)
+			}
+		case node.FieldMode:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field mode", values[i])
+			} else if value.Valid {
+				_m.Mode = uint32(value.Int64)
+			}
+		case node.FieldUID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field uid", values[i])
+			} else if value.Valid {
+				_m.UID = value.String
+			}
+		case node.FieldGid:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field gid", values[i])
+			} else if value.Valid {
+				_m.Gid = value.String
 			}
 		case node.FieldContent:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -203,6 +227,15 @@ func (_m *Node) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("nlink=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Nlink))
+	builder.WriteString(", ")
+	builder.WriteString("mode=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Mode))
+	builder.WriteString(", ")
+	builder.WriteString("uid=")
+	builder.WriteString(_m.UID)
+	builder.WriteString(", ")
+	builder.WriteString("gid=")
+	builder.WriteString(_m.Gid)
 	builder.WriteString(", ")
 	if v := _m.Content; v != nil {
 		builder.WriteString("content=")

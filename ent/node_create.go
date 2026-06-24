@@ -91,6 +91,48 @@ func (_c *NodeCreate) SetNillableNlink(v *uint32) *NodeCreate {
 	return _c
 }
 
+// SetMode sets the "mode" field.
+func (_c *NodeCreate) SetMode(v uint32) *NodeCreate {
+	_c.mutation.SetMode(v)
+	return _c
+}
+
+// SetNillableMode sets the "mode" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableMode(v *uint32) *NodeCreate {
+	if v != nil {
+		_c.SetMode(*v)
+	}
+	return _c
+}
+
+// SetUID sets the "uid" field.
+func (_c *NodeCreate) SetUID(v string) *NodeCreate {
+	_c.mutation.SetUID(v)
+	return _c
+}
+
+// SetNillableUID sets the "uid" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableUID(v *string) *NodeCreate {
+	if v != nil {
+		_c.SetUID(*v)
+	}
+	return _c
+}
+
+// SetGid sets the "gid" field.
+func (_c *NodeCreate) SetGid(v string) *NodeCreate {
+	_c.mutation.SetGid(v)
+	return _c
+}
+
+// SetNillableGid sets the "gid" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableGid(v *string) *NodeCreate {
+	if v != nil {
+		_c.SetGid(*v)
+	}
+	return _c
+}
+
 // SetContent sets the "content" field.
 func (_c *NodeCreate) SetContent(v []byte) *NodeCreate {
 	_c.mutation.SetContent(v)
@@ -202,6 +244,18 @@ func (_c *NodeCreate) defaults() {
 		v := node.DefaultNlink
 		_c.mutation.SetNlink(v)
 	}
+	if _, ok := _c.mutation.Mode(); !ok {
+		v := node.DefaultMode
+		_c.mutation.SetMode(v)
+	}
+	if _, ok := _c.mutation.UID(); !ok {
+		v := node.DefaultUID
+		_c.mutation.SetUID(v)
+	}
+	if _, ok := _c.mutation.Gid(); !ok {
+		v := node.DefaultGid
+		_c.mutation.SetGid(v)
+	}
 	if _, ok := _c.mutation.Flags(); !ok {
 		v := node.DefaultFlags
 		_c.mutation.SetFlags(v)
@@ -229,6 +283,25 @@ func (_c *NodeCreate) check() error {
 	}
 	if _, ok := _c.mutation.Nlink(); !ok {
 		return &ValidationError{Name: "nlink", err: errors.New(`ent: missing required field "Node.nlink"`)}
+	}
+	if _, ok := _c.mutation.Mode(); !ok {
+		return &ValidationError{Name: "mode", err: errors.New(`ent: missing required field "Node.mode"`)}
+	}
+	if _, ok := _c.mutation.UID(); !ok {
+		return &ValidationError{Name: "uid", err: errors.New(`ent: missing required field "Node.uid"`)}
+	}
+	if v, ok := _c.mutation.UID(); ok {
+		if err := node.UIDValidator(v); err != nil {
+			return &ValidationError{Name: "uid", err: fmt.Errorf(`ent: validator failed for field "Node.uid": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Gid(); !ok {
+		return &ValidationError{Name: "gid", err: errors.New(`ent: missing required field "Node.gid"`)}
+	}
+	if v, ok := _c.mutation.Gid(); ok {
+		if err := node.GidValidator(v); err != nil {
+			return &ValidationError{Name: "gid", err: fmt.Errorf(`ent: validator failed for field "Node.gid": %w`, err)}
+		}
 	}
 	if v, ok := _c.mutation.Content(); ok {
 		if err := node.ContentValidator(v); err != nil {
@@ -312,6 +385,18 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Nlink(); ok {
 		_spec.SetField(node.FieldNlink, field.TypeUint32, value)
 		_node.Nlink = value
+	}
+	if value, ok := _c.mutation.Mode(); ok {
+		_spec.SetField(node.FieldMode, field.TypeUint32, value)
+		_node.Mode = value
+	}
+	if value, ok := _c.mutation.UID(); ok {
+		_spec.SetField(node.FieldUID, field.TypeString, value)
+		_node.UID = value
+	}
+	if value, ok := _c.mutation.Gid(); ok {
+		_spec.SetField(node.FieldGid, field.TypeString, value)
+		_node.Gid = value
 	}
 	if value, ok := _c.mutation.Content(); ok {
 		_spec.SetField(node.FieldContent, field.TypeBytes, value)

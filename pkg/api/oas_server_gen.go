@@ -28,10 +28,10 @@ type Handler interface {
 	AuthMe(ctx context.Context) (*User, error)
 	// Cat implements cat operation.
 	//
-	// Read file contents.
+	// Read file contents (POSIX open(O_RDONLY)).
 	//
 	// GET /v1/drives/{driveID}/fs/cat
-	Cat(ctx context.Context, params CatParams) (CatOK, error)
+	Cat(ctx context.Context, params CatParams) (CatRes, error)
 	// CompleteUpload implements completeUpload operation.
 	//
 	// Complete a presigned upload and create the object node.
@@ -80,6 +80,12 @@ type Handler interface {
 	//
 	// POST /auth/google/native
 	GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
+	// Hardlink implements hardlink operation.
+	//
+	// Create a hard link (POSIX link(2)).
+	//
+	// POST /v1/drives/{driveID}/fs/hardlink
+	Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Health implements health operation.
 	//
 	// Health check.
@@ -106,28 +112,34 @@ type Handler interface {
 	ListDrives(ctx context.Context) ([]Drive, error)
 	// Ls implements ls operation.
 	//
-	// List directory contents.
+	// List directory contents (POSIX opendir/readdir).
 	//
 	// GET /v1/drives/{driveID}/fs/ls
-	Ls(ctx context.Context, params LsParams) (*DirContent, error)
+	Ls(ctx context.Context, params LsParams) (LsRes, error)
 	// Lstat implements lstat operation.
 	//
 	// Get file metadata without following symlinks (POSIX lstat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/lstat
-	Lstat(ctx context.Context, params LstatParams) (*LstatOK, error)
+	Lstat(ctx context.Context, params LstatParams) (LstatRes, error)
 	// Mkdir implements mkdir operation.
 	//
-	// Create a directory.
+	// Create a directory (POSIX mkdir(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/mkdir
-	Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) error
+	Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) (MkdirRes, error)
+	// Mount implements mount operation.
+	//
+	// Bind-mount another drive at a path (POSIX mount-like).
+	//
+	// POST /v1/drives/{driveID}/fs/mount
+	Mount(ctx context.Context, req OptMountReq, params MountParams) (MountRes, error)
 	// Mv implements mv operation.
 	//
-	// Move files or directories.
+	// Move files or directories (POSIX rename(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/mv
-	Mv(ctx context.Context, req OptMvReq, params MvParams) error
+	Mv(ctx context.Context, req OptMvReq, params MvParams) (MvRes, error)
 	// PresignDownload implements presignDownload operation.
 	//
 	// Get a presigned download URL for an object node.
@@ -139,7 +151,13 @@ type Handler interface {
 	// Read a symbolic link's target (POSIX readlink(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/readlink
-	Readlink(ctx context.Context, params ReadlinkParams) (*ReadlinkOK, error)
+	Readlink(ctx context.Context, params ReadlinkParams) (ReadlinkRes, error)
+	// Realpath implements realpath operation.
+	//
+	// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+	//
+	// GET /v1/drives/{driveID}/fs/realpath
+	Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error)
 	// RestoreDrive implements restoreDrive operation.
 	//
 	// Restore a soft-deleted drive.
@@ -148,28 +166,34 @@ type Handler interface {
 	RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error)
 	// Rm implements rm operation.
 	//
-	// Remove files or directories.
+	// Remove files or directories (POSIX unlink/rmdir(2)).
 	//
 	// DELETE /v1/drives/{driveID}/fs
-	Rm(ctx context.Context, req OptRmReq, params RmParams) error
+	Rm(ctx context.Context, req OptRmReq, params RmParams) (RmRes, error)
 	// Stat implements stat operation.
 	//
-	// Get file metadata (follows symlinks, POSIX stat(2)).
+	// Get file metadata, following symlinks (POSIX stat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/stat
-	Stat(ctx context.Context, params StatParams) (*StatOK, error)
+	Stat(ctx context.Context, params StatParams) (StatRes, error)
 	// Symlink implements symlink operation.
 	//
-	// Create a symbolic link.
+	// Create a symbolic link (POSIX symlink(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/symlink
-	Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) error
+	Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) (SymlinkRes, error)
 	// Touch implements touch operation.
 	//
-	// Create an empty file.
+	// Create an empty file (POSIX open(O_CREAT)).
 	//
 	// POST /v1/drives/{driveID}/fs/touch
-	Touch(ctx context.Context, req OptTouchReq, params TouchParams) error
+	Touch(ctx context.Context, req OptTouchReq, params TouchParams) (TouchRes, error)
+	// Unmount implements unmount operation.
+	//
+	// Remove a bind mount (POSIX umount-like).
+	//
+	// DELETE /v1/drives/{driveID}/fs/unmount
+	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
 	// UpdateDrive implements updateDrive operation.
 	//
 	// Update a drive.
@@ -187,7 +211,7 @@ type Handler interface {
 	// Write inline content to a file.
 	//
 	// PUT /v1/drives/{driveID}/fs/write
-	Write(ctx context.Context, req OptWriteReq, params WriteParams) error
+	Write(ctx context.Context, req OptWriteReq, params WriteParams) (WriteRes, error)
 	// WriteLarge implements writeLarge operation.
 	//
 	// Create an S3-backed object node.

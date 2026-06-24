@@ -13,7 +13,7 @@ func (s *Service) Touch(ctx context.Context, driveID, path string) (*node.Node, 
 	if err != nil {
 		return nil, err
 	}
-	n, err := s.Node.Touch(ctx)
+	n, err := node.NewFile("")
 	if err != nil {
 		return nil, err
 	}

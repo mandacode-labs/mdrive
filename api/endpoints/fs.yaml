@@ -1,7 +1,7 @@
 mkdir:
   post:
     operationId: mkdir
-    summary: Create a directory
+    summary: Create a directory (POSIX mkdir(2))
     parameters:
       - name: driveID
         in: path
@@ -19,11 +19,17 @@ mkdir:
     responses:
       "200":
         description: Directory created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 touch:
   post:
     operationId: touch
-    summary: Create an empty file
+    summary: Create an empty file (POSIX open(O_CREAT))
     parameters:
       - name: driveID
         in: path
@@ -41,11 +47,17 @@ touch:
     responses:
       "200":
         description: File created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 rm:
   delete:
     operationId: rm
-    summary: Remove files or directories
+    summary: Remove files or directories (POSIX unlink/rmdir(2))
     parameters:
       - name: driveID
         in: path
@@ -66,11 +78,17 @@ rm:
     responses:
       "204":
         description: Deleted
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 mv:
   post:
     operationId: mv
-    summary: Move files or directories
+    summary: Move files or directories (POSIX rename(2))
     parameters:
       - name: driveID
         in: path
@@ -91,11 +109,17 @@ mv:
     responses:
       "200":
         description: Moved
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 ls:
   get:
     operationId: ls
-    summary: List directory contents
+    summary: List directory contents (POSIX opendir/readdir)
     parameters:
       - name: driveID
         in: path
@@ -114,11 +138,17 @@ ls:
           application/json:
             schema:
               $ref: "../openapi.yaml#/components/schemas/DirContent"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 cat:
   get:
     operationId: cat
-    summary: Read file contents
+    summary: Read file contents (POSIX open(O_RDONLY))
     parameters:
       - name: driveID
         in: path
@@ -134,6 +164,12 @@ cat:
         content:
           text/plain:
             schema: { type: string }
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 write:
   put:
@@ -156,6 +192,12 @@ write:
     responses:
       "200":
         description: Written
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 readlink:
   get:
@@ -180,11 +222,48 @@ readlink:
               required: [target]
               properties:
                 target: { type: string }
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+realpath:
+  get:
+    operationId: realpath
+    summary: Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: path
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "200":
+        description: Canonical path
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [driveID, path]
+              properties:
+                driveID: { type: string }
+                path: { type: string }
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 symlink:
   post:
     operationId: symlink
-    summary: Create a symbolic link
+    summary: Create a symbolic link (POSIX symlink(2))
     parameters:
       - name: driveID
         in: path
@@ -202,11 +281,96 @@ symlink:
     responses:
       "200":
         description: Symlink created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+hardlink:
+  post:
+    operationId: hardlink
+    summary: Create a hard link (POSIX link(2))
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [srcPath, linkPath]
+            properties:
+              srcPath: { type: string }
+              linkPath: { type: string }
+    responses:
+      "200":
+        description: Hardlink created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+mount:
+  post:
+    operationId: mount
+    summary: Bind-mount another drive at a path (POSIX mount-like)
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [mountPath, sourceDriveID]
+            properties:
+              mountPath: { type: string }
+              sourceDriveID: { type: string }
+    responses:
+      "200":
+        description: Mount created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+unmount:
+  delete:
+    operationId: unmount
+    summary: Remove a bind mount (POSIX umount-like)
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: mountPath
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "204":
+        description: Unmounted
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 stat:
   get:
     operationId: stat
-    summary: Get file metadata (follows symlinks, POSIX stat(2))
+    summary: Get file metadata, following symlinks (POSIX stat(2))
     parameters:
       - name: driveID
         in: path
@@ -222,15 +386,13 @@ stat:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                type: { type: string }
-                size: { type: integer, format: int64 }
-                atime: { type: string, format: date-time }
-                mtime: { type: string, format: date-time }
-                ctime: { type: string, format: date-time }
-                flags: { type: string }
-                revision: { type: string }
+              $ref: "../openapi.yaml#/components/schemas/NodeStat"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 lstat:
   get:
@@ -251,15 +413,13 @@ lstat:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                type: { type: string }
-                size: { type: integer, format: int64 }
-                atime: { type: string, format: date-time }
-                mtime: { type: string, format: date-time }
-                ctime: { type: string, format: date-time }
-                flags: { type: string }
-                revision: { type: string }
+              $ref: "../openapi.yaml#/components/schemas/NodeStat"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 object:
   post:

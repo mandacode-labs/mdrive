@@ -86,6 +86,9 @@ func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api.Drive, error) {
+	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+		return nil, err
+	}
 	d, err := h.drive.Get(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
@@ -94,6 +97,9 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (*api
 }
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (*api.Drive, error) {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
 	r := req.Value
 	var name, desc string
 	if r.Name.Set {
@@ -140,10 +146,15 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) ([]api.Drive, error) {
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (*api.StorageConfig, error) {
+	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+		return nil, err
+	}
 	s, err := h.drive.GetStorage(ctx, h.userID(ctx), params.DriveID)
 	if err != nil {
 		return nil, err
 	}
+	// Return only non-credential fields. AccessKey/SecretKey are
+	// write-only and must not leak through a read endpoint.
 	return &api.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),

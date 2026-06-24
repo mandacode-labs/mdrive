@@ -13,7 +13,7 @@ func (s *Service) Mkdir(ctx context.Context, driveID, path string) (*node.Node, 
 	if err != nil {
 		return nil, err
 	}
-	dir, err := s.Node.CreateDirectory(ctx)
+	dir, err := node.NewDirectory()
 	if err != nil {
 		return nil, err
 	}
