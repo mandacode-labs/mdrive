@@ -16,23 +16,18 @@ var (
 	_ DriveClient = (*drive.Service)(nil)
 )
 
+// NodeClient is the subset of node.Service methods vfs needs to
+// orchestrate the inode tree. vfs does not create nodes (the
+// type-specific factories NewFile/NewDirectory/... in core/node
+// do that, called by the vfs op entry points after the path
+// has been resolved). vfs links, unlinks, moves, saves, and
+// looks up by ID — that's it.
 type NodeClient interface {
-	CreateFile(ctx context.Context, content string) (*node.Node, error)
-	Touch(ctx context.Context) (*node.Node, error)
-	CreateDirectory(ctx context.Context) (*node.Node, error)
-	CreateSymlink(ctx context.Context, target string) (*node.Node, error)
-	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
-	CreateMount(ctx context.Context, sourceDriveID string) (*node.Node, error)
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
-	BulkLink(ctx context.Context, parent *node.Node, entries map[string]*node.Node) error
 	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
-	BulkUnlink(ctx context.Context, parent *node.Node, names []string) ([]*node.Node, error)
-	UnlinkOrReplace(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
 	MoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) error
 	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
 	Save(ctx context.Context, n *node.Node) error
-	Delete(ctx context.Context, id uuid.UUID) error
-	WithTx(ctx context.Context, fn func(tx *node.Service) error) error
 }
 
 // DriveClient is the data-access contract vfs needs from a drive

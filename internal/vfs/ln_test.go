@@ -4,11 +4,22 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
+
+// mustRootID returns the root node ID of the vfs test service.
+// Tests that need to link new nodes under the root can use this
+// instead of building their own root.
+func mustRootID(t *testing.T, svc *Service) uuid.UUID {
+	t.Helper()
+	d, err := svc.Drive.GetByID(context.Background(), "d1")
+	require.NoError(t, err)
+	id := d.RootNodeID()
+	require.NotNil(t, id)
+	return *id
+}
 
 func TestSymlink(t *testing.T) {
 	ctx := context.Background()
@@ -21,20 +32,13 @@ func TestSymlink(t *testing.T) {
 
 func TestHardlink(t *testing.T) {
 	ctx := context.Background()
-	repo := newFakeRepo()
-	nodeSvc := node.NewService(repo)
-	root, err := nodeSvc.CreateDirectory(ctx)
+	svc, nodeSvc := newTestServiceWithNode()
+	root, err := nodeSvc.GetByID(ctx, mustRootID(t, svc))
 	require.NoError(t, err)
-	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  &fakeDrive{rootID: root.ID()},
-		Logger: nil,
-	})
 
-	src, err := svc.Node.CreateFile(ctx, "hello")
+	src, err := nodeSvc.CreateFile(ctx, "hello")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(ctx, src))
-	require.NoError(t, svc.Node.Link(ctx, root, "src", src))
+	require.NoError(t, nodeSvc.Link(ctx, root, "src", src))
 
 	link, err := svc.Hardlink(ctx, "d1", "/src", "/hard")
 	require.NoError(t, err)
