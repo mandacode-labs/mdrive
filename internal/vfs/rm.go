@@ -3,7 +3,9 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -28,10 +30,16 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 		return err
 	}
 
+	start := time.Now()
 	var allRefs []ObjectRef
 	for _, p := range paths {
 		refs, err := s.rmPath(ctx, rootID, p, recursive)
 		if err != nil {
+			s.log().Debug("vfs.rm.failed",
+				slog.String("drive_id", driveID),
+				slog.String("path", p),
+				slog.String("err", err.Error()),
+			)
 			return err
 		}
 		allRefs = append(allRefs, refs...)
@@ -39,10 +47,28 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 
 	if len(allRefs) > 0 && s.GC != nil {
 		if err := s.GC.InsertTombstones(ctx, allRefs); err != nil {
+			// Logged at error: this leaves orphan S3 objects that
+			// must be reclaimed by the gc orphan-scan job.
+			s.log().Error("vfs.rm.tombstone_failed",
+				slog.String("drive_id", driveID),
+				slog.Int("ref_count", len(allRefs)),
+				slog.String("err", err.Error()),
+			)
 			return fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err)
 		}
+		s.log().Info("vfs.rm.tombstoned",
+			slog.String("drive_id", driveID),
+			slog.Int("ref_count", len(allRefs)),
+		)
 	}
 
+	s.log().Debug("vfs.rm.completed",
+		slog.String("drive_id", driveID),
+		slog.Int("path_count", len(paths)),
+		slog.Bool("recursive", recursive),
+		slog.Int("tombstoned", len(allRefs)),
+		slog.Duration("elapsed", time.Since(start)),
+	)
 	return nil
 }
 

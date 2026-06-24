@@ -2,6 +2,7 @@ package vfs
 
 import (
 	"context"
+	"log/slog"
 	"path"
 	"strings"
 
@@ -184,7 +185,9 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
+	hops := 0
 	for hop := 0; hop < maxMountHops; hop++ {
+		hops = hop + 1
 		r := s.newResolver()
 		rootID, err := s.rootNodeID(ctx, currentDrive)
 		if err != nil {
@@ -195,6 +198,14 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 			return "", nil, err
 		}
 		if out.Remaining == "" {
+			if hops > 1 {
+				s.log().Debug("vfs.resolve.mount_traversed",
+					slog.String("from_drive", driveID),
+					slog.String("to_drive", currentDrive),
+					slog.Int("hops", hops),
+					slog.String("path", path),
+				)
+			}
 			return currentDrive, out.Node, nil
 		}
 		// The result is a mount node. Follow it into the source drive
@@ -204,12 +215,22 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 			return "", nil, err
 		}
 		if _, seen := visited[srcDriveID]; seen {
+			s.log().Warn("vfs.resolve.mount_cycle",
+				slog.String("from_drive", driveID),
+				slog.String("cycle_drive", srcDriveID),
+				slog.String("path", path),
+			)
 			return "", nil, ErrMountCycle
 		}
 		visited[srcDriveID] = struct{}{}
 		currentDrive = srcDriveID
 		currentPath = "/" + out.Remaining
 	}
+	s.log().Warn("vfs.resolve.path_too_deep",
+		slog.String("from_drive", driveID),
+		slog.Int("max_hops", maxMountHops),
+		slog.String("path", path),
+	)
 	return "", nil, ErrPathTooDeep
 }
 

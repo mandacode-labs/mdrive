@@ -3,6 +3,8 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
@@ -25,6 +27,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		return ErrCrossDrive
 	}
 
+	start := time.Now()
 	var (
 		overwriteRefs []ObjectRef
 		err           error
@@ -35,14 +38,37 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		overwriteRefs, err = s.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
 	}
 	if err != nil {
+		s.log().Debug("vfs.mv.failed",
+			slog.String("drive_id", srcDriveID),
+			slog.Int("src_count", len(srcPaths)),
+			slog.String("dst_path", dstPath),
+			slog.String("err", err.Error()),
+		)
 		return err
 	}
 
 	if len(overwriteRefs) > 0 && s.GC != nil {
 		if err := s.GC.InsertTombstones(ctx, overwriteRefs); err != nil {
+			s.log().Error("vfs.mv.tombstone_failed",
+				slog.String("drive_id", srcDriveID),
+				slog.Int("ref_count", len(overwriteRefs)),
+				slog.String("err", err.Error()),
+			)
 			return fmt.Errorf("mv: post-commit tombstone enqueue failed (nodes already moved): %w", err)
 		}
+		s.log().Info("vfs.mv.tombstoned",
+			slog.String("drive_id", srcDriveID),
+			slog.Int("ref_count", len(overwriteRefs)),
+		)
 	}
+
+	s.log().Debug("vfs.mv.completed",
+		slog.String("drive_id", srcDriveID),
+		slog.Int("src_count", len(srcPaths)),
+		slog.String("dst_path", dstPath),
+		slog.Int("tombstoned", len(overwriteRefs)),
+		slog.Duration("elapsed", time.Since(start)),
+	)
 	return nil
 }
 
