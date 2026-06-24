@@ -57,6 +57,10 @@ test:
 test-integration:
 	go test -count=1 ./test/integration/... -tags integration -timeout 5m -coverprofile=cover-integration.out
 
+.PHONY: test-integration-ent
+test-integration-ent:
+	go test -count=1 ./test/integration/ent/... -tags integration_ent -timeout 5m -coverprofile=cover-integration-ent.out
+
 .PHONY: test-e2e
 test-e2e:
 	go test -count=1 ./test/e2e/... -timeout 10m -coverprofile=cover-e2e.out
