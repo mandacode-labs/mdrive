@@ -31,6 +31,20 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 	if src == nil || src.RootNodeID() == nil {
 		return nil, fmt.Errorf("mount: source drive has no root node")
 	}
+	// Reject soft-deleted source drives. Mounting a deleted drive
+	// would let a caller reach data through a path that the rest
+	// of the system treats as gone: the drive is hidden from
+	// ListByOwner, restored only by an admin, and the
+	// rootNodeID may be released when the soft-delete is
+	// eventually hardened. Same check on the target drive is
+	// the caller's responsibility: a mount can be removed by
+	// the drive's owner (or admin via the cli) before they
+	// soft-delete it, but mounting into a soft-deleted target
+	// is a separate question that the handler layer should
+	// gate.
+	if src.DeletedAt() != nil {
+		return nil, fmt.Errorf("mount: source drive %s is soft-deleted", sourceDriveID)
+	}
 
 	parent, name, err := s.requireEditPath(ctx, driveID, mountPath)
 	if err != nil {
