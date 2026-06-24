@@ -260,14 +260,23 @@ func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatR
 // readlink(2)). The path must resolve to a symlink; otherwise
 // ErrInvalidType is returned.
 func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.ReadlinkRes, error) {
-	res, err := h.vfs.Lstat(ctx, params.DriveID, params.Path)
+	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
 	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
 		return nil, err
 	}
-	target, err := res.Node.Readlink()
+	// Re-resolve the symlink target inside the resolved drive.
+	finalPath := res.Path
+	if res.DriveID != params.DriveID {
+		finalPath = "/" + res.Path
+	}
+	out, err := h.vfs.Lstat(ctx, res.DriveID, finalPath)
+	if err != nil {
+		return nil, err
+	}
+	target, err := out.Node.Readlink()
 	if err != nil {
 		return nil, err
 	}
