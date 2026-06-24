@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
 // Repository is the data-access contract for drives.
@@ -23,11 +25,10 @@ type Repository interface {
 	WithTx(ctx context.Context, fn func(Repository) error) error
 }
 
-// Exister checks whether an entity exists. Used to verify owner existence
-// without coupling to the user package.
-type Exister interface {
-	Exists(ctx context.Context, id string) (bool, error)
-}
+// Exister checks whether a user exists. drive uses this to verify
+// the owner before creating the drive row. The interface lives
+// in the user package; drive depends on it.
+type Exister = user.Exister
 
 // RootCreator creates the root directory node for a drive.
 // Implemented by the node.Service in the application layer (or by a stub
