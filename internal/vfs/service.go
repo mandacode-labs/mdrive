@@ -135,6 +135,14 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 	return Resolved{DriveID: drive, Node: n}, nil
 }
 
+// ResolvedRef is the partial resolution returned by ResolveForPermission:
+// the drive the path lands in (after stopping at the first mount) and
+// the remaining path within that drive.
+type ResolvedRef struct {
+	DriveID string
+	Path    string
+}
+
 // ResolveForPermission is the variant of Resolve for callers that
 // need to perform a permission check on the resolved drive (the
 // one the path actually lands in, not the requested driveID). It
@@ -142,11 +150,6 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 // mount points plus the remaining path within that drive, so the
 // caller can both check permission and then re-resolve the rest of
 // the path within the source drive. Symlinks are followed.
-type ResolvedRef struct {
-	DriveID string
-	Path    string
-}
-
 func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
 	r := s.newResolver()
 	rootID, err := s.rootNodeID(ctx, driveID)
