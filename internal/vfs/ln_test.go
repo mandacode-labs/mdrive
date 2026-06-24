@@ -10,16 +10,16 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-func TestLnSymlink(t *testing.T) {
+func TestSymlink(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService()
 
-	link, err := svc.Ln(ctx, "d1", "/target", "/link", Symlink)
+	link, err := svc.Symlink(ctx, "d1", "/target", "/link")
 	require.NoError(t, err)
 	assert.True(t, link.IsSymlink(), "result should be a symlink node")
 }
 
-func TestLnHardlink(t *testing.T) {
+func TestHardlink(t *testing.T) {
 	ctx := context.Background()
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
@@ -36,15 +36,15 @@ func TestLnHardlink(t *testing.T) {
 	require.NoError(t, repo.Save(ctx, src))
 	require.NoError(t, svc.Node.Link(ctx, root, "src", src))
 
-	link, err := svc.Ln(ctx, "d1", "/src", "/hard", Hardlink)
+	link, err := svc.Hardlink(ctx, "d1", "/src", "/hard")
 	require.NoError(t, err)
 	assert.Equal(t, src.ID(), link.ID(), "hardlink should share the source inode")
 	assert.Equal(t, uint32(2), link.NLink(), "nlink should be incremented")
 }
 
-func TestLnHardlinkRejectsDirectory(t *testing.T) {
+func TestHardlinkRejectsDirectory(t *testing.T) {
 	ctx := context.Background()
 	svc := newTestService()
-	_, err := svc.Ln(ctx, "d1", "/", "/hard", Hardlink)
+	_, err := svc.Hardlink(ctx, "d1", "/", "/hard")
 	assert.ErrorIs(t, err, ErrHardlinkNotSupported)
 }

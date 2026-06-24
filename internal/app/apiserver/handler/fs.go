@@ -7,7 +7,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app/apputils"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/permission"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -147,11 +146,11 @@ func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api
 	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
 		return err
 	}
-	_, err := h.vfs.Ln(ctx, params.DriveID, r.Target, r.LinkPath, vfs.Symlink)
+	_, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath)
 	return err
 }
 
-func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK, error) {
+func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes, error) {
 	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
@@ -173,7 +172,7 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (*api.StatOK,
 // Lstat is the no-symlink-follow variant of Stat (POSIX lstat(2)).
 // If the path resolves to a symlink, the returned metadata describes
 // the symlink itself, not its target.
-func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (*api.LstatOK, error) {
+func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatRes, error) {
 	ref, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
@@ -210,26 +209,24 @@ func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (*api
 	return &api.ReadlinkOK{Target: target}, nil
 }
 
-func statToAPI(n *node.Node) *api.StatOK {
-	return &api.StatOK{
-		Type:     apputils.OptString(n.Type().String()),
-		Size:     api.OptInt64{Value: n.Size(), Set: true},
-		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
-		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
-		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
+func statToAPI(n *node.Node) *api.NodeStat {
+	return &api.NodeStat{
+		Type:     n.Type().String(),
+		Size:     n.Size(),
+		Mode:     int32(n.Mode()),
+		Nlink:    int32(n.NLink()),
+		Ino:      n.ID(),
+		UID:      apputils.OptString(n.UID()),
+		Gid:      apputils.OptString(n.GID()),
+		Atime:    n.ATime(),
+		Mtime:    n.MTime(),
+		Ctime:    n.CTime(),
+		Crtime:   n.CRTime(),
 		Flags:    apputils.OptString(n.Flags().String()),
 		Revision: apputils.OptString(n.Revision().String()),
 	}
 }
 
-func lstatToAPI(n *node.Node) *api.LstatOK {
-	return &api.LstatOK{
-		Type:     apputils.OptString(n.Type().String()),
-		Size:     api.OptInt64{Value: n.Size(), Set: true},
-		Atime:    api.OptDateTime{Value: n.ATime(), Set: true},
-		Mtime:    api.OptDateTime{Value: n.MTime(), Set: true},
-		Ctime:    api.OptDateTime{Value: n.CTime(), Set: true},
-		Flags:    apputils.OptString(n.Flags().String()),
-		Revision: apputils.OptString(n.Revision().String()),
-	}
+func lstatToAPI(n *node.Node) *api.NodeStat {
+	return statToAPI(n)
 }

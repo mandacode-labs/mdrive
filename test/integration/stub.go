@@ -57,8 +57,12 @@ func (s *stubFS) Stat(context.Context, string, string) (*node.Node, error) {
 	n, _ := node.NewFile("")
 	return n, nil
 }
-func (s *stubFS) Ln(context.Context, string, string, string, vfs.LinkMode) (*node.Node, error) {
+func (s *stubFS) Symlink(context.Context, string, string, string) (*node.Node, error) {
 	n, _ := node.NewSymlink("")
+	return n, nil
+}
+func (s *stubFS) Hardlink(context.Context, string, string, string) (*node.Node, error) {
+	n, _ := node.NewFile("")
 	return n, nil
 }
 
