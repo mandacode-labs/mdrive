@@ -526,7 +526,7 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 
 // handleCatRequest handles cat operation.
 //
-// Read file contents.
+// Read file contents (POSIX open(O_RDONLY)).
 //
 // GET /v1/drives/{driveID}/fs/cat
 func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -657,12 +657,12 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 
 	var rawBody []byte
 
-	var response CatOK
+	var response CatRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CatOperation,
-			OperationSummary: "Read file contents",
+			OperationSummary: "Read file contents (POSIX open(O_RDONLY))",
 			OperationID:      "cat",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -682,7 +682,7 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 		type (
 			Request  = struct{}
 			Params   = CatParams
-			Response = CatOK
+			Response = CatRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2110,7 +2110,7 @@ func (s *Server) handleGoogleNativeLoginRequest(args [0]string, argsEscaped bool
 
 // handleHardlinkRequest handles hardlink operation.
 //
-// Create a hard link (POSIX ln(1)).
+// Create a hard link (POSIX link(2)).
 //
 // POST /v1/drives/{driveID}/fs/hardlink
 func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2261,7 +2261,7 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    HardlinkOperation,
-			OperationSummary: "Create a hard link (POSIX ln(1))",
+			OperationSummary: "Create a hard link (POSIX link(2))",
 			OperationID:      "hardlink",
 			Body:             request,
 			RawBody:          rawBody,
@@ -2982,7 +2982,7 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 
 // handleLsRequest handles ls operation.
 //
-// List directory contents.
+// List directory contents (POSIX opendir/readdir).
 //
 // GET /v1/drives/{driveID}/fs/ls
 func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3113,12 +3113,12 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 
 	var rawBody []byte
 
-	var response *DirContent
+	var response LsRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    LsOperation,
-			OperationSummary: "List directory contents",
+			OperationSummary: "List directory contents (POSIX opendir/readdir)",
 			OperationID:      "ls",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -3138,7 +3138,7 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 		type (
 			Request  = struct{}
 			Params   = LsParams
-			Response = *DirContent
+			Response = LsRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3364,7 +3364,7 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMkdirRequest handles mkdir operation.
 //
-// Create a directory.
+// Create a directory (POSIX mkdir(2)).
 //
 // POST /v1/drives/{driveID}/fs/mkdir
 func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3510,12 +3510,12 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		}
 	}()
 
-	var response *MkdirOK
+	var response MkdirRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    MkdirOperation,
-			OperationSummary: "Create a directory",
+			OperationSummary: "Create a directory (POSIX mkdir(2))",
 			OperationID:      "mkdir",
 			Body:             request,
 			RawBody:          rawBody,
@@ -3531,7 +3531,7 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		type (
 			Request  = OptMkdirReq
 			Params   = MkdirParams
-			Response = *MkdirOK
+			Response = MkdirRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3542,12 +3542,12 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 			mreq,
 			unpackMkdirParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.Mkdir(ctx, request, params)
+				response, err = s.h.Mkdir(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.Mkdir(ctx, request, params)
+		response, err = s.h.Mkdir(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -3768,7 +3768,7 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMvRequest handles mv operation.
 //
-// Move files or directories.
+// Move files or directories (POSIX rename(2)).
 //
 // POST /v1/drives/{driveID}/fs/mv
 func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3914,12 +3914,12 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		}
 	}()
 
-	var response *MvOK
+	var response MvRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    MvOperation,
-			OperationSummary: "Move files or directories",
+			OperationSummary: "Move files or directories (POSIX rename(2))",
 			OperationID:      "mv",
 			Body:             request,
 			RawBody:          rawBody,
@@ -3935,7 +3935,7 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		type (
 			Request  = OptMvReq
 			Params   = MvParams
-			Response = *MvOK
+			Response = MvRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -3946,12 +3946,12 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 			mreq,
 			unpackMvParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.Mv(ctx, request, params)
+				response, err = s.h.Mv(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.Mv(ctx, request, params)
+		response, err = s.h.Mv(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -4292,7 +4292,7 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 
 	var rawBody []byte
 
-	var response *ReadlinkOK
+	var response ReadlinkRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4317,7 +4317,7 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 		type (
 			Request  = struct{}
 			Params   = ReadlinkParams
-			Response = *ReadlinkOK
+			Response = ReadlinkRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4342,6 +4342,197 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 	}
 
 	if err := encodeReadlinkResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
+// handleRealpathRequest handles realpath operation.
+//
+// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+//
+// GET /v1/drives/{driveID}/fs/realpath
+func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("realpath"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/v1/drives/{driveID}/fs/realpath"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), RealpathOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(codeAttr)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: RealpathOperation,
+			ID:   "realpath",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityBearerAuth(ctx, RealpathOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "BearerAuth",
+					Err:              err,
+				}
+				defer recordError("Security:BearerAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeRealpathParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+
+	var response RealpathRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    RealpathOperation,
+			OperationSummary: "Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))",
+			OperationID:      "realpath",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "driveID",
+					In:   "path",
+				}: params.DriveID,
+				{
+					Name: "path",
+					In:   "query",
+				}: params.Path,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = RealpathParams
+			Response = RealpathRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackRealpathParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.Realpath(ctx, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.Realpath(ctx, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeRealpathResponse(response, w, span); err != nil {
 		defer recordError("EncodeResponse", err)
 		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
 			s.cfg.ErrorHandler(ctx, w, r, err)
@@ -4539,7 +4730,7 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 
 // handleRmRequest handles rm operation.
 //
-// Remove files or directories.
+// Remove files or directories (POSIX unlink/rmdir(2)).
 //
 // DELETE /v1/drives/{driveID}/fs
 func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4685,12 +4876,12 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		}
 	}()
 
-	var response *RmNoContent
+	var response RmRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    RmOperation,
-			OperationSummary: "Remove files or directories",
+			OperationSummary: "Remove files or directories (POSIX unlink/rmdir(2))",
 			OperationID:      "rm",
 			Body:             request,
 			RawBody:          rawBody,
@@ -4706,7 +4897,7 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		type (
 			Request  = OptRmReq
 			Params   = RmParams
-			Response = *RmNoContent
+			Response = RmRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4717,12 +4908,12 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 			mreq,
 			unpackRmParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.Rm(ctx, request, params)
+				response, err = s.h.Rm(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.Rm(ctx, request, params)
+		response, err = s.h.Rm(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -4741,7 +4932,7 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 
 // handleStatRequest handles stat operation.
 //
-// Get file metadata (follows symlinks, POSIX stat(2)).
+// Get file metadata, following symlinks (POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4877,7 +5068,7 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    StatOperation,
-			OperationSummary: "Get file metadata (follows symlinks, POSIX stat(2))",
+			OperationSummary: "Get file metadata, following symlinks (POSIX stat(2))",
 			OperationID:      "stat",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -4932,7 +5123,7 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 
 // handleSymlinkRequest handles symlink operation.
 //
-// Create a symbolic link.
+// Create a symbolic link (POSIX symlink(2)).
 //
 // POST /v1/drives/{driveID}/fs/symlink
 func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5083,7 +5274,7 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    SymlinkOperation,
-			OperationSummary: "Create a symbolic link",
+			OperationSummary: "Create a symbolic link (POSIX symlink(2))",
 			OperationID:      "symlink",
 			Body:             request,
 			RawBody:          rawBody,
@@ -5134,7 +5325,7 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 
 // handleTouchRequest handles touch operation.
 //
-// Create an empty file.
+// Create an empty file (POSIX open(O_CREAT)).
 //
 // POST /v1/drives/{driveID}/fs/touch
 func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5280,12 +5471,12 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 		}
 	}()
 
-	var response *TouchOK
+	var response TouchRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    TouchOperation,
-			OperationSummary: "Create an empty file",
+			OperationSummary: "Create an empty file (POSIX open(O_CREAT))",
 			OperationID:      "touch",
 			Body:             request,
 			RawBody:          rawBody,
@@ -5301,7 +5492,7 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 		type (
 			Request  = OptTouchReq
 			Params   = TouchParams
-			Response = *TouchOK
+			Response = TouchRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -5312,12 +5503,12 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 			mreq,
 			unpackTouchParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.Touch(ctx, request, params)
+				response, err = s.h.Touch(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.Touch(ctx, request, params)
+		response, err = s.h.Touch(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)
@@ -6062,7 +6253,7 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 		}
 	}()
 
-	var response *WriteOK
+	var response WriteRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -6083,7 +6274,7 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 		type (
 			Request  = OptWriteReq
 			Params   = WriteParams
-			Response = *WriteOK
+			Response = WriteRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -6094,12 +6285,12 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 			mreq,
 			unpackWriteParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				err = s.h.Write(ctx, request, params)
+				response, err = s.h.Write(ctx, request, params)
 				return response, err
 			},
 		)
 	} else {
-		err = s.h.Write(ctx, request, params)
+		response, err = s.h.Write(ctx, request, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)

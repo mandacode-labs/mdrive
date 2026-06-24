@@ -56,6 +56,8 @@ func (s CatOK) Read(p []byte) (n int, err error) {
 	return s.Data.Read(p)
 }
 
+func (*CatOK) catRes() {}
+
 // DeleteDriveNoContent is response for DeleteDrive operation.
 type DeleteDriveNoContent struct{}
 
@@ -73,6 +75,8 @@ func (s *DirContent) GetEntries() []DirEntry {
 func (s *DirContent) SetEntries(val []DirEntry) {
 	s.Entries = val
 }
+
+func (*DirContent) lsRes() {}
 
 // Ref: #/components/schemas/DirEntry
 type DirEntry struct {
@@ -449,17 +453,26 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
+func (*ErrorStatusCode) catRes()             {}
 func (*ErrorStatusCode) completeUploadRes()  {}
 func (*ErrorStatusCode) createDriveRes()     {}
 func (*ErrorStatusCode) hardlinkRes()        {}
 func (*ErrorStatusCode) initiateUploadRes()  {}
+func (*ErrorStatusCode) lsRes()              {}
 func (*ErrorStatusCode) lstatRes()           {}
+func (*ErrorStatusCode) mkdirRes()           {}
 func (*ErrorStatusCode) mountRes()           {}
+func (*ErrorStatusCode) mvRes()              {}
 func (*ErrorStatusCode) presignDownloadRes() {}
+func (*ErrorStatusCode) readlinkRes()        {}
+func (*ErrorStatusCode) realpathRes()        {}
+func (*ErrorStatusCode) rmRes()              {}
 func (*ErrorStatusCode) statRes()            {}
 func (*ErrorStatusCode) symlinkRes()         {}
+func (*ErrorStatusCode) touchRes()           {}
 func (*ErrorStatusCode) unmountRes()         {}
 func (*ErrorStatusCode) writeLargeRes()      {}
+func (*ErrorStatusCode) writeRes()           {}
 
 // GoogleLoginFound is response for GoogleLogin operation.
 type GoogleLoginFound struct{}
@@ -550,6 +563,8 @@ func (s *HealthOK) SetStatus(val OptString) {
 // MkdirOK is response for Mkdir operation.
 type MkdirOK struct{}
 
+func (*MkdirOK) mkdirRes() {}
+
 type MkdirReq struct {
 	Path string `json:"path"`
 }
@@ -596,6 +611,8 @@ func (s *MountReq) SetSourceDriveID(val string) {
 
 // MvOK is response for Mv operation.
 type MvOK struct{}
+
+func (*MvOK) mvRes() {}
 
 type MvReq struct {
 	Sources     []string `json:"sources"`
@@ -1989,8 +2006,39 @@ func (s *ReadlinkOK) SetTarget(val string) {
 	s.Target = val
 }
 
+func (*ReadlinkOK) readlinkRes() {}
+
+type RealpathOK struct {
+	DriveID string `json:"driveID"`
+	Path    string `json:"path"`
+}
+
+// GetDriveID returns the value of DriveID.
+func (s *RealpathOK) GetDriveID() string {
+	return s.DriveID
+}
+
+// GetPath returns the value of Path.
+func (s *RealpathOK) GetPath() string {
+	return s.Path
+}
+
+// SetDriveID sets the value of DriveID.
+func (s *RealpathOK) SetDriveID(val string) {
+	s.DriveID = val
+}
+
+// SetPath sets the value of Path.
+func (s *RealpathOK) SetPath(val string) {
+	s.Path = val
+}
+
+func (*RealpathOK) realpathRes() {}
+
 // RmNoContent is response for Rm operation.
 type RmNoContent struct{}
+
+func (*RmNoContent) rmRes() {}
 
 type RmReq struct {
 	Paths     []string `json:"paths"`
@@ -2119,6 +2167,8 @@ func (s *SymlinkReq) SetLinkPath(val string) {
 
 // TouchOK is response for Touch operation.
 type TouchOK struct{}
+
+func (*TouchOK) touchRes() {}
 
 type TouchReq struct {
 	Path string `json:"path"`
@@ -2402,6 +2452,8 @@ func (s *WriteLargeReq) SetObject(val ObjectContent) {
 
 // WriteOK is response for Write operation.
 type WriteOK struct{}
+
+func (*WriteOK) writeRes() {}
 
 type WriteReq struct {
 	Path    string `json:"path"`

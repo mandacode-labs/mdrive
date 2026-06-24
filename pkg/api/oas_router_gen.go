@@ -30,7 +30,7 @@ var (
 	rn31AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn35AllowedHeaders = map[string]string{
+	rn37AllowedHeaders = map[string]string{
 		"DELETE": "Authorization,Content-Type",
 	}
 	rn8AllowedHeaders = map[string]string{
@@ -54,28 +54,31 @@ var (
 	rn30AllowedHeaders = map[string]string{
 		"POST": "Authorization,Content-Type",
 	}
-	rn42AllowedHeaders = map[string]string{
+	rn44AllowedHeaders = map[string]string{
 		"POST": "Authorization,Content-Type",
 	}
 	rn32AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
-	rn36AllowedHeaders = map[string]string{
+	rn34AllowedHeaders = map[string]string{
 		"GET": "Authorization",
 	}
 	rn38AllowedHeaders = map[string]string{
-		"POST": "Authorization,Content-Type",
-	}
-	rn39AllowedHeaders = map[string]string{
-		"POST": "Authorization,Content-Type",
+		"GET": "Authorization",
 	}
 	rn40AllowedHeaders = map[string]string{
-		"DELETE": "Authorization",
+		"POST": "Authorization,Content-Type",
 	}
 	rn41AllowedHeaders = map[string]string{
+		"POST": "Authorization,Content-Type",
+	}
+	rn42AllowedHeaders = map[string]string{
+		"DELETE": "Authorization",
+	}
+	rn43AllowedHeaders = map[string]string{
 		"PUT": "Authorization,Content-Type",
 	}
-	rn34AllowedHeaders = map[string]string{
+	rn36AllowedHeaders = map[string]string{
 		"POST": "Authorization",
 	}
 	rn14AllowedHeaders = map[string]string{
@@ -454,7 +457,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "DELETE",
-											allowedHeaders: rn35AllowedHeaders,
+											allowedHeaders: rn37AllowedHeaders,
 											acceptPost:     "",
 											acceptPatch:    "",
 										})
@@ -697,7 +700,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 											default:
 												s.notAllowed(w, r, notAllowedParams{
 													allowedMethods: "POST",
-													allowedHeaders: rn42AllowedHeaders,
+													allowedHeaders: rn44AllowedHeaders,
 													acceptPost:     "application/json",
 													acceptPatch:    "",
 												})
@@ -706,31 +709,72 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 											return
 										}
 
-									case 'r': // Prefix: "readlink"
+									case 'r': // Prefix: "rea"
 
-										if l := len("readlink"); len(elem) >= l && elem[0:l] == "readlink" {
+										if l := len("rea"); len(elem) >= l && elem[0:l] == "rea" {
 											elem = elem[l:]
 										} else {
 											break
 										}
 
 										if len(elem) == 0 {
-											// Leaf node.
-											switch r.Method {
-											case "GET":
-												s.handleReadlinkRequest([1]string{
-													args[0],
-												}, elemIsEscaped, w, r)
-											default:
-												s.notAllowed(w, r, notAllowedParams{
-													allowedMethods: "GET",
-													allowedHeaders: rn32AllowedHeaders,
-													acceptPost:     "",
-													acceptPatch:    "",
-												})
+											break
+										}
+										switch elem[0] {
+										case 'd': // Prefix: "dlink"
+
+											if l := len("dlink"); len(elem) >= l && elem[0:l] == "dlink" {
+												elem = elem[l:]
+											} else {
+												break
 											}
 
-											return
+											if len(elem) == 0 {
+												// Leaf node.
+												switch r.Method {
+												case "GET":
+													s.handleReadlinkRequest([1]string{
+														args[0],
+													}, elemIsEscaped, w, r)
+												default:
+													s.notAllowed(w, r, notAllowedParams{
+														allowedMethods: "GET",
+														allowedHeaders: rn32AllowedHeaders,
+														acceptPost:     "",
+														acceptPatch:    "",
+													})
+												}
+
+												return
+											}
+
+										case 'l': // Prefix: "lpath"
+
+											if l := len("lpath"); len(elem) >= l && elem[0:l] == "lpath" {
+												elem = elem[l:]
+											} else {
+												break
+											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch r.Method {
+												case "GET":
+													s.handleRealpathRequest([1]string{
+														args[0],
+													}, elemIsEscaped, w, r)
+												default:
+													s.notAllowed(w, r, notAllowedParams{
+														allowedMethods: "GET",
+														allowedHeaders: rn34AllowedHeaders,
+														acceptPost:     "",
+														acceptPatch:    "",
+													})
+												}
+
+												return
+											}
+
 										}
 
 									case 's': // Prefix: "s"
@@ -763,7 +807,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 												default:
 													s.notAllowed(w, r, notAllowedParams{
 														allowedMethods: "GET",
-														allowedHeaders: rn36AllowedHeaders,
+														allowedHeaders: rn38AllowedHeaders,
 														acceptPost:     "",
 														acceptPatch:    "",
 													})
@@ -790,7 +834,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 												default:
 													s.notAllowed(w, r, notAllowedParams{
 														allowedMethods: "POST",
-														allowedHeaders: rn38AllowedHeaders,
+														allowedHeaders: rn40AllowedHeaders,
 														acceptPost:     "application/json",
 														acceptPatch:    "",
 													})
@@ -819,7 +863,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 											default:
 												s.notAllowed(w, r, notAllowedParams{
 													allowedMethods: "POST",
-													allowedHeaders: rn39AllowedHeaders,
+													allowedHeaders: rn41AllowedHeaders,
 													acceptPost:     "application/json",
 													acceptPatch:    "",
 												})
@@ -846,7 +890,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 											default:
 												s.notAllowed(w, r, notAllowedParams{
 													allowedMethods: "DELETE",
-													allowedHeaders: rn40AllowedHeaders,
+													allowedHeaders: rn42AllowedHeaders,
 													acceptPost:     "",
 													acceptPatch:    "",
 												})
@@ -873,7 +917,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 											default:
 												s.notAllowed(w, r, notAllowedParams{
 													allowedMethods: "PUT",
-													allowedHeaders: rn41AllowedHeaders,
+													allowedHeaders: rn43AllowedHeaders,
 													acceptPost:     "",
 													acceptPatch:    "",
 												})
@@ -916,7 +960,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 										default:
 											s.notAllowed(w, r, notAllowedParams{
 												allowedMethods: "POST",
-												allowedHeaders: rn34AllowedHeaders,
+												allowedHeaders: rn36AllowedHeaders,
 												acceptPost:     "",
 												acceptPatch:    "",
 											})
@@ -1508,7 +1552,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									switch method {
 									case "DELETE":
 										r.name = RmOperation
-										r.summary = "Remove files or directories"
+										r.summary = "Remove files or directories (POSIX unlink/rmdir(2))"
 										r.operationID = "rm"
 										r.operationGroup = ""
 										r.pathPattern = "/v1/drives/{driveID}/fs"
@@ -1545,7 +1589,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											switch method {
 											case "GET":
 												r.name = CatOperation
-												r.summary = "Read file contents"
+												r.summary = "Read file contents (POSIX open(O_RDONLY))"
 												r.operationID = "cat"
 												r.operationGroup = ""
 												r.pathPattern = "/v1/drives/{driveID}/fs/cat"
@@ -1570,7 +1614,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											switch method {
 											case "POST":
 												r.name = HardlinkOperation
-												r.summary = "Create a hard link (POSIX ln(1))"
+												r.summary = "Create a hard link (POSIX link(2))"
 												r.operationID = "hardlink"
 												r.operationGroup = ""
 												r.pathPattern = "/v1/drives/{driveID}/fs/hardlink"
@@ -1594,7 +1638,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											switch method {
 											case "GET":
 												r.name = LsOperation
-												r.summary = "List directory contents"
+												r.summary = "List directory contents (POSIX opendir/readdir)"
 												r.operationID = "ls"
 												r.operationGroup = ""
 												r.pathPattern = "/v1/drives/{driveID}/fs/ls"
@@ -1658,7 +1702,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												switch method {
 												case "POST":
 													r.name = MkdirOperation
-													r.summary = "Create a directory"
+													r.summary = "Create a directory (POSIX mkdir(2))"
 													r.operationID = "mkdir"
 													r.operationGroup = ""
 													r.pathPattern = "/v1/drives/{driveID}/fs/mkdir"
@@ -1708,7 +1752,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												switch method {
 												case "POST":
 													r.name = MvOperation
-													r.summary = "Move files or directories"
+													r.summary = "Move files or directories (POSIX rename(2))"
 													r.operationID = "mv"
 													r.operationGroup = ""
 													r.pathPattern = "/v1/drives/{driveID}/fs/mv"
@@ -1747,29 +1791,68 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											}
 										}
 
-									case 'r': // Prefix: "readlink"
+									case 'r': // Prefix: "rea"
 
-										if l := len("readlink"); len(elem) >= l && elem[0:l] == "readlink" {
+										if l := len("rea"); len(elem) >= l && elem[0:l] == "rea" {
 											elem = elem[l:]
 										} else {
 											break
 										}
 
 										if len(elem) == 0 {
-											// Leaf node.
-											switch method {
-											case "GET":
-												r.name = ReadlinkOperation
-												r.summary = "Read a symbolic link's target (POSIX readlink(2))"
-												r.operationID = "readlink"
-												r.operationGroup = ""
-												r.pathPattern = "/v1/drives/{driveID}/fs/readlink"
-												r.args = args
-												r.count = 1
-												return r, true
-											default:
-												return
+											break
+										}
+										switch elem[0] {
+										case 'd': // Prefix: "dlink"
+
+											if l := len("dlink"); len(elem) >= l && elem[0:l] == "dlink" {
+												elem = elem[l:]
+											} else {
+												break
 											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch method {
+												case "GET":
+													r.name = ReadlinkOperation
+													r.summary = "Read a symbolic link's target (POSIX readlink(2))"
+													r.operationID = "readlink"
+													r.operationGroup = ""
+													r.pathPattern = "/v1/drives/{driveID}/fs/readlink"
+													r.args = args
+													r.count = 1
+													return r, true
+												default:
+													return
+												}
+											}
+
+										case 'l': // Prefix: "lpath"
+
+											if l := len("lpath"); len(elem) >= l && elem[0:l] == "lpath" {
+												elem = elem[l:]
+											} else {
+												break
+											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch method {
+												case "GET":
+													r.name = RealpathOperation
+													r.summary = "Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))"
+													r.operationID = "realpath"
+													r.operationGroup = ""
+													r.pathPattern = "/v1/drives/{driveID}/fs/realpath"
+													r.args = args
+													r.count = 1
+													return r, true
+												default:
+													return
+												}
+											}
+
 										}
 
 									case 's': // Prefix: "s"
@@ -1797,7 +1880,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												switch method {
 												case "GET":
 													r.name = StatOperation
-													r.summary = "Get file metadata (follows symlinks, POSIX stat(2))"
+													r.summary = "Get file metadata, following symlinks (POSIX stat(2))"
 													r.operationID = "stat"
 													r.operationGroup = ""
 													r.pathPattern = "/v1/drives/{driveID}/fs/stat"
@@ -1822,7 +1905,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												switch method {
 												case "POST":
 													r.name = SymlinkOperation
-													r.summary = "Create a symbolic link"
+													r.summary = "Create a symbolic link (POSIX symlink(2))"
 													r.operationID = "symlink"
 													r.operationGroup = ""
 													r.pathPattern = "/v1/drives/{driveID}/fs/symlink"
@@ -1849,7 +1932,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											switch method {
 											case "POST":
 												r.name = TouchOperation
-												r.summary = "Create an empty file"
+												r.summary = "Create an empty file (POSIX open(O_CREAT))"
 												r.operationID = "touch"
 												r.operationGroup = ""
 												r.pathPattern = "/v1/drives/{driveID}/fs/touch"

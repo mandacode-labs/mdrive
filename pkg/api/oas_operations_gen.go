@@ -30,6 +30,7 @@ const (
 	MvOperation                OperationName = "Mv"
 	PresignDownloadOperation   OperationName = "PresignDownload"
 	ReadlinkOperation          OperationName = "Readlink"
+	RealpathOperation          OperationName = "Realpath"
 	RestoreDriveOperation      OperationName = "RestoreDrive"
 	RmOperation                OperationName = "Rm"
 	StatOperation              OperationName = "Stat"

@@ -54,6 +54,7 @@ var operationRolesBearerAuth = map[string][]string{
 	MvOperation:                []string{},
 	PresignDownloadOperation:   []string{},
 	ReadlinkOperation:          []string{},
+	RealpathOperation:          []string{},
 	RestoreDriveOperation:      []string{},
 	RmOperation:                []string{},
 	StatOperation:              []string{},

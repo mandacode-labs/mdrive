@@ -263,7 +263,7 @@
     "/v1/drives/{driveID}/fs/mkdir": {
       "post": {
         "operationId": "mkdir",
-        "summary": "Create a directory",
+        "summary": "Create a directory (POSIX mkdir(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -294,6 +294,16 @@
         "responses": {
           "200": {
             "description": "Directory created"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -301,7 +311,7 @@
     "/v1/drives/{driveID}/fs/touch": {
       "post": {
         "operationId": "touch",
-        "summary": "Create an empty file",
+        "summary": "Create an empty file (POSIX open(O_CREAT))",
         "parameters": [
           {
             "name": "driveID",
@@ -332,6 +342,16 @@
         "responses": {
           "200": {
             "description": "File created"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -339,7 +359,7 @@
     "/v1/drives/{driveID}/fs": {
       "delete": {
         "operationId": "rm",
-        "summary": "Remove files or directories",
+        "summary": "Remove files or directories (POSIX unlink/rmdir(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -376,6 +396,16 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -383,7 +413,7 @@
     "/v1/drives/{driveID}/fs/mv": {
       "post": {
         "operationId": "mv",
-        "summary": "Move files or directories",
+        "summary": "Move files or directories (POSIX rename(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -421,6 +451,16 @@
         "responses": {
           "200": {
             "description": "Moved"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -428,7 +468,7 @@
     "/v1/drives/{driveID}/fs/ls": {
       "get": {
         "operationId": "ls",
-        "summary": "List directory contents",
+        "summary": "List directory contents (POSIX opendir/readdir)",
         "parameters": [
           {
             "name": "driveID",
@@ -458,6 +498,16 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -465,7 +515,7 @@
     "/v1/drives/{driveID}/fs/cat": {
       "get": {
         "operationId": "cat",
-        "summary": "Read file contents",
+        "summary": "Read file contents (POSIX open(O_RDONLY))",
         "parameters": [
           {
             "name": "driveID",
@@ -491,6 +541,16 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -536,6 +596,16 @@
         "responses": {
           "200": {
             "description": "Written"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -543,7 +613,7 @@
     "/v1/drives/{driveID}/fs/symlink": {
       "post": {
         "operationId": "symlink",
-        "summary": "Create a symbolic link",
+        "summary": "Create a symbolic link (POSIX symlink(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -595,7 +665,7 @@
     "/v1/drives/{driveID}/fs/hardlink": {
       "post": {
         "operationId": "hardlink",
-        "summary": "Create a hard link (POSIX ln(1))",
+        "summary": "Create a hard link (POSIX link(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -738,7 +808,7 @@
     "/v1/drives/{driveID}/fs/stat": {
       "get": {
         "operationId": "stat",
-        "summary": "Get file metadata (follows symlinks, POSIX stat(2))",
+        "summary": "Get file metadata, following symlinks (POSIX stat(2))",
         "parameters": [
           {
             "name": "driveID",
@@ -864,6 +934,74 @@
                       "type": "string"
                     }
                   }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/drives/{driveID}/fs/realpath": {
+      "get": {
+        "operationId": "realpath",
+        "summary": "Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))",
+        "parameters": [
+          {
+            "name": "driveID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Canonical path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "driveID",
+                    "path"
+                  ],
+                  "properties": {
+                    "driveID": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

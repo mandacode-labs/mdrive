@@ -48,10 +48,10 @@ type Invoker interface {
 	AuthMe(ctx context.Context) (*User, error)
 	// Cat invokes cat operation.
 	//
-	// Read file contents.
+	// Read file contents (POSIX open(O_RDONLY)).
 	//
 	// GET /v1/drives/{driveID}/fs/cat
-	Cat(ctx context.Context, params CatParams) (CatOK, error)
+	Cat(ctx context.Context, params CatParams) (CatRes, error)
 	// CompleteUpload invokes completeUpload operation.
 	//
 	// Complete a presigned upload and create the object node.
@@ -102,7 +102,7 @@ type Invoker interface {
 	GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
 	// Hardlink invokes hardlink operation.
 	//
-	// Create a hard link (POSIX ln(1)).
+	// Create a hard link (POSIX link(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/hardlink
 	Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
@@ -132,10 +132,10 @@ type Invoker interface {
 	ListDrives(ctx context.Context) ([]Drive, error)
 	// Ls invokes ls operation.
 	//
-	// List directory contents.
+	// List directory contents (POSIX opendir/readdir).
 	//
 	// GET /v1/drives/{driveID}/fs/ls
-	Ls(ctx context.Context, params LsParams) (*DirContent, error)
+	Ls(ctx context.Context, params LsParams) (LsRes, error)
 	// Lstat invokes lstat operation.
 	//
 	// Get file metadata without following symlinks (POSIX lstat(2)).
@@ -144,10 +144,10 @@ type Invoker interface {
 	Lstat(ctx context.Context, params LstatParams) (LstatRes, error)
 	// Mkdir invokes mkdir operation.
 	//
-	// Create a directory.
+	// Create a directory (POSIX mkdir(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/mkdir
-	Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) error
+	Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (MkdirRes, error)
 	// Mount invokes mount operation.
 	//
 	// Bind-mount another drive at a path (POSIX mount-like).
@@ -156,10 +156,10 @@ type Invoker interface {
 	Mount(ctx context.Context, request OptMountReq, params MountParams) (MountRes, error)
 	// Mv invokes mv operation.
 	//
-	// Move files or directories.
+	// Move files or directories (POSIX rename(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/mv
-	Mv(ctx context.Context, request OptMvReq, params MvParams) error
+	Mv(ctx context.Context, request OptMvReq, params MvParams) (MvRes, error)
 	// PresignDownload invokes presignDownload operation.
 	//
 	// Get a presigned download URL for an object node.
@@ -171,7 +171,13 @@ type Invoker interface {
 	// Read a symbolic link's target (POSIX readlink(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/readlink
-	Readlink(ctx context.Context, params ReadlinkParams) (*ReadlinkOK, error)
+	Readlink(ctx context.Context, params ReadlinkParams) (ReadlinkRes, error)
+	// Realpath invokes realpath operation.
+	//
+	// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+	//
+	// GET /v1/drives/{driveID}/fs/realpath
+	Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error)
 	// RestoreDrive invokes restoreDrive operation.
 	//
 	// Restore a soft-deleted drive.
@@ -180,28 +186,28 @@ type Invoker interface {
 	RestoreDrive(ctx context.Context, params RestoreDriveParams) (*Drive, error)
 	// Rm invokes rm operation.
 	//
-	// Remove files or directories.
+	// Remove files or directories (POSIX unlink/rmdir(2)).
 	//
 	// DELETE /v1/drives/{driveID}/fs
-	Rm(ctx context.Context, request OptRmReq, params RmParams) error
+	Rm(ctx context.Context, request OptRmReq, params RmParams) (RmRes, error)
 	// Stat invokes stat operation.
 	//
-	// Get file metadata (follows symlinks, POSIX stat(2)).
+	// Get file metadata, following symlinks (POSIX stat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/stat
 	Stat(ctx context.Context, params StatParams) (StatRes, error)
 	// Symlink invokes symlink operation.
 	//
-	// Create a symbolic link.
+	// Create a symbolic link (POSIX symlink(2)).
 	//
 	// POST /v1/drives/{driveID}/fs/symlink
 	Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error)
 	// Touch invokes touch operation.
 	//
-	// Create an empty file.
+	// Create an empty file (POSIX open(O_CREAT)).
 	//
 	// POST /v1/drives/{driveID}/fs/touch
-	Touch(ctx context.Context, request OptTouchReq, params TouchParams) error
+	Touch(ctx context.Context, request OptTouchReq, params TouchParams) (TouchRes, error)
 	// Unmount invokes unmount operation.
 	//
 	// Remove a bind mount (POSIX umount-like).
@@ -225,7 +231,7 @@ type Invoker interface {
 	// Write inline content to a file.
 	//
 	// PUT /v1/drives/{driveID}/fs/write
-	Write(ctx context.Context, request OptWriteReq, params WriteParams) error
+	Write(ctx context.Context, request OptWriteReq, params WriteParams) (WriteRes, error)
 	// WriteLarge invokes writeLarge operation.
 	//
 	// Create an S3-backed object node.
@@ -597,15 +603,15 @@ func (c *Client) sendAuthMe(ctx context.Context) (res *User, err error) {
 
 // Cat invokes cat operation.
 //
-// Read file contents.
+// Read file contents (POSIX open(O_RDONLY)).
 //
 // GET /v1/drives/{driveID}/fs/cat
-func (c *Client) Cat(ctx context.Context, params CatParams) (CatOK, error) {
+func (c *Client) Cat(ctx context.Context, params CatParams) (CatRes, error) {
 	res, err := c.sendCat(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendCat(ctx context.Context, params CatParams) (res CatOK, err error) {
+func (c *Client) sendCat(ctx context.Context, params CatParams) (res CatRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("cat"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1635,7 +1641,7 @@ func (c *Client) sendGoogleNativeLogin(ctx context.Context, request OptGoogleNat
 
 // Hardlink invokes hardlink operation.
 //
-// Create a hard link (POSIX ln(1)).
+// Create a hard link (POSIX link(2)).
 //
 // POST /v1/drives/{driveID}/fs/hardlink
 func (c *Client) Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error) {
@@ -2181,15 +2187,15 @@ func (c *Client) sendListDrives(ctx context.Context) (res []Drive, err error) {
 
 // Ls invokes ls operation.
 //
-// List directory contents.
+// List directory contents (POSIX opendir/readdir).
 //
 // GET /v1/drives/{driveID}/fs/ls
-func (c *Client) Ls(ctx context.Context, params LsParams) (*DirContent, error) {
+func (c *Client) Ls(ctx context.Context, params LsParams) (LsRes, error) {
 	res, err := c.sendLs(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendLs(ctx context.Context, params LsParams) (res *DirContent, err error) {
+func (c *Client) sendLs(ctx context.Context, params LsParams) (res LsRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("ls"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -2469,15 +2475,15 @@ func (c *Client) sendLstat(ctx context.Context, params LstatParams) (res LstatRe
 
 // Mkdir invokes mkdir operation.
 //
-// Create a directory.
+// Create a directory (POSIX mkdir(2)).
 //
 // POST /v1/drives/{driveID}/fs/mkdir
-func (c *Client) Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) error {
-	_, err := c.sendMkdir(ctx, request, params)
-	return err
+func (c *Client) Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (MkdirRes, error) {
+	res, err := c.sendMkdir(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendMkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (res *MkdirOK, err error) {
+func (c *Client) sendMkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (res MkdirRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("mkdir"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -2727,15 +2733,15 @@ func (c *Client) sendMount(ctx context.Context, request OptMountReq, params Moun
 
 // Mv invokes mv operation.
 //
-// Move files or directories.
+// Move files or directories (POSIX rename(2)).
 //
 // POST /v1/drives/{driveID}/fs/mv
-func (c *Client) Mv(ctx context.Context, request OptMvReq, params MvParams) error {
-	_, err := c.sendMv(ctx, request, params)
-	return err
+func (c *Client) Mv(ctx context.Context, request OptMvReq, params MvParams) (MvRes, error) {
+	res, err := c.sendMv(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendMv(ctx context.Context, request OptMvReq, params MvParams) (res *MvOK, err error) {
+func (c *Client) sendMv(ctx context.Context, request OptMvReq, params MvParams) (res MvRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("mv"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -3003,12 +3009,12 @@ func (c *Client) sendPresignDownload(ctx context.Context, params PresignDownload
 // Read a symbolic link's target (POSIX readlink(2)).
 //
 // GET /v1/drives/{driveID}/fs/readlink
-func (c *Client) Readlink(ctx context.Context, params ReadlinkParams) (*ReadlinkOK, error) {
+func (c *Client) Readlink(ctx context.Context, params ReadlinkParams) (ReadlinkRes, error) {
 	res, err := c.sendReadlink(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendReadlink(ctx context.Context, params ReadlinkParams) (res *ReadlinkOK, err error) {
+func (c *Client) sendReadlink(ctx context.Context, params ReadlinkParams) (res ReadlinkRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("readlink"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -3135,6 +3141,150 @@ func (c *Client) sendReadlink(ctx context.Context, params ReadlinkParams) (res *
 
 	stage = "DecodeResponse"
 	result, err := decodeReadlinkResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// Realpath invokes realpath operation.
+//
+// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+//
+// GET /v1/drives/{driveID}/fs/realpath
+func (c *Client) Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error) {
+	res, err := c.sendRealpath(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRealpath(ctx context.Context, params RealpathParams) (res RealpathRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("realpath"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/realpath"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, RealpathOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/drives/"
+	{
+		// Encode "driveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "driveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.DriveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/fs/realpath"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "path" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "path",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.Path))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:BearerAuth"
+			switch err := c.securityBearerAuth(ctx, RealpathOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"BearerAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeRealpathResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -3270,15 +3420,15 @@ func (c *Client) sendRestoreDrive(ctx context.Context, params RestoreDriveParams
 
 // Rm invokes rm operation.
 //
-// Remove files or directories.
+// Remove files or directories (POSIX unlink/rmdir(2)).
 //
 // DELETE /v1/drives/{driveID}/fs
-func (c *Client) Rm(ctx context.Context, request OptRmReq, params RmParams) error {
-	_, err := c.sendRm(ctx, request, params)
-	return err
+func (c *Client) Rm(ctx context.Context, request OptRmReq, params RmParams) (RmRes, error) {
+	res, err := c.sendRm(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) (res *RmNoContent, err error) {
+func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) (res RmRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("rm"),
 		semconv.HTTPRequestMethodKey.String("DELETE"),
@@ -3399,7 +3549,7 @@ func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) 
 
 // Stat invokes stat operation.
 //
-// Get file metadata (follows symlinks, POSIX stat(2)).
+// Get file metadata, following symlinks (POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (c *Client) Stat(ctx context.Context, params StatParams) (StatRes, error) {
@@ -3543,7 +3693,7 @@ func (c *Client) sendStat(ctx context.Context, params StatParams) (res StatRes, 
 
 // Symlink invokes symlink operation.
 //
-// Create a symbolic link.
+// Create a symbolic link (POSIX symlink(2)).
 //
 // POST /v1/drives/{driveID}/fs/symlink
 func (c *Client) Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error) {
@@ -3672,15 +3822,15 @@ func (c *Client) sendSymlink(ctx context.Context, request OptSymlinkReq, params 
 
 // Touch invokes touch operation.
 //
-// Create an empty file.
+// Create an empty file (POSIX open(O_CREAT)).
 //
 // POST /v1/drives/{driveID}/fs/touch
-func (c *Client) Touch(ctx context.Context, request OptTouchReq, params TouchParams) error {
-	_, err := c.sendTouch(ctx, request, params)
-	return err
+func (c *Client) Touch(ctx context.Context, request OptTouchReq, params TouchParams) (TouchRes, error) {
+	res, err := c.sendTouch(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendTouch(ctx context.Context, request OptTouchReq, params TouchParams) (res *TouchOK, err error) {
+func (c *Client) sendTouch(ctx context.Context, request OptTouchReq, params TouchParams) (res TouchRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("touch"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -4187,12 +4337,12 @@ func (c *Client) sendUpsertUser(ctx context.Context, request OptUpsertUserReq) (
 // Write inline content to a file.
 //
 // PUT /v1/drives/{driveID}/fs/write
-func (c *Client) Write(ctx context.Context, request OptWriteReq, params WriteParams) error {
-	_, err := c.sendWrite(ctx, request, params)
-	return err
+func (c *Client) Write(ctx context.Context, request OptWriteReq, params WriteParams) (WriteRes, error) {
+	res, err := c.sendWrite(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendWrite(ctx context.Context, request OptWriteReq, params WriteParams) (res *WriteOK, err error) {
+func (c *Client) sendWrite(ctx context.Context, request OptWriteReq, params WriteParams) (res WriteRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("write"),
 		semconv.HTTPRequestMethodKey.String("PUT"),
