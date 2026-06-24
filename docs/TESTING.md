@@ -5,8 +5,9 @@
 | Layer | Command | Build Tag | External Deps |
 |-------|---------|-----------|---------------|
 | Unit | `make test` | (none) | None |
-| Integration | `make test-integration` | `//go:build integration` | Postgres + MinIO (testcontainers) |
-| E2E | `make test-e2e` | (none) | Postgres + MinIO + Valkey |
+| Integration | `make test-integration` | `//go:build integration` | Stub fakes for vfs/drive/upload/user |
+| Ent Integration | `make test-integration-ent` | `//go:build integration_ent` | Postgres (testcontainers) |
+| E2E | `make test-e2e` | (none) | Postgres + MinIO + Valkey (testcontainers) |
 | Kind | `make test-kind` | `//go:build kind` | kind cluster + Docker |
 
 ## Unit Tests
@@ -73,36 +74,17 @@ package kind
 |-----------|---------------|
 | Unit | `cover-unit.out` |
 | Integration | `cover-integration.out` |
+| Ent Integration | `cover-integration-ent.out` |
 | E2E | `cover-e2e.out` |
-
-```bash
-make test-all   # all tests with single coverprofile
-```
 
 ## Testcontainers
 
-Integration suite uses `testcontainers-go`:
+The ent integration suite (and e2e) uses `testcontainers-go`:
 
 ```go
-sharedPg := postgres.Run(ctx, "postgres:17")
-sharedMinio := minio.Run(ctx, "minio/minio")
+pg, _ := postgres.Run(ctx, "postgres:17-alpine", ...)
+valkey, _ := valkey.Run(ctx, "valkey/valkey:8-alpine", ...)
 ```
 
-Shared containers are reused across all tests. Per-test database:
-
-```go
-s.dbName = "mdrive_test_" + uuid.New().String()
-adminDB.Exec("CREATE DATABASE " + s.dbName)
-```
-
-## CI Integration
-
-Tests run in CI pipeline:
-
-```
-unit-test → integration-test → e2e-test
-    ↓
-docker-build → kind-test
-```
-
-Each test job uploads coverage to codecov.
+The integration suite under `test/integration/` uses stub fakes —
+no docker required.

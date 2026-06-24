@@ -137,3 +137,32 @@ fga store create --name "mdrive"
 - Google OAuth: `GET /auth/google`, `POST /auth/google/native`
 - Sessions stored in Valkey (or memory for dev)
 - PKCE enforced via session-backed code verifier storage
+
+## Layer responsibilities
+
+| Layer | Responsibility | Does NOT |
+|---|---|---|
+| `core/*` | Domain types + service + repository | I/O, HTTP, S3, permissions |
+| `vfs` | Inode tree ops (link/unlink/mv/rm/mount/...) | S3 I/O, HTTP, permissions |
+| `upload` | S3 lifecycle (presign/complete/delete) | Node tree, permissions |
+| `app/apiserver` | HTTP transport + perm gate + error mapping | Domain logic, persistence |
+| `app/gc` | Background cleanup jobs | Domain logic |
+| `permission` | OpenFGA checker | Storage, sessions |
+| `auth` | OIDC + sessions | HTTP, domain |
+
+If you find yourself adding code to a layer that doesn't match its
+responsibility, the layer is wrong — open a PR to move the code.
+
+## Local development quick path
+
+```bash
+docker run -d --name mdrive-pg -e POSTGRES_PASSWORD=mdrive -p 5432:5432 postgres:17-alpine
+docker run -d --name mdrive-valkey -p 6379:6379 valkey/valkey:8-alpine
+
+cp config.yaml.example config.yaml
+# Edit config.yaml: set crypto.master_key (or accept dev warning),
+# leave openfga empty (dev mode uses AnonSecurity).
+
+make run
+# Server at http://localhost:8080
+```

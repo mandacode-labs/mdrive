@@ -1,1 +1,0 @@
-{{- include "mdrive.gc.cronjob" (dict "root" . "name" "tombstones" "schedule" .Values.gc.jobs.tombstones.schedule "config" .Values.gc.jobs.tombstones "args" (list "tombstones")) }}

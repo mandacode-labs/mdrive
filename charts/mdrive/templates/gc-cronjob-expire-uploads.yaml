@@ -1,1 +1,0 @@
-{{- include "mdrive.gc.cronjob" (dict "root" . "name" "expire-uploads" "schedule" .Values.gc.jobs.expireUploads.schedule "config" .Values.gc.jobs.expireUploads "args" (list "expire-uploads")) }}

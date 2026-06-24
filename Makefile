@@ -78,7 +78,7 @@ build:
 
 .PHONY: run
 run:
-	go run ./cmd/$(APP_NAME) serve --config config.yaml
+	go run ./cmd/$(APP_NAME) api-server run --config config.yaml
 
 # ---------------------------------------------------------------------------
 # Migrations
