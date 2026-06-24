@@ -4,11 +4,11 @@ package gc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
-	"github.com/mandacode-labs/mdrive/internal/logging"
 	"github.com/mandacode-labs/mdrive/internal/storage/s3"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
@@ -26,7 +26,7 @@ type Runner interface {
 // TombstoneCleaner deletes S3 objects recorded in gc_tombstones.
 type TombstoneCleaner struct {
 	app *app.App
-	log *logging.Logger
+	log *slog.Logger
 }
 
 func NewTombstoneCleaner(a *app.App) *TombstoneCleaner {
@@ -34,33 +34,33 @@ func NewTombstoneCleaner(a *app.App) *TombstoneCleaner {
 }
 
 func (c *TombstoneCleaner) Run(ctx context.Context) error {
-	c.log.Info().Msg("gc: tombstones starting")
+	c.log.Info("gc: tombstones starting")
 
 	groups, err := app.QueryTombstones(ctx, c.app.Ent, defaultProcessLimit)
 	if err != nil {
 		return fmt.Errorf("gc: query tombstones: %w", err)
 	}
 	if len(groups) == 0 {
-		c.log.Info().Msg("gc: tombstones complete (no tombstones)")
+		c.log.Info("gc: tombstones complete (no tombstones)")
 		return nil
 	}
 
 	for _, g := range groups {
 		if err := c.processGroup(ctx, g); err != nil {
-			c.log.Error().Err(err).Str("bucket", g.Bucket).Int("count", len(g.Keys)).Msg("gc: bucket cleanup failed")
+			c.log.Error("gc: bucket cleanup failed", "err", err, "bucket", g.Bucket, "count", len(g.Keys))
 			continue
 		}
 		if err := app.DeleteTombstones(ctx, c.app.Ent, g.IDs); err != nil {
-			c.log.Error().Err(err).Str("bucket", g.Bucket).Msg("gc: delete tombstones failed")
+			c.log.Error("gc: delete tombstones failed", "err", err, "bucket", g.Bucket)
 		}
 	}
 
-	c.log.Info().Int("groups", len(groups)).Msg("gc: tombstones complete")
+	c.log.Info("gc: tombstones complete", "groups", len(groups))
 	return nil
 }
 
 func (c *TombstoneCleaner) processGroup(ctx context.Context, g app.TombstoneGroup) error {
-	c.log.Info().Str("bucket", g.Bucket).Int("keys", len(g.Keys)).Msg("gc: deleting S3 objects")
+	c.log.Info("gc: deleting S3 objects", "bucket", g.Bucket, "keys", len(g.Keys))
 
 	cfg, err := app.FindStorageByBucket(ctx, c.app.Ent, g.Bucket)
 	if err != nil {
@@ -79,7 +79,7 @@ func (c *TombstoneCleaner) processGroup(ctx context.Context, g app.TombstoneGrou
 // DrivePurger permanently removes drives that have been soft-deleted longer than retention.
 type DrivePurger struct {
 	app       *app.App
-	log       *logging.Logger
+	log       *slog.Logger
 	retention time.Duration
 }
 
@@ -91,7 +91,7 @@ func NewDrivePurger(a *app.App, retention time.Duration) *DrivePurger {
 }
 
 func (p *DrivePurger) Run(ctx context.Context) error {
-	p.log.Info().Dur("retention", p.retention).Msg("gc: purge-drives starting")
+	p.log.Info("gc: purge-drives starting", "retention", p.retention)
 	before := time.Now().Add(-p.retention)
 	drives, err := p.app.DriveSvc.ListDeletedForAdmin(ctx, true, before, defaultProcessLimit)
 	if err != nil {
@@ -99,12 +99,12 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 	}
 	for _, d := range drives {
 		if err := p.app.DriveSvc.Purge(ctx, d.ID()); err != nil {
-			p.log.Error().Err(err).Str("drive_id", d.ID()).Msg("gc: purge drive failed")
+			p.log.Error("gc: purge drive failed", "err", err, "drive_id", d.ID())
 			continue
 		}
-		p.log.Info().Str("drive_id", d.ID()).Msg("gc: purged drive")
+		p.log.Info("gc: purged drive", "drive_id", d.ID())
 	}
-	p.log.Info().Int("count", len(drives)).Msg("gc: purge-drives complete")
+	p.log.Info("gc: purge-drives complete", "count", len(drives))
 	return nil
 }
 
@@ -115,7 +115,7 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 // implement Scanner (logs a warning and returns).
 type UploadExpirer struct {
 	app *app.App
-	log *logging.Logger
+	log *slog.Logger
 }
 
 func NewUploadExpirer(a *app.App) *UploadExpirer {
@@ -123,12 +123,12 @@ func NewUploadExpirer(a *app.App) *UploadExpirer {
 }
 
 func (e *UploadExpirer) Run(ctx context.Context) error {
-	e.log.Info().Msg("gc: expire-uploads starting")
-	defer e.log.Info().Msg("gc: expire-uploads complete")
+	e.log.Info("gc: expire-uploads starting")
+	defer e.log.Info("gc: expire-uploads complete")
 
 	scanner, ok := e.app.UploadReg.(upload.Scanner)
 	if !ok {
-		e.log.Warn().Msg("gc: upload registry does not support Scan; skipping")
+		e.log.Warn("gc: upload registry does not support Scan; skipping")
 		return nil
 	}
 
@@ -152,14 +152,14 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 		if e.app.Store != nil && bucket != "" && key != "" {
 			if err := e.app.Store.DeleteObject(ctx, bucket, key); err != nil {
 				s3err++
-				e.log.Warn().Err(err).Str("bucket", bucket).Str("key", key).Msg("gc: delete upload object failed")
+				e.log.Warn("gc: delete upload object failed", "err", err, "bucket", bucket, "key", key)
 				if e.app.TombstoneInserter != nil {
 					_ = e.app.TombstoneInserter.InsertTombstones(ctx, []vfs.ObjectRef{{Bucket: bucket, Key: key}})
 				}
 			}
 		}
 		if err := e.app.UploadReg.Delete(ctx, id); err != nil {
-			e.log.Warn().Err(err).Str("upload_id", id).Msg("gc: delete upload token failed")
+			e.log.Warn("gc: delete upload token failed", "err", err, "upload_id", id)
 			return nil
 		}
 		deleted++
@@ -168,7 +168,7 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gc: upload scan: %w", err)
 	}
-	e.log.Info().Int("scanned", scanned).Int("deleted", deleted).Int("s3_errors", s3err).Msg("gc: uploads")
+	e.log.Info("gc: uploads", "scanned", scanned, "deleted", deleted, "s3_errors", s3err)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 // a warning.
 type SessionExpirer struct {
 	app *app.App
-	log *logging.Logger
+	log *slog.Logger
 }
 
 func NewSessionExpirer(a *app.App) *SessionExpirer {
@@ -186,16 +186,16 @@ func NewSessionExpirer(a *app.App) *SessionExpirer {
 }
 
 func (e *SessionExpirer) Run(ctx context.Context) error {
-	e.log.Info().Msg("gc: expire-sessions starting")
-	defer e.log.Info().Msg("gc: expire-sessions complete")
+	e.log.Info("gc: expire-sessions starting")
+	defer e.log.Info("gc: expire-sessions complete")
 
 	if e.app.SessionStore == nil {
-		e.log.Warn().Msg("gc: no session store; skipping")
+		e.log.Warn("gc: no session store; skipping")
 		return nil
 	}
 	scanner, ok := e.app.SessionStore.(session.Scanner)
 	if !ok {
-		e.log.Warn().Msg("gc: session store does not support Scan; skipping")
+		e.log.Warn("gc: session store does not support Scan; skipping")
 		return nil
 	}
 	var scanned, deleted int
@@ -217,6 +217,6 @@ func (e *SessionExpirer) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gc: session scan: %w", err)
 	}
-	e.log.Info().Int("scanned", scanned).Int("deleted", deleted).Msg("gc: sessions")
+	e.log.Info("gc: sessions", "scanned", scanned, "deleted", deleted)
 	return nil
 }
