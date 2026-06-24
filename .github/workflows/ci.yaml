@@ -137,6 +137,24 @@ jobs:
           files: cover-integration.out
           fail_ci_if_error: false
 
+  integration-test-ent:
+    name: Ent Integration Tests
+    needs: [unit-test]
+    runs-on: ubuntu-latest
+    env:
+      GOFLAGS: "-buildvcs=false"
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - name: Run ent integration tests
+        run: make test-integration-ent
+      - name: Upload coverage
+        uses: codecov/codecov-action@v7.0.0
+        if: always()
+        with:
+          use_oidc: true
+          files: cover-integration-ent.out
+          fail_ci_if_error: false
+
   e2e-test:
     name: E2E Tests
     needs: [integration-test]
