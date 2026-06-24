@@ -1,116 +1,148 @@
 # Architecture
 
-> **Philosophy**: Simple but powerful. Following Go standards.
+> **Philosophy**: Simple, clear responsibility per layer. Following Go standards.
 
 ## Design Principles
 
 1. **Explicit over implicit**. Dependency injection is manual only. No DI framework in production.
 2. **Interfaces are defined by consumers**. Small, focused interfaces. Not by implementers.
-3. **Plain structs**. Domain models are simple structs with getters. No inheritance, no generics complexity.
-4. **Standard library patterns**. `context.Context`, `error` with `%w` wrapping, `fmt.Errorf`.
-5. **Code generation for boilerplate**. `ent`, `ogen`, and `mockery` handle repetitive code. Domain logic stays human-written.
+3. **Single responsibility per layer**. Each package does one thing.
+4. **Standard library patterns**. `context.Context`, `error` with `%w` wrapping, `log/slog`.
+5. **Code generation for boilerplate**. `ent`, `ogen`, `mockery` handle repetitive code. Domain logic stays human-written.
 
 ## Layered Architecture
 
 ```
-cmd/                 — Entry point (thin, delegates to internal/cmd)
+cmd/mdrive/                  — Entry point (thin, delegates to internal/cli)
+
 internal/
-  application/       — Use cases (VFS, storage orchestration, GC)
-  core/              — Domain entities (inode, object, user)
-  handler/           — HTTP transport layer (ogen adapters)
-  service/           — Cross-cutting services (sysinit)
-  auth/              — OIDC authentication
-  session/           — Session management
-  system/            — System (node) management
-  user/              — External user management
-  config/            — Configuration loading
-  errors/            — Domain error types
-  logging/           — Logger
-  middleware/          — HTTP middleware
-  telemetry/         — OpenTelemetry
-  utils/             — Context helpers
-pkg/api/             — Generated ogen code
-ent/                 — Generated ent code
-test/                — E2E, integration, kind tests
+  core/                      — Domain layer: types + services + repository pattern
+    node/                    — POSIX-like inode model (the only persistent entity)
+    drive/                   — Drive domain (config + storage + ownership)
+    user/                    — User domain (provider identity)
+
+  vfs/                       — Service layer: POSIX filesystem ops (inode tree)
+                                path resolution, link/unlink, mv, rm, mount, symlink
+                                No S3 I/O. No HTTP. No permission checks.
+
+  upload/                    — Service layer: S3 object lifecycle
+                                presigned URLs, multipart completion, gc garbage drain
+    s3/                      — AWS SDK v2 client implementation (only consumer)
+
+  permission/                — OpenFGA checker (cross-cutting)
+
+  auth/                      — OIDC + sessions
+    session/                 — session.Store + memory/valkey backends
+
+  app/                       — Composition root (HTTP transport, GC jobs)
+    app.go                   — builder functions: newInfra, newCrypto, newRepositories, newPerm, newAuth
+    apiserver/               — HTTP transport (handlers, middleware, error mapping, security)
+      security.go            — AnonSecurity (dev) + auth.SecurityHandler (prod)
+    gc/                      — Background cleanup jobs
+      store.go               — GarbageRecorder (implements vfs.GarbageRecorder)
+      runner.go              — four Runners, each takes only its own deps
+
+  cli/                       — cobra commands (api-server, gc, migrate)
+  config/                    — Viper-based configuration loading
+  crypto/                    — AES-GCM at-rest cipher for drive storage secrets
+
+pkg/api/                     — Generated ogen code (HTTP types)
+ent/                         — Generated ent code (DB ORM)
+test/                        — E2E, integration, kind tests
 ```
+
+Each layer depends **only downward**. The domain (`core/`) has no
+external dependencies. The service layers (`vfs/`, `upload/`) use the
+domain. The transport (`app/apiserver/`) uses the service layers and
+the cross-cutting concerns (`permission/`, `auth/`).
+
+## Where each concern lives
+
+| Concern | Owner |
+|---|---|
+| Inode tree manipulation | `vfs` |
+| Cross-drive path resolution | `vfs` |
+| Mount traversal | `vfs` |
+| S3 presigned URLs | `upload` |
+| S3 object delete | `upload` |
+| S3 client implementation | `upload/s3` |
+| Tombstone (gc garbage) recording | `app/gc.GarbageRecorder` |
+| Tombstone drain | `app/gc.TombstoneCleaner` |
+| Permission check (single source) | `handler.requirePerm` |
+| OIDC session | `auth` + `auth/session` |
+| HTTP transport | `app/apiserver` |
+| Background jobs | `app/gc` |
+| Composition | `app.New` (chain of small builders) |
 
 ## Dependency Injection
 
 Production uses **manual explicit wiring** only:
 
 ```go
-// internal/cmd/serve/app.go
-func NewApp(...) *App {
-    repo := inoderepo.NewRepository(client)
-    svc := inode.NewService(repo)
-    handler := handler.NewHandler(svc)
+// internal/app/app.go
+func New(ctx context.Context, cfg *config.Config) (*App, error) {
+    log := newLogger(cfg.App.Env, cfg.App.LogLevel)
+    db, entClient, err := newInfra(ctx, cfg, log)
+    cipher, err := newCrypto(ctx, cfg, log)
+    repos := newRepositories(entClient, cipher)
     // ...
+    return &App{...}, nil
 }
 ```
 
-Every dependency is constructed explicitly. Simple, traceable, no magic.
-
-Uber FX code exists in `serve.go` but is **test-only** — not used in production.
+Each builder is 10-20 lines, single-purpose, fail-fast on its own
+concern. The reader can scan `New` top-to-bottom to know what depends
+on what; each line is one composition step.
 
 ## Interface Pattern
 
 ```go
-// core/inode/repository.go — defined by the consumer
-package inode
-
-type Repository interface {
-    Create(ctx context.Context, in *Inode) (*Inode, error)
-    Get(ctx context.Context, id string) (*Inode, error)
+// internal/vfs/service.go — defined by the consumer
+type NodeClient interface {
+    GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
+    Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
     // ...
 }
 
-// repository/ent_inode.go — implemented in a sub-package
-package repository
-
-func NewRepository(client *ent.Client) inode.Repository {
-    return &entRepository{client: client}
-}
+// internal/core/node/service.go — concrete implementation
+// node.Service implements NodeClient (verified by _ NodeClient = (*node.Service)(nil))
 ```
 
-Interfaces are small. GC only needs 4 methods from ObjectService — it defines its own minimal interface.
+Interfaces are minimal and consumer-defined. A test fake only
+implements the methods the consumer actually calls.
 
 ## Domain Model
 
 ### Inode
 
-POSIX-like metadata (no filename). Contains `mode`, `uid`, `gid`, `size`, `link_count`, `atime`, `mtime`, `ctime`, and a JSON `content` blob.
+POSIX-like metadata (no filename — filename lives in the parent
+directory). Fields: `type`, `size`, `nlink`, `mode`, `uid`, `gid`,
+`atime`, `mtime`, `ctime`, `crtime`, `flags`, `rev`.
 
 Content types:
+- `FileContent` — inline bytes (max 4 KiB)
 - `DirContent` — directory entries
-- `SymlinkContent` — symlink target
-- `ObjectContent` — reference to an S3 object ID
+- `SymlinkContent` — symlink target (path string)
+- `ObjectContent` — reference to an S3 object (bucket + key)
+- `MountContent` — pointer to another drive's root
 
-### Object
+### Drive
 
-Tracks external storage objects. Has `status` (`pending`/`active`), `checksum`, `idempotency_key`, `bucket`, `storage_key`.
+A drive is a logical namespace rooted at one inode. Has a
+storage config (bucket + region + credentials, encrypted at rest),
+an owner, and a soft-delete timestamp.
 
-### System
+### User
 
-A logical node/cluster that owns inodes and objects. Multi-tenancy boundary.
+A user is an external identity (Google OIDC). The local row is
+upserted from the OIDC claim on first login.
 
 ## Error Handling
 
-Single structured domain error:
-
-```go
-type Error struct {
-    Code       string
-    Message    string
-    StatusCode int
-    Details    map[string]any
-}
-```
-
-Constructors: `BadRequest`, `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `Internal`, `ServiceUnavailable`.
-
-Wrap functions: `WrapInternal`, `WrapBadRequest`, `WrapNotFound` — wrap standard errors with context.
-
-HTTP mapping: `handler/errors.go` maps `*errors.Error` to `ogen` response types using `errors.As`.
+Each package owns its own sentinel errors (`ErrXxx`). The
+`app/apiserver/error.go` mapper centralises the error→HTTP-code
+mapping via `errors.Is` checks for every known sentinel. New
+sentinels added to a package must be added to the mapper too.
 
 ## Code Generation
 
@@ -126,43 +158,55 @@ Viper-based hierarchy: **defaults → config file (YAML) → environment variabl
 
 Environment variables use `strings.NewReplacer(".", "_")`:
 - `database.password` → `DATABASE_PASSWORD`
-- `cache.valkey.password` → `CACHE_VALKEY_PASSWORD`
+- `crypto.master_key` → `CRYPTO_MASTER_KEY`
 
-Sensitive keys are explicitly bound.
+### Fail-fast in production
+
+Two keys are required in production:
+- `crypto.master_key` — drives use this for at-rest encryption.
+- `openfga.api_url` — every handler runs `requirePerm`; without
+  OpenFGA the check is permissive and any user has full access.
+
+In development both are optional. The startup log warns loudly when
+either is missing.
 
 ## Database
 
-- **ORM**: entgo.io/ent (v0.14.6)
+- **ORM**: entgo.io/ent
 - **Driver**: lib/pq with otelsql
 - **Migrations**: Atlas (versioned in production, auto in dev)
 - **Connection pool**: MaxOpenConns: 25, MaxIdleConns: 5
 
 ## Authentication
 
-- **OIDC**: Keycloak with PKCE flow
-- **Session**: Valkey/Redis with configurable TTL
+- **OIDC**: Google with PKCE flow (single provider configured;
+  the field is reserved for future multi-provider)
+- **Session**: Valkey with configurable TTL (memory in dev)
 - **Cookie**: `mdrive_session` (HttpOnly, Secure configurable, SameSite=Lax)
-- **Context**: `user_id` and `session_id` injected into `context.Context`
+- **Context**: `user_id` and `session_id` injected via `auth.SessionFromContext`
 
 ## Storage
 
-Abstraction behind `Storage` interface:
+AWS SDK v2 client (`internal/upload/s3`). Supports AWS S3 and
+MinIO via `endpoint` configuration. The interface used by the
+service layers is small and consumer-defined:
 
 ```go
-type Storage interface {
-    PutObject(ctx, bucket, key, reader, size) error
-    GetPresignedDownloadURL(ctx, bucket, key, expiry) (string, error)
-    GetPresignedUploadURL(ctx, bucket, key, contentType, size, checksum, expiry) (string, error)
-    DeleteObject(ctx, bucket, key) error
-    ObjectExists(ctx, bucket, key) (bool, error)
-    // ...
+// internal/upload/service.go
+type ObjectStore interface {
+    GetPresignedUploadURL(...)
+    GetPresignedDownloadURL(...)
+    ObjectExists(...)
+    DeleteObject(...)
 }
 ```
 
-Implementation: AWS SDK v2. Supports both AWS S3 and MinIO.
+Presigned URL expiry is fixed per upload (the handler passes the
+configured TTL).
 
-Presigned URL expiry is size-based:
-- `<= 10MB` → 15 min
-- `<= 100MB` → 1 hour
-- `<= 1GB` → 3 hours
-- `> 1GB` → 6 hours
+## Helm Chart
+
+The chart uses a single `gc-cronjobs.yaml` template that renders
+one CronJob per entry in `.Values.gc.jobs` (a `range` over the
+map). Adding a fifth GC job is now a single values entry plus an
+`internal/app/gc/runner.go` constructor.

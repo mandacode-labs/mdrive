@@ -133,7 +133,7 @@ make install-hooks
 
 # Build
 make build
-./bin/mdrive serve --config config.yaml
+./bin/mdrive api-server run --config config.yaml
 
 # Run tests
 make test
@@ -155,20 +155,28 @@ make test-kind  # requires kind, kubectl, helm, docker
 .
 ├── api/                    # OpenAPI specs
 ├── build/                  # Dockerfiles
-├── cmd/                    # Entry points
-├── deployment/             # Helm charts
-├── ent/                    # Ent ORM schema & generated code
+├── cmd/mdrive/              # Entry point (thin, delegates to internal/cli)
+├── api/                     # OpenAPI spec (split into endpoints/ and schemas/)
+├── charts/mdrive/          # Helm chart
+├── ent/                     # Ent ORM schema & generated code
 ├── internal/
-│   ├── application/        # App services (fs, storage, gc)
-│   ├── core/              # Domain models (inode, object, user, dentry)
-│   ├── handler/           # HTTP handlers
-│   └── cmd/serve/         # Server DI wiring
-├── pkg/api/               # Generated ogen code
+│   ├── core/                # Domain layer (node, drive, user) — no I/O, no HTTP
+│   ├── vfs/                 # Service: POSIX inode-tree manager
+│   ├── upload/              # Service: S3 object lifecycle (+ s3/ client)
+│   ├── permission/          # OpenFGA checker (cross-cutting)
+│   ├── auth/                # OIDC + sessions (cross-cutting)
+│   ├── app/                 # Composition root (HTTP transport, GC jobs)
+│   ├── cli/                 # cobra commands
+│   ├── config/              # Viper config loading
+│   └── crypto/              # At-rest cipher for drive secrets
+├── pkg/api/                 # Generated ogen code
 └── test/
-    ├── e2e/               # End-to-end tests
-    ├── integration/       # Integration tests (testcontainers)
-    └── kind/              # Kind cluster tests
+    ├── e2e/                 # E2E tests (Postgres + Valkey, testcontainers)
+    ├── integration/         # Handler integration tests (stub fakes)
+    └── kind/                # Kind cluster tests
 ```
+
+See `docs/ARCHITECTURE.md` for the layer-responsibility table.
 
 ## License
 

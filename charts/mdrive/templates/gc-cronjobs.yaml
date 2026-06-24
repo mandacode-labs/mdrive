@@ -1,0 +1,10 @@
+{{- /* gc-cronjobs: render one CronJob per entry in .Values.gc.jobs.
+       Each entry has: name, schedule, retention (optional),
+       and the CLI subcommand to run is the map key. */ -}}
+{{- range $name, $job := .Values.gc.jobs }}
+{{- if $job.retention }}
+{{- include "mdrive.gc.cronjob" (dict "root" $ "name" $name "schedule" $job.schedule "config" $job "args" (list $name "--retention" $job.retention)) }}
+{{- else }}
+{{- include "mdrive.gc.cronjob" (dict "root" $ "name" $name "schedule" $job.schedule "config" $job "args" (list $name)) }}
+{{- end }}
+{{ end }}
