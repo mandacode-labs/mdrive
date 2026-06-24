@@ -113,8 +113,8 @@ func setupE2E(t *testing.T) *e2eEnv {
 	})
 
 	uploadSvcVfs := upload.NewService(upload.Config{
-		Drive: fs.Drive,
-		Nodes: fs.Node,
+		Drive: driveSvc,
+		Nodes: nodeSvc,
 		Store: nil,
 		Path:  fs,
 	})

@@ -185,9 +185,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
-	hops := 0
-	for hop := 0; hop < maxMountHops; hop++ {
-		hops = hop + 1
+	for hop := 1; hop <= maxMountHops; hop++ {
 		r := s.newResolver()
 		rootID, err := s.rootNodeID(ctx, currentDrive)
 		if err != nil {
@@ -198,11 +196,11 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 			return "", nil, err
 		}
 		if out.Remaining == "" {
-			if hops > 1 {
+			if hop > 1 {
 				s.log().Debug("vfs.resolve.mount_traversed",
 					slog.String("from_drive", driveID),
 					slog.String("to_drive", currentDrive),
-					slog.Int("hops", hops),
+					slog.Int("hops", hop),
 					slog.String("path", path),
 				)
 			}
@@ -275,14 +273,14 @@ func splitPath(p string) []string {
 // joinParts concatenates path components with "/". Used to
 // reconstruct the trailing path when a resolver stops at a mount.
 func joinParts(parts []string) string {
-	out := ""
+	var b strings.Builder
 	for i, p := range parts {
 		if i > 0 {
-			out += "/"
+			b.WriteByte('/')
 		}
-		out += p
+		b.WriteString(p)
 	}
-	return out
+	return b.String()
 }
 
 // cleanPath normalizes an absolute path. Uses path.Clean for collapse

@@ -17,9 +17,17 @@ import (
 func newLoggedService(t *testing.T) (*Service, *bytes.Buffer) {
 	t.Helper()
 	buf := &bytes.Buffer{}
-	svc := newTestService()
+	svc, _ := newTestServiceWithNode()
 	svc.Logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return svc, buf
+}
+
+func newLoggedServiceAndNode(t *testing.T) (*Service, *node.Service, *bytes.Buffer) {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	svc, nodeSvc := newTestServiceWithNode()
+	svc.Logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	return svc, nodeSvc, buf
 }
 
 func TestVFS_Mkdir_LogsNoMessage(t *testing.T) {
@@ -36,8 +44,7 @@ func TestVFS_Mkdir_LogsNoMessage(t *testing.T) {
 
 func TestVFS_Mv_LogsCompleted(t *testing.T) {
 	ctx := context.Background()
-	svc, buf := newLoggedService(t)
-	nodeSvc := svc.Node
+	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
 	rootID, err := svc.rootNodeID(ctx, "d1")
 	require.NoError(t, err)
@@ -63,8 +70,7 @@ func TestVFS_Mv_LogsErrorOnTombstoneFailure(t *testing.T) {
 	// /obj already in place, then run mv. The resulting call
 	// to InsertTombstones is what we want to fail.
 	ctx := context.Background()
-	svc, buf := newLoggedService(t)
-	nodeSvc := svc.Node
+	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
 	rootID, err := svc.rootNodeID(ctx, "d1")
 	require.NoError(t, err)
@@ -92,8 +98,7 @@ func TestVFS_Mv_LogsErrorOnTombstoneFailure(t *testing.T) {
 
 func TestVFS_Rm_LogsCompleted(t *testing.T) {
 	ctx := context.Background()
-	svc, buf := newLoggedService(t)
-	nodeSvc := svc.Node
+	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
 	rootID, err := svc.rootNodeID(ctx, "d1")
 	require.NoError(t, err)
@@ -111,8 +116,7 @@ func TestVFS_Rm_LogsCompleted(t *testing.T) {
 
 func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
 	ctx := context.Background()
-	svc, buf := newLoggedService(t)
-	nodeSvc := svc.Node
+	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
 	rootID, err := svc.rootNodeID(ctx, "d1")
 	require.NoError(t, err)
@@ -134,15 +138,13 @@ func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
 func TestVFS_Mount_LogsCreated(t *testing.T) {
 	ctx := context.Background()
 	svc, buf := newLoggedService(t)
-	_, err := svc.Mount(ctx, "d1", "/sub", "d2")
-	require.NoError(t, err)
+	require.NoError(t, svc.Mount(ctx, "d1", "/sub", "d2"))
 	assert.Contains(t, buf.String(), "vfs.mount.created")
 }
 
 func TestVFS_Unmount_LogsCompleted(t *testing.T) {
 	ctx := context.Background()
-	svc, buf := newLoggedService(t)
-	nodeSvc := svc.Node
+	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
 	rootID, err := svc.rootNodeID(ctx, "d1")
 	require.NoError(t, err)

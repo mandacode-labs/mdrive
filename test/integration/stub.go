@@ -65,9 +65,8 @@ func (s *stubFS) Hardlink(context.Context, string, string, string) (*node.Node, 
 	n, _ := node.NewFile("")
 	return n, nil
 }
-func (s *stubFS) Mount(context.Context, string, string, string) (*node.Node, error) {
-	n, _ := node.NewMount("")
-	return n, nil
+func (s *stubFS) Mount(context.Context, string, string, string) error {
+	return nil
 }
 func (s *stubFS) Unmount(context.Context, string, string) error {
 	return nil

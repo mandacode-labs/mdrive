@@ -19,17 +19,17 @@ import (
 // Permission is the caller's responsibility: edit on driveID (to
 // create the mount entry) and view on sourceDriveID (to verify the
 // source exists and is accessible).
-func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) (*node.Node, error) {
+func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
 	if driveID == sourceDriveID {
-		return nil, fmt.Errorf("mount: cannot mount a drive onto itself")
+		return fmt.Errorf("mount: cannot mount a drive onto itself")
 	}
 	// Validate source drive exists and has a root.
 	src, err := s.Drive.GetByID(ctx, sourceDriveID)
 	if err != nil {
-		return nil, fmt.Errorf("mount: source drive lookup: %w", err)
+		return fmt.Errorf("mount: source drive lookup: %w", err)
 	}
 	if src == nil || src.RootNodeID() == nil {
-		return nil, fmt.Errorf("mount: source drive has no root node")
+		return fmt.Errorf("mount: source drive has no root node")
 	}
 	// Reject soft-deleted source drives. Mounting a deleted drive
 	// would let a caller reach data through a path that the rest
@@ -43,16 +43,16 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 	// is a separate question that the handler layer should
 	// gate.
 	if src.DeletedAt() != nil {
-		return nil, fmt.Errorf("mount: source drive %s is soft-deleted", sourceDriveID)
+		return fmt.Errorf("mount: source drive %s is soft-deleted", sourceDriveID)
 	}
 
 	parent, name, err := s.requireEditPath(ctx, driveID, mountPath)
 	if err != nil {
-		return nil, fmt.Errorf("mount: %w", err)
+		return fmt.Errorf("mount: %w", err)
 	}
 	mount, err := node.NewMount(sourceDriveID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := s.createAndLink(ctx, mount, parent, name); err != nil {
 		s.log().Debug("vfs.mount.failed",
@@ -61,14 +61,14 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 			slog.String("path", mountPath),
 			slog.String("err", err.Error()),
 		)
-		return nil, fmt.Errorf("mount: %w", err)
+		return fmt.Errorf("mount: %w", err)
 	}
 	s.log().Info("vfs.mount.created",
 		slog.String("from_drive", driveID),
 		slog.String("to_drive", sourceDriveID),
 		slog.String("path", mountPath),
 	)
-	return mount, nil
+	return nil
 }
 
 // Unmount removes the mount at mountPath within driveID. The mount

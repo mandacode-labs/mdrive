@@ -86,6 +86,16 @@ func (d *fakeDrive) ListByOwner(_ context.Context, _ string) ([]*drive.Drive, er
 func (d *fakeDrive) now() time.Time                                                  { return time.Now() }
 
 func newTestService() *Service {
+	svc, _ := newTestServiceWithNode()
+	return svc
+}
+
+// newTestServiceWithNode returns the vfs Service together with the
+// underlying *node.Service. Tests that need to call node-creation
+// methods (CreateFile, CreateObject, CreateMount, ...) on the node
+// service use this helper, since vfs.Service's Node field is the
+// trimmed NodeClient interface.
+func newTestServiceWithNode() (*Service, *node.Service) {
 	repo := newFakeRepo()
 	nodeSvc := node.NewService(repo)
 	root, _ := nodeSvc.CreateDirectory(context.Background())
@@ -94,5 +104,5 @@ func newTestService() *Service {
 		Node:   nodeSvc,
 		Drive:  d,
 		Logger: nil,
-	})
+	}), nodeSvc
 }
