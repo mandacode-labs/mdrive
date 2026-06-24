@@ -24,6 +24,12 @@ const (
 	FieldSize = "size"
 	// FieldNlink holds the string denoting the nlink field in the database.
 	FieldNlink = "nlink"
+	// FieldMode holds the string denoting the mode field in the database.
+	FieldMode = "mode"
+	// FieldUID holds the string denoting the uid field in the database.
+	FieldUID = "uid"
+	// FieldGid holds the string denoting the gid field in the database.
+	FieldGid = "gid"
 	// FieldContent holds the string denoting the content field in the database.
 	FieldContent = "content"
 	// FieldAtime holds the string denoting the atime field in the database.
@@ -50,6 +56,9 @@ var Columns = []string{
 	FieldType,
 	FieldSize,
 	FieldNlink,
+	FieldMode,
+	FieldUID,
+	FieldGid,
 	FieldContent,
 	FieldAtime,
 	FieldMtime,
@@ -80,6 +89,16 @@ var (
 	DefaultSize int64
 	// DefaultNlink holds the default value on creation for the "nlink" field.
 	DefaultNlink uint32
+	// DefaultMode holds the default value on creation for the "mode" field.
+	DefaultMode uint32
+	// DefaultUID holds the default value on creation for the "uid" field.
+	DefaultUID string
+	// UIDValidator is a validator for the "uid" field. It is called by the builders before save.
+	UIDValidator func(string) error
+	// DefaultGid holds the default value on creation for the "gid" field.
+	DefaultGid string
+	// GidValidator is a validator for the "gid" field. It is called by the builders before save.
+	GidValidator func(string) error
 	// ContentValidator is a validator for the "content" field. It is called by the builders before save.
 	ContentValidator func([]byte) error
 	// DefaultFlags holds the default value on creation for the "flags" field.
@@ -148,6 +167,21 @@ func BySize(opts ...sql.OrderTermOption) OrderOption {
 // ByNlink orders the results by the nlink field.
 func ByNlink(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNlink, opts...).ToFunc()
+}
+
+// ByMode orders the results by the mode field.
+func ByMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMode, opts...).ToFunc()
+}
+
+// ByUID orders the results by the uid field.
+func ByUID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUID, opts...).ToFunc()
+}
+
+// ByGid orders the results by the gid field.
+func ByGid(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGid, opts...).ToFunc()
 }
 
 // ByAtime orders the results by the atime field.

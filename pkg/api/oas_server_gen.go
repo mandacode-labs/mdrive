@@ -115,7 +115,7 @@ type Handler interface {
 	// Get file metadata without following symlinks (POSIX lstat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/lstat
-	Lstat(ctx context.Context, params LstatParams) (*LstatOK, error)
+	Lstat(ctx context.Context, params LstatParams) (LstatRes, error)
 	// Mkdir implements mkdir operation.
 	//
 	// Create a directory.
@@ -157,7 +157,7 @@ type Handler interface {
 	// Get file metadata (follows symlinks, POSIX stat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/stat
-	Stat(ctx context.Context, params StatParams) (*StatOK, error)
+	Stat(ctx context.Context, params StatParams) (StatRes, error)
 	// Symlink implements symlink operation.
 	//
 	// Create a symbolic link.

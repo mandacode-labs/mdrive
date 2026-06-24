@@ -28,3 +28,58 @@ ObjectContent:
       type: string
     checksum:
       type: string
+
+NodeStat:
+  type: object
+  description: |
+    POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
+    (chmod(2) bits | S_IFMT); ino is the inode id; the four
+    timestamps follow ext4 semantics. nlink is 0 for symlinks
+    and other special nodes.
+  required: [type, size, mode, nlink, ino, atime, mtime, ctime, crtime]
+  properties:
+    type:
+      type: string
+    size:
+      type: integer
+      format: int64
+    mode:
+      type: integer
+      format: int32
+      description: POSIX permission bits and file type (chmod(2) bits | S_IFMT).
+    nlink:
+      type: integer
+      format: int32
+      description: POSIX st_nlink (hardlink count).
+    ino:
+      type: string
+      format: uuid
+      description: POSIX st_ino (inode id).
+    uid:
+      type: string
+      description: POSIX st_uid (owning user).
+    gid:
+      type: string
+      description: POSIX st_gid (owning group).
+    atime:
+      type: string
+      format: date-time
+      description: POSIX st_atime.
+    mtime:
+      type: string
+      format: date-time
+      description: POSIX st_mtime.
+    ctime:
+      type: string
+      format: date-time
+      description: POSIX st_ctime (inode change time, not creation).
+    crtime:
+      type: string
+      format: date-time
+      description: Creation time (ext4 st_crtime).
+    flags:
+      type: string
+      description: ext4-style i_flags bitmask (hex).
+    revision:
+      type: string
+      description: Internal revision token (ULID) for optimistic concurrency.

@@ -135,7 +135,7 @@ type Invoker interface {
 	// Get file metadata without following symlinks (POSIX lstat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/lstat
-	Lstat(ctx context.Context, params LstatParams) (*LstatOK, error)
+	Lstat(ctx context.Context, params LstatParams) (LstatRes, error)
 	// Mkdir invokes mkdir operation.
 	//
 	// Create a directory.
@@ -177,7 +177,7 @@ type Invoker interface {
 	// Get file metadata (follows symlinks, POSIX stat(2)).
 	//
 	// GET /v1/drives/{driveID}/fs/stat
-	Stat(ctx context.Context, params StatParams) (*StatOK, error)
+	Stat(ctx context.Context, params StatParams) (StatRes, error)
 	// Symlink invokes symlink operation.
 	//
 	// Create a symbolic link.
@@ -2181,12 +2181,12 @@ func (c *Client) sendLs(ctx context.Context, params LsParams) (res *DirContent, 
 // Get file metadata without following symlinks (POSIX lstat(2)).
 //
 // GET /v1/drives/{driveID}/fs/lstat
-func (c *Client) Lstat(ctx context.Context, params LstatParams) (*LstatOK, error) {
+func (c *Client) Lstat(ctx context.Context, params LstatParams) (LstatRes, error) {
 	res, err := c.sendLstat(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendLstat(ctx context.Context, params LstatParams) (res *LstatOK, err error) {
+func (c *Client) sendLstat(ctx context.Context, params LstatParams) (res LstatRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("lstat"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -3126,12 +3126,12 @@ func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) 
 // Get file metadata (follows symlinks, POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
-func (c *Client) Stat(ctx context.Context, params StatParams) (*StatOK, error) {
+func (c *Client) Stat(ctx context.Context, params StatParams) (StatRes, error) {
 	res, err := c.sendStat(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendStat(ctx context.Context, params StatParams) (res *StatOK, err error) {
+func (c *Client) sendStat(ctx context.Context, params StatParams) (res StatRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("stat"),
 		semconv.HTTPRequestMethodKey.String("GET"),

@@ -59,6 +59,9 @@ func (r *entRepository) insert(ctx context.Context, n *Node, content Content) er
 		SetType(entType(n.typ)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
+		SetMode(n.mode).
+		SetUID(n.uid).
+		SetGid(n.gid).
 		SetAtime(n.atime).
 		SetMtime(n.mtime).
 		SetCtime(n.ctime).
@@ -76,6 +79,9 @@ func (r *entRepository) update(ctx context.Context, n *Node, content Content) er
 		SetType(entType(n.typ)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
+		SetMode(n.mode).
+		SetUID(n.uid).
+		SetGid(n.gid).
 		SetAtime(n.atime).
 		SetMtime(n.mtime).
 		SetCtime(n.ctime).
@@ -139,6 +145,9 @@ func fromEnt(e *ent.Node) *Node {
 		typ:      parseNodeType(string(e.Type)),
 		size:     e.Size,
 		nlink:    e.Nlink,
+		mode:     e.Mode,
+		uid:      e.UID,
+		gid:      e.Gid,
 		atime:    e.Atime,
 		mtime:    e.Mtime,
 		ctime:    e.Ctime,

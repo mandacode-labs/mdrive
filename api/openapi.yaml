@@ -119,6 +119,8 @@ components:
       $ref: "./schemas/node.yaml#/DirEntry"
     ObjectContent:
       $ref: "./schemas/node.yaml#/ObjectContent"
+    NodeStat:
+      $ref: "./schemas/node.yaml#/NodeStat"
     PresignRequest:
       $ref: "./schemas/upload.yaml#/PresignRequest"
     PresignResponse:

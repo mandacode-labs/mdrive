@@ -150,10 +150,19 @@ func (c Content) Data() []byte { return c }
 // existence is checked lazily on read (HEAD to S3). If the S3 object is
 // missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
-	id      uuid.UUID
-	typ     NodeType
-	size    int64
-	nlink   uint32
+	id    uuid.UUID
+	typ   NodeType
+	size  int64
+	nlink uint32
+	// mode holds the POSIX permission bits and file type
+	// (chmod(2) bits | S_IFMT). Defaults: 0644 for files, 0755 for
+	// directories, 0777 for symlinks, 0664 for S3 objects.
+	mode uint32
+	// uid/gid identify the owning user and primary group. Defaults
+	// to "" (unset) since the system does not currently model
+	// per-user file ownership.
+	uid     string
+	gid     string
 	content Content
 	atime   time.Time
 	mtime   time.Time
@@ -181,6 +190,9 @@ func newNode(typ NodeType) *Node {
 		typ:     typ,
 		size:    0,
 		nlink:   0,
+		mode:    defaultMode(typ),
+		uid:     "",
+		gid:     "",
 		content: nil,
 		atime:   now,
 		mtime:   now,
@@ -188,6 +200,25 @@ func newNode(typ NodeType) *Node {
 		crtime:  now,
 		flags:   0,
 		rev:     newRevision(),
+	}
+}
+
+// defaultMode returns the POSIX permission bits applied to a
+// freshly created node, matching the convention of a touch(1) or
+// mkdir(1) invocation: regular files are user-writable, directories
+// are user-writable and world-readable, symlinks are world-readable
+// (their target's permissions govern access), and S3-backed objects
+// default to group-writable.
+func defaultMode(typ NodeType) uint32 {
+	switch typ {
+	case NodeTypeDirectory:
+		return 0o755
+	case NodeTypeSymlink:
+		return 0o777
+	case NodeTypeObject:
+		return 0o664
+	default:
+		return 0o644
 	}
 }
 
@@ -204,12 +235,38 @@ func (n *Node) ID() uuid.UUID      { return n.id }
 func (n *Node) Type() NodeType     { return n.typ }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
+func (n *Node) Mode() uint32       { return n.mode }
+func (n *Node) UID() string        { return n.uid }
+func (n *Node) GID() string        { return n.gid }
 func (n *Node) ATime() time.Time   { return n.atime }
 func (n *Node) MTime() time.Time   { return n.mtime }
 func (n *Node) CTime() time.Time   { return n.ctime }
 func (n *Node) CRTime() time.Time  { return n.crtime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
+
+// SetMode updates the permission bits and bumps ctime. Returns
+// ErrInvalidType if the node is not a filesystem entity.
+func (n *Node) SetMode(mode uint32) error {
+	n.mode = mode
+	n.ctime = time.Now()
+	n.rev = n.rev.Next()
+	return nil
+}
+
+// SetUID updates the owning user and bumps ctime.
+func (n *Node) SetUID(uid string) {
+	n.uid = uid
+	n.ctime = time.Now()
+	n.rev = n.rev.Next()
+}
+
+// SetGID updates the owning group and bumps ctime.
+func (n *Node) SetGID(gid string) {
+	n.gid = gid
+	n.ctime = time.Now()
+	n.rev = n.rev.Next()
+}
 
 // StaleRev returns the revision that was current when the node was
 // loaded from the repository. The repository uses it to detect concurrent

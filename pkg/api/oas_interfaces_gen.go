@@ -13,8 +13,16 @@ type InitiateUploadRes interface {
 	initiateUploadRes()
 }
 
+type LstatRes interface {
+	lstatRes()
+}
+
 type PresignDownloadRes interface {
 	presignDownloadRes()
+}
+
+type StatRes interface {
+	statRes()
 }
 
 type WriteLargeRes interface {

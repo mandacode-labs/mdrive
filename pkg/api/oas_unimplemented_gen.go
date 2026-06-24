@@ -171,7 +171,7 @@ func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r *DirCont
 // Get file metadata without following symlinks (POSIX lstat(2)).
 //
 // GET /v1/drives/{driveID}/fs/lstat
-func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r *LstatOK, _ error) {
+func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r LstatRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -234,7 +234,7 @@ func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParam
 // Get file metadata (follows symlinks, POSIX stat(2)).
 //
 // GET /v1/drives/{driveID}/fs/stat
-func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r *StatOK, _ error) {
+func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r StatRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

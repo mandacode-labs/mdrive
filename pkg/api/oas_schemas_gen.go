@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/google/uuid"
 )
 
 // AuthCallbackFound is response for AuthCallback operation.
@@ -451,7 +452,9 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 func (*ErrorStatusCode) completeUploadRes()  {}
 func (*ErrorStatusCode) createDriveRes()     {}
 func (*ErrorStatusCode) initiateUploadRes()  {}
+func (*ErrorStatusCode) lstatRes()           {}
 func (*ErrorStatusCode) presignDownloadRes() {}
+func (*ErrorStatusCode) statRes()            {}
 func (*ErrorStatusCode) writeLargeRes()      {}
 
 // GoogleLoginFound is response for GoogleLogin operation.
@@ -510,86 +513,6 @@ func (s *HealthOK) SetStatus(val OptString) {
 	s.Status = val
 }
 
-type LstatOK struct {
-	Type     OptString   `json:"type"`
-	Size     OptInt64    `json:"size"`
-	Atime    OptDateTime `json:"atime"`
-	Mtime    OptDateTime `json:"mtime"`
-	Ctime    OptDateTime `json:"ctime"`
-	Flags    OptString   `json:"flags"`
-	Revision OptString   `json:"revision"`
-}
-
-// GetType returns the value of Type.
-func (s *LstatOK) GetType() OptString {
-	return s.Type
-}
-
-// GetSize returns the value of Size.
-func (s *LstatOK) GetSize() OptInt64 {
-	return s.Size
-}
-
-// GetAtime returns the value of Atime.
-func (s *LstatOK) GetAtime() OptDateTime {
-	return s.Atime
-}
-
-// GetMtime returns the value of Mtime.
-func (s *LstatOK) GetMtime() OptDateTime {
-	return s.Mtime
-}
-
-// GetCtime returns the value of Ctime.
-func (s *LstatOK) GetCtime() OptDateTime {
-	return s.Ctime
-}
-
-// GetFlags returns the value of Flags.
-func (s *LstatOK) GetFlags() OptString {
-	return s.Flags
-}
-
-// GetRevision returns the value of Revision.
-func (s *LstatOK) GetRevision() OptString {
-	return s.Revision
-}
-
-// SetType sets the value of Type.
-func (s *LstatOK) SetType(val OptString) {
-	s.Type = val
-}
-
-// SetSize sets the value of Size.
-func (s *LstatOK) SetSize(val OptInt64) {
-	s.Size = val
-}
-
-// SetAtime sets the value of Atime.
-func (s *LstatOK) SetAtime(val OptDateTime) {
-	s.Atime = val
-}
-
-// SetMtime sets the value of Mtime.
-func (s *LstatOK) SetMtime(val OptDateTime) {
-	s.Mtime = val
-}
-
-// SetCtime sets the value of Ctime.
-func (s *LstatOK) SetCtime(val OptDateTime) {
-	s.Ctime = val
-}
-
-// SetFlags sets the value of Flags.
-func (s *LstatOK) SetFlags(val OptString) {
-	s.Flags = val
-}
-
-// SetRevision sets the value of Revision.
-func (s *LstatOK) SetRevision(val OptString) {
-	s.Revision = val
-}
-
 // MkdirOK is response for Mkdir operation.
 type MkdirOK struct{}
 
@@ -634,6 +557,171 @@ func (s *MvReq) SetSources(val []string) {
 func (s *MvReq) SetDestination(val string) {
 	s.Destination = val
 }
+
+// POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
+// (chmod(2) bits | S_IFMT); ino is the inode id; the four
+// timestamps follow ext4 semantics. nlink is 0 for symlinks
+// and other special nodes.
+// Ref: #/components/schemas/NodeStat
+type NodeStat struct {
+	Type string `json:"type"`
+	Size int64  `json:"size"`
+	// POSIX permission bits and file type (chmod(2) bits | S_IFMT).
+	Mode int32 `json:"mode"`
+	// POSIX st_nlink (hardlink count).
+	Nlink int32 `json:"nlink"`
+	// POSIX st_ino (inode id).
+	Ino uuid.UUID `json:"ino"`
+	// POSIX st_uid (owning user).
+	UID OptString `json:"uid"`
+	// POSIX st_gid (owning group).
+	Gid OptString `json:"gid"`
+	// POSIX st_atime.
+	Atime time.Time `json:"atime"`
+	// POSIX st_mtime.
+	Mtime time.Time `json:"mtime"`
+	// POSIX st_ctime (inode change time, not creation).
+	Ctime time.Time `json:"ctime"`
+	// Creation time (ext4 st_crtime).
+	Crtime time.Time `json:"crtime"`
+	// Ext4-style i_flags bitmask (hex).
+	Flags OptString `json:"flags"`
+	// Internal revision token (ULID) for optimistic concurrency.
+	Revision OptString `json:"revision"`
+}
+
+// GetType returns the value of Type.
+func (s *NodeStat) GetType() string {
+	return s.Type
+}
+
+// GetSize returns the value of Size.
+func (s *NodeStat) GetSize() int64 {
+	return s.Size
+}
+
+// GetMode returns the value of Mode.
+func (s *NodeStat) GetMode() int32 {
+	return s.Mode
+}
+
+// GetNlink returns the value of Nlink.
+func (s *NodeStat) GetNlink() int32 {
+	return s.Nlink
+}
+
+// GetIno returns the value of Ino.
+func (s *NodeStat) GetIno() uuid.UUID {
+	return s.Ino
+}
+
+// GetUID returns the value of UID.
+func (s *NodeStat) GetUID() OptString {
+	return s.UID
+}
+
+// GetGid returns the value of Gid.
+func (s *NodeStat) GetGid() OptString {
+	return s.Gid
+}
+
+// GetAtime returns the value of Atime.
+func (s *NodeStat) GetAtime() time.Time {
+	return s.Atime
+}
+
+// GetMtime returns the value of Mtime.
+func (s *NodeStat) GetMtime() time.Time {
+	return s.Mtime
+}
+
+// GetCtime returns the value of Ctime.
+func (s *NodeStat) GetCtime() time.Time {
+	return s.Ctime
+}
+
+// GetCrtime returns the value of Crtime.
+func (s *NodeStat) GetCrtime() time.Time {
+	return s.Crtime
+}
+
+// GetFlags returns the value of Flags.
+func (s *NodeStat) GetFlags() OptString {
+	return s.Flags
+}
+
+// GetRevision returns the value of Revision.
+func (s *NodeStat) GetRevision() OptString {
+	return s.Revision
+}
+
+// SetType sets the value of Type.
+func (s *NodeStat) SetType(val string) {
+	s.Type = val
+}
+
+// SetSize sets the value of Size.
+func (s *NodeStat) SetSize(val int64) {
+	s.Size = val
+}
+
+// SetMode sets the value of Mode.
+func (s *NodeStat) SetMode(val int32) {
+	s.Mode = val
+}
+
+// SetNlink sets the value of Nlink.
+func (s *NodeStat) SetNlink(val int32) {
+	s.Nlink = val
+}
+
+// SetIno sets the value of Ino.
+func (s *NodeStat) SetIno(val uuid.UUID) {
+	s.Ino = val
+}
+
+// SetUID sets the value of UID.
+func (s *NodeStat) SetUID(val OptString) {
+	s.UID = val
+}
+
+// SetGid sets the value of Gid.
+func (s *NodeStat) SetGid(val OptString) {
+	s.Gid = val
+}
+
+// SetAtime sets the value of Atime.
+func (s *NodeStat) SetAtime(val time.Time) {
+	s.Atime = val
+}
+
+// SetMtime sets the value of Mtime.
+func (s *NodeStat) SetMtime(val time.Time) {
+	s.Mtime = val
+}
+
+// SetCtime sets the value of Ctime.
+func (s *NodeStat) SetCtime(val time.Time) {
+	s.Ctime = val
+}
+
+// SetCrtime sets the value of Crtime.
+func (s *NodeStat) SetCrtime(val time.Time) {
+	s.Crtime = val
+}
+
+// SetFlags sets the value of Flags.
+func (s *NodeStat) SetFlags(val OptString) {
+	s.Flags = val
+}
+
+// SetRevision sets the value of Revision.
+func (s *NodeStat) SetRevision(val OptString) {
+	s.Revision = val
+}
+
+func (*NodeStat) lstatRes() {}
+func (*NodeStat) statRes()  {}
 
 // Ref: #/components/schemas/ObjectContent
 type ObjectContent struct {
@@ -1771,86 +1859,6 @@ func (s *RmReq) SetPaths(val []string) {
 // SetRecursive sets the value of Recursive.
 func (s *RmReq) SetRecursive(val OptBool) {
 	s.Recursive = val
-}
-
-type StatOK struct {
-	Type     OptString   `json:"type"`
-	Size     OptInt64    `json:"size"`
-	Atime    OptDateTime `json:"atime"`
-	Mtime    OptDateTime `json:"mtime"`
-	Ctime    OptDateTime `json:"ctime"`
-	Flags    OptString   `json:"flags"`
-	Revision OptString   `json:"revision"`
-}
-
-// GetType returns the value of Type.
-func (s *StatOK) GetType() OptString {
-	return s.Type
-}
-
-// GetSize returns the value of Size.
-func (s *StatOK) GetSize() OptInt64 {
-	return s.Size
-}
-
-// GetAtime returns the value of Atime.
-func (s *StatOK) GetAtime() OptDateTime {
-	return s.Atime
-}
-
-// GetMtime returns the value of Mtime.
-func (s *StatOK) GetMtime() OptDateTime {
-	return s.Mtime
-}
-
-// GetCtime returns the value of Ctime.
-func (s *StatOK) GetCtime() OptDateTime {
-	return s.Ctime
-}
-
-// GetFlags returns the value of Flags.
-func (s *StatOK) GetFlags() OptString {
-	return s.Flags
-}
-
-// GetRevision returns the value of Revision.
-func (s *StatOK) GetRevision() OptString {
-	return s.Revision
-}
-
-// SetType sets the value of Type.
-func (s *StatOK) SetType(val OptString) {
-	s.Type = val
-}
-
-// SetSize sets the value of Size.
-func (s *StatOK) SetSize(val OptInt64) {
-	s.Size = val
-}
-
-// SetAtime sets the value of Atime.
-func (s *StatOK) SetAtime(val OptDateTime) {
-	s.Atime = val
-}
-
-// SetMtime sets the value of Mtime.
-func (s *StatOK) SetMtime(val OptDateTime) {
-	s.Mtime = val
-}
-
-// SetCtime sets the value of Ctime.
-func (s *StatOK) SetCtime(val OptDateTime) {
-	s.Ctime = val
-}
-
-// SetFlags sets the value of Flags.
-func (s *StatOK) SetFlags(val OptString) {
-	s.Flags = val
-}
-
-// SetRevision sets the value of Revision.
-func (s *StatOK) SetRevision(val OptString) {
-	s.Revision = val
 }
 
 // Ref: #/components/schemas/StorageConfig

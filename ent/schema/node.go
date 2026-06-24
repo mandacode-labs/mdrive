@@ -57,6 +57,21 @@ func (Node) Fields() []ent.Field {
 		field.Uint32("nlink").
 			Default(0),
 
+		// POSIX permission bits and file type (chmod(2) bits | S_IFMT).
+		// Defaults: 0644 files, 0755 directories, 0777 symlinks, 0664 objects.
+		field.Uint32("mode").
+			Default(420), // 0644 (file default)
+
+		// Owning user (POSIX st_uid). Empty when unset.
+		field.String("uid").
+			MaxLen(64).
+			Default(""),
+
+		// Owning primary group (POSIX st_gid). Empty when unset.
+		field.String("gid").
+			MaxLen(64).
+			Default(""),
+
 		// Inline content (JSON-serialized). Max 4 KiB; nil for large files / objects.
 		field.Bytes("content").
 			Optional().

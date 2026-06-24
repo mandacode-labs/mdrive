@@ -222,15 +222,13 @@ stat:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                type: { type: string }
-                size: { type: integer, format: int64 }
-                atime: { type: string, format: date-time }
-                mtime: { type: string, format: date-time }
-                ctime: { type: string, format: date-time }
-                flags: { type: string }
-                revision: { type: string }
+              $ref: "../openapi.yaml#/components/schemas/NodeStat"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 lstat:
   get:
@@ -251,15 +249,13 @@ lstat:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                type: { type: string }
-                size: { type: integer, format: int64 }
-                atime: { type: string, format: date-time }
-                mtime: { type: string, format: date-time }
-                ctime: { type: string, format: date-time }
-                flags: { type: string }
-                revision: { type: string }
+              $ref: "../openapi.yaml#/components/schemas/NodeStat"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 object:
   post:

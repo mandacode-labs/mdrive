@@ -1124,171 +1124,6 @@ func (s *HealthOK) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *LstatOK) Encode(e *jx.Encoder) {
-	e.ObjStart()
-	s.encodeFields(e)
-	e.ObjEnd()
-}
-
-// encodeFields encodes fields.
-func (s *LstatOK) encodeFields(e *jx.Encoder) {
-	{
-		if s.Type.Set {
-			e.FieldStart("type")
-			s.Type.Encode(e)
-		}
-	}
-	{
-		if s.Size.Set {
-			e.FieldStart("size")
-			s.Size.Encode(e)
-		}
-	}
-	{
-		if s.Atime.Set {
-			e.FieldStart("atime")
-			s.Atime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Mtime.Set {
-			e.FieldStart("mtime")
-			s.Mtime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Ctime.Set {
-			e.FieldStart("ctime")
-			s.Ctime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Flags.Set {
-			e.FieldStart("flags")
-			s.Flags.Encode(e)
-		}
-	}
-	{
-		if s.Revision.Set {
-			e.FieldStart("revision")
-			s.Revision.Encode(e)
-		}
-	}
-}
-
-var jsonFieldsNameOfLstatOK = [7]string{
-	0: "type",
-	1: "size",
-	2: "atime",
-	3: "mtime",
-	4: "ctime",
-	5: "flags",
-	6: "revision",
-}
-
-// Decode decodes LstatOK from json.
-func (s *LstatOK) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode LstatOK to nil")
-	}
-
-	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		case "type":
-			if err := func() error {
-				s.Type.Reset()
-				if err := s.Type.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"type\"")
-			}
-		case "size":
-			if err := func() error {
-				s.Size.Reset()
-				if err := s.Size.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"size\"")
-			}
-		case "atime":
-			if err := func() error {
-				s.Atime.Reset()
-				if err := s.Atime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"atime\"")
-			}
-		case "mtime":
-			if err := func() error {
-				s.Mtime.Reset()
-				if err := s.Mtime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"mtime\"")
-			}
-		case "ctime":
-			if err := func() error {
-				s.Ctime.Reset()
-				if err := s.Ctime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"ctime\"")
-			}
-		case "flags":
-			if err := func() error {
-				s.Flags.Reset()
-				if err := s.Flags.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"flags\"")
-			}
-		case "revision":
-			if err := func() error {
-				s.Revision.Reset()
-				if err := s.Revision.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"revision\"")
-			}
-		default:
-			return d.Skip()
-		}
-		return nil
-	}); err != nil {
-		return errors.Wrap(err, "decode LstatOK")
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s *LstatOK) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *LstatOK) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode implements json.Marshaler.
 func (s *MkdirReq) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -1505,6 +1340,307 @@ func (s *MvReq) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *MvReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *NodeStat) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *NodeStat) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("type")
+		e.Str(s.Type)
+	}
+	{
+		e.FieldStart("size")
+		e.Int64(s.Size)
+	}
+	{
+		e.FieldStart("mode")
+		e.Int32(s.Mode)
+	}
+	{
+		e.FieldStart("nlink")
+		e.Int32(s.Nlink)
+	}
+	{
+		e.FieldStart("ino")
+		json.EncodeUUID(e, s.Ino)
+	}
+	{
+		if s.UID.Set {
+			e.FieldStart("uid")
+			s.UID.Encode(e)
+		}
+	}
+	{
+		if s.Gid.Set {
+			e.FieldStart("gid")
+			s.Gid.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("atime")
+		json.EncodeDateTime(e, s.Atime)
+	}
+	{
+		e.FieldStart("mtime")
+		json.EncodeDateTime(e, s.Mtime)
+	}
+	{
+		e.FieldStart("ctime")
+		json.EncodeDateTime(e, s.Ctime)
+	}
+	{
+		e.FieldStart("crtime")
+		json.EncodeDateTime(e, s.Crtime)
+	}
+	{
+		if s.Flags.Set {
+			e.FieldStart("flags")
+			s.Flags.Encode(e)
+		}
+	}
+	{
+		if s.Revision.Set {
+			e.FieldStart("revision")
+			s.Revision.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfNodeStat = [13]string{
+	0:  "type",
+	1:  "size",
+	2:  "mode",
+	3:  "nlink",
+	4:  "ino",
+	5:  "uid",
+	6:  "gid",
+	7:  "atime",
+	8:  "mtime",
+	9:  "ctime",
+	10: "crtime",
+	11: "flags",
+	12: "revision",
+}
+
+// Decode decodes NodeStat from json.
+func (s *NodeStat) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode NodeStat to nil")
+	}
+	var requiredBitSet [2]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "type":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Type = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"type\"")
+			}
+		case "size":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int64()
+				s.Size = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"size\"")
+			}
+		case "mode":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int32()
+				s.Mode = int32(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"mode\"")
+			}
+		case "nlink":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int32()
+				s.Nlink = int32(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"nlink\"")
+			}
+		case "ino":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.Ino = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"ino\"")
+			}
+		case "uid":
+			if err := func() error {
+				s.UID.Reset()
+				if err := s.UID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"uid\"")
+			}
+		case "gid":
+			if err := func() error {
+				s.Gid.Reset()
+				if err := s.Gid.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"gid\"")
+			}
+		case "atime":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.Atime = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"atime\"")
+			}
+		case "mtime":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.Mtime = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"mtime\"")
+			}
+		case "ctime":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.Ctime = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"ctime\"")
+			}
+		case "crtime":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.Crtime = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"crtime\"")
+			}
+		case "flags":
+			if err := func() error {
+				s.Flags.Reset()
+				if err := s.Flags.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"flags\"")
+			}
+		case "revision":
+			if err := func() error {
+				s.Revision.Reset()
+				if err := s.Revision.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"revision\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode NodeStat")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [2]uint8{
+		0b10011111,
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfNodeStat) {
+					name = jsonFieldsNameOfNodeStat[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *NodeStat) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *NodeStat) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -2909,171 +3045,6 @@ func (s *RmReq) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *RmReq) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode implements json.Marshaler.
-func (s *StatOK) Encode(e *jx.Encoder) {
-	e.ObjStart()
-	s.encodeFields(e)
-	e.ObjEnd()
-}
-
-// encodeFields encodes fields.
-func (s *StatOK) encodeFields(e *jx.Encoder) {
-	{
-		if s.Type.Set {
-			e.FieldStart("type")
-			s.Type.Encode(e)
-		}
-	}
-	{
-		if s.Size.Set {
-			e.FieldStart("size")
-			s.Size.Encode(e)
-		}
-	}
-	{
-		if s.Atime.Set {
-			e.FieldStart("atime")
-			s.Atime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Mtime.Set {
-			e.FieldStart("mtime")
-			s.Mtime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Ctime.Set {
-			e.FieldStart("ctime")
-			s.Ctime.Encode(e, json.EncodeDateTime)
-		}
-	}
-	{
-		if s.Flags.Set {
-			e.FieldStart("flags")
-			s.Flags.Encode(e)
-		}
-	}
-	{
-		if s.Revision.Set {
-			e.FieldStart("revision")
-			s.Revision.Encode(e)
-		}
-	}
-}
-
-var jsonFieldsNameOfStatOK = [7]string{
-	0: "type",
-	1: "size",
-	2: "atime",
-	3: "mtime",
-	4: "ctime",
-	5: "flags",
-	6: "revision",
-}
-
-// Decode decodes StatOK from json.
-func (s *StatOK) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode StatOK to nil")
-	}
-
-	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		case "type":
-			if err := func() error {
-				s.Type.Reset()
-				if err := s.Type.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"type\"")
-			}
-		case "size":
-			if err := func() error {
-				s.Size.Reset()
-				if err := s.Size.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"size\"")
-			}
-		case "atime":
-			if err := func() error {
-				s.Atime.Reset()
-				if err := s.Atime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"atime\"")
-			}
-		case "mtime":
-			if err := func() error {
-				s.Mtime.Reset()
-				if err := s.Mtime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"mtime\"")
-			}
-		case "ctime":
-			if err := func() error {
-				s.Ctime.Reset()
-				if err := s.Ctime.Decode(d, json.DecodeDateTime); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"ctime\"")
-			}
-		case "flags":
-			if err := func() error {
-				s.Flags.Reset()
-				if err := s.Flags.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"flags\"")
-			}
-		case "revision":
-			if err := func() error {
-				s.Revision.Reset()
-				if err := s.Revision.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"revision\"")
-			}
-		default:
-			return d.Skip()
-		}
-		return nil
-	}); err != nil {
-		return errors.Wrap(err, "decode StatOK")
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s *StatOK) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *StatOK) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -3102,7 +3102,7 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 
 	var rawBody []byte
 
-	var response *LstatOK
+	var response LstatRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -3127,7 +3127,7 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 		type (
 			Request  = struct{}
 			Params   = LstatParams
-			Response = *LstatOK
+			Response = LstatRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -4468,7 +4468,7 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 
 	var rawBody []byte
 
-	var response *StatOK
+	var response StatRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -4493,7 +4493,7 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 		type (
 			Request  = struct{}
 			Params   = StatParams
-			Response = *StatOK
+			Response = StatRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
