@@ -138,8 +138,7 @@ func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
 func TestVFS_Mount_LogsCreated(t *testing.T) {
 	ctx := context.Background()
 	svc, buf := newLoggedService(t)
-	_, err := svc.Mount(ctx, "d1", "/sub", "d2")
-	require.NoError(t, err)
+	require.NoError(t, svc.Mount(ctx, "d1", "/sub", "d2"))
 	assert.Contains(t, buf.String(), "vfs.mount.created")
 }
 

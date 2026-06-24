@@ -188,7 +188,7 @@ func (h *Handler) Mount(ctx context.Context, req api.OptMountReq, params api.Mou
 	if err := h.requirePerm(ctx, permission.PermissionView, r.SourceDriveID); err != nil {
 		return nil, err
 	}
-	if _, err := h.vfs.Mount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
+	if err := h.vfs.Mount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
 		return nil, err
 	}
 	return &api.MountOK{}, nil
