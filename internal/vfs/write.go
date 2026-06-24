@@ -9,24 +9,25 @@ import (
 
 // Write creates or overwrites inline content at path.
 // Permission is the caller's responsibility.
+//
+// The create-on-missing branch constructs the file in memory
+// and hands it to Node.Link, which inserts the row inside the
+// same transaction as the parent's directory update. The
+// overwrite branch goes through Node.Save, whose UPDATE is
+// committed atomically.
 func (s *Service) Write(ctx context.Context, driveID, path, content string) error {
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
 		return err
 	}
-	// A single resolver instance for the resolve + resolveParent
-	// pair so any shared intermediate nodes see the same *Node.
 	r := s.newResolver()
 	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
-		// Path doesn't exist yet; treat the resolve error as a hint
-		// to fall back to creating a new file. We need the parent
-		// directory, so re-resolve with resolveParent.
 		parent, name, perr := r.resolveParent(ctx, rootID, path)
 		if perr != nil {
 			return fmt.Errorf("write: %w", perr)
 		}
-		f, ferr := s.Node.CreateFile(ctx, content)
+		f, ferr := node.NewFile(content)
 		if ferr != nil {
 			return ferr
 		}
@@ -49,7 +50,7 @@ func (s *Service) WriteLarge(ctx context.Context, driveID, path string, obj node
 	if err != nil {
 		return err
 	}
-	n, err := s.Node.CreateObject(ctx, obj, size)
+	n, err := node.NewObject(obj, size)
 	if err != nil {
 		return err
 	}

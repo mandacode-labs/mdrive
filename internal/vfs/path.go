@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 
@@ -301,15 +300,10 @@ func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (pa
 	return parent, name, nil
 }
 
-// createAndLink links child at parent/name. On link failure, the
-// child is deleted to prevent leaking unparented inodes; the
-// original link error is returned with cleanup context.
+// createAndLink creates (or saves) child as a new entry at
+// parent/name. Both the child row and the parent's directory
+// entry land in the same transaction, so a partial failure
+// cannot leave a child row that no directory refers to.
 func (s *Service) createAndLink(ctx context.Context, child, parent *node.Node, name string) error {
-	if err := s.Node.Link(ctx, parent, name, child); err != nil {
-		if derr := s.Node.Delete(ctx, child.ID()); derr != nil {
-			return fmt.Errorf("link: %w (cleanup: %v)", err, derr)
-		}
-		return fmt.Errorf("link: %w", err)
-	}
-	return nil
+	return s.Node.Link(ctx, parent, name, child)
 }

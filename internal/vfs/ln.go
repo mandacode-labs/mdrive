@@ -52,7 +52,7 @@ func (s *Service) lnSymlink(ctx context.Context, driveID, target, linkPath strin
 	if err != nil {
 		return nil, err
 	}
-	n, err := s.Node.CreateSymlink(ctx, target)
+	n, err := node.NewSymlink(target)
 	if err != nil {
 		return nil, err
 	}
