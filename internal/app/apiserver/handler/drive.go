@@ -11,7 +11,6 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// driveToAPI converts a domain drive to an API drive.
 func driveToAPI(d *coredrive.Drive) *api.Drive {
 	if d == nil {
 		return nil

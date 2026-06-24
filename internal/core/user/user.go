@@ -42,7 +42,6 @@ func NewUser(
 	}
 }
 
-// Getters.
 func (u *User) ID() string           { return u.id }
 func (u *User) PublicID() string     { return u.publicID }
 func (u *User) Name() string         { return u.name }

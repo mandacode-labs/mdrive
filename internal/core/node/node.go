@@ -229,8 +229,6 @@ func NewRootNode() *Node {
 	return newNode(NodeTypeDirectory)
 }
 
-// Getters (all public).
-
 func (n *Node) ID() uuid.UUID      { return n.id }
 func (n *Node) Type() NodeType     { return n.typ }
 func (n *Node) Size() int64        { return n.size }
@@ -297,8 +295,6 @@ func (n *Node) Clone() *Node {
 // Content is exported for repository serialization; not intended for direct mutation
 // by external callers. Type-specific Read methods are the public API.
 func (n *Node) Content() Content { return n.content }
-
-// Type predicates.
 
 func (n *Node) IsDir() bool     { return n.typ == NodeTypeDirectory }
 func (n *Node) IsFile() bool    { return n.typ == NodeTypeFile }

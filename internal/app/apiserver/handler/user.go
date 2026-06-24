@@ -8,7 +8,6 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// userToAPI converts a domain user to an API user.
 func userToAPI(u *user.User) *api.User {
 	if u == nil {
 		return nil

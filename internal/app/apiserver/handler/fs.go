@@ -267,7 +267,6 @@ func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.
 	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
 		return nil, err
 	}
-	// Re-resolve the symlink target inside the resolved drive.
 	finalPath := res.Path
 	if res.DriveID != params.DriveID {
 		finalPath = "/" + res.Path

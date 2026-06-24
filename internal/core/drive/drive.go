@@ -57,7 +57,6 @@ func NewDrive(
 	}
 }
 
-// Getters.
 func (d *Drive) ID() string             { return d.id }
 func (d *Drive) PublicID() string       { return d.publicID }
 func (d *Drive) Name() string           { return d.name }

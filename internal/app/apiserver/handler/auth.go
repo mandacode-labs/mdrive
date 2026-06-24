@@ -154,10 +154,8 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// sessionCookie returns a configured session cookie. Cookie attributes
-// come from config which has safe defaults (HttpOnly=true, SameSite=Lax
-// in dev / Strict in prod, Secure in prod); G124 is excluded in
-// gosec.json for this file.
+// Cookie attributes come from config which has safe defaults
+// (HttpOnly=true, SameSite=Lax in dev / Strict in prod, Secure in prod).
 func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
 	return &http.Cookie{
 		Name:     h.cookieConfig.Name,
@@ -170,7 +168,6 @@ func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
 	}
 }
 
-// expiredCookie returns a cookie that clears the session.
 func (h *Handler) expiredCookie() *http.Cookie {
 	return &http.Cookie{
 		Name:     h.cookieConfig.Name,
