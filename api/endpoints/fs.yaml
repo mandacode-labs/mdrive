@@ -202,6 +202,91 @@ symlink:
     responses:
       "200":
         description: Symlink created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+hardlink:
+  post:
+    operationId: hardlink
+    summary: Create a hard link (POSIX ln(1))
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [srcPath, linkPath]
+            properties:
+              srcPath: { type: string }
+              linkPath: { type: string }
+    responses:
+      "200":
+        description: Hardlink created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+mount:
+  post:
+    operationId: mount
+    summary: Bind-mount another drive at a path (POSIX mount-like)
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [mountPath, sourceDriveID]
+            properties:
+              mountPath: { type: string }
+              sourceDriveID: { type: string }
+    responses:
+      "200":
+        description: Mount created
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+unmount:
+  delete:
+    operationId: unmount
+    summary: Remove a bind mount (POSIX umount-like)
+    parameters:
+      - name: driveID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: mountPath
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "204":
+        description: Unmounted
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
 
 stat:
   get:

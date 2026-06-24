@@ -141,13 +141,54 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 	return &api.WriteLargeOK{}, nil
 }
 
-func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) error {
+func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) (api.SymlinkRes, error) {
 	r := req.Value
 	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
-		return err
+		return nil, err
 	}
-	_, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath)
-	return err
+	if _, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath); err != nil {
+		return nil, err
+	}
+	return &api.SymlinkOK{}, nil
+}
+
+func (h *Handler) Hardlink(ctx context.Context, req api.OptHardlinkReq, params api.HardlinkParams) (api.HardlinkRes, error) {
+	r := req.Value
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
+	if _, err := h.vfs.Hardlink(ctx, params.DriveID, r.SrcPath, r.LinkPath); err != nil {
+		return nil, err
+	}
+	return &api.HardlinkOK{}, nil
+}
+
+func (h *Handler) Mount(ctx context.Context, req api.OptMountReq, params api.MountParams) (api.MountRes, error) {
+	r := req.Value
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
+	// View perm on the source drive: the mount makes the source's
+	// root resolvable from this drive, so a non-viewable source
+	// would leak the source's existence to anyone who can see
+	// the mount point.
+	if err := h.requirePerm(ctx, permission.PermissionView, r.SourceDriveID); err != nil {
+		return nil, err
+	}
+	if _, err := h.vfs.Mount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
+		return nil, err
+	}
+	return &api.MountOK{}, nil
+}
+
+func (h *Handler) Unmount(ctx context.Context, params api.UnmountParams) (api.UnmountRes, error) {
+	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+		return nil, err
+	}
+	if err := h.vfs.Unmount(ctx, params.DriveID, params.MountPath); err != nil {
+		return nil, err
+	}
+	return &api.UnmountNoContent{}, nil
 }
 
 func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes, error) {

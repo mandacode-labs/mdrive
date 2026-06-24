@@ -80,6 +80,12 @@ type Handler interface {
 	//
 	// POST /auth/google/native
 	GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
+	// Hardlink implements hardlink operation.
+	//
+	// Create a hard link (POSIX ln(1)).
+	//
+	// POST /v1/drives/{driveID}/fs/hardlink
+	Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Health implements health operation.
 	//
 	// Health check.
@@ -122,6 +128,12 @@ type Handler interface {
 	//
 	// POST /v1/drives/{driveID}/fs/mkdir
 	Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) error
+	// Mount implements mount operation.
+	//
+	// Bind-mount another drive at a path (POSIX mount-like).
+	//
+	// POST /v1/drives/{driveID}/fs/mount
+	Mount(ctx context.Context, req OptMountReq, params MountParams) (MountRes, error)
 	// Mv implements mv operation.
 	//
 	// Move files or directories.
@@ -163,13 +175,19 @@ type Handler interface {
 	// Create a symbolic link.
 	//
 	// POST /v1/drives/{driveID}/fs/symlink
-	Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) error
+	Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) (SymlinkRes, error)
 	// Touch implements touch operation.
 	//
 	// Create an empty file.
 	//
 	// POST /v1/drives/{driveID}/fs/touch
 	Touch(ctx context.Context, req OptTouchReq, params TouchParams) error
+	// Unmount implements unmount operation.
+	//
+	// Remove a bind mount (POSIX umount-like).
+	//
+	// DELETE /v1/drives/{driveID}/fs/unmount
+	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
 	// UpdateDrive implements updateDrive operation.
 	//
 	// Update a drive.

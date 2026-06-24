@@ -100,6 +100,12 @@ type Invoker interface {
 	//
 	// POST /auth/google/native
 	GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (*GoogleNativeLoginOK, error)
+	// Hardlink invokes hardlink operation.
+	//
+	// Create a hard link (POSIX ln(1)).
+	//
+	// POST /v1/drives/{driveID}/fs/hardlink
+	Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Health invokes health operation.
 	//
 	// Health check.
@@ -142,6 +148,12 @@ type Invoker interface {
 	//
 	// POST /v1/drives/{driveID}/fs/mkdir
 	Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) error
+	// Mount invokes mount operation.
+	//
+	// Bind-mount another drive at a path (POSIX mount-like).
+	//
+	// POST /v1/drives/{driveID}/fs/mount
+	Mount(ctx context.Context, request OptMountReq, params MountParams) (MountRes, error)
 	// Mv invokes mv operation.
 	//
 	// Move files or directories.
@@ -183,13 +195,19 @@ type Invoker interface {
 	// Create a symbolic link.
 	//
 	// POST /v1/drives/{driveID}/fs/symlink
-	Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) error
+	Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error)
 	// Touch invokes touch operation.
 	//
 	// Create an empty file.
 	//
 	// POST /v1/drives/{driveID}/fs/touch
 	Touch(ctx context.Context, request OptTouchReq, params TouchParams) error
+	// Unmount invokes unmount operation.
+	//
+	// Remove a bind mount (POSIX umount-like).
+	//
+	// DELETE /v1/drives/{driveID}/fs/unmount
+	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
 	// UpdateDrive invokes updateDrive operation.
 	//
 	// Update a drive.
@@ -1615,6 +1633,135 @@ func (c *Client) sendGoogleNativeLogin(ctx context.Context, request OptGoogleNat
 	return result, nil
 }
 
+// Hardlink invokes hardlink operation.
+//
+// Create a hard link (POSIX ln(1)).
+//
+// POST /v1/drives/{driveID}/fs/hardlink
+func (c *Client) Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error) {
+	res, err := c.sendHardlink(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendHardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (res HardlinkRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("hardlink"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/hardlink"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, HardlinkOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/drives/"
+	{
+		// Encode "driveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "driveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.DriveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/fs/hardlink"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeHardlinkRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:BearerAuth"
+			switch err := c.securityBearerAuth(ctx, HardlinkOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"BearerAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeHardlinkResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // Health invokes health operation.
 //
 // Health check.
@@ -2449,6 +2596,135 @@ func (c *Client) sendMkdir(ctx context.Context, request OptMkdirReq, params Mkdi
 	return result, nil
 }
 
+// Mount invokes mount operation.
+//
+// Bind-mount another drive at a path (POSIX mount-like).
+//
+// POST /v1/drives/{driveID}/fs/mount
+func (c *Client) Mount(ctx context.Context, request OptMountReq, params MountParams) (MountRes, error) {
+	res, err := c.sendMount(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendMount(ctx context.Context, request OptMountReq, params MountParams) (res MountRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("mount"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/mount"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, MountOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/drives/"
+	{
+		// Encode "driveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "driveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.DriveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/fs/mount"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeMountRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:BearerAuth"
+			switch err := c.securityBearerAuth(ctx, MountOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"BearerAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeMountResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // Mv invokes mv operation.
 //
 // Move files or directories.
@@ -3270,12 +3546,12 @@ func (c *Client) sendStat(ctx context.Context, params StatParams) (res StatRes, 
 // Create a symbolic link.
 //
 // POST /v1/drives/{driveID}/fs/symlink
-func (c *Client) Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) error {
-	_, err := c.sendSymlink(ctx, request, params)
-	return err
+func (c *Client) Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error) {
+	res, err := c.sendSymlink(ctx, request, params)
+	return res, err
 }
 
-func (c *Client) sendSymlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (res *SymlinkOK, err error) {
+func (c *Client) sendSymlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (res SymlinkRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("symlink"),
 		semconv.HTTPRequestMethodKey.String("POST"),
@@ -3516,6 +3792,150 @@ func (c *Client) sendTouch(ctx context.Context, request OptTouchReq, params Touc
 
 	stage = "DecodeResponse"
 	result, err := decodeTouchResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// Unmount invokes unmount operation.
+//
+// Remove a bind mount (POSIX umount-like).
+//
+// DELETE /v1/drives/{driveID}/fs/unmount
+func (c *Client) Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error) {
+	res, err := c.sendUnmount(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendUnmount(ctx context.Context, params UnmountParams) (res UnmountRes, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("unmount"),
+		semconv.HTTPRequestMethodKey.String("DELETE"),
+		semconv.URLTemplateKey.String("/v1/drives/{driveID}/fs/unmount"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, UnmountOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/v1/drives/"
+	{
+		// Encode "driveID" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "driveID",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.DriveID))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/fs/unmount"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "mountPath" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "mountPath",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.MountPath))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			stage = "Security:BearerAuth"
+			switch err := c.securityBearerAuth(ctx, UnmountOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"BearerAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeUnmountResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

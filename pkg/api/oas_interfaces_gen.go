@@ -9,6 +9,10 @@ type CreateDriveRes interface {
 	createDriveRes()
 }
 
+type HardlinkRes interface {
+	hardlinkRes()
+}
+
 type InitiateUploadRes interface {
 	initiateUploadRes()
 }
@@ -17,12 +21,24 @@ type LstatRes interface {
 	lstatRes()
 }
 
+type MountRes interface {
+	mountRes()
+}
+
 type PresignDownloadRes interface {
 	presignDownloadRes()
 }
 
 type StatRes interface {
 	statRes()
+}
+
+type SymlinkRes interface {
+	symlinkRes()
+}
+
+type UnmountRes interface {
+	unmountRes()
 }
 
 type WriteLargeRes interface {

@@ -451,10 +451,14 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 
 func (*ErrorStatusCode) completeUploadRes()  {}
 func (*ErrorStatusCode) createDriveRes()     {}
+func (*ErrorStatusCode) hardlinkRes()        {}
 func (*ErrorStatusCode) initiateUploadRes()  {}
 func (*ErrorStatusCode) lstatRes()           {}
+func (*ErrorStatusCode) mountRes()           {}
 func (*ErrorStatusCode) presignDownloadRes() {}
 func (*ErrorStatusCode) statRes()            {}
+func (*ErrorStatusCode) symlinkRes()         {}
+func (*ErrorStatusCode) unmountRes()         {}
 func (*ErrorStatusCode) writeLargeRes()      {}
 
 // GoogleLoginFound is response for GoogleLogin operation.
@@ -499,6 +503,36 @@ func (s *GoogleNativeLoginReq) SetIdToken(val string) {
 	s.IdToken = val
 }
 
+// HardlinkOK is response for Hardlink operation.
+type HardlinkOK struct{}
+
+func (*HardlinkOK) hardlinkRes() {}
+
+type HardlinkReq struct {
+	SrcPath  string `json:"srcPath"`
+	LinkPath string `json:"linkPath"`
+}
+
+// GetSrcPath returns the value of SrcPath.
+func (s *HardlinkReq) GetSrcPath() string {
+	return s.SrcPath
+}
+
+// GetLinkPath returns the value of LinkPath.
+func (s *HardlinkReq) GetLinkPath() string {
+	return s.LinkPath
+}
+
+// SetSrcPath sets the value of SrcPath.
+func (s *HardlinkReq) SetSrcPath(val string) {
+	s.SrcPath = val
+}
+
+// SetLinkPath sets the value of LinkPath.
+func (s *HardlinkReq) SetLinkPath(val string) {
+	s.LinkPath = val
+}
+
 type HealthOK struct {
 	Status OptString `json:"status"`
 }
@@ -528,6 +562,36 @@ func (s *MkdirReq) GetPath() string {
 // SetPath sets the value of Path.
 func (s *MkdirReq) SetPath(val string) {
 	s.Path = val
+}
+
+// MountOK is response for Mount operation.
+type MountOK struct{}
+
+func (*MountOK) mountRes() {}
+
+type MountReq struct {
+	MountPath     string `json:"mountPath"`
+	SourceDriveID string `json:"sourceDriveID"`
+}
+
+// GetMountPath returns the value of MountPath.
+func (s *MountReq) GetMountPath() string {
+	return s.MountPath
+}
+
+// GetSourceDriveID returns the value of SourceDriveID.
+func (s *MountReq) GetSourceDriveID() string {
+	return s.SourceDriveID
+}
+
+// SetMountPath sets the value of MountPath.
+func (s *MountReq) SetMountPath(val string) {
+	s.MountPath = val
+}
+
+// SetSourceDriveID sets the value of SourceDriveID.
+func (s *MountReq) SetSourceDriveID(val string) {
+	s.SourceDriveID = val
 }
 
 // MvOK is response for Mv operation.
@@ -1001,6 +1065,52 @@ func (o OptGoogleNativeLoginReq) Or(d GoogleNativeLoginReq) GoogleNativeLoginReq
 	return d
 }
 
+// NewOptHardlinkReq returns new OptHardlinkReq with value set to v.
+func NewOptHardlinkReq(v HardlinkReq) OptHardlinkReq {
+	return OptHardlinkReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptHardlinkReq is optional HardlinkReq.
+type OptHardlinkReq struct {
+	Value HardlinkReq
+	Set   bool
+}
+
+// IsSet returns true if OptHardlinkReq was set.
+func (o OptHardlinkReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptHardlinkReq) Reset() {
+	var v HardlinkReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptHardlinkReq) SetTo(v HardlinkReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptHardlinkReq) Get() (v HardlinkReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptHardlinkReq) Or(d HardlinkReq) HardlinkReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptInt64 returns new OptInt64 with value set to v.
 func NewOptInt64(v int64) OptInt64 {
 	return OptInt64{
@@ -1087,6 +1197,52 @@ func (o OptMkdirReq) Get() (v MkdirReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptMkdirReq) Or(d MkdirReq) MkdirReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptMountReq returns new OptMountReq with value set to v.
+func NewOptMountReq(v MountReq) OptMountReq {
+	return OptMountReq{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptMountReq is optional MountReq.
+type OptMountReq struct {
+	Value MountReq
+	Set   bool
+}
+
+// IsSet returns true if OptMountReq was set.
+func (o OptMountReq) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptMountReq) Reset() {
+	var v MountReq
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptMountReq) SetTo(v MountReq) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptMountReq) Get() (v MountReq, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptMountReq) Or(d MountReq) MountReq {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1934,6 +2090,8 @@ func (s *StorageConfig) SetUsePathStyle(val OptBool) {
 // SymlinkOK is response for Symlink operation.
 type SymlinkOK struct{}
 
+func (*SymlinkOK) symlinkRes() {}
+
 type SymlinkReq struct {
 	Target   string `json:"target"`
 	LinkPath string `json:"linkPath"`
@@ -1975,6 +2133,11 @@ func (s *TouchReq) GetPath() string {
 func (s *TouchReq) SetPath(val string) {
 	s.Path = val
 }
+
+// UnmountNoContent is response for Unmount operation.
+type UnmountNoContent struct{}
+
+func (*UnmountNoContent) unmountRes() {}
 
 // Ref: #/components/schemas/UploadCompleteRequest
 type UploadCompleteRequest struct {

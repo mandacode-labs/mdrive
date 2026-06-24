@@ -121,6 +121,15 @@ func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogle
 	return r, ht.ErrNotImplemented
 }
 
+// Hardlink implements hardlink operation.
+//
+// Create a hard link (POSIX ln(1)).
+//
+// POST /v1/drives/{driveID}/fs/hardlink
+func (UnimplementedHandler) Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (r HardlinkRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Health implements health operation.
 //
 // Health check.
@@ -184,6 +193,15 @@ func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params M
 	return ht.ErrNotImplemented
 }
 
+// Mount implements mount operation.
+//
+// Bind-mount another drive at a path (POSIX mount-like).
+//
+// POST /v1/drives/{driveID}/fs/mount
+func (UnimplementedHandler) Mount(ctx context.Context, req OptMountReq, params MountParams) (r MountRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // Mv implements mv operation.
 //
 // Move files or directories.
@@ -243,8 +261,8 @@ func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r Stat
 // Create a symbolic link.
 //
 // POST /v1/drives/{driveID}/fs/symlink
-func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) error {
-	return ht.ErrNotImplemented
+func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) (r SymlinkRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // Touch implements touch operation.
@@ -254,6 +272,15 @@ func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, para
 // POST /v1/drives/{driveID}/fs/touch
 func (UnimplementedHandler) Touch(ctx context.Context, req OptTouchReq, params TouchParams) error {
 	return ht.ErrNotImplemented
+}
+
+// Unmount implements unmount operation.
+//
+// Remove a bind mount (POSIX umount-like).
+//
+// DELETE /v1/drives/{driveID}/fs/unmount
+func (UnimplementedHandler) Unmount(ctx context.Context, params UnmountParams) (r UnmountRes, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // UpdateDrive implements updateDrive operation.

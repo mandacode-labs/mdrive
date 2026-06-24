@@ -56,6 +56,15 @@ paths:
   /v1/drives/{driveID}/fs/symlink:
     $ref: "./endpoints/fs.yaml#/symlink"
 
+  /v1/drives/{driveID}/fs/hardlink:
+    $ref: "./endpoints/fs.yaml#/hardlink"
+
+  /v1/drives/{driveID}/fs/mount:
+    $ref: "./endpoints/fs.yaml#/mount"
+
+  /v1/drives/{driveID}/fs/unmount:
+    $ref: "./endpoints/fs.yaml#/unmount"
+
   /v1/drives/{driveID}/fs/stat:
     $ref: "./endpoints/fs.yaml#/stat"
 

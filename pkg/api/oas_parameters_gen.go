@@ -538,6 +538,71 @@ func decodeGetDriveStorageParams(args [1]string, argsEscaped bool, r *http.Reque
 	return params, nil
 }
 
+// HardlinkParams is parameters of hardlink operation.
+type HardlinkParams struct {
+	DriveID string
+}
+
+func unpackHardlinkParams(packed middleware.Parameters) (params HardlinkParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	return params
+}
+
+func decodeHardlinkParams(args [1]string, argsEscaped bool, r *http.Request) (params HardlinkParams, _ error) {
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // InitiateUploadParams is parameters of initiateUpload operation.
 type InitiateUploadParams struct {
 	DriveID string
@@ -845,6 +910,71 @@ func unpackMkdirParams(packed middleware.Parameters) (params MkdirParams) {
 }
 
 func decodeMkdirParams(args [1]string, argsEscaped bool, r *http.Request) (params MkdirParams, _ error) {
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// MountParams is parameters of mount operation.
+type MountParams struct {
+	DriveID string
+}
+
+func unpackMountParams(packed middleware.Parameters) (params MountParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	return params
+}
+
+func decodeMountParams(args [1]string, argsEscaped bool, r *http.Request) (params MountParams, _ error) {
 	// Decode path: driveID.
 	if err := func() error {
 		param := args[0]
@@ -1542,6 +1672,116 @@ func decodeTouchParams(args [1]string, argsEscaped bool, r *http.Request) (param
 		return params, &ogenerrors.DecodeParamError{
 			Name: "driveID",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UnmountParams is parameters of unmount operation.
+type UnmountParams struct {
+	DriveID   string
+	MountPath string
+}
+
+func unpackUnmountParams(packed middleware.Parameters) (params UnmountParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "driveID",
+			In:   "path",
+		}
+		params.DriveID = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "mountPath",
+			In:   "query",
+		}
+		params.MountPath = packed[key].(string)
+	}
+	return params
+}
+
+func decodeUnmountParams(args [1]string, argsEscaped bool, r *http.Request) (params UnmountParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode path: driveID.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "driveID",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.DriveID = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "driveID",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: mountPath.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "mountPath",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.MountPath = c
+				return nil
+			}); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "mountPath",
+			In:   "query",
 			Err:  err,
 		}
 	}
