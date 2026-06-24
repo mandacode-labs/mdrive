@@ -86,7 +86,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 	err = migrate.Create(ctx, entClient.Schema, migrate.Tables)
 	require.NoError(t, err)
 
-	nodeRepo := node.NewEntRepository(entClient)
+	nodeRepo := node.NewRepository(entClient)
 	nodeSvc := node.NewService(nodeRepo)
 
 	userRepo := user.NewRepository(entClient)
@@ -104,7 +104,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 	require.NoError(t, err)
 
 	driveRepo := drive.NewRepository(entClient, nil)
-	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, nil)
+	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
 
 	fs := vfs.NewService(vfs.ServiceConfig{
 		Node:    nodeSvc,

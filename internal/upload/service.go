@@ -24,11 +24,9 @@ type PresignInfo struct {
 
 // DriveLookup is the data-access contract for the storage config
 // of a drive. The underlying *drive.Service satisfies it via
-// GetStorage; the actorID parameter is unused (the storage
-// record is fetched unconditionally) but the signature is kept
-// uniform with the rest of the drive service.
+// GetStorage.
 type DriveLookup interface {
-	GetStorage(ctx context.Context, actorID, driveID string) (*coredrive.Storage, error)
+	GetStorage(ctx context.Context, driveID string) (*coredrive.Storage, error)
 }
 
 // NodeOps is the subset of node.Service the upload flow needs:
@@ -105,7 +103,7 @@ func NewService(cfg Config) *Service {
 // Permission is the caller's responsibility.
 func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error) {
 	_ = userID
-	storage, err := s.Drive.GetStorage(ctx, userID, driveID)
+	storage, err := s.Drive.GetStorage(ctx, driveID)
 	if err != nil {
 		return PresignInfo{}, err
 	}

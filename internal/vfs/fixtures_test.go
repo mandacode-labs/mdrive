@@ -68,7 +68,7 @@ func (d *fakeDrive) GetByID(_ context.Context, _ string) (*drive.Drive, error) {
 func (d *fakeDrive) GetByPublicID(_ context.Context, _ string) (*drive.Drive, error) {
 	return d.GetByID(context.Background(), "")
 }
-func (d *fakeDrive) GetStorage(_ context.Context, _, _ string) (*drive.Storage, error) {
+func (d *fakeDrive) GetStorage(_ context.Context, _ string) (*drive.Storage, error) {
 	if d.storageOverride != nil {
 		return d.storageOverride, nil
 	}

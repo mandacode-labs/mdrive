@@ -217,7 +217,7 @@ type repositories struct {
 // the user service exposes an Exister adapter for the drive
 // service to use.
 func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositories {
-	nodeRepo := node.NewEntRepository(entClient)
+	nodeRepo := node.NewRepository(entClient)
 	nodeSvc := node.NewService(nodeRepo)
 
 	userRepo := user.NewRepository(entClient)
@@ -226,7 +226,7 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 
 	rootCreator := &rootNodeCreator{svc: nodeSvc}
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator, nil)
+	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
 
 	return repositories{
 		NodeSvc:  nodeSvc,

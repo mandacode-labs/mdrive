@@ -89,7 +89,7 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.
 	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
 		return nil, err
 	}
-	d, err := h.drive.Get(ctx, h.userID(ctx), params.DriveID)
+	d, err := h.drive.GetByID(ctx, params.DriveID)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
 		return nil, err
 	}
-	s, err := h.drive.GetStorage(ctx, h.userID(ctx), params.DriveID)
+	s, err := h.drive.GetStorage(ctx, params.DriveID)
 	if err != nil {
 		return nil, err
 	}
