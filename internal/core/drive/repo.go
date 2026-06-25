@@ -25,10 +25,15 @@ type Repository interface {
 	WithTx(ctx context.Context, fn func(Repository) error) error
 }
 
-// Exister checks whether a user exists. drive uses this to verify
-// the owner before creating the drive row. The interface lives
-// in the user package; drive depends on it.
-type Exister = user.Exister
+// OwnerChecker verifies user existence; drive uses it before
+// creating a drive row to ensure the owner is real. user.Repository
+// satisfies this interface via its Exist method.
+type OwnerChecker interface {
+	Exist(ctx context.Context, id string) (bool, error)
+}
+
+// user.Repository satisfies OwnerChecker.
+var _ OwnerChecker = (user.Repository)(nil)
 
 // RootDirectoryCreator creates the root directory node for a
 // drive. Implemented by the node.Service in the application layer

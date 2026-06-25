@@ -130,6 +130,7 @@ clean:
 	rm -f api/openapi.bundled.json
 	rm -f cover-*.out
 
+.PHONY: help
 .DEFAULT_GOAL := help
 help:
 	@grep -E '^[a-z0-9-]+:' Makefile | cut -d: -f1 | sort

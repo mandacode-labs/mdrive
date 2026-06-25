@@ -1,10 +1,13 @@
 package apiserver
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
+	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
@@ -31,9 +34,13 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return server.NewServer(a, a.VFS, a.DriveSvc, a.UploadSvc, a.UserSvc, a.Authorizer).Run()
+			srv, err := server.NewServer(a, a.VFS, a.DriveSvc, a.UploadSvc, a.UserSvc, a.Authorizer)
+			if err != nil {
+				return fmt.Errorf("apiserver: %w", err)
+			}
+			return srv.Run()
 		},
 	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
+	cliflags.AddConfigFlag(cmd, &configPath)
 	return cmd
 }

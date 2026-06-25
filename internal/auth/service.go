@@ -19,7 +19,6 @@ type Config struct {
 	ClientID     string
 	SessionStore session.Store
 	SessionTTL   time.Duration
-	FrontendURL  string
 }
 
 // Service manages OIDC flows and session lifecycle with Zitadel.

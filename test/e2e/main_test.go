@@ -13,6 +13,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/valkey-io/valkey-go"
@@ -91,7 +93,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
-	userEx := user.NewExisterAdapter(userRepo)
+	userEx := userRepo
 
 	u, err := userSvc.UpsertFromOIDC(ctx, &user.CreateCommand{
 		Name:       "Test User",
@@ -119,7 +121,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Path:          fs,
 	})
 
-	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, nil, nil, "",
+	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, nil, "",
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       "e2e-bucket",
 			Region:       "us-east-1",

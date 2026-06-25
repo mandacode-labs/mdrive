@@ -87,6 +87,10 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 // Increments child's nlink (POSIX hardlink semantics). A fresh child
 // (nlink==0 from newNode) gets nlink=1 after its first Link; subsequent
 // Links add to the count.
+//
+// On success, child is mutated in place to reflect the new state
+// (nlink, ctime, rev). On failure, child's state is undefined — callers
+// should discard the pointer.
 func (s *Service) Link(ctx context.Context, parent *Node, name string, child *Node) error {
 	if parent == nil || child == nil {
 		return fmt.Errorf("node: link: nil parent or child")

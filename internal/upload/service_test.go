@@ -142,10 +142,20 @@ func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
 	_ = getErr
 }
 
-func TestCompleteUploadTokenNotFound(t *testing.T) {
-	svc := newTestService(t, NewMemoryRegistry(), nil)
-	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "missing-id", 100, nil)
-	assert.Error(t, err)
+func TestCompleteUploadOwnershipMismatch(t *testing.T) {
+	reg := NewMemoryRegistry()
+	_ = reg.Put(context.Background(), PresignMeta{
+		UploadID:  "u1",
+		DriveID:   "d1",
+		UserID:    "owner",
+		Path:      "/x",
+		Bucket:    "b",
+		Key:       "k",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}, time.Hour)
+	svc := newTestService(t, reg, nil)
+	_, err := svc.CompleteUpload(context.Background(), "someone-else", "d1", "u1", 100, nil)
+	assert.ErrorIs(t, err, ErrUploadOwnershipMismatch)
 }
 
 func TestCompleteUploadDriveMismatch(t *testing.T) {
@@ -160,7 +170,7 @@ func TestCompleteUploadDriveMismatch(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	svc := newTestService(t, reg, nil)
-	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
+	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	assert.ErrorIs(t, err, ErrUploadMismatch)
 }
 
@@ -179,7 +189,7 @@ func TestCompleteUploadSizeMismatch(t *testing.T) {
 		ExpiresAt: expiry,
 	}, time.Hour)
 	svc := newTestService(t, reg, nil)
-	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 200, nil)
+	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 200, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "size mismatch")
 }
@@ -197,7 +207,7 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 	}, time.Hour)
 	store := &fakeStore{objectExists: false}
 	svc := newTestService(t, reg, store)
-	_, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
+	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	assert.ErrorIs(t, err, ErrObjectNotUploaded)
 }
 
@@ -213,7 +223,7 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	svc := newTestService(t, reg, nil)
-	n, err := svc.CompleteUpload(context.Background(), "u1", "d1", "u1", 100, nil)
+	n, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, n)
 	// Token should be deleted.

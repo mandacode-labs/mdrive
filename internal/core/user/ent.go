@@ -83,19 +83,9 @@ func (r *entRepository) Delete(ctx context.Context, id string) error {
 	return r.client.User.DeleteOneID(id).Exec(ctx)
 }
 
-// ExisterAdapter adapts this repository to the user.Exister interface,
-// so other packages can verify user existence without depending on user.Service.
-type ExisterAdapter struct {
-	repo Repository
-}
-
-// NewExisterAdapter creates a new ExisterAdapter.
-func NewExisterAdapter(repo Repository) Exister {
-	return &ExisterAdapter{repo: repo}
-}
-
-func (a *ExisterAdapter) Exist(ctx context.Context, id string) (bool, error) {
-	u, err := a.repo.GetByID(ctx, id)
+// Exist reports whether a user with the given ID exists.
+func (r *entRepository) Exist(ctx context.Context, id string) (bool, error) {
+	u, err := r.GetByID(ctx, id)
 	if err != nil {
 		return false, err
 	}

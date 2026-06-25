@@ -10,6 +10,7 @@ import (
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/spf13/cobra"
 
+	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
@@ -41,7 +42,7 @@ func newApplyCmd() *cobra.Command {
 			return apply(cmd.Context(), cfg.Database.DSN())
 		},
 	}
-	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
+	cliflags.AddConfigFlag(cmd, &configPath)
 	return cmd
 }
 

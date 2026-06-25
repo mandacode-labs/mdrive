@@ -6,11 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/ogen-go/ogen/ogenerrors"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -100,16 +99,27 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 
 func (h *Handler) AuthLogout(ctx context.Context) (api.AuthLogoutRes, error) {
 	sess := auth.SessionFromContext(ctx)
-	if sess != nil && h.auth != nil {
-		_ = h.auth.DeleteSession(ctx, sess.ID)
+	if sess != nil {
+		if h.auth == nil {
+			return nil, errors.New("auth: logout unavailable: session backend not configured")
+		}
+		if err := h.auth.DeleteSession(ctx, sess.ID); err != nil {
+			return nil, fmt.Errorf("auth: logout: delete session: %w", err)
+		}
 	}
 	return &api.AuthLogoutNoContent{SetCookie: h.expiredCookie().String()}, nil
 }
 
+// ErrUnauthenticated is returned by AuthMe when no session is in
+// the request context. It maps to HTTP 401 in FromError; using a
+// local sentinel avoids leaking ogen-internal errors from this
+// package.
+var ErrUnauthenticated = errors.New("auth: not authenticated")
+
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	sess := auth.SessionFromContext(ctx)
 	if sess == nil {
-		return nil, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		return nil, ErrUnauthenticated
 	}
 	u, err := h.users.GetByID(ctx, sess.UserID)
 	if err != nil {
@@ -154,28 +164,33 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Cookie attributes come from config which has safe defaults
-// (HttpOnly=true, SameSite=Lax in dev / Strict in prod, Secure in prod).
-func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
-	return &http.Cookie{
+// cookieBase returns the shared cookie attributes (Name, Path,
+// HttpOnly, Secure, SameSite). Callers set Value/Expires/MaxAge
+// per use.
+func (h *Handler) cookieBase() http.Cookie {
+	return http.Cookie{
 		Name:     h.cookieConfig.Name,
-		Value:    value,
-		Expires:  expires,
+		Path:     h.cookieConfig.Path,
 		HttpOnly: h.cookieConfig.HttpOnly,
 		Secure:   h.cookieConfig.Secure,
 		SameSite: h.cookieConfig.SameSiteMode(),
-		Path:     h.cookieConfig.Path,
 	}
 }
 
+// sessionCookie returns a session cookie carrying value with
+// the given expiry.
+func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
+	c := h.cookieBase()
+	c.Value = value
+	c.Expires = expires
+	return &c
+}
+
+// expiredCookie returns a cookie that instructs the browser to
+// delete the session.
 func (h *Handler) expiredCookie() *http.Cookie {
-	return &http.Cookie{
-		Name:     h.cookieConfig.Name,
-		Value:    "",
-		Path:     h.cookieConfig.Path,
-		HttpOnly: h.cookieConfig.HttpOnly,
-		Secure:   h.cookieConfig.Secure,
-		SameSite: h.cookieConfig.SameSiteMode(),
-		MaxAge:   -1,
-	}
+	c := h.cookieBase()
+	c.Value = ""
+	c.MaxAge = -1
+	return &c
 }
