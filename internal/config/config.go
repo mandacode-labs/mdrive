@@ -129,7 +129,6 @@ type AuthConfig struct {
 	Provider    string        `mapstructure:"provider"` // "zitadel", "keycloak"
 	Issuer      string        `mapstructure:"issuer"`
 	ClientID    string        `mapstructure:"client_id"`
-	JWKSURL     string        `mapstructure:"jwks_url"`
 	SessionTTL  time.Duration `mapstructure:"session_ttl"`
 	FrontendURL string        `mapstructure:"frontend_url"`
 }
