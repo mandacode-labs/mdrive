@@ -6,20 +6,21 @@ import (
 	"time"
 )
 
-// MemoryRegistry is an in-memory Registry implementation for tests and single-instance deployments.
+// MemoryRegistry is an in-memory TokenRegistry implementation for
+// tests and single-instance deployments.
 type MemoryRegistry struct {
 	mu    sync.RWMutex
-	items map[string]item
+	items map[string]entry
 }
 
-type item struct {
+type entry struct {
 	meta PresignMeta
 	exp  time.Time
 }
 
 // NewMemoryRegistry creates a new in-memory upload registry.
 func NewMemoryRegistry() *MemoryRegistry {
-	return &MemoryRegistry{items: map[string]item{}}
+	return &MemoryRegistry{items: map[string]entry{}}
 }
 
 func (r *MemoryRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Duration) error {
@@ -30,7 +31,7 @@ func (r *MemoryRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Dur
 		return ctx.Err()
 	default:
 	}
-	r.items[meta.UploadID] = item{meta: meta, exp: time.Now().Add(ttl)}
+	r.items[meta.UploadID] = entry{meta: meta, exp: time.Now().Add(ttl)}
 	return nil
 }
 

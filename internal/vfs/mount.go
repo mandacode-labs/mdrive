@@ -24,7 +24,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		return fmt.Errorf("mount: cannot mount a drive onto itself")
 	}
 	// Validate source drive exists and has a root.
-	src, err := s.Drive.GetByID(ctx, sourceDriveID)
+	src, err := s.DriveClient.GetByID(ctx, sourceDriveID)
 	if err != nil {
 		return fmt.Errorf("mount: source drive lookup: %w", err)
 	}
@@ -99,7 +99,7 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	if err != nil {
 		return fmt.Errorf("unmount: resolve parent: %w", err)
 	}
-	if _, err := s.Node.Unlink(ctx, parent, name); err != nil {
+	if _, err := s.NodeClient.Unlink(ctx, parent, name); err != nil {
 		s.log().Debug("vfs.unmount.failed",
 			slog.String("drive_id", driveID),
 			slog.String("path", mountPath),

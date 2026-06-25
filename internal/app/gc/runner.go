@@ -44,36 +44,36 @@ func NewTombstoneCleaner(client *ent.Client, log *slog.Logger) *TombstoneCleaner
 	return &TombstoneCleaner{client: client, log: log}
 }
 
-func (c *TombstoneCleaner) Run(ctx context.Context) error {
-	c.log.Info("gc: tombstones starting")
+func (t *TombstoneCleaner) Run(ctx context.Context) error {
+	t.log.Info("gc: tombstones starting")
 
-	groups, err := QueryTombstones(ctx, c.client, defaultProcessLimit)
+	groups, err := QueryTombstones(ctx, t.client, defaultProcessLimit)
 	if err != nil {
 		return fmt.Errorf("gc: query tombstones: %w", err)
 	}
 	if len(groups) == 0 {
-		c.log.Info("gc: tombstones complete (no tombstones)")
+		t.log.Info("gc: tombstones complete (no tombstones)")
 		return nil
 	}
 
 	for _, g := range groups {
-		if err := c.processGroup(ctx, g); err != nil {
-			c.log.Error("gc: bucket cleanup failed", "err", err, "bucket", g.Bucket, "count", len(g.Keys))
+		if err := t.processGroup(ctx, g); err != nil {
+			t.log.Error("gc: bucket cleanup failed", "err", err, "bucket", g.Bucket, "count", len(g.Keys))
 			continue
 		}
-		if err := DeleteTombstones(ctx, c.client, g.IDs); err != nil {
-			c.log.Error("gc: delete tombstones failed", "err", err, "bucket", g.Bucket)
+		if err := DeleteTombstones(ctx, t.client, g.IDs); err != nil {
+			t.log.Error("gc: delete tombstones failed", "err", err, "bucket", g.Bucket)
 		}
 	}
 
-	c.log.Info("gc: tombstones complete", "groups", len(groups))
+	t.log.Info("gc: tombstones complete", "groups", len(groups))
 	return nil
 }
 
-func (c *TombstoneCleaner) processGroup(ctx context.Context, g TombstoneGroup) error {
-	c.log.Info("gc: deleting S3 objects", "bucket", g.Bucket, "keys", len(g.Keys))
+func (t *TombstoneCleaner) processGroup(ctx context.Context, g TombstoneGroup) error {
+	t.log.Info("gc: deleting S3 objects", "bucket", g.Bucket, "keys", len(g.Keys))
 
-	storage, err := FindStorageByBucket(ctx, c.client, g.Bucket)
+	storage, err := FindStorageByBucket(ctx, t.client, g.Bucket)
 	if err != nil {
 		return fmt.Errorf("gc: find storage: %w", err)
 	}
@@ -126,39 +126,38 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 }
 
 // UploadExpirer removes stale upload registrations and their backing S3
-// objects. It scans the upload registry for tokens whose ExpiresAt has
-// passed, deletes the S3 object (best-effort, tombstone on failure), and
-// removes the registry entry. Safe to run on registries that do not
-// implement Scanner (logs a warning and returns).
+// objects. It scans the upload token registry for tokens whose
+// ExpiresAt has passed, deletes the S3 object (best-effort, tombstone
+// on failure), and removes the registry entry. Safe to run on
+// registries that do not implement TokenScanner (logs a warning and
+// returns).
 type UploadExpirer struct {
-	reg     upload.Registry
-	upload  *upload.Service
-	garbage *GarbageRecorder
-	log     *slog.Logger
+	tokenRegistry upload.TokenRegistry
+	uploadService *upload.Service
+	garbage       *GarbageRecorder
+	log           *slog.Logger
 }
 
-func NewUploadExpirer(reg upload.Registry, uploadSvc *upload.Service, garbage *GarbageRecorder, log *slog.Logger) *UploadExpirer {
-	return &UploadExpirer{reg: reg, upload: uploadSvc, garbage: garbage, log: log}
+func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc *upload.Service, garbage *GarbageRecorder, log *slog.Logger) *UploadExpirer {
+	return &UploadExpirer{tokenRegistry: reg, uploadService: uploadSvc, garbage: garbage, log: log}
 }
 
-func (e *UploadExpirer) Run(ctx context.Context) error {
-	e.log.Info("gc: expire-uploads starting")
-	defer e.log.Info("gc: expire-uploads complete")
+func (u *UploadExpirer) Run(ctx context.Context) error {
+	u.log.Info("gc: expire-uploads starting")
+	defer u.log.Info("gc: expire-uploads complete")
 
-	scanner, ok := e.reg.(interface {
-		Scan(ctx context.Context, fn func(id string) error) error
-	})
+	scanner, ok := u.tokenRegistry.(upload.TokenScanner)
 	if !ok {
-		e.log.Warn("gc: upload registry does not support Scan; skipping")
+		u.log.Warn("gc: upload registry does not support Scan; skipping")
 		return nil
 	}
 
 	var scanned, deleted, s3err int
 	err := scanner.Scan(ctx, func(id string) error {
 		scanned++
-		meta, err := e.reg.Get(ctx, id)
+		meta, err := u.tokenRegistry.Get(ctx, id)
 		if err != nil {
-			_ = e.reg.Delete(ctx, id)
+			_ = u.tokenRegistry.Delete(ctx, id)
 			return nil
 		}
 		if !meta.IsExpired() {
@@ -166,17 +165,17 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 		}
 		bucket := meta.Bucket
 		key := meta.Key
-		if e.upload != nil && bucket != "" && key != "" {
-			if err := e.upload.DeleteObject(ctx, bucket, key); err != nil {
+		if u.uploadService != nil && bucket != "" && key != "" {
+			if err := u.uploadService.DeleteObject(ctx, bucket, key); err != nil {
 				s3err++
-				e.log.Warn("gc: delete upload object failed", "err", err, "bucket", bucket, "key", key)
-				if e.garbage != nil {
-					_ = e.garbage.RecordGarbage(ctx, []vfs.GarbageRef{{Bucket: bucket, Key: key}})
+				u.log.Warn("gc: delete upload object failed", "err", err, "bucket", bucket, "key", key)
+				if u.garbage != nil {
+					_ = u.garbage.RecordGarbage(ctx, []vfs.GarbageRef{{Bucket: bucket, Key: key}})
 				}
 			}
 		}
-		if err := e.reg.Delete(ctx, id); err != nil {
-			e.log.Warn("gc: delete upload token failed", "err", err, "upload_id", id)
+		if err := u.tokenRegistry.Delete(ctx, id); err != nil {
+			u.log.Warn("gc: delete upload token failed", "err", err, "upload_id", id)
 			return nil
 		}
 		deleted++
@@ -185,7 +184,7 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gc: upload scan: %w", err)
 	}
-	e.log.Info("gc: uploads", "scanned", scanned, "deleted", deleted, "s3_errors", s3err)
+	u.log.Info("gc: uploads", "scanned", scanned, "deleted", deleted, "s3_errors", s3err)
 	return nil
 }
 
@@ -202,30 +201,30 @@ func NewSessionExpirer(store session.Store, log *slog.Logger) *SessionExpirer {
 	return &SessionExpirer{store: store, log: log}
 }
 
-func (e *SessionExpirer) Run(ctx context.Context) error {
-	e.log.Info("gc: expire-sessions starting")
-	defer e.log.Info("gc: expire-sessions complete")
+func (s *SessionExpirer) Run(ctx context.Context) error {
+	s.log.Info("gc: expire-sessions starting")
+	defer s.log.Info("gc: expire-sessions complete")
 
-	if e.store == nil {
-		e.log.Warn("gc: no session store; skipping")
+	if s.store == nil {
+		s.log.Warn("gc: no session store; skipping")
 		return nil
 	}
-	scanner, ok := e.store.(session.Scanner)
+	scanner, ok := s.store.(session.Scanner)
 	if !ok {
-		e.log.Warn("gc: session store does not support Scan; skipping")
+		s.log.Warn("gc: session store does not support Scan; skipping")
 		return nil
 	}
 	var scanned, deleted int
 	err := scanner.Scan(ctx, func(id string) error {
 		scanned++
-		sess, err := e.store.Get(ctx, id)
+		sess, err := s.store.Get(ctx, id)
 		if err != nil {
-			_ = e.store.Delete(ctx, id)
+			_ = s.store.Delete(ctx, id)
 			deleted++
 			return nil
 		}
 		if sess.IsExpired() {
-			if err := e.store.Delete(ctx, id); err == nil {
+			if err := s.store.Delete(ctx, id); err == nil {
 				deleted++
 			}
 		}
@@ -234,7 +233,7 @@ func (e *SessionExpirer) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("gc: session scan: %w", err)
 	}
-	e.log.Info("gc: sessions", "scanned", scanned, "deleted", deleted)
+	s.log.Info("gc: sessions", "scanned", scanned, "deleted", deleted)
 	return nil
 }
 

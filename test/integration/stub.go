@@ -27,8 +27,8 @@ const testUserID = "owner1"
 
 type stubFS struct{}
 
-func (s *stubFS) ResolveForPermission(context.Context, string, string) (vfs.ResolvedRef, error) {
-	return vfs.ResolvedRef{DriveID: "", Path: ""}, nil
+func (s *stubFS) ResolveForPermission(context.Context, string, string) (vfs.PartialResolution, error) {
+	return vfs.PartialResolution{DriveID: "", Path: ""}, nil
 }
 func (s *stubFS) Lstat(context.Context, string, string) (vfs.Resolved, error) {
 	return vfs.Resolved{DriveID: "", Node: nil}, nil

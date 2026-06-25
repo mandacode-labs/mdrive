@@ -101,8 +101,8 @@ func newTestServiceWithNode() (*Service, *node.Service) {
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
 	return NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  d,
+		NodeClient:   nodeSvc,
+		DriveClient:  d,
 		Logger: nil,
 	}), nodeSvc
 }

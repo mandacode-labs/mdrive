@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apputils"
+	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/permission"
@@ -25,12 +25,12 @@ func driveToAPI(d *coredrive.Drive) *api.Drive {
 		deletedAt = api.OptDateTime{Value: *d.DeletedAt(), Set: true}
 	}
 	return &api.Drive{
-		ID:          apputils.OptString(d.ID()),
-		PublicID:    apputils.OptString(d.PublicID()),
-		Name:        apputils.OptString(d.Name()),
-		Description: apputils.OptStringPtr(d.Description()),
-		OwnerID:     apputils.OptString(d.OwnerID()),
-		RootNodeID:  apputils.OptString(rids),
+		ID:          apiopts.OptString(d.ID()),
+		PublicID:    apiopts.OptString(d.PublicID()),
+		Name:        apiopts.OptString(d.Name()),
+		Description: apiopts.OptStringPtr(d.Description()),
+		OwnerID:     apiopts.OptString(d.OwnerID()),
+		RootNodeID:  apiopts.OptString(rids),
 		DeletedAt:   deletedAt,
 		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
 		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
@@ -85,7 +85,7 @@ func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.GetDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
 	d, err := h.drive.GetByID(ctx, params.DriveID)
@@ -96,7 +96,7 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.
 }
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (api.UpdateDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	r := req.Value
@@ -115,7 +115,7 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 }
 
 func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) (api.DeleteDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if err := h.drive.Delete(ctx, h.userID(ctx), params.DriveID); err != nil {
@@ -152,7 +152,7 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) (api.ListDeletedDrivesR
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (api.GetDriveStorageRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
 	s, err := h.drive.GetStorage(ctx, params.DriveID)
@@ -164,8 +164,8 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	return &api.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),
-		Endpoint:     apputils.OptStringPtr(s.Endpoint()),
-		UsePathStyle: apputils.OptBool(s.UsePathStyle()),
+		Endpoint:     apiopts.OptStringPtr(s.Endpoint()),
+		UsePathStyle: apiopts.OptBool(s.UsePathStyle()),
 	}, nil
 }
 

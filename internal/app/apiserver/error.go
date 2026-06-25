@@ -64,8 +64,7 @@ func FromError(err error) (int, api.Error) {
 		errors.Is(err, vfs.ErrCrossDrive),
 		errors.Is(err, vfs.ErrHardlinkNotSupported),
 		errors.Is(err, upload.ErrUploadMismatch),
-		errors.Is(err, upload.ErrNotFound),
-		errors.Is(err, upload.ErrTokenExists):
+		errors.Is(err, upload.ErrNotFound):
 		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
 	}
 

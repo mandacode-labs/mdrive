@@ -7,17 +7,17 @@ import (
 	entuser "github.com/mandacode-labs/mdrive/ent/user"
 )
 
-// EntRepository implements domain.Repository using Ent.
-type EntRepository struct {
+// entRepository implements domain.Repository using Ent.
+type entRepository struct {
 	client *ent.Client
 }
 
-// NewRepository creates a new EntRepository.
+// NewRepository creates a new entRepository.
 func NewRepository(client *ent.Client) Repository {
-	return &EntRepository{client: client}
+	return &entRepository{client: client}
 }
 
-func (r *EntRepository) Create(ctx context.Context, cmd *CreateCommand) (*User, error) {
+func (r *entRepository) Create(ctx context.Context, cmd *CreateCommand) (*User, error) {
 	id := GenerateID()
 	u, err := r.client.User.Create().
 		SetID(id).
@@ -33,7 +33,7 @@ func (r *EntRepository) Create(ctx context.Context, cmd *CreateCommand) (*User, 
 	return fromEnt(u), nil
 }
 
-func (r *EntRepository) GetByID(ctx context.Context, id string) (*User, error) {
+func (r *entRepository) GetByID(ctx context.Context, id string) (*User, error) {
 	u, err := r.client.User.Query().Where(entuser.IDEQ(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -44,7 +44,7 @@ func (r *EntRepository) GetByID(ctx context.Context, id string) (*User, error) {
 	return fromEnt(u), nil
 }
 
-func (r *EntRepository) GetByPublicID(ctx context.Context, publicID string) (*User, error) {
+func (r *entRepository) GetByPublicID(ctx context.Context, publicID string) (*User, error) {
 	u, err := r.client.User.Query().Where(entuser.PublicIDEQ(publicID)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -55,7 +55,7 @@ func (r *EntRepository) GetByPublicID(ctx context.Context, publicID string) (*Us
 	return fromEnt(u), nil
 }
 
-func (r *EntRepository) GetByProviderID(ctx context.Context, provider, providerID string) (*User, error) {
+func (r *entRepository) GetByProviderID(ctx context.Context, provider, providerID string) (*User, error) {
 	u, err := r.client.User.Query().
 		Where(entuser.Provider(provider), entuser.ProviderID(providerID)).
 		Only(ctx)
@@ -68,7 +68,7 @@ func (r *EntRepository) GetByProviderID(ctx context.Context, provider, providerI
 	return fromEnt(u), nil
 }
 
-func (r *EntRepository) Update(ctx context.Context, u *User) (*User, error) {
+func (r *entRepository) Update(ctx context.Context, u *User) (*User, error) {
 	updated, err := r.client.User.UpdateOneID(u.ID()).
 		SetName(u.Name()).
 		SetNillableEmail(u.Email()).
@@ -79,7 +79,7 @@ func (r *EntRepository) Update(ctx context.Context, u *User) (*User, error) {
 	return fromEnt(updated), nil
 }
 
-func (r *EntRepository) Delete(ctx context.Context, id string) error {
+func (r *entRepository) Delete(ctx context.Context, id string) error {
 	return r.client.User.DeleteOneID(id).Exec(ctx)
 }
 
@@ -94,7 +94,7 @@ func NewExisterAdapter(repo Repository) Exister {
 	return &ExisterAdapter{repo: repo}
 }
 
-func (a *ExisterAdapter) Exists(ctx context.Context, id string) (bool, error) {
+func (a *ExisterAdapter) Exist(ctx context.Context, id string) (bool, error) {
 	u, err := a.repo.GetByID(ctx, id)
 	if err != nil {
 		return false, err

@@ -71,7 +71,7 @@ func (m *multiDriveClient) GetStorage(_ context.Context, _ string) (*drive.Stora
 	return nil, nil
 }
 
-// TestResolveCrossDrive: a path through a mount resolves to the
+// TestResolveCrossDriveClient: a path through a mount resolves to the
 // source drive's node.
 func TestResolveCrossDrive(t *testing.T) {
 	fix, nodeSvc := newDriveFixture(t)
@@ -92,8 +92,8 @@ func TestResolveCrossDrive(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "shared.txt", fileB))
 
 	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  fix.driveClient(),
+		NodeClient:   nodeSvc,
+		DriveClient:  fix.driveClient(),
 		Logger: nil,
 	})
 
@@ -117,8 +117,8 @@ func TestResolveMountCycle(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "back", back))
 
 	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  fix.driveClient(),
+		NodeClient:   nodeSvc,
+		DriveClient:  fix.driveClient(),
 		Logger: nil,
 	})
 

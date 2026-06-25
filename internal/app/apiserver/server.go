@@ -29,32 +29,26 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Checker) *Server {
-	cookieCfg := handler.CookieConfig{
-		Name:     a.Cfg.HTTP.Cookie.Name,
-		Path:     a.Cfg.HTTP.Cookie.Path,
-		Secure:   a.Cfg.HTTP.Cookie.Secure,
-		HttpOnly: a.Cfg.HTTP.Cookie.HttpOnly,
-		SameSite: a.Cfg.HTTP.Cookie.SameSiteMode(),
-	}
+func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) *Server {
+	cookieCfg := a.Config.HTTP.Cookie
 	healthDeps := handler.HealthDeps{
 		DB: a.DB,
 	}
 	if s, ok := a.SessionStore.(session.Scanner); ok {
-		healthDeps.ValKey = s
+		healthDeps.Valkey = s
 	}
 	if perm != nil {
-		healthDeps.Perm = perm
+		healthDeps.Authorizer = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Cfg.Auth.FrontendURL,
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Config.Auth.FrontendURL,
 		handler.WithDefaultStorage(drive.StorageConfig{
-			Bucket:       a.Cfg.Storage.Bucket,
-			Region:       a.Cfg.Storage.Region,
-			AccessKey:    a.Cfg.Storage.AccessKey,
-			SecretKey:    a.Cfg.Storage.SecretKey,
-			UsePathStyle: a.Cfg.Storage.UsePathStyle,
+			Bucket:       a.Config.Storage.Bucket,
+			Region:       a.Config.Storage.Region,
+			AccessKey:    a.Config.Storage.AccessKey,
+			SecretKey:    a.Config.Storage.SecretKey,
+			UsePathStyle: a.Config.Storage.UsePathStyle,
 		}),
-		handler.WithPresignTTL(a.Cfg.Storage.PresignTTL),
+		handler.WithPresignTTL(a.Config.Storage.PresignTTL),
 		handler.WithCookie(cookieCfg),
 		handler.WithHealthDeps(healthDeps),
 	)
@@ -79,15 +73,15 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		finalHandler = a.Security.Middleware(ogenServer)
 	}
 	finalHandler = RequestIDMiddleware(finalHandler)
-	finalHandler = withCORS(finalHandler, a.Cfg.HTTP.CORS)
+	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
 
 	srv := &http.Server{
-		Addr:              fmt.Sprintf("%s:%d", a.Cfg.HTTP.Host, a.Cfg.HTTP.Port),
+		Addr:              fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port),
 		Handler:           finalHandler,
-		ReadHeaderTimeout: a.Cfg.HTTP.ReadTimeout,
-		ReadTimeout:       a.Cfg.HTTP.ReadTimeout,
-		WriteTimeout:      a.Cfg.HTTP.WriteTimeout,
-		IdleTimeout:       a.Cfg.HTTP.IdleTimeout,
+		ReadHeaderTimeout: a.Config.HTTP.ReadTimeout,
+		ReadTimeout:       a.Config.HTTP.ReadTimeout,
+		WriteTimeout:      a.Config.HTTP.WriteTimeout,
+		IdleTimeout:       a.Config.HTTP.IdleTimeout,
 	}
 	return &Server{
 		app:  a,

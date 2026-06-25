@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -25,7 +25,7 @@ import (
 // responsible for permission checks before calling these
 // methods.
 type FSClient interface {
-	ResolveForPermission(ctx context.Context, driveID, path string) (vfs.ResolvedRef, error)
+	ResolveForPermission(ctx context.Context, driveID, path string) (vfs.PartialResolution, error)
 	Mkdir(ctx context.Context, driveID, path string) (*node.Node, error)
 	Touch(ctx context.Context, driveID, path string) (*node.Node, error)
 	Rm(ctx context.Context, driveID string, paths []string, recursive bool) error
@@ -55,7 +55,10 @@ type DriveClient interface {
 }
 
 // UserClient is the consumer-declared interface for user CRUD.
-type UserClient = *user.Service
+type UserClient interface {
+	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
+	GetByID(ctx context.Context, id string) (*user.User, error)
+}
 
 // UploadClient is the consumer-declared interface for the
 // presigned-upload flow.
@@ -78,11 +81,11 @@ type AuthClient interface {
 }
 
 type Handler struct {
-	vfs            FSClient
+	fs             FSClient
 	drive          DriveClient
 	users          UserClient
 	upload         UploadClient
-	perm           permission.Checker
+	authorizer     permission.Authorizer
 	auth           AuthClient
 	frontendURL    string
 	cookieConfig   CookieConfig
@@ -91,24 +94,21 @@ type Handler struct {
 	healthDeps     HealthDeps
 }
 
-type CookieConfig struct {
-	Name     string
-	Path     string
-	Secure   bool
-	HttpOnly bool
-	SameSite http.SameSite
-}
+// CookieConfig is an alias for config.CookieConfig used in handler
+// options. The parsed http.SameSite is materialized via the
+// SameSiteMode() method when needed.
+type CookieConfig = config.CookieConfig
 
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health
 // checks) and any auth-protected endpoint will return an error.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, perm permission.Checker, auth AuthClient, frontendURL string, opts ...Option) *Handler {
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, frontendURL string, opts ...Option) *Handler {
 	h := &Handler{
-		vfs:         fs,
+		fs:          fs,
 		drive:       drive,
 		users:       users,
 		upload:      upload,
-		perm:        perm,
+		authorizer:  authorizer,
 		auth:        auth,
 		frontendURL: frontendURL,
 	}
@@ -149,11 +149,11 @@ func (h *Handler) userID(ctx context.Context) string {
 }
 
 // requirePerm centralizes the handler's permission check. All
-// writes use PermissionEdit; reads use PermissionView (the caller
+// writes use ActionEdit; reads use ActionView (the caller
 // may need to call ResolveForPermission first if the path may
 // cross a mount — see fs.go).
-func (h *Handler) requirePerm(ctx context.Context, perm permission.Permission, driveID string) error {
-	return permission.Require(ctx, h.perm, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
+func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
+	return permission.Require(ctx, h.authorizer, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
 var _ api.Handler = (*Handler)(nil)

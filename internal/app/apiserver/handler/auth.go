@@ -163,7 +163,7 @@ func (h *Handler) sessionCookie(value string, expires time.Time) *http.Cookie {
 		Expires:  expires,
 		HttpOnly: h.cookieConfig.HttpOnly,
 		Secure:   h.cookieConfig.Secure,
-		SameSite: h.cookieConfig.SameSite,
+		SameSite: h.cookieConfig.SameSiteMode(),
 		Path:     h.cookieConfig.Path,
 	}
 }
@@ -175,7 +175,7 @@ func (h *Handler) expiredCookie() *http.Cookie {
 		Path:     h.cookieConfig.Path,
 		HttpOnly: h.cookieConfig.HttpOnly,
 		Secure:   h.cookieConfig.Secure,
-		SameSite: h.cookieConfig.SameSite,
+		SameSite: h.cookieConfig.SameSiteMode(),
 		MaxAge:   -1,
 	}
 }

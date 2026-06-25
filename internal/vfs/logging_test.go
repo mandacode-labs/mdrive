@@ -87,7 +87,7 @@ func TestVFS_Mv_LogsErrorOnTombstoneFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, nodeSvc.Link(ctx, root, "f.txt", src))
 
-	svc.Garbage = &fakeGC{err: errors.New("kafka down")}
+	svc.GarbageRecorder = &fakeGC{err: errors.New("kafka down")}
 	err = svc.Mv(ctx, "d1", []string{"/f.txt"}, "d1", "/obj")
 	require.Error(t, err)
 
@@ -127,7 +127,7 @@ func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, nodeSvc.Link(ctx, root, "obj", obj))
 
-	svc.Garbage = &fakeGC{err: errors.New("kafka down")}
+	svc.GarbageRecorder = &fakeGC{err: errors.New("kafka down")}
 	require.Error(t, svc.Rm(ctx, "d1", []string{"/obj"}, false))
 
 	out := buf.String()

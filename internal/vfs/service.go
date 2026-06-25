@@ -62,12 +62,9 @@ type GarbageRecorder interface {
 }
 
 type Service struct {
-	Node  NodeClient
-	Drive DriveClient
-	// Garbage records external objects (S3) whose inode was
-	// removed. nil is tolerated only when no vfs op produces
-	// tombstones (e.g. tests with no object nodes).
-	Garbage GarbageRecorder
+	NodeClient      NodeClient
+	DriveClient     DriveClient
+	GarbageRecorder GarbageRecorder
 	// Logger receives structured observability events for
 	// multi-step filesystem operations (mount traversal, GC
 	// tombstones, symlink cycles). Optional: nil means no-op.
@@ -78,18 +75,18 @@ type Service struct {
 // filesystem-only: it has no user or permission dependencies.
 // Permission checks are the caller's responsibility (handler layer).
 type ServiceConfig struct {
-	Node    NodeClient
-	Drive   DriveClient
-	Garbage GarbageRecorder
-	Logger  *slog.Logger
+	NodeClient      NodeClient
+	DriveClient     DriveClient
+	GarbageRecorder GarbageRecorder
+	Logger          *slog.Logger
 }
 
 func NewService(cfg ServiceConfig) *Service {
 	return &Service{
-		Node:    cfg.Node,
-		Drive:   cfg.Drive,
-		Garbage: cfg.Garbage,
-		Logger:  cfg.Logger,
+		NodeClient:      cfg.NodeClient,
+		DriveClient:     cfg.DriveClient,
+		GarbageRecorder: cfg.GarbageRecorder,
+		Logger:          cfg.Logger,
 	}
 }
 
@@ -110,7 +107,7 @@ func (s *Service) log() *slog.Logger {
 // operation (multiple resolves of the same UUID return the same
 // *Node pointer).
 func (s *Service) newResolver() *resolver {
-	return newResolver(s.Node)
+	return newResolver(s.NodeClient)
 }
 
 type Resolved struct {
@@ -120,13 +117,12 @@ type Resolved struct {
 
 const maxMountHops = 32
 
-// Resolve walks from root to the node at the given absolute path,
-// Resolve walks the path following symlinks (POSIX stat(2)
-// semantics) and transparently following mount nodes into other
-// drives. Permission checking is the caller's responsibility:
-// Resolve itself only does path resolution. Callers that need a
-// permission check should use Resolve and then check against
-// Resolved.DriveID.
+// Resolve walks the path from root to the node, following
+// symlinks (POSIX stat(2) semantics) and transparently following
+// mount nodes into other drives. Permission checking is the
+// caller's responsibility: Resolve itself only does path
+// resolution. Callers that need a permission check should use
+// Resolve and then check against Resolved.DriveID.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
 	drive, n, err := s.resolveCross(ctx, driveID, path, true)
 	if err != nil {
@@ -135,10 +131,10 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 	return Resolved{DriveID: drive, Node: n}, nil
 }
 
-// ResolvedRef is the partial resolution returned by ResolveForPermission:
+// PartialResolution is the partial resolution returned by ResolveForPermission:
 // the drive the path lands in (after stopping at the first mount) and
 // the remaining path within that drive.
-type ResolvedRef struct {
+type PartialResolution struct {
 	DriveID string
 	Path    string
 }
@@ -150,24 +146,24 @@ type ResolvedRef struct {
 // mount points plus the remaining path within that drive, so the
 // caller can both check permission and then re-resolve the rest of
 // the path within the source drive. Symlinks are followed.
-func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
+func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error) {
 	r := s.newResolver()
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
-		return ResolvedRef{}, err
+		return PartialResolution{}, err
 	}
 	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
-		return ResolvedRef{}, err
+		return PartialResolution{}, err
 	}
 	if out.Node.IsMount() {
 		srcDriveID, err := out.Node.ReadMount()
 		if err != nil {
-			return ResolvedRef{}, err
+			return PartialResolution{}, err
 		}
-		return ResolvedRef{DriveID: srcDriveID, Path: out.Remaining}, nil
+		return PartialResolution{DriveID: srcDriveID, Path: out.Remaining}, nil
 	}
-	return ResolvedRef{DriveID: driveID, Path: path}, nil
+	return PartialResolution{DriveID: driveID, Path: path}, nil
 }
 
 // Lstat is the standalone no-symlink-follow variant. It returns
@@ -184,7 +180,7 @@ func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, er
 }
 
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
-	d, err := s.Drive.GetByID(ctx, driveID)
+	d, err := s.DriveClient.GetByID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("vfs: %w", err)
 	}

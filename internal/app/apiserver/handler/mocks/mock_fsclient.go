@@ -556,22 +556,22 @@ func (_c *FSClientMock_Mv_Call) RunAndReturn(run func(ctx context.Context, srcDr
 }
 
 // ResolveForPermission provides a mock function for the type FSClientMock
-func (_mock *FSClientMock) ResolveForPermission(ctx context.Context, driveID string, path string) (vfs.ResolvedRef, error) {
+func (_mock *FSClientMock) ResolveForPermission(ctx context.Context, driveID string, path string) (vfs.PartialResolution, error) {
 	ret := _mock.Called(ctx, driveID, path)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ResolveForPermission")
 	}
 
-	var r0 vfs.ResolvedRef
+	var r0 vfs.PartialResolution
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (vfs.ResolvedRef, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (vfs.PartialResolution, error)); ok {
 		return returnFunc(ctx, driveID, path)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) vfs.ResolvedRef); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) vfs.PartialResolution); ok {
 		r0 = returnFunc(ctx, driveID, path)
 	} else {
-		r0 = ret.Get(0).(vfs.ResolvedRef)
+		r0 = ret.Get(0).(vfs.PartialResolution)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
 		r1 = returnFunc(ctx, driveID, path)
@@ -617,12 +617,12 @@ func (_c *FSClientMock_ResolveForPermission_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *FSClientMock_ResolveForPermission_Call) Return(resolvedRef vfs.ResolvedRef, err error) *FSClientMock_ResolveForPermission_Call {
-	_c.Call.Return(resolvedRef, err)
+func (_c *FSClientMock_ResolveForPermission_Call) Return(partialResolution vfs.PartialResolution, err error) *FSClientMock_ResolveForPermission_Call {
+	_c.Call.Return(partialResolution, err)
 	return _c
 }
 
-func (_c *FSClientMock_ResolveForPermission_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (vfs.ResolvedRef, error)) *FSClientMock_ResolveForPermission_Call {
+func (_c *FSClientMock_ResolveForPermission_Call) RunAndReturn(run func(ctx context.Context, driveID string, path string) (vfs.PartialResolution, error)) *FSClientMock_ResolveForPermission_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -107,16 +107,16 @@ func setupE2E(t *testing.T) *e2eEnv {
 	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
 
 	fs := vfs.NewService(vfs.ServiceConfig{
-		Node:    nodeSvc,
-		Drive:   driveSvc,
-		Garbage: nil,
+		NodeClient:      nodeSvc,
+		DriveClient:     driveSvc,
+		GarbageRecorder: nil,
 	})
 
 	uploadSvcVfs := upload.NewService(upload.Config{
-		Drive: driveSvc,
-		Nodes: nodeSvc,
-		Store: nil,
-		Path:  fs,
+		StorageLookup: driveSvc,
+		NodeLifecycle: nodeSvc,
+		ObjectStore:   nil,
+		Path:          fs,
 	})
 
 	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, nil, nil, "",
@@ -164,7 +164,7 @@ type rootNodeCreator struct {
 	rootID uuid.UUID
 }
 
-func (r *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, error) {
+func (r *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, error) {
 	return r.rootID, nil
 }
 

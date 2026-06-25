@@ -19,8 +19,8 @@ func TestSymlinkFollowAbsoluteTarget(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  &fakeDrive{rootID: root.ID()},
+		NodeClient:   nodeSvc,
+		DriveClient:  &fakeDrive{rootID: root.ID()},
 		Logger: nil,
 	})
 
@@ -60,8 +60,8 @@ func TestSymlinkCycle(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  &fakeDrive{rootID: root.ID()},
+		NodeClient:   nodeSvc,
+		DriveClient:  &fakeDrive{rootID: root.ID()},
 		Logger: nil,
 	})
 
@@ -81,8 +81,8 @@ func TestSymlinkChain(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		Node:   nodeSvc,
-		Drive:  &fakeDrive{rootID: root.ID()},
+		NodeClient:   nodeSvc,
+		DriveClient:  &fakeDrive{rootID: root.ID()},
 		Logger: nil,
 	})
 

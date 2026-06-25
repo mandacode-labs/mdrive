@@ -23,7 +23,7 @@ func NewCmd() *cobra.Command {
 		func(a *app.App) gcjobs.Runner { return gcjobs.NewDrivePurger(a.DriveSvc, a.Log, 0) }, "retention", "0s", "minimum age of deleted drives to purge")
 	addJob(cmd, "expire-uploads", "Remove stale upload registrations",
 		func(a *app.App) gcjobs.Runner {
-			return gcjobs.NewUploadExpirer(a.UploadReg, a.UploadSvc, a.Garbage, a.Log)
+			return gcjobs.NewUploadExpirer(a.UploadToken, a.UploadSvc, a.Garbage, a.Log)
 		})
 	addJob(cmd, "expire-sessions", "Remove expired sessions",
 		func(a *app.App) gcjobs.Runner { return gcjobs.NewSessionExpirer(a.SessionStore, a.Log) })

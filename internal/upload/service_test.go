@@ -99,7 +99,7 @@ func (f *fakePath) ResolveNodeID(context.Context, string, string) (uuid.UUID, er
 
 // --- Helpers ---
 
-func newTestService(t *testing.T, reg Registry, store *fakeStore) *Service {
+func newTestService(t *testing.T, reg TokenRegistry, store *fakeStore) *Service {
 	t.Helper()
 	if reg == nil {
 		reg = NewMemoryRegistry()
@@ -111,11 +111,11 @@ func newTestService(t *testing.T, reg Registry, store *fakeStore) *Service {
 	nodes := newFakeNodes()
 	root, _ := node.NewDirectory()
 	return NewService(Config{
-		Reg:   reg,
-		Drive: drive,
-		Nodes: nodes,
-		Store: store,
-		Path:  &fakePath{rootID: root.ID()},
+		TokenRegistry: reg,
+		StorageLookup: drive,
+		NodeLifecycle: nodes,
+		ObjectStore:   store,
+		Path:          &fakePath{rootID: root.ID()},
 	})
 }
 
@@ -221,11 +221,4 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNilPermSkipsCheck(t *testing.T) {
-	svc := newTestService(t, nil, nil)
-	// Replace Perm with nil.
-	// svc.Perm = nil
-	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
-	require.NoError(t, err)
-	assert.NotEmpty(t, info.UploadID)
-}
+

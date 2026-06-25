@@ -30,27 +30,26 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// App holds all wired components. The fields are split into the
-// three consumers they serve: HTTP transport (NodeSvc, DriveSvc,
-// UserSvc, UploadReg, UploadSvc, VFS, SessionStore, Auth,
-// Security, Perm, Garbage), background jobs (everything HTTP
-// needs plus the same), and lifecycle (DB, Ent, Cfg, Log).
+// App holds all wired components. Fields are grouped loosely
+// into HTTP-serving services (NodeSvc, DriveSvc, ..., Security),
+// background-job services (same, plus Garbage), and lifecycle
+// (DB, Ent, Config, Log).
 type App struct {
-	Cfg *config.Config
-	Log *slog.Logger
+	Config *config.Config
+	Log    *slog.Logger
 
 	NodeSvc      *node.Service
 	DriveSvc     *drive.Service
 	UserSvc      *user.Service
-	UserEx       user.Exister
-	UploadReg    upload.Registry
+	UserExister  user.Exister
+	UploadToken  upload.TokenRegistry
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
 	SessionStore session.Store
 	Garbage      *gc.GarbageRecorder
 	Auth         *auth.Service
 	Security     *auth.SecurityHandler
-	Perm         permission.Checker
+	Authorizer   permission.Authorizer
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -105,20 +104,20 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	return &App{
-		Cfg:          cfg,
+		Config:       cfg,
 		Log:          log,
 		NodeSvc:      repos.NodeSvc,
 		DriveSvc:     repos.DriveSvc,
 		UserSvc:      repos.UserSvc,
-		UserEx:       repos.UserEx,
-		UploadReg:    uploadReg,
+		UserExister:  repos.UserEx,
+		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg, entClient),
 		VFS:          newVFS(repos, entClient, log),
 		SessionStore: store,
 		Garbage:      gc.NewGarbageRecorder(entClient),
 		Auth:         authenticator,
 		Security:     sec,
-		Perm:         permClient,
+		Authorizer:   permClient,
 		DB:           db,
 		Ent:          entClient,
 	}, nil
@@ -238,7 +237,7 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 
 // newPerm returns the OpenFGA permission checker. nil in dev
 // (permission.Require is permissive), required in production.
-func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permission.Checker, error) {
+func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permission.Authorizer, error) {
 	if cfg.OpenFGA.APIURL == "" {
 		if cfg.App.Env == "production" {
 			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
@@ -246,7 +245,7 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 		log.Warn("openfga: APIURL not configured; permission checks disabled (AnonSecurity will be used by the HTTP layer)")
 		return nil, nil
 	}
-	checker, err := permission.NewOpenFGAChecker(ctx, permission.Config{
+	checker, err := permission.NewFGAChecker(ctx, permission.Config{
 		AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),
 		APIURL:               cfg.OpenFGA.APIURL,
 		StoreID:              cfg.OpenFGA.StoreID,
@@ -293,23 +292,23 @@ func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (se
 // notifies Garbage when object nodes go away.
 func newVFS(repos repositories, entClient *ent.Client, log *slog.Logger) *vfs.Service {
 	return vfs.NewService(vfs.ServiceConfig{
-		Node:    repos.NodeSvc,
-		Drive:   repos.DriveSvc,
-		Garbage: gc.NewGarbageRecorder(entClient),
-		Logger:  log,
+		NodeClient:      repos.NodeSvc,
+		DriveClient:     repos.DriveSvc,
+		GarbageRecorder: gc.NewGarbageRecorder(entClient),
+		Logger:          log,
 	})
 }
 
 // newUpload builds the S3 lifecycle service. Permission is the
 // handler's responsibility; the service is the pure
 // presign/complete/delete flow.
-func newUpload(repos repositories, store *s3.Client, reg upload.Registry, _ *ent.Client) *upload.Service {
+func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry, _ *ent.Client) *upload.Service {
 	return upload.NewService(upload.Config{
-		Reg:   reg,
-		Drive: repos.DriveSvc,
-		Nodes: repos.NodeSvc,
-		Store: store,
-		Path:  nil, // set below: depends on vfs which depends on Garbage
+		TokenRegistry: reg,
+		StorageLookup: repos.DriveSvc,
+		NodeLifecycle: repos.NodeSvc,
+		ObjectStore:   store,
+		Path:          nil, // set below: depends on vfs which depends on Garbage
 	})
 }
 
@@ -324,12 +323,12 @@ func (a *App) Close() error {
 	return nil
 }
 
-// rootNodeCreator adapts node.Service to drive.RootCreator.
+// rootNodeCreator adapts node.Service to drive.RootDirectoryCreator.
 type rootNodeCreator struct {
 	svc *node.Service
 }
 
-func (n *rootNodeCreator) NewRootDirectory(ctx context.Context) (uuid.UUID, error) {
+func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, error) {
 	root, err := n.svc.CreateDirectory(ctx)
 	if err != nil {
 		return uuid.Nil, err
@@ -354,7 +353,7 @@ func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, err
 	})
 }
 
-func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Client, upload.Registry, error) {
+func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Client, upload.TokenRegistry, error) {
 	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
 		return nil, upload.NewMemoryRegistry(), nil
 	}

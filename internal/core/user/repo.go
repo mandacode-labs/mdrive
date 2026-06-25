@@ -15,5 +15,5 @@ type Repository interface {
 // Exister checks if a user exists. Used by other packages (e.g., drive) to verify
 // ownership without depending on the full user.Service.
 type Exister interface {
-	Exists(ctx context.Context, id string) (bool, error)
+	Exist(ctx context.Context, id string) (bool, error)
 }

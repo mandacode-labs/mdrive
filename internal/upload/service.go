@@ -22,17 +22,17 @@ type PresignInfo struct {
 	ExpiresAt time.Time
 }
 
-// DriveLookup is the data-access contract for the storage config
-// of a drive. The underlying *drive.Service satisfies it via
-// GetStorage.
-type DriveLookup interface {
+// StorageLookup is the data-access contract for the storage
+// config of a drive. The underlying *drive.Service satisfies it
+// via GetStorage.
+type StorageLookup interface {
 	GetStorage(ctx context.Context, driveID string) (*coredrive.Storage, error)
 }
 
-// NodeOps is the subset of node.Service the upload flow needs:
-// create object node, link into parent, delete on failure, and
-// look up an existing node by ID.
-type NodeOps interface {
+// NodeLifecycle is the subset of node.Service the upload flow
+// needs: create object node, link into parent, delete on
+// failure, and look up an existing node by ID.
+type NodeLifecycle interface {
 	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
 	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -59,42 +59,42 @@ type PathResolver interface {
 }
 
 // Service is the vfs-level upload orchestrator. It composes the
-// upload Registry (token storage) with the vfs primitives (node
-// tree, path resolution) and the S3 store.
+// upload token registry with the vfs primitives (node tree, path
+// resolution) and the S3 store.
 //
 // Permission checks are the caller's responsibility: the handler
 // must call permission.Require on the drive before invoking
 // any of the three methods below.
 type Service struct {
-	Reg   Registry
-	Drive DriveLookup
-	Nodes NodeOps
-	Store ObjectStore
-	Path  PathResolver
+	TokenRegistry TokenRegistry
+	StorageLookup StorageLookup
+	NodeLifecycle NodeLifecycle
+	ObjectStore   ObjectStore
+	Path          PathResolver
 }
 
 // Config groups Service dependencies.
 type Config struct {
-	Reg   Registry
-	Drive DriveLookup
-	Nodes NodeOps
-	Store ObjectStore
-	Path  PathResolver
+	TokenRegistry TokenRegistry
+	StorageLookup StorageLookup
+	NodeLifecycle NodeLifecycle
+	ObjectStore   ObjectStore
+	Path          PathResolver
 }
 
-// NewService wires a Service. A nil Reg defaults to a MemoryRegistry
-// (in-process, no TTL eviction); production code should pass a
-// Valkey-backed registry.
+// NewService wires a Service. A nil TokenRegistry defaults to a
+// MemoryRegistry (in-process, lazy TTL expiry on Get); production
+// code should pass a Valkey-backed registry.
 func NewService(cfg Config) *Service {
-	if cfg.Reg == nil {
-		cfg.Reg = NewMemoryRegistry()
+	if cfg.TokenRegistry == nil {
+		cfg.TokenRegistry = NewMemoryRegistry()
 	}
 	return &Service{
-		Reg:   cfg.Reg,
-		Drive: cfg.Drive,
-		Nodes: cfg.Nodes,
-		Store: cfg.Store,
-		Path:  cfg.Path,
+		TokenRegistry: cfg.TokenRegistry,
+		StorageLookup: cfg.StorageLookup,
+		NodeLifecycle: cfg.NodeLifecycle,
+		ObjectStore:   cfg.ObjectStore,
+		Path:          cfg.Path,
 	}
 }
 
@@ -103,7 +103,7 @@ func NewService(cfg Config) *Service {
 // Permission is the caller's responsibility.
 func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error) {
 	_ = userID
-	storage, err := s.Drive.GetStorage(ctx, driveID)
+	storage, err := s.StorageLookup.GetStorage(ctx, driveID)
 	if err != nil {
 		return PresignInfo{}, err
 	}
@@ -126,13 +126,13 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 		ExpiresAt:   time.Now().Add(expiry),
 	}
 	// Write to registry FIRST — if this fails, no presigned URL is issued.
-	if err := s.Reg.Put(ctx, meta, expiry); err != nil {
+	if err := s.TokenRegistry.Put(ctx, meta, expiry); err != nil {
 		return PresignInfo{}, fmt.Errorf("initiate upload: register: %w", err)
 	}
 
-	url, err := s.Store.GetPresignedUploadURL(ctx, bucket, key, expiry)
+	url, err := s.ObjectStore.GetPresignedUploadURL(ctx, bucket, key, expiry)
 	if err != nil {
-		_ = s.Reg.Delete(ctx, uploadID)
+		_ = s.TokenRegistry.Delete(ctx, uploadID)
 		return PresignInfo{}, fmt.Errorf("initiate upload: presign: %w", err)
 	}
 
@@ -151,7 +151,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 // Permission is the caller's responsibility.
 func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
 	_ = userID
-	meta, err := s.Reg.Get(ctx, uploadID)
+	meta, err := s.TokenRegistry.Get(ctx, uploadID)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: get token: %w", err)
 	}
@@ -162,7 +162,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, fmt.Errorf("complete upload: size mismatch: expected %d, got %d", *meta.Size, contentLength)
 	}
 
-	exists, err := s.Store.ObjectExists(ctx, meta.Bucket, meta.Key)
+	exists, err := s.ObjectStore.ObjectExists(ctx, meta.Bucket, meta.Key)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: check object: %w", err)
 	}
@@ -174,7 +174,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: %w", err)
 	}
-	parent, err := s.Nodes.GetByID(ctx, parentID)
+	parent, err := s.NodeLifecycle.GetByID(ctx, parentID)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: load parent: %w", err)
 	}
@@ -193,17 +193,17 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		Mime:     ct,
 		Checksum: cs,
 	}
-	n, err := s.Nodes.CreateObject(ctx, obj, contentLength)
+	n, err := s.NodeLifecycle.CreateObject(ctx, obj, contentLength)
 	if err != nil {
 		return nil, err
 	}
-	if lerr := s.Nodes.Link(ctx, parent, name, n); lerr != nil {
-		if derr := s.Nodes.Delete(ctx, n.ID()); derr != nil {
+	if lerr := s.NodeLifecycle.Link(ctx, parent, name, n); lerr != nil {
+		if derr := s.NodeLifecycle.Delete(ctx, n.ID()); derr != nil {
 			return nil, fmt.Errorf("complete upload: link: %w (cleanup: %v)", lerr, derr)
 		}
 		return nil, fmt.Errorf("complete upload: link: %w", lerr)
 	}
-	if err := s.Reg.Delete(ctx, uploadID); err != nil {
+	if err := s.TokenRegistry.Delete(ctx, uploadID); err != nil {
 		return n, fmt.Errorf("complete upload: cleanup token: %w", err)
 	}
 	return n, nil
@@ -217,7 +217,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: %w", err)
 	}
-	n, err := s.Nodes.GetByID(ctx, nodeID)
+	n, err := s.NodeLifecycle.GetByID(ctx, nodeID)
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: load node: %w", err)
 	}
@@ -228,7 +228,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	if err != nil {
 		return PresignInfo{}, err
 	}
-	url, err := s.Store.GetPresignedDownloadURL(ctx, oc.Bucket, oc.Key, expiry)
+	url, err := s.ObjectStore.GetPresignedDownloadURL(ctx, oc.Bucket, oc.Key, expiry)
 	if err != nil {
 		return PresignInfo{}, fmt.Errorf("presign download: %w", err)
 	}
@@ -244,5 +244,5 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 // never completed. Does not touch the node tree or the upload
 // registry — callers handle those.
 func (s *Service) DeleteObject(ctx context.Context, bucket, key string) error {
-	return s.Store.DeleteObject(ctx, bucket, key)
+	return s.ObjectStore.DeleteObject(ctx, bucket, key)
 }
