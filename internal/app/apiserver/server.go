@@ -29,7 +29,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) *Server {
+func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) (*Server, error) {
 	cookieCfg := a.Config.HTTP.Cookie
 	healthDeps := handler.HealthDeps{
 		DB: a.DB,
@@ -60,8 +60,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 
 	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(errorHandler))
 	if err != nil {
-		a.Log.Error("failed to create ogen server", "err", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("apiserver: create ogen server: %w", err)
 	}
 
 	// Build the middleware chain once. With SessionSecurity the
@@ -87,7 +86,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		app:  a,
 		http: srv,
 		addr: srv.Addr,
-	}
+	}, nil
 }
 
 func (s *Server) Run() error {

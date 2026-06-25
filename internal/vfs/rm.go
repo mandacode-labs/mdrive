@@ -115,7 +115,16 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 	}
 	if target.IsObject() {
 		oc, err := target.ReadObject()
-		if err == nil && oc.Bucket != "" && oc.Key != "" {
+		switch {
+		case err != nil:
+			s.log().Warn("vfs.rm.read_object_content_failed",
+				slog.String("err", err.Error()),
+			)
+		case oc.Bucket == "" || oc.Key == "":
+			s.log().Warn("vfs.rm.object_content_empty",
+				slog.String("err", "bucket or key empty"),
+			)
+		default:
 			refs = append(refs, GarbageRef{Bucket: oc.Bucket, Key: oc.Key})
 		}
 	}

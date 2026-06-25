@@ -33,9 +33,10 @@ make gen-fga     # model.fga → model.json
 ## Migrations
 
 ```bash
-make migrate name=add_users   # ent diff + lint + fga model transform
-make migrate-lint             # atlas lint only
-make migrate-apply            # apply SQL migrations to DB
+make migrate name=add_users   # ent diff + atlas validate + fga model transform
+make migrate-hash              # regenerate migration hash (after ent schema edits)
+make migrate-validate          # atlas validate only
+make migrate-apply             # apply SQL migrations to DB
 ```
 
 ## Testing
@@ -71,11 +72,9 @@ internal/
     node/                 node.Service, Repository, POSIX types
     user/                 user.Service, Repository
   crypto/                 AES-256-GCM encryption
-  logging/                structured logging (zerolog)
   permission/             OpenFGA authorization
-  storage/                external storage
-    s3/                   S3/MinIO client
   upload/                 presigned upload registry (Valkey/Memory)
+    s3/                   S3/MinIO client
   vfs/                    virtual filesystem orchestration
 ```
 

@@ -149,11 +149,18 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 // CompleteUpload validates the upload token, verifies the S3 object exists,
 // and creates the object node at the destination path.
 // Permission is the caller's responsibility.
+//
+// userID is the principal initiating the completion; it must match
+// the userID stored on the upload token. Mismatch returns
+// ErrUploadOwnershipMismatch — the upload ID is not a bearer
+// credential across users.
 func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
-	_ = userID
 	meta, err := s.TokenRegistry.Get(ctx, uploadID)
 	if err != nil {
 		return nil, fmt.Errorf("complete upload: get token: %w", err)
+	}
+	if meta.UserID != userID {
+		return nil, ErrUploadOwnershipMismatch
 	}
 	if meta.DriveID != driveID {
 		return nil, ErrUploadMismatch

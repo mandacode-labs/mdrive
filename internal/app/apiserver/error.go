@@ -7,6 +7,7 @@ import (
 
 	"github.com/ogen-go/ogen/ogenerrors"
 
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -19,8 +20,12 @@ import (
 // FromError converts a domain error to (HTTP status code, api.Error).
 func FromError(err error) (int, api.Error) {
 	switch {
-	case errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied):
-		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthorized"}
+	case errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied),
+		errors.Is(err, handler.ErrUnauthenticated):
+		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}
+
+	case errors.Is(err, handler.ErrServiceDegraded):
+		return http.StatusServiceUnavailable, api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}
 
 	case errors.Is(err, permission.ErrPermission):
 		return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}

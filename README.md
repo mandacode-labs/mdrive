@@ -12,22 +12,22 @@ graph TB
 
     subgraph "mdrive Server"
         B[HTTP API / ogen]
-        C[Auth Middleware<br/>Keycloak OIDC]
-        D[FsService]
-        E[ObjectService]
-        F[StorageService]
-        G[UserService]
-        H[DentryService]
-        I[InodeService]
-        J[Atomic Upload<br/>Transaction]
-        K[GC Collector]
+        C[auth.SecurityHandler<br/>OIDC session]
+        D[vfs.Service]
+        E[upload.Service]
+        F[permission.Authorizer]
+        G[user.Service]
+        H[node.Service]
+        I[drive.Service]
+        J[upload.Service<br/>presign + complete]
+        K[gc.Runners]
     end
 
     subgraph "External Dependencies"
         L[(PostgreSQL)]
         M[(S3 / MinIO)]
         N[(Valkey / Redis)]
-        O[Keycloak]
+        O[OIDC provider]
     end
 
     A -->|HTTP| B
@@ -58,33 +58,28 @@ graph TB
 sequenceDiagram
     participant C as Client
     participant API as HTTP API
-    participant OS as ObjectService
+    participant US as upload.Service
     participant S3 as S3/MinIO
-    participant FS as FsService
-    participant IS as InodeService
-    participant DS as DentryService
+    participant VFS as vfs.Service
+    participant NS as node.Service
     participant DB as PostgreSQL
 
     C->>API: POST /upload (initiate)
-    API->>OS: InitiateUpload()
-    OS->>DB: Create pending object
-    OS->>S3: Generate presigned URL
-    OS-->>API: {objectID, uploadURL}
+    API->>US: InitiateUpload()
+    US->>DB: Create upload token
+    US->>S3: Generate presigned URL
+    US-->>API: {uploadID, uploadURL}
     API-->>C: Upload session
 
     C->>S3: PUT uploadURL (direct upload)
     S3-->>C: 200 OK
 
     C->>API: POST /upload/{id}/complete
-    API->>FS: AtomicUpload()
-    FS->>DB: Begin transaction
-    FS->>S3: Verify object exists
-    FS->>OS: CompleteUpload()
-    OS->>DB: Update status=active
-    FS->>IS: Create inode
-    FS->>DS: Link dentry
-    FS->>DB: Commit transaction
-    FS-->>API: inode
+    API->>US: CompleteUpload()
+    US->>S3: Verify object exists
+    US->>NS: CreateObject + Link
+    US->>DB: Delete token
+    US-->>API: inode
     API-->>C: 200 OK
 ```
 
@@ -92,27 +87,34 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant GC as GC CronJob
-    participant OS as ObjectService
+    participant GC as gc.Runner
     participant DB as PostgreSQL
     participant S3 as S3/MinIO
 
-    GC->>OS: FindPendingOlderThan(24h)
-    OS->>DB: SELECT * WHERE status=pending AND age>24h
-    DB-->>OS: Expired pending objects
-    loop For each expired object
-        GC->>OS: DeleteFromDB(id)
-        OS->>DB: DELETE object
+    rect rgba(80,80,120,0.1)
+        Note over GC: TombstoneCleaner
+        GC->>DB: scan tombstones by group
+        loop For each tombstone group
+            GC->>DB: delete tombstone row
+            GC->>S3: delete S3 object
+        end
     end
 
-    GC->>OS: FindActive()
-    OS->>DB: SELECT * WHERE status=active
-    DB-->>OS: Active objects
-    loop For each active object
-        GC->>S3: ObjectExists(bucket, key)
-        S3-->>GC: false (orphan)
-        GC->>OS: DeleteFromDB(id)
-        OS->>DB: DELETE object
+    rect rgba(80,80,120,0.1)
+        Note over GC: DrivePurger
+        GC->>DB: scan drives soft-deleted > retention
+        loop For each drive
+            GC->>DB: hard-delete drive row
+        end
+    end
+
+    rect rgba(80,80,120,0.1)
+        Note over GC: UploadExpirer / SessionExpirer
+        GC->>DB: scan expired tokens via TokenScanner
+        loop For each expired token
+            GC->>S3: delete orphaned object (best-effort)
+            GC->>DB: delete token row
+        end
     end
 ```
 
@@ -121,9 +123,9 @@ sequenceDiagram
 | Test Type | Command | Description |
 |-----------|---------|-------------|
 | Unit | `make test` | Fast, no external deps |
-| Integration | `make test-integration` | Postgres + MinIO via testcontainers |
-| E2E | `make test-e2e` | Full HTTP server + database |
-| Kind | `make test-kind` | Kind cluster + Helm chart |
+| Integration | `make test-integration` | Handler + stub fakes (no Docker) |
+| Integration (Ent) | `make test-integration-ent` | Real Postgres via testcontainers |
+| E2E | `make test-e2e` | Full HTTP server + Postgres + Valkey |
 
 ## Quick Start
 
@@ -137,9 +139,8 @@ make build
 
 # Run tests
 make test
-make test-integration
-make test-e2e
-make test-kind  # requires kind, kubectl, helm, docker
+make test-integration-ent  # requires Docker
+make test-e2e              # requires Docker
 ```
 
 ## Documentation
@@ -153,27 +154,28 @@ make test-kind  # requires kind, kubectl, helm, docker
 
 ```
 .
-├── api/                    # OpenAPI specs
-├── build/                  # Dockerfiles
-├── cmd/mdrive/              # Entry point (thin, delegates to internal/cli)
-├── api/                     # OpenAPI spec (split into endpoints/ and schemas/)
+├── api/                    # OpenAPI specs (ogen input)
 ├── charts/mdrive/          # Helm chart
+├── cmd/mdrive/              # Entry point (thin, delegates to internal/cli)
+├── config.yaml.example     # Example config (see charts/mdrive/values.yaml for canonical)
+├── docs/                   # Architecture, development, testing, roadmap
 ├── ent/                     # Ent ORM schema & generated code
+├── Dockerfile               # Container image build
 ├── internal/
 │   ├── core/                # Domain layer (node, drive, user) — no I/O, no HTTP
 │   ├── vfs/                 # Service: POSIX inode-tree manager
 │   ├── upload/              # Service: S3 object lifecycle (+ s3/ client)
-│   ├── permission/          # OpenFGA checker (cross-cutting)
+│   ├── permission/          # OpenFGA Authorizer (cross-cutting)
 │   ├── auth/                # OIDC + sessions (cross-cutting)
 │   ├── app/                 # Composition root (HTTP transport, GC jobs)
+│   ├── apiopts/             # ogen Opt* wrapper helpers
 │   ├── cli/                 # cobra commands
 │   ├── config/              # Viper config loading
 │   └── crypto/              # At-rest cipher for drive secrets
 ├── pkg/api/                 # Generated ogen code
 └── test/
     ├── e2e/                 # E2E tests (Postgres + Valkey, testcontainers)
-    ├── integration/         # Handler integration tests (stub fakes)
-    └── kind/                # Kind cluster tests
+    └── integration/         # Handler integration tests (stub fakes + ent+testcontainers)
 ```
 
 See `docs/ARCHITECTURE.md` for the layer-responsibility table.

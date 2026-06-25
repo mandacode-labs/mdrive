@@ -94,7 +94,10 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	if !n.IsMount() {
 		return fmt.Errorf("unmount: %s is not a mount", mountPath)
 	}
-	srcDrive, _ := n.ReadMount()
+	srcDrive, err := n.ReadMount()
+	if err != nil {
+		return fmt.Errorf("unmount: read mount: %w", err)
+	}
 	parent, name, err := r.resolveParent(ctx, rootID, mountPath)
 	if err != nil {
 		return fmt.Errorf("unmount: resolve parent: %w", err)

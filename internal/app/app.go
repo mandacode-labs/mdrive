@@ -235,15 +235,18 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 	}
 }
 
-// newPerm returns the OpenFGA permission checker. nil in dev
-// (permission.Require is permissive), required in production.
+// newPerm returns the OpenFGA Authorizer. In production a real
+// FGAChecker is required; in development without an OpenFGA
+// configured, an explicit NopAuthorizer is returned so callers
+// can wire the same Authorizer interface without a hidden
+// fail-open default.
 func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permission.Authorizer, error) {
 	if cfg.OpenFGA.APIURL == "" {
 		if cfg.App.Env == "production" {
 			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
 		}
-		log.Warn("openfga: APIURL not configured; permission checks disabled (AnonSecurity will be used by the HTTP layer)")
-		return nil, nil
+		log.Warn("openfga: APIURL not configured; using NopAuthorizer (development only)")
+		return permission.NopAuthorizer{}, nil
 	}
 	checker, err := permission.NewFGAChecker(ctx, permission.Config{
 		AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),

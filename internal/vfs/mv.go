@@ -214,11 +214,29 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	// MoveEntry removes it. After the call the inode may be gone
 	// (nlink hit 0), so we need the reference pre-emptively.
 	var overwriteRef *GarbageRef
-	if existing, err := dstParent.Lookup(dstName); err == nil && existing != nil {
-		if existingChild, err := s.NodeClient.GetByID(ctx, existing.InodeID); err == nil && existingChild.IsObject() {
-			if oc, err := existingChild.ReadObject(); err == nil && oc.Bucket != "" && oc.Key != "" {
-				overwriteRef = &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}
+	if existing, err := dstParent.Lookup(dstName); err != nil {
+		s.log().Debug("vfs.mv.lookup_dst_failed",
+			slog.String("err", err.Error()),
+			slog.String("dst_name", dstName),
+		)
+	} else if existing != nil {
+		existingChild, err := s.NodeClient.GetByID(ctx, existing.InodeID)
+		switch {
+		case err != nil:
+			s.log().Warn("vfs.mv.get_overwrite_target_failed",
+				slog.String("err", err.Error()),
+				slog.String("dst_name", dstName),
+			)
+		case existingChild.IsObject():
+			oc, err := existingChild.ReadObject()
+			if err != nil || oc.Bucket == "" || oc.Key == "" {
+				s.log().Warn("vfs.mv.read_object_content_failed",
+					slog.String("err", errOrEmpty(err)),
+					slog.String("dst_name", dstName),
+				)
+				break
 			}
+			overwriteRef = &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}
 		}
 	}
 
@@ -230,4 +248,12 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 		return []GarbageRef{*overwriteRef}, nil
 	}
 	return nil, nil
+}
+
+// errOrEmpty returns err.Error() when err is non-nil, "" otherwise.
+func errOrEmpty(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

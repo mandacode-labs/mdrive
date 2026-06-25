@@ -78,16 +78,38 @@ var ErrInvalidAuthMode = errors.New("permission: invalid openfga auth_mode (allo
 // or wrap it; consumers test with errors.Is(err, permission.ErrPermission).
 var ErrPermission = errors.New("permission: denied")
 
+// NopAuthorizer permits every check. Use this explicitly in
+// development and test code where no real backend is wired; the
+// nil-tolerance in Require was removed because a misconfigured
+// Authorizer silently allowing access is the wrong default for an
+// auth library.
+type NopAuthorizer struct{}
+
+// Check always returns (true, nil).
+func (NopAuthorizer) Check(context.Context, string, Action, string, string) (bool, error) {
+	return true, nil
+}
+
+// ListObjects always returns an empty list.
+func (NopAuthorizer) ListObjects(context.Context, string, Action, string) ([]string, error) {
+	return nil, nil
+}
+
+// Grant is a no-op.
+func (NopAuthorizer) Grant(context.Context, string, string, string, string) error { return nil }
+
+// Revoke is a no-op.
+func (NopAuthorizer) Revoke(context.Context, string, string, string, string) error { return nil }
+
 // Require is the canonical permission check. It returns ErrPermission
 // (wrapped with a hint) if the user lacks the permission, the
 // authorizer's own error if the call failed, or nil on success.
 //
-// A nil authorizer (development mode) returns nil. This is the
-// single point of nil-tolerance so call sites don't have to
-// reproduce the same `if c == nil { return nil }` guard.
+// Require panics if a is nil. Pass permission.NopAuthorizer
+// explicitly when no real backend is wired.
 func Require(ctx context.Context, a Authorizer, userID string, perm Action, objectType, objectID string) error {
 	if a == nil {
-		return nil
+		panic("permission.Require: Authorizer is nil; use permission.NopAuthorizer for development")
 	}
 	allowed, err := a.Check(ctx, userID, perm, objectType, objectID)
 	if err != nil {
