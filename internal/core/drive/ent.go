@@ -11,26 +11,26 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/crypto"
 )
 
-// EntRepository implements domain.Repository using Ent.
-type EntRepository struct {
+// entRepository implements domain.Repository using Ent.
+type entRepository struct {
 	client *ent.Client
 	cipher crypto.Cipher
 }
 
-// NewRepository creates a new EntRepository.
+// NewRepository creates a new entRepository.
 // cipher is optional; if nil, a crypto.NoOp cipher is used (not recommended for production).
 func NewRepository(client *ent.Client, cipher crypto.Cipher) Repository {
 	if cipher == nil {
 		cipher = crypto.NoOp{}
 	}
-	return &EntRepository{client: client, cipher: cipher}
+	return &entRepository{client: client, cipher: cipher}
 }
 
 // Create persists a drive and its storage config. It is tx-transparent:
 // it uses whatever client the repository was constructed with. Callers
 // that need this op to participate in a larger transaction must wrap it
 // in WithTx at the service layer.
-func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error {
+func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error {
 	if _, err := r.client.Drive.Create().
 		SetID(d.ID()).
 		SetPublicID(d.PublicID()).
@@ -63,7 +63,7 @@ func (r *EntRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 	return nil
 }
 
-func (r *EntRepository) GetByID(ctx context.Context, id string) (*Drive, error) {
+func (r *entRepository) GetByID(ctx context.Context, id string) (*Drive, error) {
 	d, err := r.client.Drive.Query().Where(entdrive.IDEQ(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -74,7 +74,7 @@ func (r *EntRepository) GetByID(ctx context.Context, id string) (*Drive, error) 
 	return driveFromEnt(d), nil
 }
 
-func (r *EntRepository) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
+func (r *entRepository) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
 	d, err := r.client.Drive.Query().Where(entdrive.PublicIDEQ(publicID)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -85,7 +85,7 @@ func (r *EntRepository) GetByPublicID(ctx context.Context, publicID string) (*Dr
 	return driveFromEnt(d), nil
 }
 
-func (r *EntRepository) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
+func (r *entRepository) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
 	s, err := r.client.DriveStorage.Query().Where(entdrivestorage.DriveIDEQ(driveID)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -108,7 +108,7 @@ func (r *EntRepository) GetStorage(ctx context.Context, driveID string) (*Storag
 	), nil
 }
 
-func (r *EntRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
+func (r *entRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 	updated, err := r.client.Drive.UpdateOneID(d.ID()).
 		SetName(d.Name()).
 		SetNillableDescription(d.Description()).
@@ -121,7 +121,7 @@ func (r *EntRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 	return driveFromEnt(updated), nil
 }
 
-func (r *EntRepository) SoftDelete(ctx context.Context, id string) error {
+func (r *entRepository) SoftDelete(ctx context.Context, id string) error {
 	now := time.Now()
 	_, err := r.client.Drive.UpdateOneID(id).
 		SetDeletedAt(now).
@@ -129,14 +129,14 @@ func (r *EntRepository) SoftDelete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *EntRepository) Restore(ctx context.Context, id string) error {
+func (r *entRepository) Restore(ctx context.Context, id string) error {
 	_, err := r.client.Drive.UpdateOneID(id).
 		ClearDeletedAt().
 		Save(ctx)
 	return err
 }
 
-func (r *EntRepository) Delete(ctx context.Context, id string) error {
+func (r *entRepository) Delete(ctx context.Context, id string) error {
 	if _, err := r.client.DriveStorage.Delete().Where(entdrivestorage.DriveIDEQ(id)).Exec(ctx); err != nil {
 		if !ent.IsNotFound(err) {
 			return err
@@ -145,7 +145,7 @@ func (r *EntRepository) Delete(ctx context.Context, id string) error {
 	return r.client.Drive.DeleteOneID(id).Exec(ctx)
 }
 
-func (r *EntRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
+func (r *entRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
 	drives, err := r.client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).Where(entdrive.DeletedAtIsNil()).All(ctx)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (r *EntRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Dri
 	return result, nil
 }
 
-func (r *EntRepository) FindDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error) {
+func (r *entRepository) FindDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error) {
 	drives, err := r.client.Drive.Query().
 		Where(entdrive.DeletedAtNotNil()).
 		Where(entdrive.DeletedAtLTE(before)).
@@ -173,7 +173,7 @@ func (r *EntRepository) FindDeleted(ctx context.Context, before time.Time, limit
 	return result, nil
 }
 
-func (r *EntRepository) FindDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
+func (r *entRepository) FindDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
 	drives, err := r.client.Drive.Query().
 		Where(entdrive.OwnerIDEQ(ownerID)).
 		Where(entdrive.DeletedAtNotNil()).
@@ -189,13 +189,13 @@ func (r *EntRepository) FindDeletedByOwner(ctx context.Context, ownerID string) 
 }
 
 // WithTx executes fn within a transaction.
-func (r *EntRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
+func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return err
 	}
 	txClient := tx.Client()
-	txRepo := &EntRepository{client: txClient, cipher: r.cipher}
+	txRepo := &entRepository{client: txClient, cipher: r.cipher}
 	if err := fn(txRepo); err != nil {
 		_ = tx.Rollback()
 		return err

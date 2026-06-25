@@ -1,6 +1,8 @@
-// Package apputils provides small, application-layer helpers used by handlers.
-// It intentionally has no domain dependencies so it cannot become a dumping ground.
-package apputils
+// Package apiopts provides small typed-option helpers used by
+// the API handler to convert between Go pointer types and the
+// ogen-generated *OptT wrappers. It intentionally has no domain
+// dependencies so it cannot become a dumping ground.
+package apiopts
 
 import "github.com/mandacode-labs/mdrive/pkg/api"
 

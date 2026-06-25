@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -94,13 +94,10 @@ type Handler struct {
 	healthDeps     HealthDeps
 }
 
-type CookieConfig struct {
-	Name     string
-	Path     string
-	Secure   bool
-	HttpOnly bool
-	SameSite http.SameSite
-}
+// CookieConfig is an alias for config.CookieConfig used in handler
+// options. The parsed http.SameSite is materialized via the
+// SameSiteMode() method when needed.
+type CookieConfig = config.CookieConfig
 
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health

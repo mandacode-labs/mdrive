@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apputils"
+	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/permission"
@@ -25,12 +25,12 @@ func driveToAPI(d *coredrive.Drive) *api.Drive {
 		deletedAt = api.OptDateTime{Value: *d.DeletedAt(), Set: true}
 	}
 	return &api.Drive{
-		ID:          apputils.OptString(d.ID()),
-		PublicID:    apputils.OptString(d.PublicID()),
-		Name:        apputils.OptString(d.Name()),
-		Description: apputils.OptStringPtr(d.Description()),
-		OwnerID:     apputils.OptString(d.OwnerID()),
-		RootNodeID:  apputils.OptString(rids),
+		ID:          apiopts.OptString(d.ID()),
+		PublicID:    apiopts.OptString(d.PublicID()),
+		Name:        apiopts.OptString(d.Name()),
+		Description: apiopts.OptStringPtr(d.Description()),
+		OwnerID:     apiopts.OptString(d.OwnerID()),
+		RootNodeID:  apiopts.OptString(rids),
 		DeletedAt:   deletedAt,
 		CreatedAt:   api.OptDateTime{Value: d.CreatedAt(), Set: true},
 		UpdatedAt:   api.OptDateTime{Value: d.UpdatedAt(), Set: true},
@@ -164,8 +164,8 @@ func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorag
 	return &api.StorageConfig{
 		Bucket:       s.Bucket(),
 		Region:       s.Region(),
-		Endpoint:     apputils.OptStringPtr(s.Endpoint()),
-		UsePathStyle: apputils.OptBool(s.UsePathStyle()),
+		Endpoint:     apiopts.OptStringPtr(s.Endpoint()),
+		UsePathStyle: apiopts.OptBool(s.UsePathStyle()),
 	}, nil
 }
 

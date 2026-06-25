@@ -30,13 +30,7 @@ type Server struct {
 }
 
 func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) *Server {
-	cookieCfg := handler.CookieConfig{
-		Name:     a.Config.HTTP.Cookie.Name,
-		Path:     a.Config.HTTP.Cookie.Path,
-		Secure:   a.Config.HTTP.Cookie.Secure,
-		HttpOnly: a.Config.HTTP.Cookie.HttpOnly,
-		SameSite: a.Config.HTTP.Cookie.SameSiteMode(),
-	}
+	cookieCfg := a.Config.HTTP.Cookie
 	healthDeps := handler.HealthDeps{
 		DB: a.DB,
 	}

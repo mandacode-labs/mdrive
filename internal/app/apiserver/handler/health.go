@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apputils"
+	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -26,20 +26,20 @@ type HealthDeps struct {
 func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
 	if h.healthDeps.DB != nil {
 		if err := h.healthDeps.DB.PingContext(ctx); err != nil {
-			return &api.HealthOK{Status: apputils.OptString("degraded: database unreachable")}, nil
+			return &api.HealthOK{Status: apiopts.OptString("degraded: database unreachable")}, nil
 		}
 	}
 	if h.healthDeps.Valkey != nil {
 		// Scan with a no-op callback to confirm connectivity without
 		// actually iterating anything.
 		if err := h.healthDeps.Valkey.Scan(ctx, func(_ string) error { return nil }); err != nil {
-			return &api.HealthOK{Status: apputils.OptString("degraded: valkey unreachable")}, nil
+			return &api.HealthOK{Status: apiopts.OptString("degraded: valkey unreachable")}, nil
 		}
 	}
 	if h.healthDeps.Authorizer != nil {
 		if _, err := h.healthDeps.Authorizer.Check(ctx, "healthcheck", permission.ActionView, "drive", "_healthcheck"); err != nil {
-			return &api.HealthOK{Status: apputils.OptString("degraded: openfga unreachable")}, nil
+			return &api.HealthOK{Status: apiopts.OptString("degraded: openfga unreachable")}, nil
 		}
 	}
-	return &api.HealthOK{Status: apputils.OptString("ok")}, nil
+	return &api.HealthOK{Status: apiopts.OptString("ok")}, nil
 }
