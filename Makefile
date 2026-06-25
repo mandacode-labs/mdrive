@@ -49,9 +49,11 @@ lint:
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------
+PKGS_WITH_TESTS := $(shell go list -f '{{.ImportPath}} {{if .TestGoFiles}}X{{end}}' ./... | awk 'NF==2 && $$2=="X" {print $$1}' | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
+
 .PHONY: test
 test:
-	go test -count=1 -coverprofile=cover-unit.out $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
+	go test -count=1 -coverprofile=cover-unit.out $(PKGS_WITH_TESTS)
 
 .PHONY: test-integration
 test-integration:
