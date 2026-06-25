@@ -64,27 +64,38 @@ func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams)
 	return &api.MvOK{}, nil
 }
 
+// resolveRead encapsulates the five-step preamble of every read
+// handler that may cross a mount: ResolveForPermission, then
+// requirePerm on the resolved drive, then compute a finalPath
+// that includes a leading "/" when the resolved drive differs
+// from the requested one. Returns the drive and final path to
+// pass to vfs.* (and the absolute path the user requested) for
+// any caller that needs it.
+func (h *Handler) resolveRead(ctx context.Context, driveID, path string) (string, string, error) {
+	res, err := h.fs.ResolveForPermission(ctx, driveID, path)
+	if err != nil {
+		return "", "", err
+	}
+	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
+		return "", "", err
+	}
+	finalPath := res.Path
+	if res.DriveID != driveID {
+		finalPath = "/" + res.Path
+	}
+	return res.DriveID, finalPath, nil
+}
+
 func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error) {
 	path := params.Path
 	if path == "" {
 		path = "/"
 	}
-	// Resolve first so the permission check matches the drive the
-	// path actually resolves to (a mount may have crossed).
-	res, err := h.fs.ResolveForPermission(ctx, params.DriveID, path)
+	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, path)
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
-		return nil, err
-	}
-	// Re-resolve the remaining path (if any) within the source drive
-	// so vfs.Ls sees a single-drive path it can walk cleanly.
-	finalPath := res.Path
-	if res.DriveID != params.DriveID {
-		finalPath = "/" + res.Path
-	}
-	dc, err := h.fs.Ls(ctx, res.DriveID, finalPath)
+	dc, err := h.fs.Ls(ctx, driveID, finalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -100,18 +111,11 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 }
 
 func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatRes, error) {
-	res, err := h.fs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
-		return nil, err
-	}
-	finalPath := res.Path
-	if res.DriveID != params.DriveID {
-		finalPath = "/" + res.Path
-	}
-	data, err := h.fs.Cat(ctx, res.DriveID, finalPath)
+	data, err := h.fs.Cat(ctx, driveID, finalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -216,18 +220,11 @@ func (h *Handler) Realpath(ctx context.Context, params api.RealpathParams) (api.
 }
 
 func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes, error) {
-	res, err := h.fs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
-		return nil, err
-	}
-	finalPath := res.Path
-	if res.DriveID != params.DriveID {
-		finalPath = "/" + res.Path
-	}
-	n, err := h.fs.Stat(ctx, res.DriveID, finalPath)
+	n, err := h.fs.Stat(ctx, driveID, finalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -238,18 +235,11 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes,
 // If the path resolves to a symlink, the returned metadata describes
 // the symlink itself, not its target.
 func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatRes, error) {
-	ref, err := h.fs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, ref.DriveID); err != nil {
-		return nil, err
-	}
-	finalPath := ref.Path
-	if ref.DriveID != params.DriveID {
-		finalPath = "/" + ref.Path
-	}
-	res, err := h.fs.Lstat(ctx, ref.DriveID, finalPath)
+	res, err := h.fs.Lstat(ctx, driveID, finalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -260,18 +250,11 @@ func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatR
 // readlink(2)). The path must resolve to a symlink; otherwise
 // ErrInvalidType is returned.
 func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.ReadlinkRes, error) {
-	res, err := h.fs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
-		return nil, err
-	}
-	finalPath := res.Path
-	if res.DriveID != params.DriveID {
-		finalPath = "/" + res.Path
-	}
-	out, err := h.fs.Lstat(ctx, res.DriveID, finalPath)
+	out, err := h.fs.Lstat(ctx, driveID, finalPath)
 	if err != nil {
 		return nil, err
 	}

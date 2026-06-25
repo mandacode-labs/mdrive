@@ -157,7 +157,16 @@ func (u *UploadExpirer) Run(ctx context.Context) error {
 		scanned++
 		meta, err := u.tokenRegistry.Get(ctx, id)
 		if err != nil {
-			_ = u.tokenRegistry.Delete(ctx, id)
+			u.log.Warn("gc: get upload token failed (treating as orphan)",
+				slog.String("err", err.Error()),
+				slog.String("upload_id", id),
+			)
+			if derr := u.tokenRegistry.Delete(ctx, id); derr != nil {
+				u.log.Warn("gc: delete orphan upload token failed",
+					slog.String("err", derr.Error()),
+					slog.String("upload_id", id),
+				)
+			}
 			return nil
 		}
 		if !meta.IsExpired() {
