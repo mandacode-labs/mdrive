@@ -151,7 +151,7 @@ func (c Content) Data() []byte { return c }
 // missing, the read returns ErrNoContent (or the caller maps it to 404).
 type Node struct {
 	id    uuid.UUID
-	typ   NodeType
+	kind  NodeType
 	size  int64
 	nlink uint32
 	// mode holds the POSIX permission bits and file type
@@ -183,14 +183,14 @@ type Node struct {
 // nlink starts at 0 (POSIX semantics): a freshly created inode has no hardlinks.
 // The first successful Link sets nlink to 1; further Links increment; Unlink
 // decrements and triggers deletion at nlink==0.
-func newNode(typ NodeType) *Node {
+func newNode(kind NodeType) *Node {
 	now := time.Now()
 	return &Node{
 		id:      uuid.New(),
-		typ:     typ,
+		kind:    kind,
 		size:    0,
 		nlink:   0,
-		mode:    defaultMode(typ),
+		mode:    defaultMode(kind),
 		uid:     "",
 		gid:     "",
 		content: nil,
@@ -209,8 +209,8 @@ func newNode(typ NodeType) *Node {
 // are user-writable and world-readable, symlinks are world-readable
 // (their target's permissions govern access), and S3-backed objects
 // default to group-writable.
-func defaultMode(typ NodeType) uint32 {
-	switch typ {
+func defaultMode(kind NodeType) uint32 {
+	switch kind {
 	case NodeTypeDirectory:
 		return 0o755
 	case NodeTypeSymlink:
@@ -230,7 +230,7 @@ func NewRootNode() *Node {
 }
 
 func (n *Node) ID() uuid.UUID      { return n.id }
-func (n *Node) Type() NodeType     { return n.typ }
+func (n *Node) Type() NodeType     { return n.kind }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
 func (n *Node) Mode() uint32       { return n.mode }
@@ -296,11 +296,11 @@ func (n *Node) Clone() *Node {
 // by external callers. Type-specific Read methods are the public API.
 func (n *Node) Content() Content { return n.content }
 
-func (n *Node) IsDir() bool     { return n.typ == NodeTypeDirectory }
-func (n *Node) IsFile() bool    { return n.typ == NodeTypeFile }
-func (n *Node) IsSymlink() bool { return n.typ == NodeTypeSymlink }
-func (n *Node) IsObject() bool  { return n.typ == NodeTypeObject }
-func (n *Node) IsMount() bool   { return n.typ == NodeTypeMount }
+func (n *Node) IsDir() bool     { return n.kind == NodeTypeDirectory }
+func (n *Node) IsFile() bool    { return n.kind == NodeTypeFile }
+func (n *Node) IsSymlink() bool { return n.kind == NodeTypeSymlink }
+func (n *Node) IsObject() bool  { return n.kind == NodeTypeObject }
+func (n *Node) IsMount() bool   { return n.kind == NodeTypeMount }
 
 // write replaces the node's content and updates mtime/ctime/rev.
 // Private: type-specific Write methods in file.go / dir.go / symlink.go / object.go

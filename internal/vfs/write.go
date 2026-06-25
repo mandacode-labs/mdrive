@@ -16,7 +16,7 @@ import (
 // overwrite branch goes through Node.Save, whose UPDATE is
 // committed atomically.
 func (s *Service) Write(ctx context.Context, driveID, path, content string) error {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return err
 	}

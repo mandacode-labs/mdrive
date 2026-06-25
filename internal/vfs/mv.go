@@ -95,7 +95,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 // updating both parents atomically; the resolver cache keeps the
 // optimistic-concurrency check in node.Repository.Save consistent.
 func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]GarbageRef, error) {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 // across the resolveParent calls so multiple sources that share
 // a parent directory see the same *Node pointer.
 func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]GarbageRef, error) {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}

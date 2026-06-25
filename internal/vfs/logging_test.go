@@ -46,7 +46,7 @@ func TestVFSMvLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
-	rootID, err := svc.rootNodeID(ctx, "d1")
+	rootID, err := svc.GetRootNodeID(ctx, "d1")
 	require.NoError(t, err)
 	root, err := nodeSvc.GetByID(ctx, rootID)
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestVFSMvLogsErrorOnTombstoneFailure(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
-	rootID, err := svc.rootNodeID(ctx, "d1")
+	rootID, err := svc.GetRootNodeID(ctx, "d1")
 	require.NoError(t, err)
 	root, err := nodeSvc.GetByID(ctx, rootID)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestVFSRmLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
-	rootID, err := svc.rootNodeID(ctx, "d1")
+	rootID, err := svc.GetRootNodeID(ctx, "d1")
 	require.NoError(t, err)
 	root, err := nodeSvc.GetByID(ctx, rootID)
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestVFSRmLogsErrorOnTombstoneFailure(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
-	rootID, err := svc.rootNodeID(ctx, "d1")
+	rootID, err := svc.GetRootNodeID(ctx, "d1")
 	require.NoError(t, err)
 	root, err := nodeSvc.GetByID(ctx, rootID)
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestVFSUnmountLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
-	rootID, err := svc.rootNodeID(ctx, "d1")
+	rootID, err := svc.GetRootNodeID(ctx, "d1")
 	require.NoError(t, err)
 	root, err := nodeSvc.GetByID(ctx, rootID)
 	require.NoError(t, err)

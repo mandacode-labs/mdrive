@@ -187,7 +187,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 	currentPath := cleanPath(path)
 	for hop := 1; hop <= maxMountHops; hop++ {
 		r := s.newResolver()
-		rootID, err := s.rootNodeID(ctx, currentDrive)
+		rootID, err := s.GetRootNodeID(ctx, currentDrive)
 		if err != nil {
 			return "", nil, err
 		}
@@ -305,7 +305,7 @@ func cleanPath(p string) string {
 // Permission is the caller's responsibility: vfs does not check
 // edit permission.
 func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, "", err
 	}

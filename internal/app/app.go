@@ -79,13 +79,15 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	repos := newRepositories(entClient, cipher)
 
-	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey)
+	garbage := gc.NewGarbageRecorder(entClient)
+
+	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey, log)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 
-	s3Client, err := newS3Client(ctx, cfg.Storage)
+	s3Client, err := newS3Client(ctx, cfg.Storage, log)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -97,7 +99,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	store, authenticator, sec, err := newAuth(ctx, cfg, vClient)
+	store, authenticator, sec, err := newAuth(ctx, cfg, log, vClient)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -111,10 +113,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserSvc:      repos.UserSvc,
 		OwnerChecker: repos.OwnerChecker,
 		UploadToken:  uploadReg,
-		UploadSvc:    newUpload(repos, s3Client, uploadReg, entClient),
-		VFS:          newVFS(repos, entClient, log),
+		UploadSvc:    newUpload(repos, s3Client, uploadReg),
+		VFS:          newVFS(repos, garbage, log),
 		SessionStore: store,
-		Garbage:      gc.NewGarbageRecorder(entClient),
+		Garbage:      garbage,
 		Auth:         authenticator,
 		Security:     sec,
 		Authorizer:   permClient,
@@ -266,7 +268,7 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 // newAuth wires OIDC + session store. In dev (no auth config)
 // the store is in-memory and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
-func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (session.Store, *auth.Service, *auth.SecurityHandler, error) {
+func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, vClient valkey.Client) (session.Store, *auth.Service, *auth.SecurityHandler, error) {
 	var store session.Store = session.NewMemoryStore()
 	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
 		return store, nil, nil, nil
@@ -290,11 +292,11 @@ func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (se
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
 // dependency: it manages paths, links, and the tree; it
 // notifies Garbage when object nodes go away.
-func newVFS(repos repositories, entClient *ent.Client, log *slog.Logger) *vfs.Service {
+func newVFS(repos repositories, garbage *gc.GarbageRecorder, log *slog.Logger) *vfs.Service {
 	return vfs.NewService(vfs.ServiceConfig{
 		NodeClient:      repos.NodeSvc,
 		DriveClient:     repos.DriveSvc,
-		GarbageRecorder: gc.NewGarbageRecorder(entClient),
+		GarbageRecorder: garbage,
 		Logger:          log,
 	})
 }
@@ -302,7 +304,7 @@ func newVFS(repos repositories, entClient *ent.Client, log *slog.Logger) *vfs.Se
 // newUpload builds the S3 lifecycle service. Permission is the
 // handler's responsibility; the service is the pure
 // presign/complete/delete flow.
-func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry, _ *ent.Client) *upload.Service {
+func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry) *upload.Service {
 	return upload.NewService(upload.Config{
 		TokenRegistry: reg,
 		StorageLookup: repos.DriveSvc,
@@ -339,22 +341,28 @@ func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, e
 // newS3Client builds an upload/s3 client. The same instance is
 // shared by upload.Service (presign + delete) and the gc
 // tombstone cleaner.
-func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
+func newS3Client(ctx context.Context, cfg config.StorageConfig, log *slog.Logger) (*s3.Client, error) {
 	endpoint := (*string)(nil)
 	if cfg.Endpoint != "" {
 		endpoint = &cfg.Endpoint
 	}
-	return s3.NewClient(ctx, s3.Config{
+	client, err := s3.NewClient(ctx, s3.Config{
 		Region:       cfg.Region,
 		Endpoint:     endpoint,
 		AccessKey:    cfg.AccessKey,
 		SecretKey:    cfg.SecretKey,
 		UsePathStyle: cfg.UsePathStyle,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("s3 client: %w", err)
+	}
+	log.Info("s3 client initialized", "endpoint", endpoint, "region", cfg.Region, "path_style", cfg.UsePathStyle)
+	return client, nil
 }
 
-func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Client, upload.TokenRegistry, error) {
+func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig, log *slog.Logger) (valkey.Client, upload.TokenRegistry, error) {
 	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
+		log.Warn("valkey: no addresses configured; using MemoryRegistry (development only)")
 		return nil, upload.NewMemoryRegistry(), nil
 	}
 	client, err := valkey.NewClient(valkey.ClientOption{
@@ -363,10 +371,8 @@ func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig) (valkey.Clien
 		SelectDB:    cfg.DB,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("valkey client: %w", err)
 	}
-	if err := client.Do(ctx, client.B().Ping().Build()).Error(); err != nil {
-		return nil, nil, err
-	}
+	log.Info("valkey client initialized", "addrs", cfg.Addrs, "db", cfg.DB)
 	return client, upload.NewValkeyRegistry(client), nil
 }

@@ -25,7 +25,7 @@ import (
 //
 // Permission is the caller's responsibility.
 func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return err
 	}
