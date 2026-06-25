@@ -31,11 +31,11 @@ func (fakeRepo) WithTx(_ context.Context, fn func(Repository) error) error { ret
 
 type fakeExister struct{}
 
-func (fakeExister) Exists(_ context.Context, _ string) (bool, error) { return true, nil }
+func (fakeExister) Exist(_ context.Context, _ string) (bool, error) { return true, nil }
 
-type fakeRootCreator struct{}
+type fakeRootDirectoryCreator struct{}
 
-func (fakeRootCreator) NewRootDirectory(_ context.Context) (uuid.UUID, error) {
+func (fakeRootDirectoryCreator) CreateRootDirectory(_ context.Context) (uuid.UUID, error) {
 	return uuid.New(), nil
 }
 
@@ -43,7 +43,7 @@ func TestWithTxRollsBackOnError(t *testing.T) {
 	svc := &Service{
 		repo:       fakeRepo{},
 		users:      fakeExister{},
-		rootCreate: fakeRootCreator{},
+		rootDirectoryCreator: fakeRootDirectoryCreator{},
 	}
 
 	want := errors.New("boom")

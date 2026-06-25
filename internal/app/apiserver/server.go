@@ -29,7 +29,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Checker) *Server {
+func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) *Server {
 	cookieCfg := handler.CookieConfig{
 		Name:     a.Cfg.HTTP.Cookie.Name,
 		Path:     a.Cfg.HTTP.Cookie.Path,

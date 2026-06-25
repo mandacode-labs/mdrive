@@ -30,9 +30,9 @@ type Repository interface {
 // in the user package; drive depends on it.
 type Exister = user.Exister
 
-// RootCreator creates the root directory node for a drive.
-// Implemented by the node.Service in the application layer (or by a stub
-// during testing) to avoid circular dependencies.
-type RootCreator interface {
-	NewRootDirectory(ctx context.Context) (uuid.UUID, error)
+// RootDirectoryCreator creates the root directory node for a
+// drive. Implemented by the node.Service in the application layer
+// (or by a stub during testing) to avoid circular dependencies.
+type RootDirectoryCreator interface {
+	CreateRootDirectory(ctx context.Context) (uuid.UUID, error)
 }

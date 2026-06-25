@@ -37,12 +37,12 @@ func (_m *ExisterMock) EXPECT() *ExisterMock_Expecter {
 	return &ExisterMock_Expecter{mock: &_m.Mock}
 }
 
-// Exists provides a mock function for the type ExisterMock
-func (_mock *ExisterMock) Exists(ctx context.Context, id string) (bool, error) {
+// Exist provides a mock function for the type ExisterMock
+func (_mock *ExisterMock) Exist(ctx context.Context, id string) (bool, error) {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Exists")
+		panic("no return value specified for Exist")
 	}
 
 	var r0 bool
@@ -63,19 +63,19 @@ func (_mock *ExisterMock) Exists(ctx context.Context, id string) (bool, error) {
 	return r0, r1
 }
 
-// ExisterMock_Exists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exists'
-type ExisterMock_Exists_Call struct {
+// ExisterMock_Exist_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exist'
+type ExisterMock_Exist_Call struct {
 	*mock.Call
 }
 
-// Exists is a helper method to define mock.On call
+// Exist is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *ExisterMock_Expecter) Exists(ctx interface{}, id interface{}) *ExisterMock_Exists_Call {
-	return &ExisterMock_Exists_Call{Call: _e.mock.On("Exists", ctx, id)}
+func (_e *ExisterMock_Expecter) Exist(ctx interface{}, id interface{}) *ExisterMock_Exist_Call {
+	return &ExisterMock_Exist_Call{Call: _e.mock.On("Exist", ctx, id)}
 }
 
-func (_c *ExisterMock_Exists_Call) Run(run func(ctx context.Context, id string)) *ExisterMock_Exists_Call {
+func (_c *ExisterMock_Exist_Call) Run(run func(ctx context.Context, id string)) *ExisterMock_Exist_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -93,12 +93,12 @@ func (_c *ExisterMock_Exists_Call) Run(run func(ctx context.Context, id string))
 	return _c
 }
 
-func (_c *ExisterMock_Exists_Call) Return(b bool, err error) *ExisterMock_Exists_Call {
+func (_c *ExisterMock_Exist_Call) Return(b bool, err error) *ExisterMock_Exist_Call {
 	_c.Call.Return(b, err)
 	return _c
 }
 
-func (_c *ExisterMock_Exists_Call) RunAndReturn(run func(ctx context.Context, id string) (bool, error)) *ExisterMock_Exists_Call {
+func (_c *ExisterMock_Exist_Call) RunAndReturn(run func(ctx context.Context, id string) (bool, error)) *ExisterMock_Exist_Call {
 	_c.Call.Return(run)
 	return _c
 }

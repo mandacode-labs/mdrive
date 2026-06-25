@@ -85,7 +85,7 @@ func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 }
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.GetDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
 	d, err := h.drive.GetByID(ctx, params.DriveID)
@@ -96,7 +96,7 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.
 }
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (api.UpdateDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	r := req.Value
@@ -115,7 +115,7 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 }
 
 func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) (api.DeleteDriveRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if err := h.drive.Delete(ctx, h.userID(ctx), params.DriveID); err != nil {
@@ -152,7 +152,7 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) (api.ListDeletedDrivesR
 }
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (api.GetDriveStorageRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
 	s, err := h.drive.GetStorage(ctx, params.DriveID)

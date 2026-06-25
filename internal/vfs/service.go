@@ -134,10 +134,10 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 	return Resolved{DriveID: drive, Node: n}, nil
 }
 
-// ResolvedRef is the partial resolution returned by ResolveForPermission:
+// PartialResolution is the partial resolution returned by ResolveForPermission:
 // the drive the path lands in (after stopping at the first mount) and
 // the remaining path within that drive.
-type ResolvedRef struct {
+type PartialResolution struct {
 	DriveID string
 	Path    string
 }
@@ -149,24 +149,24 @@ type ResolvedRef struct {
 // mount points plus the remaining path within that drive, so the
 // caller can both check permission and then re-resolve the rest of
 // the path within the source drive. Symlinks are followed.
-func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (ResolvedRef, error) {
+func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error) {
 	r := s.newResolver()
 	rootID, err := s.rootNodeID(ctx, driveID)
 	if err != nil {
-		return ResolvedRef{}, err
+		return PartialResolution{}, err
 	}
 	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
-		return ResolvedRef{}, err
+		return PartialResolution{}, err
 	}
 	if out.Node.IsMount() {
 		srcDriveID, err := out.Node.ReadMount()
 		if err != nil {
-			return ResolvedRef{}, err
+			return PartialResolution{}, err
 		}
-		return ResolvedRef{DriveID: srcDriveID, Path: out.Remaining}, nil
+		return PartialResolution{DriveID: srcDriveID, Path: out.Remaining}, nil
 	}
-	return ResolvedRef{DriveID: driveID, Path: path}, nil
+	return PartialResolution{DriveID: driveID, Path: path}, nil
 }
 
 // Lstat is the standalone no-symlink-follow variant. It returns

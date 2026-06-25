@@ -7,7 +7,7 @@ import "errors"
 // Permission errors come from the handler layer (via
 // permission.ErrPermission) and are not re-defined here.
 var (
-	// Registry errors.
+	// TokenRegistry errors.
 	ErrNotFound = errors.New("upload: token not found")
 
 	// Orchestration errors returned by Service.

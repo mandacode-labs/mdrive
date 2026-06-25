@@ -10,7 +10,7 @@ import (
 	"github.com/valkey-io/valkey-go"
 )
 
-// ValkeyRegistry implements Registry with Valkey (or Redis).
+// ValkeyRegistry implements TokenRegistry with Valkey (or Redis).
 type ValkeyRegistry struct {
 	client valkey.Client
 	keyer  KeyFunc
@@ -26,12 +26,13 @@ func DefaultKey(uploadID string) string {
 	return DefaultKeyPrefix + uploadID
 }
 
-// NewValkeyRegistry creates a Registry backed by Valkey.
+// NewValkeyRegistry creates a TokenRegistry backed by Valkey.
 func NewValkeyRegistry(client valkey.Client) *ValkeyRegistry {
 	return &ValkeyRegistry{client: client, keyer: DefaultKey}
 }
 
-// NewValkeyRegistryWithKeyer creates a Registry backed by Valkey with a custom keyer.
+// NewValkeyRegistryWithKeyer creates a TokenRegistry backed by
+// Valkey with a custom keyer.
 func NewValkeyRegistryWithKeyer(client valkey.Client, keyer KeyFunc) *ValkeyRegistry {
 	return &ValkeyRegistry{client: client, keyer: keyer}
 }
@@ -117,5 +118,5 @@ func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) err
 	}
 }
 
-var _ Registry = (*ValkeyRegistry)(nil)
-var _ Scanner = (*ValkeyRegistry)(nil)
+var _ TokenRegistry = (*ValkeyRegistry)(nil)
+var _ TokenScanner = (*ValkeyRegistry)(nil)

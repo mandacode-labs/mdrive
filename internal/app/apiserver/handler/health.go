@@ -15,7 +15,7 @@ import (
 type HealthDeps struct {
 	DB     *sql.DB
 	ValKey session.Scanner // presence indicates a Valkey-backed store
-	Perm   permission.Checker
+	Perm   permission.Authorizer
 }
 
 // Health returns a simple health check response. It returns 200 with
@@ -37,7 +37,7 @@ func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
 		}
 	}
 	if h.healthDeps.Perm != nil {
-		if _, err := h.healthDeps.Perm.Check(ctx, "healthcheck", permission.PermissionView, "drive", "_healthcheck"); err != nil {
+		if _, err := h.healthDeps.Perm.Check(ctx, "healthcheck", permission.ActionView, "drive", "_healthcheck"); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: openfga unreachable")}, nil
 		}
 	}

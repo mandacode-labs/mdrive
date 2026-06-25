@@ -18,7 +18,7 @@ import (
 
 func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.MkdirParams) (api.MkdirRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if _, err := h.vfs.Mkdir(ctx, params.DriveID, r.Path); err != nil {
@@ -29,7 +29,7 @@ func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.Mkd
 
 func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.TouchParams) (api.TouchRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if _, err := h.vfs.Touch(ctx, params.DriveID, r.Path); err != nil {
@@ -40,7 +40,7 @@ func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.Tou
 
 func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams) (api.RmRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	recursiveVal := false
@@ -55,7 +55,7 @@ func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams)
 
 func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams) (api.MvRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if err := h.vfs.Mv(ctx, params.DriveID, r.Sources, params.DriveID, r.Destination); err != nil {
@@ -75,7 +75,7 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	// Re-resolve the remaining path (if any) within the source drive
@@ -104,7 +104,7 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatRes, er
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	finalPath := res.Path
@@ -120,7 +120,7 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatRes, er
 
 func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.WriteParams) (api.WriteRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if err := h.vfs.Write(ctx, params.DriveID, r.Path, r.Content); err != nil {
@@ -131,7 +131,7 @@ func (h *Handler) Write(ctx context.Context, req api.OptWriteReq, params api.Wri
 
 func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, params api.WriteLargeParams) (api.WriteLargeRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	ct := ""
@@ -156,7 +156,7 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 
 func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api.SymlinkParams) (api.SymlinkRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if _, err := h.vfs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath); err != nil {
@@ -167,7 +167,7 @@ func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api
 
 func (h *Handler) Hardlink(ctx context.Context, req api.OptHardlinkReq, params api.HardlinkParams) (api.HardlinkRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if _, err := h.vfs.Hardlink(ctx, params.DriveID, r.SrcPath, r.LinkPath); err != nil {
@@ -178,14 +178,14 @@ func (h *Handler) Hardlink(ctx context.Context, req api.OptHardlinkReq, params a
 
 func (h *Handler) Mount(ctx context.Context, req api.OptMountReq, params api.MountParams) (api.MountRes, error) {
 	r := req.Value
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	// View perm on the source drive: the mount makes the source's
 	// root resolvable from this drive, so a non-viewable source
 	// would leak the source's existence to anyone who can see
 	// the mount point.
-	if err := h.requirePerm(ctx, permission.PermissionView, r.SourceDriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, r.SourceDriveID); err != nil {
 		return nil, err
 	}
 	if err := h.vfs.Mount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
@@ -195,7 +195,7 @@ func (h *Handler) Mount(ctx context.Context, req api.OptMountReq, params api.Mou
 }
 
 func (h *Handler) Unmount(ctx context.Context, params api.UnmountParams) (api.UnmountRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionEdit, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
 	if err := h.vfs.Unmount(ctx, params.DriveID, params.MountPath); err != nil {
@@ -205,7 +205,7 @@ func (h *Handler) Unmount(ctx context.Context, params api.UnmountParams) (api.Un
 }
 
 func (h *Handler) Realpath(ctx context.Context, params api.RealpathParams) (api.RealpathRes, error) {
-	if err := h.requirePerm(ctx, permission.PermissionView, params.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
 	res, err := h.vfs.ResolveForPermission(ctx, params.DriveID, params.Path)
@@ -220,7 +220,7 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes,
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	finalPath := res.Path
@@ -242,7 +242,7 @@ func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatR
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.PermissionView, ref.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, ref.DriveID); err != nil {
 		return nil, err
 	}
 	finalPath := ref.Path
@@ -264,7 +264,7 @@ func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.
 	if err != nil {
 		return nil, err
 	}
-	if err := h.requirePerm(ctx, permission.PermissionView, res.DriveID); err != nil {
+	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
 		return nil, err
 	}
 	finalPath := res.Path

@@ -25,7 +25,7 @@ import (
 // responsible for permission checks before calling these
 // methods.
 type FSClient interface {
-	ResolveForPermission(ctx context.Context, driveID, path string) (vfs.ResolvedRef, error)
+	ResolveForPermission(ctx context.Context, driveID, path string) (vfs.PartialResolution, error)
 	Mkdir(ctx context.Context, driveID, path string) (*node.Node, error)
 	Touch(ctx context.Context, driveID, path string) (*node.Node, error)
 	Rm(ctx context.Context, driveID string, paths []string, recursive bool) error
@@ -85,7 +85,7 @@ type Handler struct {
 	drive          DriveClient
 	users          UserClient
 	upload         UploadClient
-	perm           permission.Checker
+	perm           permission.Authorizer
 	auth           AuthClient
 	frontendURL    string
 	cookieConfig   CookieConfig
@@ -105,7 +105,7 @@ type CookieConfig struct {
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health
 // checks) and any auth-protected endpoint will return an error.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, perm permission.Checker, auth AuthClient, frontendURL string, opts ...Option) *Handler {
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, perm permission.Authorizer, auth AuthClient, frontendURL string, opts ...Option) *Handler {
 	h := &Handler{
 		vfs:         fs,
 		drive:       drive,
@@ -152,10 +152,10 @@ func (h *Handler) userID(ctx context.Context) string {
 }
 
 // requirePerm centralizes the handler's permission check. All
-// writes use PermissionEdit; reads use PermissionView (the caller
+// writes use ActionEdit; reads use ActionView (the caller
 // may need to call ResolveForPermission first if the path may
 // cross a mount — see fs.go).
-func (h *Handler) requirePerm(ctx context.Context, perm permission.Permission, driveID string) error {
+func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
 	return permission.Require(ctx, h.perm, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 

@@ -20,13 +20,13 @@ import (
 type Service struct {
 	repo       Repository
 	users      Exister
-	rootCreate RootCreator
+	rootDirectoryCreator RootDirectoryCreator
 }
 
 // NewService creates a new Service. Permission checks live in the
 // handler; the service is the pure domain layer.
-func NewService(repo Repository, users Exister, rootCreate RootCreator) *Service {
-	return &Service{repo: repo, users: users, rootCreate: rootCreate}
+func NewService(repo Repository, users Exister, rootDirectoryCreator RootDirectoryCreator) *Service {
+	return &Service{repo: repo, users: users, rootDirectoryCreator: rootDirectoryCreator}
 }
 
 // Create creates a drive and its root directory node. The drive +
@@ -34,7 +34,7 @@ func NewService(repo Repository, users Exister, rootCreate RootCreator) *Service
 // repository transaction so partial failure cannot leave a drive
 // record pointing at a non-existent root ID.
 //
-// The root node itself is created by an external RootCreator
+// The root node itself is created by an external RootDirectoryCreator
 // (typically the node.Service wired by the CLI). That step spans
 // repositories, so it cannot participate in this tx. The orphan-
 // cleanup path (gc/cli) covers any root node that ends up without
@@ -54,7 +54,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 		return nil, uuid.Nil, err
 	}
 
-	exists, err := s.users.Exists(ctx, actorID)
+	exists, err := s.users.Exist(ctx, actorID)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("check owner: %w", err)
 	}
@@ -72,7 +72,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	s2 := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
 
-	rootID, err := s.rootCreate.NewRootDirectory(ctx)
+	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("create root node: %w", err)
 	}
@@ -223,7 +223,7 @@ func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, users: s.users, rootCreate: s.rootCreate})
+		return fn(&Service{repo: txRepo, users: s.users, rootDirectoryCreator: s.rootDirectoryCreator})
 	})
 }
 

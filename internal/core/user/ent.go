@@ -94,7 +94,7 @@ func NewExisterAdapter(repo Repository) Exister {
 	return &ExisterAdapter{repo: repo}
 }
 
-func (a *ExisterAdapter) Exists(ctx context.Context, id string) (bool, error) {
+func (a *ExisterAdapter) Exist(ctx context.Context, id string) (bool, error) {
 	u, err := a.repo.GetByID(ctx, id)
 	if err != nil {
 		return false, err

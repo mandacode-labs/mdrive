@@ -126,18 +126,19 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 }
 
 // UploadExpirer removes stale upload registrations and their backing S3
-// objects. It scans the upload registry for tokens whose ExpiresAt has
-// passed, deletes the S3 object (best-effort, tombstone on failure), and
-// removes the registry entry. Safe to run on registries that do not
-// implement Scanner (logs a warning and returns).
+// objects. It scans the upload token registry for tokens whose
+// ExpiresAt has passed, deletes the S3 object (best-effort, tombstone
+// on failure), and removes the registry entry. Safe to run on
+// registries that do not implement TokenScanner (logs a warning and
+// returns).
 type UploadExpirer struct {
-	reg     upload.Registry
+	reg     upload.TokenRegistry
 	upload  *upload.Service
 	garbage *GarbageRecorder
 	log     *slog.Logger
 }
 
-func NewUploadExpirer(reg upload.Registry, uploadSvc *upload.Service, garbage *GarbageRecorder, log *slog.Logger) *UploadExpirer {
+func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc *upload.Service, garbage *GarbageRecorder, log *slog.Logger) *UploadExpirer {
 	return &UploadExpirer{reg: reg, upload: uploadSvc, garbage: garbage, log: log}
 }
 
@@ -145,9 +146,7 @@ func (e *UploadExpirer) Run(ctx context.Context) error {
 	e.log.Info("gc: expire-uploads starting")
 	defer e.log.Info("gc: expire-uploads complete")
 
-	scanner, ok := e.reg.(interface {
-		Scan(ctx context.Context, fn func(id string) error) error
-	})
+	scanner, ok := e.reg.(upload.TokenScanner)
 	if !ok {
 		e.log.Warn("gc: upload registry does not support Scan; skipping")
 		return nil
