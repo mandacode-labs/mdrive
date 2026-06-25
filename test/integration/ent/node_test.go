@@ -82,8 +82,8 @@ func TestEnt_Node_RevisionConflict(t *testing.T) {
 	// The winner's mutation is the one reflected in the DB.
 	final, err := repo.Get(ctx, dir.ID())
 	require.NoError(t, err)
-	assert.Equal(t, a.Mode()|b.Mode(), final.Mode(),
-		"the winner's mode (0o600 or 0o700) must be the persisted mode")
+	assert.True(t, final.Mode() == a.Mode() || final.Mode() == b.Mode(),
+		"the persisted mode must equal the winner's mode (0o600 or 0o700), got %#o", final.Mode())
 }
 
 func TestEnt_Node_WithTxCommit(t *testing.T) {

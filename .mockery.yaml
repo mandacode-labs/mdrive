@@ -7,45 +7,7 @@ template: testify
 template-data:
   unroll-variadic: true
 packages:
-  github.com/mandacode-labs/mdrive/internal/app/apiserver/handler:
-    interfaces:
-      AuthClient: {}
-      FSClient: {}
-      DriveClient: {}
-      UploadClient: {}
-  github.com/mandacode-labs/mdrive/internal/auth/session:
-    interfaces:
-      Scanner: {}
-  github.com/mandacode-labs/mdrive/internal/core/drive:
-    interfaces:
-      Repository: {}
-      RootCreator: {}
-  github.com/mandacode-labs/mdrive/internal/core/node:
-    interfaces:
-      Repository: {}
-  github.com/mandacode-labs/mdrive/internal/core/user:
-    interfaces:
-      Repository: {}
-      Exister: {}
-  github.com/mandacode-labs/mdrive/internal/upload:
-    interfaces:
-      Registry: {}
-      Scanner: {}
-      ObjectStore: {}
-      PathResolver: {}
-      NodeOps: {}
-      DriveLookup: {}
-  github.com/mandacode-labs/mdrive/internal/vfs:
-    interfaces:
-      NodeClient: {}
-      DriveClient: {}
-      GarbageRecorder: {}
-  github.com/mandacode-labs/mdrive/internal/permission:
-    interfaces:
-      Checker: {}
-  github.com/mandacode-labs/mdrive/internal/crypto:
-    interfaces:
-      Cipher: {}
-  github.com/mandacode-labs/mdrive/internal/app/gc:
-    interfaces:
-      Runner: {}
+  github.com/mandacode-labs/mdrive/internal:
+    config:
+      recursive: true
+      all: true
