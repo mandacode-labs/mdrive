@@ -55,7 +55,10 @@ type DriveClient interface {
 }
 
 // UserClient is the consumer-declared interface for user CRUD.
-type UserClient = *user.Service
+type UserClient interface {
+	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
+	GetByID(ctx context.Context, id string) (*user.User, error)
+}
 
 // UploadClient is the consumer-declared interface for the
 // presigned-upload flow.

@@ -221,11 +221,4 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNilPermSkipsCheck(t *testing.T) {
-	svc := newTestService(t, nil, nil)
-	// Replace Perm with nil.
-	// svc.Perm = nil
-	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
-	require.NoError(t, err)
-	assert.NotEmpty(t, info.UploadID)
-}
+

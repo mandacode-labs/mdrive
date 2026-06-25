@@ -8,8 +8,7 @@ import "errors"
 // permission.ErrPermission) and are not re-defined here.
 var (
 	// Registry errors.
-	ErrNotFound    = errors.New("upload: token not found")
-	ErrTokenExists = errors.New("upload: token already exists")
+	ErrNotFound = errors.New("upload: token not found")
 
 	// Orchestration errors returned by Service.
 	ErrUploadMismatch    = errors.New("upload: token does not match drive")

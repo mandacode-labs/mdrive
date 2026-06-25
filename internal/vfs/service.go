@@ -120,13 +120,12 @@ type Resolved struct {
 
 const maxMountHops = 32
 
-// Resolve walks from root to the node at the given absolute path,
-// Resolve walks the path following symlinks (POSIX stat(2)
-// semantics) and transparently following mount nodes into other
-// drives. Permission checking is the caller's responsibility:
-// Resolve itself only does path resolution. Callers that need a
-// permission check should use Resolve and then check against
-// Resolved.DriveID.
+// Resolve walks the path from root to the node, following
+// symlinks (POSIX stat(2) semantics) and transparently following
+// mount nodes into other drives. Permission checking is the
+// caller's responsibility: Resolve itself only does path
+// resolution. Callers that need a permission check should use
+// Resolve and then check against Resolved.DriveID.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
 	drive, n, err := s.resolveCross(ctx, driveID, path, true)
 	if err != nil {

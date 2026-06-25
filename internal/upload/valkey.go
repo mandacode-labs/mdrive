@@ -85,8 +85,15 @@ func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
 // Scan iterates all upload keys using the Valkey SCAN command. The
 // callback receives the upload ID (not the full key). Returning an
 // error from fn aborts the scan.
+//
+// Scan requires the default keyer (DefaultKeyPrefix). Registries
+// created with NewValkeyRegistryWithKeyer cannot be scanned here
+// because the SCAN MATCH pattern needs a known prefix.
 func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) error {
-	prefix := DefaultKeyPrefix
+	prefix := r.keyer("")
+	if prefix != DefaultKeyPrefix {
+		return errors.New("upload: Scan requires the default keyer (use NewValkeyRegistry)")
+	}
 	cursor := uint64(0)
 	for {
 		resp := r.client.Do(ctx, r.client.B().Scan().Cursor(cursor).Match(prefix+"*").Count(100).Build())
