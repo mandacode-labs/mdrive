@@ -30,7 +30,7 @@ func newLoggedServiceAndNode(t *testing.T) (*Service, *node.Service, *bytes.Buff
 	return svc, nodeSvc, buf
 }
 
-func TestVFS_Mkdir_LogsNoMessage(t *testing.T) {
+func TestVFSMkdirLogsNoMessage(t *testing.T) {
 	// Sanity: a basic op without multi-step semantics does not
 	// produce a vfs.* log. This guards against accidentally
 	// logging on every op (high signal-to-noise is the goal).
@@ -42,7 +42,7 @@ func TestVFS_Mkdir_LogsNoMessage(t *testing.T) {
 		"plain mkdir should not log; signal is reserved for multi-step ops")
 }
 
-func TestVFS_Mv_LogsCompleted(t *testing.T) {
+func TestVFSMvLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
@@ -62,7 +62,7 @@ func TestVFS_Mv_LogsCompleted(t *testing.T) {
 	assert.Contains(t, out, "tombstoned=0")
 }
 
-func TestVFS_Mv_LogsErrorOnTombstoneFailure(t *testing.T) {
+func TestVFSMvLogsErrorOnTombstoneFailure(t *testing.T) {
 	// Constructed indirectly: if the source node is the same
 	// object type as the destination, MoveEntry succeeds and
 	// the resulting nlink==1 entry produces a tombstone ref.
@@ -96,7 +96,7 @@ func TestVFS_Mv_LogsErrorOnTombstoneFailure(t *testing.T) {
 	assert.Contains(t, out, "level=ERROR")
 }
 
-func TestVFS_Rm_LogsCompleted(t *testing.T) {
+func TestVFSRmLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
@@ -114,7 +114,7 @@ func TestVFS_Rm_LogsCompleted(t *testing.T) {
 	assert.Contains(t, buf.String(), "vfs.rm.completed")
 }
 
-func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
+func TestVFSRmLogsErrorOnTombstoneFailure(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 
@@ -135,14 +135,14 @@ func TestVFS_Rm_LogsErrorOnTombstoneFailure(t *testing.T) {
 	assert.Contains(t, out, "level=ERROR")
 }
 
-func TestVFS_Mount_LogsCreated(t *testing.T) {
+func TestVFSMountLogsCreated(t *testing.T) {
 	ctx := context.Background()
 	svc, buf := newLoggedService(t)
 	require.NoError(t, svc.Mount(ctx, "d1", "/sub", "d2"))
 	assert.Contains(t, buf.String(), "vfs.mount.created")
 }
 
-func TestVFS_Unmount_LogsCompleted(t *testing.T) {
+func TestVFSUnmountLogsCompleted(t *testing.T) {
 	ctx := context.Background()
 	svc, nodeSvc, buf := newLoggedServiceAndNode(t)
 

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMemoryStore_CreateGetDelete(t *testing.T) {
+func TestMemoryStoreCreateGetDelete(t *testing.T) {
 	s := NewMemoryStore()
 	ctx := context.Background()
 	sess := New(1 * time.Hour)
@@ -29,13 +29,13 @@ func TestMemoryStore_CreateGetDelete(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
-func TestMemoryStore_GetNotFound(t *testing.T) {
+func TestMemoryStoreGetNotFound(t *testing.T) {
 	s := NewMemoryStore()
 	_, err := s.Get(context.Background(), "nonexistent")
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
-func TestMemoryStore_GetExpired(t *testing.T) {
+func TestMemoryStoreGetExpired(t *testing.T) {
 	s := NewMemoryStore()
 	sess := New(-1 * time.Hour) // already expired
 	require.NoError(t, s.Create(context.Background(), sess))
@@ -48,13 +48,13 @@ func TestMemoryStore_GetExpired(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotFound)
 }
 
-func TestMemoryStore_DeleteNotFound(t *testing.T) {
+func TestMemoryStoreDeleteNotFound(t *testing.T) {
 	s := NewMemoryStore()
 	err := s.Delete(context.Background(), "nonexistent")
 	assert.NoError(t, err)
 }
 
-func TestSession_EncodeDecode(t *testing.T) {
+func TestSessionEncodeDecode(t *testing.T) {
 	sess := New(2 * time.Hour)
 	sess.UserID = "user123"
 	sess.Provider = "google"
@@ -69,12 +69,12 @@ func TestSession_EncodeDecode(t *testing.T) {
 	assert.Equal(t, "google", got.Provider)
 }
 
-func TestSession_IsExpired(t *testing.T) {
+func TestSessionIsExpired(t *testing.T) {
 	assert.True(t, New(-1*time.Second).IsExpired())
 	assert.False(t, New(1*time.Hour).IsExpired())
 }
 
-func TestSession_TTL(t *testing.T) {
+func TestSessionTTL(t *testing.T) {
 	sess := New(1 * time.Hour)
 	assert.InDelta(t, 1*time.Hour, sess.TTL(), float64(2*time.Second))
 }

@@ -51,7 +51,7 @@ lint:
 # ---------------------------------------------------------------------------
 .PHONY: test
 test:
-	go test -count=1 $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
+	go test -count=1 -coverprofile=cover-unit.out $(shell go list ./... | grep -v -e /mocks -e /test/e2e -e /test/integration -e /test/kind)
 
 .PHONY: test-integration
 test-integration:

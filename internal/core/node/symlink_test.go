@@ -18,7 +18,7 @@ func TestNewSymlink(t *testing.T) {
 	assert.Equal(t, "/target/path", target)
 }
 
-func TestNewSymlink_Empty(t *testing.T) {
+func TestNewSymlinkEmpty(t *testing.T) {
 	_, err := NewSymlink("")
 	assert.ErrorIs(t, err, ErrInvalidName)
 }

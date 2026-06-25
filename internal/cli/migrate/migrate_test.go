@@ -15,7 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestApply_VersionedMigration(t *testing.T) {
+func TestApplyVersionedMigration(t *testing.T) {
 	ctx := context.Background()
 
 	pg, err := postgres.Run(ctx, "postgres:17-alpine",
@@ -58,12 +58,12 @@ func TestApply_VersionedMigration(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestApplyWith_InvalidDSN(t *testing.T) {
+func TestApplyWithInvalidDSN(t *testing.T) {
 	err := applyWith(context.Background(), "invalid://dsn", defaultMigrations, defaultAtlasBin)
 	require.Error(t, err)
 }
 
-func TestApplyWith_EmptyMigrations(t *testing.T) {
+func TestApplyWithEmptyMigrations(t *testing.T) {
 	ctx := context.Background()
 
 	pg, err := postgres.Run(ctx, "postgres:17-alpine",

@@ -11,10 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestE2E_FSOperations(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
-	}
+func TestE2EFSOperations(t *testing.T) {
 	env := setupE2E(t)
 
 	// Create drive first

@@ -15,7 +15,7 @@ import (
 // longer matches the stored rev, the fake returns ErrRevisionConflict.
 // Without this enforcement, bugs like the nlink==1 Unlink+Link hazard
 // (the original Mv bug) would slip through unit tests.
-func TestFakeRepo_ConflictOnStaleRev(t *testing.T) {
+func TestFakeRepoConflictOnStaleRev(t *testing.T) {
 	repo := newFakeRepo()
 	svc := node.NewService(repo)
 	ctx := context.Background()
@@ -43,7 +43,7 @@ func TestFakeRepo_ConflictOnStaleRev(t *testing.T) {
 // deep copy: mutating the returned node does not leak into the stored
 // version. Two callers can Get the same node, mutate independently,
 // and Save without surprise overrides.
-func TestFakeRepo_GetReturnsIsolatedCopy(t *testing.T) {
+func TestFakeRepoGetReturnsIsolatedCopy(t *testing.T) {
 	repo := newFakeRepo()
 	svc := node.NewService(repo)
 	ctx := context.Background()

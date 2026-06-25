@@ -53,7 +53,7 @@ func TestDirectoryAddRemoveEntry(t *testing.T) {
 	assert.ErrorIs(t, err, ErrEntryNotFound)
 }
 
-func TestAddEntry_NotDirectory(t *testing.T) {
+func TestAddEntryNotDirectory(t *testing.T) {
 	file, err := NewFile("x")
 	require.NoError(t, err)
 
@@ -64,7 +64,7 @@ func TestAddEntry_NotDirectory(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNotDirectory)
 }
 
-func TestAddEntry_EmptyName(t *testing.T) {
+func TestAddEntryEmptyName(t *testing.T) {
 	dir, err := NewDirectory()
 	require.NoError(t, err)
 
