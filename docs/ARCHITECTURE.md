@@ -210,3 +210,8 @@ The chart uses a single `gc-cronjobs.yaml` template that renders
 one CronJob per entry in `.Values.gc.jobs` (a `range` over the
 map). Adding a fifth GC job is now a single values entry plus an
 `internal/app/gc/runner.go` constructor.
+## See also
+
+- [DEVELOPMENT.md](DEVELOPMENT.md) — Makefile targets, conventions, build commands
+- [TESTING.md](TESTING.md) — Test pyramid, CI integration, build tags
+- [ROADMAP.md](ROADMAP.md) — Completed work and upcoming priorities

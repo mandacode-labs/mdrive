@@ -165,3 +165,8 @@ cp config.yaml.example config.yaml
 make run
 # Server at http://localhost:8080
 ```
+
+## See also
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Layer boundaries, dependency rules
+- [TESTING.md](TESTING.md) — Test pyramid, build tags, coverage
