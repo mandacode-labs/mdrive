@@ -19,14 +19,14 @@ import (
 // sources it from the session.
 type Service struct {
 	repo                 Repository
-	userExister          Exister
+	ownerChecker          OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
 }
 
 // NewService creates a new Service. Permission checks live in the
 // handler; the service is the pure domain layer.
-func NewService(repo Repository, userExister Exister, rootDirectoryCreator RootDirectoryCreator) *Service {
-	return &Service{repo: repo, userExister: userExister, rootDirectoryCreator: rootDirectoryCreator}
+func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator) *Service {
+	return &Service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator}
 }
 
 // Create creates a drive and its root directory node. The drive +
@@ -54,7 +54,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 		return nil, uuid.Nil, err
 	}
 
-	exists, err := s.userExister.Exist(ctx, actorID)
+	exists, err := s.ownerChecker.Exist(ctx, actorID)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("check owner: %w", err)
 	}
@@ -141,8 +141,7 @@ func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, err
 //
 // Empty name or description means "leave unchanged"; pass an
 // explicit value to override.
-func (s *Service) Update(ctx context.Context, actorID, id string, name, description string) (*Drive, error) {
-	_ = actorID
+func (s *Service) Update(ctx context.Context, id string, name, description string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -168,8 +167,7 @@ func (s *Service) Update(ctx context.Context, actorID, id string, name, descript
 
 // Delete soft-deletes a drive. Permission is the caller's
 // responsibility; the handler gates on delete.
-func (s *Service) Delete(ctx context.Context, actorID, id string) error {
-	_ = actorID
+func (s *Service) Delete(ctx context.Context, id string) error {
 	if _, err := s.GetByID(ctx, id); err != nil {
 		return err
 	}
@@ -178,8 +176,7 @@ func (s *Service) Delete(ctx context.Context, actorID, id string) error {
 
 // Restore reactivates a soft-deleted drive. Permission is the
 // caller's responsibility; the handler gates on manage + admin.
-func (s *Service) Restore(ctx context.Context, actorID, id string) (*Drive, error) {
-	_ = actorID
+func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -223,7 +220,7 @@ func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, userExister: s.userExister, rootDirectoryCreator: s.rootDirectoryCreator})
+		return fn(&Service{repo: txRepo, ownerChecker: s.ownerChecker, rootDirectoryCreator: s.rootDirectoryCreator})
 	})
 }
 

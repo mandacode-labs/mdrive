@@ -93,7 +93,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
-	userEx := user.NewExisterAdapter(userRepo)
+	userEx := userRepo
 
 	u, err := userSvc.UpsertFromOIDC(ctx, &user.CreateCommand{
 		Name:       "Test User",

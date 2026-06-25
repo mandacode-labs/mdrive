@@ -38,7 +38,6 @@ func newTestService(t *testing.T, srv *httptest.Server) *Service {
 		ClientID:     "test-client",
 		SessionStore: session.NewMemoryStore(),
 		SessionTTL:   1 * time.Hour,
-		FrontendURL:  "http://app.local",
 	})
 	require.NoError(t, err)
 	return a

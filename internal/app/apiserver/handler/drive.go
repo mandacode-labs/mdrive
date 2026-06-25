@@ -107,7 +107,7 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 	if r.Description.Set {
 		desc = r.Description.Value
 	}
-	drv, err := h.drive.Update(ctx, h.userID(ctx), params.DriveID, name, desc)
+	drv, err := h.drive.Update(ctx, params.DriveID, name, desc)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if err := h.drive.Delete(ctx, h.userID(ctx), params.DriveID); err != nil {
+	if err := h.drive.Delete(ctx, params.DriveID); err != nil {
 		return nil, err
 	}
 	return &api.DeleteDriveNoContent{}, nil
@@ -128,7 +128,7 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 	if !auth.IsAdmin(ctx) {
 		return nil, permission.ErrPermission
 	}
-	d, err := h.drive.Restore(ctx, h.userID(ctx), params.DriveID)
+	d, err := h.drive.Restore(ctx, params.DriveID)
 	if err != nil {
 		return nil, err
 	}

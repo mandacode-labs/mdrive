@@ -41,7 +41,7 @@ type App struct {
 	NodeSvc      *node.Service
 	DriveSvc     *drive.Service
 	UserSvc      *user.Service
-	UserExister  user.Exister
+	OwnerChecker drive.OwnerChecker
 	UploadToken  upload.TokenRegistry
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
@@ -109,7 +109,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		NodeSvc:      repos.NodeSvc,
 		DriveSvc:     repos.DriveSvc,
 		UserSvc:      repos.UserSvc,
-		UserExister:  repos.UserEx,
+		OwnerChecker: repos.OwnerChecker,
 		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg, entClient),
 		VFS:          newVFS(repos, entClient, log),
@@ -205,33 +205,31 @@ func newCrypto(_ context.Context, cfg *config.Config, log *slog.Logger) (cryptop
 // repositories groups the three core services so the
 // construction step is one assignment in New.
 type repositories struct {
-	NodeSvc  *node.Service
-	DriveSvc *drive.Service
-	UserSvc  *user.Service
-	UserEx   user.Exister
+	NodeSvc      *node.Service
+	DriveSvc     *drive.Service
+	UserSvc      *user.Service
+	OwnerChecker drive.OwnerChecker
 }
 
 // newRepositories builds the three core domain services. The
 // drive service needs a root creator that wraps node.Service;
-// the user service exposes an Exister adapter for the drive
-// service to use.
+// drive verifies owners via the user.Repository directly.
 func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositories {
 	nodeRepo := node.NewRepository(entClient)
 	nodeSvc := node.NewService(nodeRepo)
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
-	userEx := user.NewExisterAdapter(userRepo)
 
 	rootCreator := &rootNodeCreator{svc: nodeSvc}
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userEx, rootCreator)
+	driveSvc := drive.NewService(driveRepo, userRepo, rootCreator)
 
 	return repositories{
-		NodeSvc:  nodeSvc,
-		DriveSvc: driveSvc,
-		UserSvc:  userSvc,
-		UserEx:   userEx,
+		NodeSvc:      nodeSvc,
+		DriveSvc:     driveSvc,
+		UserSvc:      userSvc,
+		OwnerChecker: userRepo,
 	}
 }
 
@@ -281,7 +279,6 @@ func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (se
 		ClientID:     cfg.Auth.ClientID,
 		SessionStore: store,
 		SessionTTL:   cfg.Auth.SessionTTL,
-		FrontendURL:  cfg.Auth.FrontendURL,
 	})
 	if err != nil {
 		return nil, nil, nil, err

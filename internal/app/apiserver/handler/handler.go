@@ -47,9 +47,9 @@ type DriveClient interface {
 	Create(ctx context.Context, actorID string, name, description string, cfg drive.StorageConfig) (*drive.Drive, uuid.UUID, error)
 	GetByID(ctx context.Context, id string) (*drive.Drive, error)
 	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
-	Update(ctx context.Context, actorID, id string, name, description string) (*drive.Drive, error)
-	Delete(ctx context.Context, actorID, id string) error
-	Restore(ctx context.Context, actorID, id string) (*drive.Drive, error)
+	Update(ctx context.Context, id string, name, description string) (*drive.Drive, error)
+	Delete(ctx context.Context, id string) error
+	Restore(ctx context.Context, id string) (*drive.Drive, error)
 	ListByOwner(ctx context.Context, actorID string) ([]*drive.Drive, error)
 	ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*drive.Drive, error)
 }

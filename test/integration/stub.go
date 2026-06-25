@@ -88,7 +88,7 @@ func (s *stubDrive) GetByID(ctx context.Context, id string) (*drive.Drive, error
 func (s *stubDrive) GetStorage(ctx context.Context, driveID string) (*drive.Storage, error) {
 	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
 }
-func (s *stubDrive) Update(ctx context.Context, actorID, id string, name, description string) (*drive.Drive, error) {
+func (s *stubDrive) Update(ctx context.Context, id string, name, description string) (*drive.Drive, error) {
 	var descPtr *string
 	if description != "" {
 		descPtr = &description
@@ -96,8 +96,8 @@ func (s *stubDrive) Update(ctx context.Context, actorID, id string, name, descri
 	rootID := uuid.New()
 	return drive.NewDrive(id, "pub1", name, descPtr, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
-func (s *stubDrive) Delete(ctx context.Context, actorID, id string) error { return nil }
-func (s *stubDrive) Restore(ctx context.Context, actorID, id string) (*drive.Drive, error) {
+func (s *stubDrive) Delete(ctx context.Context, id string) error { return nil }
+func (s *stubDrive) Restore(ctx context.Context, id string) (*drive.Drive, error) {
 	rootID := uuid.New()
 	return drive.NewDrive(id, "pub1", "restored", nil, drive.ProviderS3, testUserID, &rootID, nil, time.Now(), time.Now()), nil
 }
@@ -202,6 +202,10 @@ func (r *userRepoFake) GetByProviderID(_ context.Context, provider, providerID s
 		}
 	}
 	return nil, user.ErrNotFound
+}
+func (r *userRepoFake) Exist(_ context.Context, id string) (bool, error) {
+	_, ok := r.users[id]
+	return ok, nil
 }
 func (r *userRepoFake) Update(_ context.Context, u *user.User) (*user.User, error) {
 	r.users[u.ID()] = u
