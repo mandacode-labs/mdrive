@@ -78,7 +78,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 //
 // Permission is the caller's responsibility.
 func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return err
 	}

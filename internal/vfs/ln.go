@@ -38,7 +38,7 @@ func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string)
 //
 // Permission is the caller's responsibility.
 func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error) {
-	rootID, err := s.rootNodeID(ctx, driveID)
+	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
