@@ -50,10 +50,7 @@ func createDrive(t *testing.T, env *e2eEnv, name, bucket string) string {
 	return ""
 }
 
-func TestE2E_Mv(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
-	}
+func TestE2EMv(t *testing.T) {
 	env := setupE2E(t)
 	driveID := createDrive(t, env, "mv-drive", "mv-bucket")
 
@@ -107,10 +104,7 @@ func TestE2E_Mv(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, stat("/src/b.txt"))
 }
 
-func TestE2E_Symlink(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
-	}
+func TestE2ESymlink(t *testing.T) {
 	env := setupE2E(t)
 	driveID := createDrive(t, env, "symlink-drive", "symlink-bucket")
 
@@ -196,10 +190,7 @@ func TestE2E_Symlink(t *testing.T) {
 	assert.Equal(t, "target content", string(got))
 }
 
-func TestE2E_WriteLarge(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
-	}
+func TestE2EWriteLarge(t *testing.T) {
 	env := setupE2E(t)
 	driveID := createDrive(t, env, "writelarge-drive", "writelarge-bucket")
 

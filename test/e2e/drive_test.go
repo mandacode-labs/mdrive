@@ -13,10 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-func TestE2E_DriveLifecycle(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
-	}
+func TestE2EDriveLifecycle(t *testing.T) {
 	env := setupE2E(t)
 
 	// Create drive

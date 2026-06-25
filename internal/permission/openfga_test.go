@@ -1,8 +1,10 @@
 package permission
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildCredentials(t *testing.T) {
@@ -88,23 +90,17 @@ func TestBuildCredentials(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			creds, err := buildCredentials(tt.cfg, tt.mode)
 			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error containing %q, got nil", tt.errSub)
-				}
-				if tt.errSub != "" && !strings.Contains(err.Error(), tt.errSub) {
-					t.Fatalf("expected error containing %q, got %q", tt.errSub, err.Error())
+				require.Error(t, err)
+				if tt.errSub != "" {
+					assert.Contains(t, err.Error(), tt.errSub)
 				}
 				return
 			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 			if tt.mode == AuthModeNone {
-				if creds != nil {
-					t.Fatalf("auth_mode=none should produce nil credentials, got %v", creds)
-				}
-			} else if creds == nil {
-				t.Fatalf("expected non-nil credentials for mode %s", tt.mode)
+				assert.Nil(t, creds, "auth_mode=none should produce nil credentials")
+			} else {
+				assert.NotNil(t, creds, "expected non-nil credentials for mode %s", tt.mode)
 			}
 		})
 	}

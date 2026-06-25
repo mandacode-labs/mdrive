@@ -17,13 +17,13 @@ func TestNewFile(t *testing.T) {
 	assert.False(t, n.Revision().IsEmpty())
 }
 
-func TestNewFile_Empty(t *testing.T) {
+func TestNewFileEmpty(t *testing.T) {
 	n, err := NewFile("")
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), n.Size())
 }
 
-func TestNewFile_TooLarge(t *testing.T) {
+func TestNewFileTooLarge(t *testing.T) {
 	large := make([]byte, MaxContentSize+1)
 	for i := range large {
 		large[i] = 'a'

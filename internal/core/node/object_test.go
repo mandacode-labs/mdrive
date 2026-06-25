@@ -23,7 +23,7 @@ func TestNewObject(t *testing.T) {
 	assert.Equal(t, "abc123", got.Checksum)
 }
 
-func TestNewObject_InvalidRef(t *testing.T) {
+func TestNewObjectInvalidRef(t *testing.T) {
 	_, err := NewObject(ObjectContent{Bucket: "", Key: "k"}, 100)
 	assert.ErrorIs(t, err, ErrInvalidReference)
 
@@ -31,7 +31,7 @@ func TestNewObject_InvalidRef(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalidReference)
 }
 
-func TestNewObject_NegativeSize(t *testing.T) {
+func TestNewObjectNegativeSize(t *testing.T) {
 	oc := NewObjectContent("b", "k", "text/plain", "")
 	_, err := NewObject(*oc, -1)
 	assert.ErrorIs(t, err, ErrInvalidSize)

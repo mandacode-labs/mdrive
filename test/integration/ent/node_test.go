@@ -13,7 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
 
-func TestEnt_Node_SaveGetRoundtrip(t *testing.T) {
+func TestEntNodeSaveGetRoundtrip(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)
@@ -29,7 +29,7 @@ func TestEnt_Node_SaveGetRoundtrip(t *testing.T) {
 	assert.Equal(t, uint32(0), got.NLink(), "fresh inode has nlink=0")
 }
 
-func TestEnt_Node_RevisionConflict(t *testing.T) {
+func TestEntNodeRevisionConflict(t *testing.T) {
 	// Race scenario: two writers load the same inode, mutate
 	// independently, and Save concurrently. The optimistic-
 	// concurrency guard means exactly one Save wins; the other
@@ -86,7 +86,7 @@ func TestEnt_Node_RevisionConflict(t *testing.T) {
 		"the persisted mode must equal the winner's mode (0o600 or 0o700), got %#o", final.Mode())
 }
 
-func TestEnt_Node_WithTxCommit(t *testing.T) {
+func TestEntNodeWithTxCommit(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)
@@ -109,7 +109,7 @@ func TestEnt_Node_WithTxCommit(t *testing.T) {
 	assert.Equal(t, node.NodeTypeDirectory, got.Type())
 }
 
-func TestEnt_Node_WithTxRollback(t *testing.T) {
+func TestEntNodeWithTxRollback(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)

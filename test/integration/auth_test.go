@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthMe_WithSession(t *testing.T) {
+func TestAuthMeWithSession(t *testing.T) {
 	srv := newTestServer(t)
 	defer srv.Close()
 	req := authReq("GET", srv.URL+"/auth/me", nil)

@@ -14,7 +14,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 )
 
-func TestEnt_Drive_SoftDeleteAndRestore(t *testing.T) {
+func TestEntDriveSoftDeleteAndRestore(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := drive.NewRepository(client, nil)
@@ -46,7 +46,7 @@ func TestEnt_Drive_SoftDeleteAndRestore(t *testing.T) {
 	assert.Nil(t, got.DeletedAt(), "restored drive is no longer soft-deleted")
 }
 
-func TestEnt_Drive_ListDeletedReturnsOnlyDeleted(t *testing.T) {
+func TestEntDriveListDeletedReturnsOnlyDeleted(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := drive.NewRepository(client, nil)

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDirContent_JSONTags(t *testing.T) {
+func TestDirContentJSONTags(t *testing.T) {
 	u := uuidFromString(t, "550e8400-e29b-41d4-a716-446655440000")
 	dc := DirContent{
 		Entries: []DirEntry{
@@ -24,21 +24,21 @@ func TestDirContent_JSONTags(t *testing.T) {
 	assert.True(t, contains(data, []byte(`"items":`)))
 }
 
-func TestFileContent_JSONTag(t *testing.T) {
+func TestFileContentJSONTag(t *testing.T) {
 	fc := FileContent{Raw: "hello"}
 	data, err := json.Marshal(fc)
 	require.NoError(t, err)
 	assert.True(t, contains(data, []byte(`"raw":`)))
 }
 
-func TestSymlinkContent_JSONTag(t *testing.T) {
+func TestSymlinkContentJSONTag(t *testing.T) {
 	sc := SymlinkContent{Target: "/path"}
 	data, err := json.Marshal(sc)
 	require.NoError(t, err)
 	assert.True(t, contains(data, []byte(`"target":`)))
 }
 
-func TestObjectContent_JSONTags(t *testing.T) {
+func TestObjectContentJSONTags(t *testing.T) {
 	oc := ObjectContent{
 		Bucket:   "b",
 		Key:      "k",
