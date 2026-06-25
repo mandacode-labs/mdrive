@@ -34,7 +34,7 @@ func NewSymlink(target string) (*Node, error) {
 // caller must have already verified the node is a symlink; calling
 // Readlink on a non-symlink node returns ErrInvalidType.
 func (n *Node) Readlink() (string, error) {
-	if n.typ != NodeTypeSymlink {
+	if n.kind != NodeTypeSymlink {
 		return "", ErrInvalidType
 	}
 	content, err := n.read()
@@ -62,7 +62,7 @@ func (n *Node) WriteSymlink(target string) error {
 	if target == "" {
 		return ErrInvalidName
 	}
-	if n.typ != NodeTypeSymlink {
+	if n.kind != NodeTypeSymlink {
 		return ErrInvalidType
 	}
 	data, err := json.Marshal(NewSymlinkContent(target))

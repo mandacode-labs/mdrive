@@ -56,7 +56,7 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 func (r *entRepository) insert(ctx context.Context, n *Node, content Content) error {
 	_, err := r.client.Node.Create().
 		SetID(n.id).
-		SetType(entType(n.typ)).
+		SetType(entType(n.kind)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
 		SetMode(n.mode).
@@ -76,7 +76,7 @@ func (r *entRepository) insert(ctx context.Context, n *Node, content Content) er
 func (r *entRepository) update(ctx context.Context, n *Node, content Content) error {
 	affected, err := r.client.Node.Update().
 		Where(entnode.IDEQ(n.id), entnode.RevisionEQ(string(n.staleRev))).
-		SetType(entType(n.typ)).
+		SetType(entType(n.kind)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
 		SetMode(n.mode).
@@ -142,7 +142,7 @@ func fromEnt(e *ent.Node) *Node {
 	rev := Revision(e.Revision)
 	n := &Node{
 		id:       e.ID,
-		typ:      parseNodeType(string(e.Type)),
+		kind: parseNodeType(string(e.Type)),
 		size:     e.Size,
 		nlink:    e.Nlink,
 		mode:     e.Mode,

@@ -59,7 +59,7 @@ func (n *Node) ReadObject() (ObjectContent, error) {
 
 // WriteObject updates the object node's external reference and size.
 func (n *Node) WriteObject(content ObjectContent, size int64) error {
-	if n.typ != NodeTypeObject {
+	if n.kind != NodeTypeObject {
 		return ErrInvalidType
 	}
 	if content.Bucket == "" || content.Key == "" {

@@ -70,7 +70,7 @@ func (n *Node) ReadDir() (DirContent, error) {
 
 // WriteDir replaces the directory's content with the given listing.
 func (n *Node) WriteDir(dc DirContent) error {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return ErrNotDirectory
 	}
 	data, err := json.Marshal(&dc)
@@ -86,7 +86,7 @@ func (n *Node) WriteDir(dc DirContent) error {
 // AddEntry adds a child entry to the directory.
 // Fails if the entry already exists or the node is not a directory.
 func (n *Node) AddEntry(name string, child *Node) error {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return ErrNotDirectory
 	}
 	if name == "" {
@@ -102,7 +102,7 @@ func (n *Node) AddEntry(name string, child *Node) error {
 	dc.Entries = append(dc.Entries, DirEntry{
 		InodeID: child.id,
 		Name:    name,
-		Type:    child.typ,
+		Type:    child.kind,
 	})
 	return n.WriteDir(dc)
 }
@@ -111,7 +111,7 @@ func (n *Node) AddEntry(name string, child *Node) error {
 // persisting the directory exactly once. Fails atomically: if any name
 // is empty or already present, no entries are added.
 func (n *Node) AddEntries(entries map[string]*Node) error {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return ErrNotDirectory
 	}
 	if len(entries) == 0 {
@@ -138,7 +138,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 		dc.Entries = append(dc.Entries, DirEntry{
 			InodeID: child.id,
 			Name:    name,
-			Type:    child.typ,
+			Type:    child.kind,
 		})
 	}
 	return n.WriteDir(dc)
@@ -146,7 +146,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 
 // RemoveEntry removes a child entry by name.
 func (n *Node) RemoveEntry(name string) error {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return ErrNotDirectory
 	}
 	dc, err := n.ReadDir()
@@ -167,7 +167,7 @@ func (n *Node) RemoveEntry(name string) error {
 // semantics) so partial failure is acceptable; the directory is
 // persisted exactly once.
 func (n *Node) RemoveEntries(names []string) error {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return ErrNotDirectory
 	}
 	if len(names) == 0 {
@@ -196,7 +196,7 @@ func (n *Node) RemoveEntries(names []string) error {
 
 // Lookup returns the child entry with the given name, or nil if not present.
 func (n *Node) Lookup(name string) (*DirEntry, error) {
-	if n.typ != NodeTypeDirectory {
+	if n.kind != NodeTypeDirectory {
 		return nil, ErrNotDirectory
 	}
 	dc, err := n.ReadDir()
