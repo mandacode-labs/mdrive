@@ -14,7 +14,7 @@ import (
 // instead of building their own root.
 func mustRootID(t *testing.T, svc *Service) uuid.UUID {
 	t.Helper()
-	d, err := svc.Drive.GetByID(context.Background(), "d1")
+	d, err := svc.DriveClient.GetByID(context.Background(), "d1")
 	require.NoError(t, err)
 	id := d.RootNodeID()
 	require.NotNil(t, id)

@@ -13,9 +13,9 @@ import (
 // HealthDeps captures the components the health check pings. nil values
 // are skipped (useful in development where some backends are absent).
 type HealthDeps struct {
-	DB     *sql.DB
-	ValKey session.Scanner // presence indicates a Valkey-backed store
-	Perm   permission.Authorizer
+	DB         *sql.DB
+	Valkey     session.Scanner
+	Authorizer permission.Authorizer
 }
 
 // Health returns a simple health check response. It returns 200 with
@@ -29,15 +29,15 @@ func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
 			return &api.HealthOK{Status: apputils.OptString("degraded: database unreachable")}, nil
 		}
 	}
-	if h.healthDeps.ValKey != nil {
+	if h.healthDeps.Valkey != nil {
 		// Scan with a no-op callback to confirm connectivity without
 		// actually iterating anything.
-		if err := h.healthDeps.ValKey.Scan(ctx, func(_ string) error { return nil }); err != nil {
+		if err := h.healthDeps.Valkey.Scan(ctx, func(_ string) error { return nil }); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: valkey unreachable")}, nil
 		}
 	}
-	if h.healthDeps.Perm != nil {
-		if _, err := h.healthDeps.Perm.Check(ctx, "healthcheck", permission.ActionView, "drive", "_healthcheck"); err != nil {
+	if h.healthDeps.Authorizer != nil {
+		if _, err := h.healthDeps.Authorizer.Check(ctx, "healthcheck", permission.ActionView, "drive", "_healthcheck"); err != nil {
 			return &api.HealthOK{Status: apputils.OptString("degraded: openfga unreachable")}, nil
 		}
 	}

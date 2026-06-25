@@ -324,5 +324,5 @@ func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (pa
 // entry land in the same transaction, so a partial failure
 // cannot leave a child row that no directory refers to.
 func (s *Service) createAndLink(ctx context.Context, child, parent *node.Node, name string) error {
-	return s.Node.Link(ctx, parent, name, child)
+	return s.NodeClient.Link(ctx, parent, name, child)
 }

@@ -62,12 +62,9 @@ type GarbageRecorder interface {
 }
 
 type Service struct {
-	Node  NodeClient
-	Drive DriveClient
-	// Garbage records external objects (S3) whose inode was
-	// removed. nil is tolerated only when no vfs op produces
-	// tombstones (e.g. tests with no object nodes).
-	Garbage GarbageRecorder
+	NodeClient      NodeClient
+	DriveClient     DriveClient
+	GarbageRecorder GarbageRecorder
 	// Logger receives structured observability events for
 	// multi-step filesystem operations (mount traversal, GC
 	// tombstones, symlink cycles). Optional: nil means no-op.
@@ -78,18 +75,18 @@ type Service struct {
 // filesystem-only: it has no user or permission dependencies.
 // Permission checks are the caller's responsibility (handler layer).
 type ServiceConfig struct {
-	Node    NodeClient
-	Drive   DriveClient
-	Garbage GarbageRecorder
-	Logger  *slog.Logger
+	NodeClient      NodeClient
+	DriveClient     DriveClient
+	GarbageRecorder GarbageRecorder
+	Logger          *slog.Logger
 }
 
 func NewService(cfg ServiceConfig) *Service {
 	return &Service{
-		Node:    cfg.Node,
-		Drive:   cfg.Drive,
-		Garbage: cfg.Garbage,
-		Logger:  cfg.Logger,
+		NodeClient:      cfg.NodeClient,
+		DriveClient:     cfg.DriveClient,
+		GarbageRecorder: cfg.GarbageRecorder,
+		Logger:          cfg.Logger,
 	}
 }
 
@@ -110,7 +107,7 @@ func (s *Service) log() *slog.Logger {
 // operation (multiple resolves of the same UUID return the same
 // *Node pointer).
 func (s *Service) newResolver() *resolver {
-	return newResolver(s.Node)
+	return newResolver(s.NodeClient)
 }
 
 type Resolved struct {
@@ -183,7 +180,7 @@ func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, er
 }
 
 func (s *Service) rootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
-	d, err := s.Drive.GetByID(ctx, driveID)
+	d, err := s.DriveClient.GetByID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("vfs: %w", err)
 	}

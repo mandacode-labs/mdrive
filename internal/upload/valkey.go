@@ -13,7 +13,7 @@ import (
 // ValkeyRegistry implements TokenRegistry with Valkey (or Redis).
 type ValkeyRegistry struct {
 	client valkey.Client
-	keyer  KeyFunc
+	keyFunc  KeyFunc
 }
 
 // KeyFunc returns the storage key for an uploadID.
@@ -28,13 +28,13 @@ func DefaultKey(uploadID string) string {
 
 // NewValkeyRegistry creates a TokenRegistry backed by Valkey.
 func NewValkeyRegistry(client valkey.Client) *ValkeyRegistry {
-	return &ValkeyRegistry{client: client, keyer: DefaultKey}
+	return &ValkeyRegistry{client: client, keyFunc: DefaultKey}
 }
 
 // NewValkeyRegistryWithKeyer creates a TokenRegistry backed by
-// Valkey with a custom keyer.
-func NewValkeyRegistryWithKeyer(client valkey.Client, keyer KeyFunc) *ValkeyRegistry {
-	return &ValkeyRegistry{client: client, keyer: keyer}
+// Valkey with a custom keyFunc.
+func NewValkeyRegistryWithKeyer(client valkey.Client, keyFunc KeyFunc) *ValkeyRegistry {
+	return &ValkeyRegistry{client: client, keyFunc: keyFunc}
 }
 
 func (r *ValkeyRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Duration) error {
@@ -42,7 +42,7 @@ func (r *ValkeyRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Dur
 	if err != nil {
 		return err
 	}
-	key := r.keyer(meta.UploadID)
+	key := r.keyFunc(meta.UploadID)
 	resp := r.client.Do(ctx, r.client.B().Set().Key(key).Value(valkey.BinaryString(data)).ExSeconds(int64(ttl.Seconds())).Build())
 	if err := resp.Error(); err != nil {
 		return fmt.Errorf("upload: valkey set: %w", err)
@@ -51,7 +51,7 @@ func (r *ValkeyRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Dur
 }
 
 func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta, error) {
-	key := r.keyer(uploadID)
+	key := r.keyFunc(uploadID)
 	resp := r.client.Do(ctx, r.client.B().Get().Key(key).Build())
 	if err := resp.Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
@@ -75,7 +75,7 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 }
 
 func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
-	key := r.keyer(uploadID)
+	key := r.keyFunc(uploadID)
 	resp := r.client.Do(ctx, r.client.B().Del().Key(key).Build())
 	if err := resp.Error(); err != nil {
 		return fmt.Errorf("upload: valkey del: %w", err)
@@ -87,13 +87,13 @@ func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
 // callback receives the upload ID (not the full key). Returning an
 // error from fn aborts the scan.
 //
-// Scan requires the default keyer (DefaultKeyPrefix). Registries
+// Scan requires the default keyFunc (DefaultKeyPrefix). Registries
 // created with NewValkeyRegistryWithKeyer cannot be scanned here
 // because the SCAN MATCH pattern needs a known prefix.
 func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) error {
-	prefix := r.keyer("")
+	prefix := r.keyFunc("")
 	if prefix != DefaultKeyPrefix {
-		return errors.New("upload: Scan requires the default keyer (use NewValkeyRegistry)")
+		return errors.New("upload: Scan requires the default keyFunc (use NewValkeyRegistry)")
 	}
 	cursor := uint64(0)
 	for {

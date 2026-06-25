@@ -47,8 +47,8 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		return err
 	}
 
-	if len(overwriteRefs) > 0 && s.Garbage != nil {
-		if err := s.Garbage.RecordGarbage(ctx, overwriteRefs); err != nil {
+	if len(overwriteRefs) > 0 && s.GarbageRecorder != nil {
+		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
 			s.log().Error("vfs.mv.tombstone_failed",
 				slog.String("drive_id", srcDriveID),
 				slog.Int("ref_count", len(overwriteRefs)),
@@ -215,14 +215,14 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	// (nlink hit 0), so we need the reference pre-emptively.
 	var overwriteRef *GarbageRef
 	if existing, err := dstParent.Lookup(dstName); err == nil && existing != nil {
-		if existingChild, err := s.Node.GetByID(ctx, existing.InodeID); err == nil && existingChild.IsObject() {
+		if existingChild, err := s.NodeClient.GetByID(ctx, existing.InodeID); err == nil && existingChild.IsObject() {
 			if oc, err := existingChild.ReadObject(); err == nil && oc.Bucket != "" && oc.Key != "" {
 				overwriteRef = &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}
 			}
 		}
 	}
 
-	if err := s.Node.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
+	if err := s.NodeClient.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
 		return nil, fmt.Errorf("mv: %w", err)
 	}
 

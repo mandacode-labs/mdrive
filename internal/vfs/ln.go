@@ -58,7 +58,7 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 	if !parent.IsDir() {
 		return nil, ErrNotDirectory
 	}
-	if err := s.Node.Link(ctx, parent, name, src); err != nil {
+	if err := s.NodeClient.Link(ctx, parent, name, src); err != nil {
 		return nil, err
 	}
 	return src, nil

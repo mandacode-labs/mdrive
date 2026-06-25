@@ -30,27 +30,26 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// App holds all wired components. The fields are split into the
-// three consumers they serve: HTTP transport (NodeSvc, DriveSvc,
-// UserSvc, UploadReg, UploadSvc, VFS, SessionStore, Auth,
-// Security, Perm, Garbage), background jobs (everything HTTP
-// needs plus the same), and lifecycle (DB, Ent, Cfg, Log).
+// App holds all wired components. Fields are grouped loosely
+// into HTTP-serving services (NodeSvc, DriveSvc, ..., Security),
+// background-job services (same, plus Garbage), and lifecycle
+// (DB, Ent, Config, Log).
 type App struct {
-	Cfg *config.Config
-	Log *slog.Logger
+	Config *config.Config
+	Log    *slog.Logger
 
 	NodeSvc      *node.Service
 	DriveSvc     *drive.Service
 	UserSvc      *user.Service
-	UserEx       user.Exister
-	UploadReg    upload.TokenRegistry
+	UserExister  user.Exister
+	UploadToken  upload.TokenRegistry
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
 	SessionStore session.Store
 	Garbage      *gc.GarbageRecorder
 	Auth         *auth.Service
 	Security     *auth.SecurityHandler
-	Perm         permission.Authorizer
+	Authorizer   permission.Authorizer
 
 	DB  *sql.DB
 	Ent *ent.Client
@@ -105,20 +104,20 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	return &App{
-		Cfg:          cfg,
+		Config:       cfg,
 		Log:          log,
 		NodeSvc:      repos.NodeSvc,
 		DriveSvc:     repos.DriveSvc,
 		UserSvc:      repos.UserSvc,
-		UserEx:       repos.UserEx,
-		UploadReg:    uploadReg,
+		UserExister:  repos.UserEx,
+		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg, entClient),
 		VFS:          newVFS(repos, entClient, log),
 		SessionStore: store,
 		Garbage:      gc.NewGarbageRecorder(entClient),
 		Auth:         authenticator,
 		Security:     sec,
-		Perm:         permClient,
+		Authorizer:   permClient,
 		DB:           db,
 		Ent:          entClient,
 	}, nil
@@ -293,10 +292,10 @@ func newAuth(ctx context.Context, cfg *config.Config, vClient valkey.Client) (se
 // notifies Garbage when object nodes go away.
 func newVFS(repos repositories, entClient *ent.Client, log *slog.Logger) *vfs.Service {
 	return vfs.NewService(vfs.ServiceConfig{
-		Node:    repos.NodeSvc,
-		Drive:   repos.DriveSvc,
-		Garbage: gc.NewGarbageRecorder(entClient),
-		Logger:  log,
+		NodeClient:      repos.NodeSvc,
+		DriveClient:     repos.DriveSvc,
+		GarbageRecorder: gc.NewGarbageRecorder(entClient),
+		Logger:          log,
 	})
 }
 

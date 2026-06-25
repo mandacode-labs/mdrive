@@ -40,7 +40,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	if err := n.WriteFile(content); err != nil {
 		return fmt.Errorf("write: %w", err)
 	}
-	return s.Node.Save(ctx, n)
+	return s.NodeClient.Save(ctx, n)
 }
 
 // WriteLarge creates an object (S3-backed) node at path.

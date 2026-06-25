@@ -18,11 +18,6 @@ type entry struct {
 	exp  time.Time
 }
 
-type item struct {
-	meta PresignMeta
-	exp  time.Time
-}
-
 // NewMemoryRegistry creates a new in-memory upload registry.
 func NewMemoryRegistry() *MemoryRegistry {
 	return &MemoryRegistry{items: map[string]entry{}}

@@ -24,44 +24,44 @@ type Config struct {
 
 // Service manages OIDC flows and session lifecycle with Zitadel.
 type Service struct {
-	cfg        Config
+	config     Config
 	store      session.Store
 	verifier   *rp.IDTokenVerifier
 	httpClient *http.Client
 }
 
-func NewService(ctx context.Context, cfg Config) (*Service, error) {
+func NewService(ctx context.Context, config Config) (*Service, error) {
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
-	dc, err := client.Discover(ctx, cfg.Issuer, httpClient)
+	dc, err := client.Discover(ctx, config.Issuer, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("auth: discover: %w", err)
 	}
 
 	keySet := rp.NewRemoteKeySet(httpClient, dc.JwksURI)
-	verifier := rp.NewIDTokenVerifier(cfg.Issuer, cfg.ClientID, keySet,
+	verifier := rp.NewIDTokenVerifier(config.Issuer, config.ClientID, keySet,
 		rp.WithIssuedAtMaxAge(1*time.Hour),
 	)
 
 	return &Service{
-		cfg:        cfg,
-		store:      cfg.SessionStore,
+		config:      config,
+		store:      config.SessionStore,
 		verifier:   verifier,
 		httpClient: httpClient,
 	}, nil
 }
 
-func (a *Service) Discovery(ctx context.Context) (*oidc.DiscoveryConfiguration, error) {
-	return client.Discover(ctx, a.cfg.Issuer, a.httpClient)
+func (s *Service) Discovery(ctx context.Context) (*oidc.DiscoveryConfiguration, error) {
+	return client.Discover(ctx, s.config.Issuer, s.httpClient)
 }
 
-func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
-	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
+func (s *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
+	dc, err := client.Discover(ctx, s.config.Issuer, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
 	request := oidc.NewJWTProfileGrantRequest(assertion, scopeOpenID, scopeProfile, scopeEmail)
-	caller := &tokenEndpointCaller{dc: dc, http: a.httpClient}
+	caller := &tokenEndpointCaller{dc: dc, http: s.httpClient}
 
 	token, err := client.CallTokenEndpoint(ctx, request, caller)
 	if err != nil {
@@ -71,7 +71,7 @@ func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Toke
 	if !ok || idToken == "" {
 		return nil, fmt.Errorf("auth: jwt profile: id_token not in response")
 	}
-	claims, err := a.verifyIDToken(ctx, idToken)
+	claims, err := s.verifyIDToken(ctx, idToken)
 	if err != nil {
 		return nil, fmt.Errorf("auth: jwt profile: %w", err)
 	}
@@ -82,18 +82,18 @@ func (a *Service) ExchangeJWT(ctx context.Context, assertion string) (*oidc.Toke
 	}, nil
 }
 
-func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
-	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
+func (s *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error) {
+	dc, err := client.Discover(ctx, s.config.Issuer, s.httpClient)
 	if err != nil {
 		return nil, err
 	}
 	request := &oidc.AccessTokenRequest{
 		Code:         code,
 		RedirectURI:  redirectURI,
-		ClientID:     a.cfg.ClientID,
+		ClientID:     s.config.ClientID,
 		CodeVerifier: codeVerifier,
 	}
-	caller := &tokenEndpointCaller{dc: dc, http: a.httpClient}
+	caller := &tokenEndpointCaller{dc: dc, http: s.httpClient}
 
 	token, err := client.CallTokenEndpoint(ctx, request, caller)
 	if err != nil {
@@ -103,7 +103,7 @@ func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerif
 	if !ok || idToken == "" {
 		return nil, fmt.Errorf("auth: code exchange: id_token not in response")
 	}
-	claims, err := a.verifyIDToken(ctx, idToken)
+	claims, err := s.verifyIDToken(ctx, idToken)
 	if err != nil {
 		return nil, fmt.Errorf("auth: code exchange: %w", err)
 	}
@@ -114,13 +114,13 @@ func (a *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerif
 	}, nil
 }
 
-func (a *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error) {
-	dc, err := client.Discover(ctx, a.cfg.Issuer, a.httpClient)
+func (s *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error) {
+	dc, err := client.Discover(ctx, s.config.Issuer, s.httpClient)
 	if err != nil {
 		return "", err
 	}
 	q := make(url.Values)
-	q.Set("client_id", a.cfg.ClientID)
+	q.Set("client_id", s.config.ClientID)
 	q.Set("response_type", "code")
 	q.Set("scope", DefaultOIDCScopes)
 	q.Set("redirect_uri", redirectURI)
@@ -133,12 +133,12 @@ func (a *Service) AuthorizeURL(ctx context.Context, provider, redirectURI, state
 	return dc.AuthorizationEndpoint + "?" + q.Encode(), nil
 }
 
-func (a *Service) CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error) {
-	sess := session.New(a.cfg.SessionTTL)
+func (s *Service) CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error) {
+	sess := session.New(s.config.SessionTTL)
 	sess.UserID = userID
 	sess.Provider = provider
 	sess.IsAdmin = isAdmin
-	if err := a.store.Create(ctx, sess); err != nil {
+	if err := s.store.Create(ctx, sess); err != nil {
 		return nil, err
 	}
 	return sess, nil
@@ -161,36 +161,36 @@ func IsAdminClaim(claims *oidc.IDTokenClaims) bool {
 	return ok
 }
 
-func (a *Service) DeleteSession(ctx context.Context, id string) error {
-	return a.store.Delete(ctx, id)
+func (s *Service) DeleteSession(ctx context.Context, id string) error {
+	return s.store.Delete(ctx, id)
 }
 
-func (a *Service) StorePKCE(ctx context.Context, state, verifier string) error {
-	s := session.New(5 * time.Minute)
-	s.ID = PKCEPrefix + state
-	s.UserID = verifier
-	return a.store.Create(ctx, s)
+func (s *Service) StorePKCE(ctx context.Context, state, verifier string) error {
+	sess := session.New(5 * time.Minute)
+	sess.ID = PKCEPrefix + state
+	sess.UserID = verifier
+	return s.store.Create(ctx, sess)
 }
 
-func (a *Service) GetPKCE(ctx context.Context, state string) (string, error) {
-	s, err := a.store.Get(ctx, PKCEPrefix+state)
+func (s *Service) GetPKCE(ctx context.Context, state string) (string, error) {
+	sess, err := s.store.Get(ctx, PKCEPrefix+state)
 	if err != nil {
 		return "", err
 	}
 	// Best-effort cleanup; key has short TTL anyway.
-	_ = a.store.Delete(ctx, PKCEPrefix+state)
-	return s.UserID, nil
+	_ = s.store.Delete(ctx, PKCEPrefix+state)
+	return sess.UserID, nil
 }
 
-func (a *Service) VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
-	return a.verifyIDToken(ctx, raw)
+func (s *Service) VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
+	return s.verifyIDToken(ctx, raw)
 }
 
-func (a *Service) verifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
+func (s *Service) verifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("auth: empty id_token")
 	}
-	claims, err := rp.VerifyIDToken[*oidc.IDTokenClaims](ctx, raw, a.verifier)
+	claims, err := rp.VerifyIDToken[*oidc.IDTokenClaims](ctx, raw, s.verifier)
 	if err != nil {
 		return nil, fmt.Errorf("auth: verify id_token: %w", err)
 	}

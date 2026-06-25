@@ -18,15 +18,15 @@ import (
 // role, not a per-drive permission check, and the handler
 // sources it from the session.
 type Service struct {
-	repo       Repository
-	users      Exister
+	repo                 Repository
+	userExister          Exister
 	rootDirectoryCreator RootDirectoryCreator
 }
 
 // NewService creates a new Service. Permission checks live in the
 // handler; the service is the pure domain layer.
-func NewService(repo Repository, users Exister, rootDirectoryCreator RootDirectoryCreator) *Service {
-	return &Service{repo: repo, users: users, rootDirectoryCreator: rootDirectoryCreator}
+func NewService(repo Repository, userExister Exister, rootDirectoryCreator RootDirectoryCreator) *Service {
+	return &Service{repo: repo, userExister: userExister, rootDirectoryCreator: rootDirectoryCreator}
 }
 
 // Create creates a drive and its root directory node. The drive +
@@ -54,7 +54,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 		return nil, uuid.Nil, err
 	}
 
-	exists, err := s.users.Exist(ctx, actorID)
+	exists, err := s.userExister.Exist(ctx, actorID)
 	if err != nil {
 		return nil, uuid.Nil, fmt.Errorf("check owner: %w", err)
 	}
@@ -64,12 +64,12 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 
 	id := ulid.Make().String()
 	now := time.Now()
-	var descPtr *string
+	var descriptionPtr *string
 	if description != "" {
-		descPtr = &description
+		descriptionPtr = &description
 	}
-	d := NewDrive(id, id, name, descPtr, ProviderS3, actorID, nil, nil, now, now)
-	s2 := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
+	d := NewDrive(id, id, name, descriptionPtr, ProviderS3, actorID, nil, nil, now, now)
+	storage := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
 
 	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
@@ -80,7 +80,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 
 	var updated *Drive
 	err = s.WithTx(ctx, func(tx *Service) error {
-		if err := tx.repo.Create(ctx, d, s2); err != nil {
+		if err := tx.repo.Create(ctx, d, storage); err != nil {
 			return fmt.Errorf("create drive: %w", err)
 		}
 		u, err := tx.repo.Update(ctx, d)
@@ -223,7 +223,7 @@ func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, er
 // WithTx executes fn within a transaction.
 func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, users: s.users, rootDirectoryCreator: s.rootDirectoryCreator})
+		return fn(&Service{repo: txRepo, userExister: s.userExister, rootDirectoryCreator: s.rootDirectoryCreator})
 	})
 }
 

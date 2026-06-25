@@ -107,9 +107,9 @@ func setupE2E(t *testing.T) *e2eEnv {
 	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
 
 	fs := vfs.NewService(vfs.ServiceConfig{
-		Node:    nodeSvc,
-		Drive:   driveSvc,
-		Garbage: nil,
+		NodeClient:      nodeSvc,
+		DriveClient:     driveSvc,
+		GarbageRecorder: nil,
 	})
 
 	uploadSvcVfs := upload.NewService(upload.Config{

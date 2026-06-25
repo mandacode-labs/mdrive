@@ -31,7 +31,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return server.NewServer(a, a.VFS, a.DriveSvc, a.UploadSvc, a.UserSvc, a.Perm).Run()
+			return server.NewServer(a, a.VFS, a.DriveSvc, a.UploadSvc, a.UserSvc, a.Authorizer).Run()
 		},
 	}
 	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")

@@ -45,8 +45,8 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 		allRefs = append(allRefs, refs...)
 	}
 
-	if len(allRefs) > 0 && s.Garbage != nil {
-		if err := s.Garbage.RecordGarbage(ctx, allRefs); err != nil {
+	if len(allRefs) > 0 && s.GarbageRecorder != nil {
+		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
 			// Logged at error: this leaves orphan S3 objects that
 			// must be reclaimed by the gc orphan-scan job.
 			s.log().Error("vfs.rm.tombstone_failed",
@@ -103,7 +103,7 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 	if parent == nil || name == "" {
 		return nil, nil
 	}
-	deleted, err := s.Node.Unlink(ctx, parent, name)
+	deleted, err := s.NodeClient.Unlink(ctx, parent, name)
 	if err != nil {
 		return nil, fmt.Errorf("rm: unlink: %w", err)
 	}
@@ -141,7 +141,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 			child, _ = r.loadByID(ctx, de.InodeID)
 		}
 		if child == nil {
-			child, err = s.Node.GetByID(ctx, e.InodeID)
+			child, err = s.NodeClient.GetByID(ctx, e.InodeID)
 			if err != nil {
 				return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
 			}

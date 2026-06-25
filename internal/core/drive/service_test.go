@@ -41,8 +41,8 @@ func (fakeRootDirectoryCreator) CreateRootDirectory(_ context.Context) (uuid.UUI
 
 func TestWithTxRollsBackOnError(t *testing.T) {
 	svc := &Service{
-		repo:       fakeRepo{},
-		users:      fakeExister{},
+		repo:                 fakeRepo{},
+		userExister:          fakeExister{},
 		rootDirectoryCreator: fakeRootDirectoryCreator{},
 	}
 
