@@ -18,6 +18,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -132,7 +133,7 @@ var _ handler.UploadClient = (*stubUpload)(nil)
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	userSvc := newFakeUserSvc()
-	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, nil, nil, "")
+	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, nil, "")
 	ogenServer, err := api.NewServer(h, testSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 		apiserver.WriteError(w, err)
 	}))
