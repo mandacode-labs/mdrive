@@ -156,8 +156,7 @@ spec:
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          serviceAccountName: {{ include "mdrive.serviceAccountName" .root }}
-          automountServiceAccountToken: {{ .root.Values.serviceAccount.automount }}
+          automountServiceAccountToken: false
           securityContext:
             {{- toYaml .root.Values.podSecurityContext | nindent 12 }}
           containers:
