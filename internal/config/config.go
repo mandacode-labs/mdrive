@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -156,6 +157,16 @@ type OpenFGAConfig struct {
 
 // LoadFromPath reads the configuration from the given file path.
 // Call Validate(env) afterwards to enforce production invariants.
+//
+// The config file is optional. When the path does not exist, the
+// loader falls back to viper defaults and AutomaticEnv env vars
+// (viper's SetEnvKeyReplacer(\".\", \"_\") means DATABASE_HOST env
+// populates the database.host key, etc.). This lets callers run
+// with env-only config — e.g. the migration Job in helm, where
+// the ConfigMap is not yet created at PreSync time.
+//
+// Surface real read errors (parse failure, permission denied) so
+// the caller can distinguish \"no file\" from \"bad file\".
 func LoadFromPath(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
@@ -165,8 +176,14 @@ func LoadFromPath(path string) (*Config, error) {
 
 	setDefaults(v)
 
+	// With SetConfigFile the path is fixed, so viper returns the
+	// underlying fs.PathError (os.ErrNotExist) when the file is
+	// missing — not viper.ConfigFileNotFoundError, which is only
+	// emitted by findConfigFile in the search-path flow.
 	if err := v.ReadInConfig(); err != nil {
-		return nil, err
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
 	}
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
