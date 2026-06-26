@@ -158,7 +158,8 @@ type OpenFGAConfig struct {
 // LoadFromPath reads the configuration from the given file path.
 // Call Validate(env) afterwards to enforce production invariants.
 //
-// The config file is optional. When the path does not exist, the
+// The config file is optional. When the path does not exist (or no
+// path is set and viper's search-path lookup finds nothing), the
 // loader falls back to viper defaults and AutomaticEnv env vars
 // (viper's SetEnvKeyReplacer(\".\", \"_\") means DATABASE_HOST env
 // populates the database.host key, etc.). This lets callers run
@@ -176,13 +177,20 @@ func LoadFromPath(path string) (*Config, error) {
 
 	setDefaults(v)
 
-	// With SetConfigFile the path is fixed, so viper returns the
-	// underlying fs.PathError (os.ErrNotExist) when the file is
-	// missing — not viper.ConfigFileNotFoundError, which is only
-	// emitted by findConfigFile in the search-path flow.
-	if err := v.ReadInConfig(); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, err
+	if rcErr := v.ReadInConfig(); rcErr != nil {
+		// Missing config is fine: defaults + env vars populate the
+		// config. viper surfaces this two ways depending on how the
+		// path was set:
+		//   - SetConfigFile with a specific path -> underlying
+		//     *fs.PathError wrapping os.ErrNotExist
+		//   - empty path with search lookup -> viper.ConfigFileNotFoundError
+		isMissing := errors.Is(rcErr, os.ErrNotExist)
+		if !isMissing {
+			var notFound viper.ConfigFileNotFoundError
+			isMissing = errors.As(rcErr, &notFound)
+		}
+		if !isMissing {
+			return nil, rcErr
 		}
 	}
 	var cfg Config
