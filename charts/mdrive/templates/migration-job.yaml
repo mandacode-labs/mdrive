@@ -41,7 +41,7 @@ spec:
             - name: APP_ENV
               value: production
             - name: DATABASE_HOST
-              value: {{ required "config.database.host is required" .Values.config.database.host | quote }}
+              value: {{ .Values.config.database.host | quote }}
             - name: DATABASE_PORT
               value: {{ .Values.config.database.port | quote }}
             - name: DATABASE_NAME
