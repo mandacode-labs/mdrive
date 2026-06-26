@@ -37,26 +37,30 @@ spec:
           args:
             - migrate
             - apply
-            - --config
-            - /app/config/config.yaml
           env:
+            - name: APP_ENV
+              value: production
+            - name: DATABASE_HOST
+              value: {{ .Values.config.database.host | quote }}
+            - name: DATABASE_PORT
+              value: {{ .Values.config.database.port | quote }}
+            - name: DATABASE_NAME
+              value: {{ .Values.config.database.name | quote }}
+            - name: DATABASE_USER
+              value: {{ .Values.config.database.user | quote }}
+            - name: DATABASE_SSLMODE
+              value: {{ .Values.config.database.sslmode | quote }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
           volumeMounts:
-            - name: config
-              mountPath: /app/config
-              readOnly: true
             - name: tmp
               mountPath: /tmp
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: config
-          configMap:
-            name: {{ include "mdrive.fullname" . }}
         - name: tmp
           emptyDir: {}
 {{- end }}
