@@ -4,7 +4,6 @@ package config
 import (
 	"errors"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
