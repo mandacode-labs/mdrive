@@ -1,4 +1,7 @@
 {{- if .Values.migration.enabled -}}
+{{- if not .Values.config.database.host -}}
+{{- fail "config.database.host is required when migration.enabled is true (the migration Job builds --database-url from this value)" -}}
+{{- end -}}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -37,19 +40,10 @@ spec:
           args:
             - migrate
             - apply
+            - --database-url
+            - >-
+              postgres://{{ .Values.config.database.user }}:{{ .Values.secrets.database.password }}@{{ .Values.config.database.host }}:{{ .Values.config.database.port }}/{{ .Values.config.database.name }}?sslmode={{ .Values.config.database.sslmode }}
           env:
-            - name: APP_ENV
-              value: production
-            - name: DATABASE_HOST
-              value: {{ .Values.config.database.host | quote }}
-            - name: DATABASE_PORT
-              value: {{ .Values.config.database.port | quote }}
-            - name: DATABASE_NAME
-              value: {{ .Values.config.database.name | quote }}
-            - name: DATABASE_USER
-              value: {{ .Values.config.database.user | quote }}
-            - name: DATABASE_SSLMODE
-              value: {{ .Values.config.database.sslmode | quote }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
