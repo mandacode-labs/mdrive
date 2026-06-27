@@ -66,7 +66,14 @@ jobs:
       - name: Lint Helm chart
         run: helm lint charts/mdrive
       - name: Helm Template
-        run: helm template mdrive ./charts/mdrive --set migration.enabled=false
+        run: |
+          helm template mdrive ./charts/mdrive \
+            --set config.database.host=test-host \
+            --set config.database.user=mdrive \
+            --set config.database.name=mdrive \
+            --set config.database.port=5432 \
+            --set config.database.sslmode=require \
+            --set secrets.database.password=test-pass
       - name: GoReleaser check
         uses: goreleaser/goreleaser-action@v7.2.2
         with:
@@ -127,6 +134,14 @@ jobs:
       GOFLAGS: "-buildvcs=false"
     steps:
       - uses: actions/checkout@v6.0.3
+      - name: Read ATLAS_VERSION
+        id: atlas_version
+        run: echo "value=$(cat ATLAS_VERSION)" >> "$GITHUB_OUTPUT"
+      - name: Install atlas
+        run: |
+          curl -sL "https://release.ariga.io/atlas/atlas-linux-amd64-${{ steps.atlas_version.outputs.value }}" -o /usr/local/bin/atlas
+          chmod +x /usr/local/bin/atlas
+          atlas version
       - name: Run integration tests
         run: make test-integration
       - name: Upload coverage

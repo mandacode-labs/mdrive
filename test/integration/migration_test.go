@@ -48,22 +48,11 @@ func TestMigrateApplyInvalidDSNFails(t *testing.T) {
 	require.Error(t, err, "migrate apply with unreachable DB should fail")
 
 	combined := strings.ToLower(string(out))
-	// The CLI accepts the --database-url flag and proceeds past flag
-	// parsing. After that, any of these errors is acceptable
-	// depending on the test environment (atlas binary present?
-	// DB reachable?):
-	//   - "apply migrations" / "migrate": atlas ran and failed
-	//   - "dial" / "connect" / "refused" / "connection": DB unreachable
-	//   - "executable": atlas binary not in PATH (typical CI)
-	//   - "atlas client": atlas SDK error before migration runs
 	ok := strings.Contains(combined, "apply migrations") ||
-		strings.Contains(combined, "atlas client") ||
-		strings.Contains(combined, "migrate") ||
 		strings.Contains(combined, "dial") ||
 		strings.Contains(combined, "connect") ||
 		strings.Contains(combined, "refused") ||
-		strings.Contains(combined, "connection") ||
-		strings.Contains(combined, "executable")
+		strings.Contains(combined, "connection")
 	assert.True(t, ok,
-		"error should be parseable (migration/connection/atlas), got: %s", string(out))
+		"expected atlas/connect error, got: %s", string(out))
 }
