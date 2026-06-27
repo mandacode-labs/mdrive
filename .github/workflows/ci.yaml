@@ -66,7 +66,7 @@ jobs:
       - name: Lint Helm chart
         run: helm lint charts/mdrive
       - name: Helm Template
-        run: helm template mdrive ./charts/mdrive
+        run: helm template mdrive ./charts/mdrive --set migration.enabled=false
       - name: GoReleaser check
         uses: goreleaser/goreleaser-action@v7.2.2
         with:

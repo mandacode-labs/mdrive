@@ -9,9 +9,6 @@ import (
 
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/spf13/cobra"
-
-	"github.com/mandacode-labs/mdrive/internal/cliflags"
-	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
 //go:embed migrations/*.sql migrations/atlas.sum
@@ -19,42 +16,39 @@ var defaultMigrations embed.FS
 
 const defaultAtlasBin = "atlas"
 
-// NewCmd creates the `migrate` subcommand.
 func NewCmd() *cobra.Command {
-	cmd := &cobra.Command{
+	root := &cobra.Command{
 		Use:   "migrate",
 		Short: "Manage database migrations",
 	}
-	cmd.AddCommand(newApplyCmd())
-	return cmd
+	root.AddCommand(newApplyCmd())
+	return root
 }
 
 func newApplyCmd() *cobra.Command {
-	var configPath string
+	var databaseURL string
 	cmd := &cobra.Command{
 		Use:   "apply",
 		Short: "Apply pending Atlas versioned migrations",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := config.LoadFromPath(configPath)
-			if err != nil {
-				return fmt.Errorf("load config: %w", err)
-			}
-			return apply(cmd.Context(), cfg.Database.DSN())
+			return apply(cmd.Context(), databaseURL)
 		},
 	}
-	cliflags.AddConfigFlag(cmd, &configPath)
+	cmd.Flags().StringVar(&databaseURL, "database-url", "",
+		"PostgreSQL URL (e.g. postgres://user:password@host:5432/dbname?sslmode=require)")
+	_ = cmd.MarkFlagRequired("database-url")
 	return cmd
 }
 
-func apply(ctx context.Context, dsn string) error {
+func apply(ctx context.Context, databaseURL string) error {
 	migrations, err := fs.Sub(defaultMigrations, "migrations")
 	if err != nil {
 		return fmt.Errorf("migrations subdir: %w", err)
 	}
-	return applyWith(ctx, dsn, migrations, defaultAtlasBin)
+	return applyWith(ctx, databaseURL, migrations, defaultAtlasBin)
 }
 
-func applyWith(ctx context.Context, dsn string, migrations fs.FS, atlasBin string) error {
+func applyWith(ctx context.Context, databaseURL string, migrations fs.FS, atlasBin string) error {
 	workDir, err := atlasexec.NewWorkingDir(atlasexec.WithMigrations(migrations))
 	if err != nil {
 		return fmt.Errorf("atlas working dir: %w", err)
@@ -67,7 +61,7 @@ func applyWith(ctx context.Context, dsn string, migrations fs.FS, atlasBin strin
 	}
 
 	if _, err := client.MigrateApply(ctx, &atlasexec.MigrateApplyParams{
-		URL: dsn,
+		URL: databaseURL,
 	}); err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
 	}
