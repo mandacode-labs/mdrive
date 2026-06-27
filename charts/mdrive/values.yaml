@@ -184,6 +184,11 @@ config:
     audience: ""
 
 # Secrets (passed as environment variables, overriding config values).
+#
+# Recommendation: prefer `existingSecret` over inline values for any
+# real credential. Inline values end up in Git history and ArgoCD
+# manifests; the chart cannot interpolate them into URLs safely
+# (special characters in passwords break URL parsing).
 secrets:
   database:
     password: ""
@@ -231,6 +236,17 @@ extraVolumes: []
 #      name: starship-root-ca
 
 # Migration job settings (ArgoCD PreSync hook)
+#
+# The Job reads DATABASE_HOST / DATABASE_PORT / DATABASE_NAME /
+# DATABASE_USER / DATABASE_SSLMODE / DATABASE_PASSWORD as
+# environment variables and builds the PostgreSQL URL in Go using
+# net/url (so passwords containing @, :, / are properly escaped).
+# DATABASE_PASSWORD is sourced from `secrets.database.existingSecret`
+# (or the chart-managed Secret if `existingSecret` is empty).
+#
+# `config.database.host` is required when migration.enabled is true;
+# the chart refuses to render otherwise so the operator sees a clear
+# error at deploy time rather than a connection failure at runtime.
 migration:
   enabled: true
   annotations:
