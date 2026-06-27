@@ -31,35 +31,6 @@ spec:
       automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      initContainers:
-        {{- if .Values.migration.enabled }}
-        - name: migrate
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "mdrive.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - /app/mdrive
-          args:
-            - migrate
-            - apply
-            - --config
-            - /app/config/config.yaml
-          env:
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
-          volumeMounts:
-            - name: config
-              mountPath: /app/config
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
