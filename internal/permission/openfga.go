@@ -132,6 +132,7 @@ type Config struct {
 	ClientSecret         string
 	TokenIssuer          string
 	Audience             string
+	Scopes               string
 	Timeout              time.Duration
 }
 
@@ -219,6 +220,9 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 		if cfg.TokenIssuer == "" || cfg.Audience == "" {
 			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires token_issuer and audience")
 		}
+		if cfg.Scopes == "" {
+			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires scopes (Zitadel/Keycloak/Auth0 reject scope-less token requests per RFC 6749 §4.4; use 'openid' for standard OIDC providers)")
+		}
 		if cfg.APIToken != "" {
 			return nil, fmt.Errorf("openfga: auth_mode=client_credentials does not accept api_token")
 		}
@@ -229,6 +233,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 				ClientCredentialsClientSecret:   cfg.ClientSecret,
 				ClientCredentialsApiTokenIssuer: cfg.TokenIssuer,
 				ClientCredentialsApiAudience:    cfg.Audience,
+				ClientCredentialsScopes:         cfg.Scopes,
 			},
 		})
 		if err != nil {

@@ -99,6 +99,8 @@ spec:
                   name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret" }}
             {{- end }}
+            - name: OPENFGA_SCOPES
+              value: {{ .Values.config.openfga.scopes | quote }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

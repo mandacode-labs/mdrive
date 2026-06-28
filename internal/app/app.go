@@ -259,6 +259,7 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 		ClientSecret:         cfg.OpenFGA.ClientSecret,
 		TokenIssuer:          cfg.OpenFGA.TokenIssuer,
 		Audience:             cfg.OpenFGA.Audience,
+		Scopes:               cfg.OpenFGA.Scopes,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("openfga: initialize: %w", err)
