@@ -50,6 +50,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
+            - name: VALKEY_USER
+              value: {{ .Values.config.valkey.user | default "default" | quote }}
             {{- if or .Values.secrets.valkey.password .Values.secrets.valkey.existingSecret }}
             - name: VALKEY_PASSWORD
               valueFrom:

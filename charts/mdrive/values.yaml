@@ -161,6 +161,7 @@ config:
   valkey:
     addrs:
       - valkey:6379
+    user: "default"
     password: ""
     db: 0
     tls: false

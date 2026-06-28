@@ -117,8 +117,15 @@ type CryptoConfig struct {
 }
 
 // ValkeyConfig holds Valkey/Redis connection settings.
+//
+// User is the ACL username for AUTH. Empty falls back to Valkey's
+// implicit "default" user (the historical behaviour of Redis 6 and
+// earlier). Set explicitly when running against a Valkey/Redis
+// instance that has multiple ACL users and the connection must
+// authenticate as something other than the implicit default.
 type ValkeyConfig struct {
 	Addrs    []string `mapstructure:"addrs"`
+	User     string   `mapstructure:"user"`
 	Password string   `mapstructure:"password"`
 	DB       int      `mapstructure:"db"`
 	TLS      bool     `mapstructure:"tls"`
@@ -211,6 +218,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("storage.presign_ttl", "1h")
 	v.SetDefault("crypto.master_key", "")
 	v.SetDefault("valkey.addrs", []string{"localhost:6379"})
+	v.SetDefault("valkey.user", "default")
 	v.SetDefault("valkey.password", "")
 	v.SetDefault("valkey.db", 0)
 	v.SetDefault("valkey.tls", false)

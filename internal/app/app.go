@@ -368,6 +368,7 @@ func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig, log *slog.Log
 	}
 	client, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: cfg.Addrs,
+		Username:    cfg.User,
 		Password:    cfg.Password,
 		SelectDB:    cfg.DB,
 	})
