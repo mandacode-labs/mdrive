@@ -12,6 +12,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/XSAM/otelsql"
 	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/valkey-io/valkey-go"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
