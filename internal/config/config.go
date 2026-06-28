@@ -147,8 +147,14 @@ type AuthConfig struct {
 //
 // AuthMode selects the credential mode and is validated at startup:
 //   - "api_token"           : requires api_token
-//   - "client_credentials"  : requires client_id, client_secret, token_issuer, audience
+//   - "client_credentials"  : requires client_id, client_secret, token_issuer, audience, scopes
 //   - "none"                : no credentials (development only)
+//
+// Scopes is the OAuth2 scope string sent with the client_credentials
+// token request. It is empty by default; client_credentials mode
+// requires it (Zitadel/Keycloak/Auth0 reject scope-less requests per
+// RFC 6749 §4.4). Configure explicitly per IdP — "openid" is the
+// universal safe value for standard OIDC providers.
 type OpenFGAConfig struct {
 	AuthMode             string `mapstructure:"auth_mode"`
 	APIURL               string `mapstructure:"api_url"`
@@ -159,6 +165,7 @@ type OpenFGAConfig struct {
 	ClientSecret         string `mapstructure:"client_secret"`
 	TokenIssuer          string `mapstructure:"token_issuer"`
 	Audience             string `mapstructure:"audience"`
+	Scopes               string `mapstructure:"scopes"`
 }
 
 // LoadFromPath reads the configuration from the given file path.
@@ -236,6 +243,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("openfga.client_secret", "")
 	v.SetDefault("openfga.token_issuer", "")
 	v.SetDefault("openfga.audience", "")
+	v.SetDefault("openfga.scopes", "")
 }
 
 // Validate enforces production-vs-development invariants. Returns
@@ -250,11 +258,15 @@ func (c *Config) Validate(env string) error {
 		if c.OpenFGA.APIURL == "" {
 			return errProductionOpenFGARequired
 		}
+		if c.OpenFGA.AuthMode == "client_credentials" && c.OpenFGA.Scopes == "" {
+			return errProductionOpenFGAScopesRequired
+		}
 	}
 	return nil
 }
 
 var (
-	errProductionMasterKeyRequired = errors.New("config: crypto.master_key is required in production")
-	errProductionOpenFGARequired   = errors.New("config: openfga.api_url is required in production")
+	errProductionMasterKeyRequired  = errors.New("config: crypto.master_key is required in production")
+	errProductionOpenFGARequired    = errors.New("config: openfga.api_url is required in production")
+	errProductionOpenFGAScopesRequired = errors.New("config: openfga.scopes is required in production when auth_mode=client_credentials (Zitadel/Keycloak/Auth0 reject scope-less token requests per RFC 6749 §4.4)")
 )
