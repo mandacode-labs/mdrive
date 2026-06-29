@@ -1,6 +1,10 @@
 health:
   get:
     operationId: health
+    tags:
+      - health
+    description: |
+      Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
     summary: Health check
     security: []
     responses:

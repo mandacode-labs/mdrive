@@ -13,6 +13,22 @@ servers:
 security:
   - bearerAuth: []
 
+tags:
+  - name: health
+    description: Service health and readiness probes.
+  - name: auth
+    description: OIDC login, callback, logout, and session lookup.
+  - name: drives
+    description: Drive CRUD and storage configuration.
+  - name: fs
+    description: POSIX-like filesystem operations on a drive.
+  - name: uploads
+    description: Presigned S3 upload lifecycle.
+  - name: users
+    description: User upsert and lookup.
+  - name: admin
+    description: Admin-only endpoints.
+
 paths:
   /health:
     $ref: "./endpoints/health.yaml#/health"
@@ -113,6 +129,56 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Invalid request payload or path.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    Unauthorized:
+      description: Missing or invalid session cookie.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    Forbidden:
+      description: Authenticated but lacks the required permission.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    NotFound:
+      description: Resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    Conflict:
+      description: Resource already exists, soft-deleted, or version conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    UnprocessableEntity:
+      description: Request understood but cannot be processed (e.g. wrong node type, hardlink source not a file).
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    ServiceUnavailable:
+      description: A required backend is unreachable. Returned by /health when degraded.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
+    UnexpectedError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas/common.yaml#/Error"
 
   schemas:
     Error:

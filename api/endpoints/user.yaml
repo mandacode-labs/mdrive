@@ -1,6 +1,10 @@
 users:
   get:
     operationId: getUser
+    tags:
+      - users
+    description: |
+      Return the user identified by `id`.
     summary: Get current user
     responses:
       "200":
@@ -18,6 +22,10 @@ users:
 
   post:
     operationId: upsertUser
+    tags:
+      - users
+    description: |
+      Create or update a user record. Admin or self-service depending on `provider`.
     summary: Upsert a user from OIDC claims
     requestBody:
       content:

@@ -1,6 +1,10 @@
 drives:
   post:
     operationId: createDrive
+    tags:
+      - drives
+    description: |
+      Create a new drive owned by the authenticated user with the given storage configuration.
     summary: Create a new drive
     requestBody:
       content:
@@ -22,6 +26,10 @@ drives:
               $ref: "../openapi.yaml#/components/schemas/Error"
   get:
     operationId: listDrives
+    tags:
+      - drives
+    description: |
+      List drives owned by the authenticated user.
     summary: List drives owned by the authenticated user
     responses:
       "200":
@@ -42,6 +50,10 @@ drives:
 drive:
   get:
     operationId: getDrive
+    tags:
+      - drives
+    description: |
+      Return the drive identified by `driveID` (404 if not found or not owned by the caller).
     summary: Get a drive by ID
     parameters:
       - name: driveID
@@ -63,6 +75,10 @@ drive:
               $ref: "../openapi.yaml#/components/schemas/Error"
   put:
     operationId: updateDrive
+    tags:
+      - drives
+    description: |
+      Update the drive's name and description. Empty fields are left unchanged.
     summary: Update a drive
     parameters:
       - name: driveID
@@ -89,6 +105,10 @@ drive:
               $ref: "../openapi.yaml#/components/schemas/Error"
   delete:
     operationId: deleteDrive
+    tags:
+      - drives
+    description: |
+      Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention window.
     summary: Soft-delete a drive
     parameters:
       - name: driveID
@@ -108,6 +128,10 @@ drive:
 restoreDrive:
   post:
     operationId: restoreDrive
+    tags:
+      - admin
+    description: |
+      Restore a soft-deleted drive. Admin only.
     summary: Restore a soft-deleted drive
     parameters:
       - name: driveID
@@ -131,6 +155,10 @@ restoreDrive:
 adminDrives:
   get:
     operationId: listDeletedDrives
+    tags:
+      - admin
+    description: |
+      List all soft-deleted drives. Admin only.
     summary: List soft-deleted drives (admin only)
     responses:
       "200":
@@ -151,6 +179,10 @@ adminDrives:
 storage:
   get:
     operationId: getDriveStorage
+    tags:
+      - drives
+    description: |
+      Return the storage configuration for the drive.
     summary: Get a drive's storage configuration
     parameters:
       - name: driveID
