@@ -16,7 +16,7 @@ func TestOpenAPISpecIsPublic(t *testing.T) {
 
 	resp, err := http.Get(srv.URL + "/openapi.json")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Contains(t, resp.Header.Get("Content-Type"), "application/json")
 
@@ -36,7 +36,7 @@ func TestOpenAPISpecWorksWithoutSession(t *testing.T) {
 	client := &http.Client{}
 	resp, err := client.Get(srv.URL + "/openapi.json")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode,
 		"/openapi.json must work without a session cookie")
 }
