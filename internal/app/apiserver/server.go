@@ -150,8 +150,14 @@ func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			if allowAll {
+			if allowAll && !cfg.AllowCredentials {
+				// Safe to set literal * when credentials are off.
 				w.Header().Set("Access-Control-Allow-Origin", "*")
+			} else if allowAll && cfg.AllowCredentials {
+				// Spec: Access-Control-Allow-Origin: * is forbidden
+				// when credentials are true. Echo the request origin
+				// for wildcard-like behaviour.
+				w.Header().Set("Access-Control-Allow-Origin", origin)
 			} else if _, ok := origins[origin]; ok {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 			}
