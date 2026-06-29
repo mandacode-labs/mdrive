@@ -187,6 +187,17 @@ config:
     # root (e.g. "https://app.mdrive.com").
     # When empty, redirect_uri is used as fallback.
     post_login_url: ""
+    # Where to send the browser after /auth/logout. Typically
+    # the SPA/frontend root. When empty, zitadel-go defaults to
+    # the request's scheme+host+"/".
+    post_logout_url: ""
+    # Encryption key used by zitadel-go to encrypt the session
+    # cookie (the OIDC userinfo + tokens are stored encrypted in
+    # the cookie itself). Required when auth.issuer is set.
+    # MUST be at least 16 characters; use a random secret in
+    # production. Prefer setting this via the auth.encryption_key
+    # existingSecret (see secrets section below).
+    encryption_key: ""
     # DEPRECATED: use redirect_uri directly. Derives
     # <frontend_url>/auth/callback automatically via the
     # MigrateDeprecatedAuth helper for the transition window.
@@ -225,6 +236,10 @@ secrets:
     password: ""
     existingSecret: ""
     existingSecretKey: valkey-password
+  auth:
+    encryption_key: ""
+    existingSecret: ""
+    existingSecretKey: auth-encryption-key
   storage:
     access_key: ""
     secret_key: ""

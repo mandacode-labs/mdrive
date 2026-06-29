@@ -7,6 +7,150 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+func (s *CatBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CatForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CatNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CatUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CatUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CompleteUploadBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CompleteUploadForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CompleteUploadNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CompleteUploadUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CompleteUploadUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CreateDriveBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CreateDriveConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CreateDriveForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CreateDriveUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DeleteDriveBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DeleteDriveForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DeleteDriveNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *DeleteDriveUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Error) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -74,6 +218,158 @@ func (s *ErrorStatusCode) Validate() error {
 	return nil
 }
 
+func (s *GetDriveForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetDriveNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetDriveStorageForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetDriveStorageNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetDriveStorageUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetDriveUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetUserNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *GetUserUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *HardlinkUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *InitiateUploadBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *InitiateUploadForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *InitiateUploadNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *InitiateUploadUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ListDeletedDrivesForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s ListDeletedDrivesOKApplicationJSON) Validate() error {
 	alias := ([]Drive)(s)
 	if alias == nil {
@@ -82,10 +378,226 @@ func (s ListDeletedDrivesOKApplicationJSON) Validate() error {
 	return nil
 }
 
+func (s *ListDeletedDrivesUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s ListDrivesOKApplicationJSON) Validate() error {
 	alias := ([]Drive)(s)
 	if alias == nil {
 		return errors.New("nil is invalid value")
+	}
+	return nil
+}
+
+func (s *LsBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LsForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LsNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LsUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LsUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LstatBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LstatForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LstatNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LstatUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *LstatUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MkdirUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MountUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MvBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MvConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MvForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MvNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -113,6 +625,198 @@ func (s *MvReq) Validate() error {
 	return nil
 }
 
+func (s *MvUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *MvUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PresignDownloadBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PresignDownloadForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PresignDownloadNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PresignDownloadUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ReadlinkBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ReadlinkForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ReadlinkNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ReadlinkUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *ReadlinkUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RealpathBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RealpathForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RealpathNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RealpathUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RealpathUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RestoreDriveBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RestoreDriveForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RestoreDriveNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RestoreDriveUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RmBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RmConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RmForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RmNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *RmReq) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -132,6 +836,350 @@ func (s *RmReq) Validate() error {
 	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s *RmUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *RmUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StatBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StatForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StatNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StatUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *StatUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *SymlinkUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *TouchUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UnmountUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpdateDriveBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpdateDriveConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpdateDriveForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpdateDriveUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpsertUserBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *UpsertUserUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeBadRequest) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeConflict) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeForbidden) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteLargeUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteNotFound) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteUnauthorized) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *WriteUnprocessableEntity) Validate() error {
+	alias := (*Error)(s)
+	if err := alias.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

@@ -13,27 +13,9 @@ type UnimplementedHandler struct{}
 
 var _ Handler = UnimplementedHandler{}
 
-// AuthCallback implements authCallback operation.
-//
-// OAuth callback from Zitadel.
-//
-// GET /auth/callback
-func (UnimplementedHandler) AuthCallback(ctx context.Context, params AuthCallbackParams) (r AuthCallbackRes, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// AuthLogout implements authLogout operation.
-//
-// Destroy the current session.
-//
-// POST /auth/logout
-func (UnimplementedHandler) AuthLogout(ctx context.Context) (r AuthLogoutRes, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
 // AuthMe implements authMe operation.
 //
-// Get the current authenticated user.
+// Return the current authenticated user (200) or 401 if no session.
 //
 // GET /auth/me
 func (UnimplementedHandler) AuthMe(ctx context.Context) (r AuthMeRes, _ error) {
@@ -42,7 +24,8 @@ func (UnimplementedHandler) AuthMe(ctx context.Context) (r AuthMeRes, _ error) {
 
 // Cat implements cat operation.
 //
-// Read file contents (POSIX open(O_RDONLY)).
+// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+// is not a file.
 //
 // GET /v1/drives/{driveID}/fs/cat
 func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatRes, _ error) {
@@ -51,7 +34,8 @@ func (UnimplementedHandler) Cat(ctx context.Context, params CatParams) (r CatRes
 
 // CompleteUpload implements completeUpload operation.
 //
-// Complete a presigned upload and create the object node.
+// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+// the parent directory.
 //
 // POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (UnimplementedHandler) CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (r CompleteUploadRes, _ error) {
@@ -60,7 +44,7 @@ func (UnimplementedHandler) CompleteUpload(ctx context.Context, req OptUploadCom
 
 // CreateDrive implements createDrive operation.
 //
-// Create a new drive.
+// Create a new drive owned by the authenticated user with the given storage configuration.
 //
 // POST /v1/drives
 func (UnimplementedHandler) CreateDrive(ctx context.Context, req OptDriveCreate) (r CreateDriveRes, _ error) {
@@ -69,7 +53,8 @@ func (UnimplementedHandler) CreateDrive(ctx context.Context, req OptDriveCreate)
 
 // DeleteDrive implements deleteDrive operation.
 //
-// Soft-delete a drive.
+// Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention
+// window.
 //
 // DELETE /v1/drives/{driveID}/root
 func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveParams) (r DeleteDriveRes, _ error) {
@@ -78,7 +63,7 @@ func (UnimplementedHandler) DeleteDrive(ctx context.Context, params DeleteDriveP
 
 // GetDrive implements getDrive operation.
 //
-// Get a drive by ID.
+// Return the drive identified by `driveID` (404 if not found or not owned by the caller).
 //
 // GET /v1/drives/{driveID}/root
 func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams) (r GetDriveRes, _ error) {
@@ -87,7 +72,7 @@ func (UnimplementedHandler) GetDrive(ctx context.Context, params GetDriveParams)
 
 // GetDriveStorage implements getDriveStorage operation.
 //
-// Get a drive's storage configuration.
+// Return the storage configuration for the drive.
 //
 // GET /v1/drives/{driveID}/storage
 func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (r GetDriveStorageRes, _ error) {
@@ -96,34 +81,17 @@ func (UnimplementedHandler) GetDriveStorage(ctx context.Context, params GetDrive
 
 // GetUser implements getUser operation.
 //
-// Get current user.
+// Return the user identified by `id`.
 //
 // GET /v1/users
 func (UnimplementedHandler) GetUser(ctx context.Context) (r GetUserRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
-// GoogleLogin implements googleLogin operation.
-//
-// Initiate Google OAuth login (web).
-//
-// GET /auth/google
-func (UnimplementedHandler) GoogleLogin(ctx context.Context) (r *GoogleLoginFound, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
-// GoogleNativeLogin implements googleNativeLogin operation.
-//
-// Exchange a Google id_token for a mdrive session (mobile).
-//
-// POST /auth/google/native
-func (UnimplementedHandler) GoogleNativeLogin(ctx context.Context, req OptGoogleNativeLoginReq) (r GoogleNativeLoginRes, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
 // Hardlink implements hardlink operation.
 //
-// Create a hard link (POSIX link(2)).
+// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
 //
 // POST /v1/drives/{driveID}/fs/hardlink
 func (UnimplementedHandler) Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (r HardlinkRes, _ error) {
@@ -132,16 +100,16 @@ func (UnimplementedHandler) Hardlink(ctx context.Context, req OptHardlinkReq, pa
 
 // Health implements health operation.
 //
-// Health check.
+// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
 //
 // GET /health
-func (UnimplementedHandler) Health(ctx context.Context) (r *HealthOK, _ error) {
+func (UnimplementedHandler) Health(ctx context.Context) (r HealthRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
 // InitiateUpload implements initiateUpload operation.
 //
-// Initiate a presigned upload.
+// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
 //
 // POST /v1/drives/{driveID}/uploads
 func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (r InitiateUploadRes, _ error) {
@@ -150,7 +118,7 @@ func (UnimplementedHandler) InitiateUpload(ctx context.Context, req OptPresignRe
 
 // ListDeletedDrives implements listDeletedDrives operation.
 //
-// List soft-deleted drives (admin only).
+// List all soft-deleted drives. Admin only.
 //
 // GET /v1/admin/drives/deleted
 func (UnimplementedHandler) ListDeletedDrives(ctx context.Context) (r ListDeletedDrivesRes, _ error) {
@@ -168,7 +136,7 @@ func (UnimplementedHandler) ListDrives(ctx context.Context) (r ListDrivesRes, _ 
 
 // Ls implements ls operation.
 //
-// List directory contents (POSIX opendir/readdir).
+// List the contents of a directory. Each entry returns its name, type, and inode id.
 //
 // GET /v1/drives/{driveID}/fs/ls
 func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r LsRes, _ error) {
@@ -177,7 +145,7 @@ func (UnimplementedHandler) Ls(ctx context.Context, params LsParams) (r LsRes, _
 
 // Lstat implements lstat operation.
 //
-// Get file metadata without following symlinks (POSIX lstat(2)).
+// Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
 //
 // GET /v1/drives/{driveID}/fs/lstat
 func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r LstatRes, _ error) {
@@ -186,7 +154,7 @@ func (UnimplementedHandler) Lstat(ctx context.Context, params LstatParams) (r Ls
 
 // Mkdir implements mkdir operation.
 //
-// Create a directory (POSIX mkdir(2)).
+// Create a directory at `path` in the drive. Returns 409 if `path` already exists.
 //
 // POST /v1/drives/{driveID}/fs/mkdir
 func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params MkdirParams) (r MkdirRes, _ error) {
@@ -195,7 +163,8 @@ func (UnimplementedHandler) Mkdir(ctx context.Context, req OptMkdirReq, params M
 
 // Mount implements mount operation.
 //
-// Bind-mount another drive at a path (POSIX mount-like).
+// Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via
+// the mount.
 //
 // POST /v1/drives/{driveID}/fs/mount
 func (UnimplementedHandler) Mount(ctx context.Context, req OptMountReq, params MountParams) (r MountRes, _ error) {
@@ -204,7 +173,8 @@ func (UnimplementedHandler) Mount(ctx context.Context, req OptMountReq, params M
 
 // Mv implements mv operation.
 //
-// Move files or directories (POSIX rename(2)).
+// Move or rename one or more sources to a destination. Source and destination must be on the same
+// drive.
 //
 // POST /v1/drives/{driveID}/fs/mv
 func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParams) (r MvRes, _ error) {
@@ -213,7 +183,7 @@ func (UnimplementedHandler) Mv(ctx context.Context, req OptMvReq, params MvParam
 
 // PresignDownload implements presignDownload operation.
 //
-// Get a presigned download URL for an object node.
+// Generate a presigned GET URL for downloading an existing object.
 //
 // GET /v1/drives/{driveID}/downloads
 func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignDownloadParams) (r PresignDownloadRes, _ error) {
@@ -222,7 +192,7 @@ func (UnimplementedHandler) PresignDownload(ctx context.Context, params PresignD
 
 // Readlink implements readlink operation.
 //
-// Read a symbolic link's target (POSIX readlink(2)).
+// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
 //
 // GET /v1/drives/{driveID}/fs/readlink
 func (UnimplementedHandler) Readlink(ctx context.Context, params ReadlinkParams) (r ReadlinkRes, _ error) {
@@ -231,7 +201,7 @@ func (UnimplementedHandler) Readlink(ctx context.Context, params ReadlinkParams)
 
 // Realpath implements realpath operation.
 //
-// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+// Resolve all symlinks and return the canonical absolute path.
 //
 // GET /v1/drives/{driveID}/fs/realpath
 func (UnimplementedHandler) Realpath(ctx context.Context, params RealpathParams) (r RealpathRes, _ error) {
@@ -240,7 +210,7 @@ func (UnimplementedHandler) Realpath(ctx context.Context, params RealpathParams)
 
 // RestoreDrive implements restoreDrive operation.
 //
-// Restore a soft-deleted drive.
+// Restore a soft-deleted drive. Admin only.
 //
 // POST /v1/drives/{driveID}/restore
 func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriveParams) (r RestoreDriveRes, _ error) {
@@ -249,7 +219,8 @@ func (UnimplementedHandler) RestoreDrive(ctx context.Context, params RestoreDriv
 
 // Rm implements rm operation.
 //
-// Remove files or directories (POSIX unlink/rmdir(2)).
+// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
+// contents.
 //
 // DELETE /v1/drives/{driveID}/fs
 func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParams) (r RmRes, _ error) {
@@ -258,7 +229,7 @@ func (UnimplementedHandler) Rm(ctx context.Context, req OptRmReq, params RmParam
 
 // Stat implements stat operation.
 //
-// Get file metadata, following symlinks (POSIX stat(2)).
+// Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r StatRes, _ error) {
@@ -267,7 +238,8 @@ func (UnimplementedHandler) Stat(ctx context.Context, params StatParams) (r Stat
 
 // Symlink implements symlink operation.
 //
-// Create a symbolic link (POSIX symlink(2)).
+// Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or
+// relative; the link may dangle.
 //
 // POST /v1/drives/{driveID}/fs/symlink
 func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, params SymlinkParams) (r SymlinkRes, _ error) {
@@ -276,7 +248,7 @@ func (UnimplementedHandler) Symlink(ctx context.Context, req OptSymlinkReq, para
 
 // Touch implements touch operation.
 //
-// Create an empty file (POSIX open(O_CREAT)).
+// Create an empty regular file at `path`, or update its mtime if it exists.
 //
 // POST /v1/drives/{driveID}/fs/touch
 func (UnimplementedHandler) Touch(ctx context.Context, req OptTouchReq, params TouchParams) (r TouchRes, _ error) {
@@ -285,7 +257,7 @@ func (UnimplementedHandler) Touch(ctx context.Context, req OptTouchReq, params T
 
 // Unmount implements unmount operation.
 //
-// Remove a bind mount (POSIX umount-like).
+// Remove the bind-mount at `mount_path`.
 //
 // DELETE /v1/drives/{driveID}/fs/unmount
 func (UnimplementedHandler) Unmount(ctx context.Context, params UnmountParams) (r UnmountRes, _ error) {
@@ -294,7 +266,7 @@ func (UnimplementedHandler) Unmount(ctx context.Context, params UnmountParams) (
 
 // UpdateDrive implements updateDrive operation.
 //
-// Update a drive.
+// Update the drive's name and description. Empty fields are left unchanged.
 //
 // PUT /v1/drives/{driveID}/root
 func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (r UpdateDriveRes, _ error) {
@@ -303,7 +275,7 @@ func (UnimplementedHandler) UpdateDrive(ctx context.Context, req OptDriveUpdate,
 
 // UpsertUser implements upsertUser operation.
 //
-// Upsert a user from OIDC claims.
+// Create or update a user record. Admin or self-service depending on `provider`.
 //
 // POST /v1/users
 func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq) (r UpsertUserRes, _ error) {
@@ -312,7 +284,7 @@ func (UnimplementedHandler) UpsertUser(ctx context.Context, req OptUpsertUserReq
 
 // Write implements write operation.
 //
-// Write inline content to a file.
+// Create or replace the file at `path` with `content`.
 //
 // PUT /v1/drives/{driveID}/fs/write
 func (UnimplementedHandler) Write(ctx context.Context, req OptWriteReq, params WriteParams) (r WriteRes, _ error) {
@@ -321,9 +293,17 @@ func (UnimplementedHandler) Write(ctx context.Context, req OptWriteReq, params W
 
 // WriteLarge implements writeLarge operation.
 //
-// Create an S3-backed object node.
+// Create or replace the S3 object at `path` with multipart `object` content.
 //
 // POST /v1/drives/{driveID}/fs/object
 func (UnimplementedHandler) WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) (r WriteLargeRes, _ error) {
 	return r, ht.ErrNotImplemented
+}
+
+// NewError creates *ErrorStatusCode from error returned by handler.
+//
+// Used for common default response.
+func (UnimplementedHandler) NewError(ctx context.Context, err error) (r *ErrorStatusCode) {
+	r = new(ErrorStatusCode)
+	return r
 }

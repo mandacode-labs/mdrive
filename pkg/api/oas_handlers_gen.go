@@ -33,328 +33,9 @@ func (c *codeRecorder) Unwrap() http.ResponseWriter {
 	return c.ResponseWriter
 }
 
-// handleAuthCallbackRequest handles authCallback operation.
-//
-// OAuth callback from Zitadel.
-//
-// GET /auth/callback
-func (s *Server) handleAuthCallbackRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("authCallback"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/auth/callback"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), AuthCallbackOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: AuthCallbackOperation,
-			ID:   "authCallback",
-		}
-	)
-	params, err := decodeAuthCallbackParams(args, argsEscaped, r)
-	if err != nil {
-		err = &ogenerrors.DecodeParamsError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeParams", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	var rawBody []byte
-
-	var response AuthCallbackRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    AuthCallbackOperation,
-			OperationSummary: "OAuth callback from Zitadel",
-			OperationID:      "authCallback",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params: middleware.Parameters{
-				{
-					Name: "code",
-					In:   "query",
-				}: params.Code,
-				{
-					Name: "state",
-					In:   "query",
-				}: params.State,
-			},
-			Raw: r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = AuthCallbackParams
-			Response = AuthCallbackRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			unpackAuthCallbackParams,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.AuthCallback(ctx, params)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.AuthCallback(ctx, params)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeAuthCallbackResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleAuthLogoutRequest handles authLogout operation.
-//
-// Destroy the current session.
-//
-// POST /auth/logout
-func (s *Server) handleAuthLogoutRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("authLogout"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/auth/logout"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), AuthLogoutOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: AuthLogoutOperation,
-			ID:   "authLogout",
-		}
-	)
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			sctx, ok, err := s.securityBearerAuth(ctx, AuthLogoutOperation, r)
-			if err != nil {
-				err = &ogenerrors.SecurityError{
-					OperationContext: opErrContext,
-					Security:         "BearerAuth",
-					Err:              err,
-				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
-				return
-			}
-			if ok {
-				satisfied[0] |= 1 << 0
-				ctx = sctx
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			err = &ogenerrors.SecurityError{
-				OperationContext: opErrContext,
-				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
-			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
-			return
-		}
-	}
-
-	var rawBody []byte
-
-	var response AuthLogoutRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    AuthLogoutOperation,
-			OperationSummary: "Destroy the current session",
-			OperationID:      "authLogout",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = struct{}
-			Response = AuthLogoutRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.AuthLogout(ctx)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.AuthLogout(ctx)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeAuthLogoutResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
 // handleAuthMeRequest handles authMe operation.
 //
-// Get the current authenticated user.
+// Return the current authenticated user (200) or 401 if no session.
 //
 // GET /auth/me
 func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -439,8 +120,9 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -467,8 +149,9 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -510,8 +193,19 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 		response, err = s.h.AuthMe(ctx)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -526,7 +220,8 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 
 // handleCatRequest handles cat operation.
 //
-// Read file contents (POSIX open(O_RDONLY)).
+// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+// is not a file.
 //
 // GET /v1/drives/{driveID}/fs/cat
 func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -611,8 +306,9 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -639,8 +335,9 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -701,8 +398,19 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 		response, err = s.h.Cat(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -717,7 +425,8 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 
 // handleCompleteUploadRequest handles completeUpload operation.
 //
-// Complete a presigned upload and create the object node.
+// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+// the parent directory.
 //
 // POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -802,8 +511,9 @@ func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -830,8 +540,9 @@ func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -907,8 +618,19 @@ func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w
 		response, err = s.h.CompleteUpload(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -923,7 +645,7 @@ func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w
 
 // handleCreateDriveRequest handles createDrive operation.
 //
-// Create a new drive.
+// Create a new drive owned by the authenticated user with the given storage configuration.
 //
 // POST /v1/drives
 func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1008,8 +730,9 @@ func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w ht
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -1036,8 +759,9 @@ func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w ht
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -1094,8 +818,19 @@ func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w ht
 		response, err = s.h.CreateDrive(ctx, request)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -1110,7 +845,8 @@ func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w ht
 
 // handleDeleteDriveRequest handles deleteDrive operation.
 //
-// Soft-delete a drive.
+// Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention
+// window.
 //
 // DELETE /v1/drives/{driveID}/root
 func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1195,8 +931,9 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -1223,8 +960,9 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -1281,8 +1019,19 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 		response, err = s.h.DeleteDrive(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -1297,7 +1046,7 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 
 // handleGetDriveRequest handles getDrive operation.
 //
-// Get a drive by ID.
+// Return the drive identified by `driveID` (404 if not found or not owned by the caller).
 //
 // GET /v1/drives/{driveID}/root
 func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1382,8 +1131,9 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -1410,8 +1160,9 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -1468,8 +1219,19 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 		response, err = s.h.GetDrive(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -1484,7 +1246,7 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 
 // handleGetDriveStorageRequest handles getDriveStorage operation.
 //
-// Get a drive's storage configuration.
+// Return the storage configuration for the drive.
 //
 // GET /v1/drives/{driveID}/storage
 func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1569,8 +1331,9 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -1597,8 +1360,9 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -1655,8 +1419,19 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 		response, err = s.h.GetDriveStorage(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -1671,7 +1446,7 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 
 // handleGetUserRequest handles getUser operation.
 //
-// Get current user.
+// Return the user identified by `id`.
 //
 // GET /v1/users
 func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -1756,8 +1531,9 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -1784,8 +1560,9 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -1827,8 +1604,19 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 		response, err = s.h.GetUser(ctx)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -1841,276 +1629,10 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 	}
 }
 
-// handleGoogleLoginRequest handles googleLogin operation.
-//
-// Initiate Google OAuth login (web).
-//
-// GET /auth/google
-func (s *Server) handleGoogleLoginRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("googleLogin"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.HTTPRouteKey.String("/auth/google"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GoogleLoginOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err error
-	)
-
-	var rawBody []byte
-
-	var response *GoogleLoginFound
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GoogleLoginOperation,
-			OperationSummary: "Initiate Google OAuth login (web)",
-			OperationID:      "googleLogin",
-			Body:             nil,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = struct{}
-			Params   = struct{}
-			Response = *GoogleLoginFound
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GoogleLogin(ctx)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GoogleLogin(ctx)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGoogleLoginResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
-// handleGoogleNativeLoginRequest handles googleNativeLogin operation.
-//
-// Exchange a Google id_token for a mdrive session (mobile).
-//
-// POST /auth/google/native
-func (s *Server) handleGoogleNativeLoginRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
-	statusWriter := &codeRecorder{ResponseWriter: w}
-	w = statusWriter
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("googleNativeLogin"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.HTTPRouteKey.String("/auth/google/native"),
-	}
-	// Add attributes from config.
-	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
-
-	// Start a span for this request.
-	ctx, span := s.cfg.Tracer.Start(r.Context(), GoogleNativeLoginOperation,
-		trace.WithAttributes(otelAttrs...),
-		serverSpanKind,
-	)
-	defer span.End()
-
-	// Add Labeler to context.
-	labeler := &Labeler{attrs: otelAttrs}
-	ctx = contextWithLabeler(ctx, labeler)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		elapsedDuration := time.Since(startTime)
-
-		attrSet := labeler.AttributeSet()
-		attrs := attrSet.ToSlice()
-		code := statusWriter.status
-		if code != 0 {
-			codeAttr := semconv.HTTPResponseStatusCode(code)
-			attrs = append(attrs, codeAttr)
-			span.SetAttributes(codeAttr)
-		}
-		attrOpt := metric.WithAttributes(attrs...)
-
-		// Increment request counter.
-		s.requests.Add(ctx, 1, attrOpt)
-
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
-	}()
-
-	var (
-		recordError = func(stage string, err error) {
-			span.RecordError(err)
-
-			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
-			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
-			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
-			// max redirects exceeded), in which case status MUST be set to Error.
-			code := statusWriter.status
-			if code < 100 || code >= 500 {
-				span.SetStatus(codes.Error, stage)
-			}
-
-			attrSet := labeler.AttributeSet()
-			attrs := attrSet.ToSlice()
-			if code != 0 {
-				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
-			}
-
-			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		err          error
-		opErrContext = ogenerrors.OperationContext{
-			Name: GoogleNativeLoginOperation,
-			ID:   "googleNativeLogin",
-		}
-	)
-
-	var rawBody []byte
-	request, rawBody, close, err := s.decodeGoogleNativeLoginRequest(r)
-	if err != nil {
-		err = &ogenerrors.DecodeRequestError{
-			OperationContext: opErrContext,
-			Err:              err,
-		}
-		defer recordError("DecodeRequest", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-	defer func() {
-		if err := close(); err != nil {
-			recordError("CloseRequest", err)
-		}
-	}()
-
-	var response GoogleNativeLoginRes
-	if m := s.cfg.Middleware; m != nil {
-		mreq := middleware.Request{
-			Context:          ctx,
-			OperationName:    GoogleNativeLoginOperation,
-			OperationSummary: "Exchange a Google id_token for a mdrive session (mobile)",
-			OperationID:      "googleNativeLogin",
-			Body:             request,
-			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
-		}
-
-		type (
-			Request  = OptGoogleNativeLoginReq
-			Params   = struct{}
-			Response = GoogleNativeLoginRes
-		)
-		response, err = middleware.HookMiddleware[
-			Request,
-			Params,
-			Response,
-		](
-			m,
-			mreq,
-			nil,
-			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.GoogleNativeLogin(ctx, request)
-				return response, err
-			},
-		)
-	} else {
-		response, err = s.h.GoogleNativeLogin(ctx, request)
-	}
-	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
-		return
-	}
-
-	if err := encodeGoogleNativeLoginResponse(response, w, span); err != nil {
-		defer recordError("EncodeResponse", err)
-		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
-			s.cfg.ErrorHandler(ctx, w, r, err)
-		}
-		return
-	}
-}
-
 // handleHardlinkRequest handles hardlink operation.
 //
-// Create a hard link (POSIX link(2)).
+// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
 //
 // POST /v1/drives/{driveID}/fs/hardlink
 func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2195,8 +1717,9 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -2223,8 +1746,9 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -2296,8 +1820,19 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 		response, err = s.h.Hardlink(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -2312,7 +1847,7 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 
 // handleHealthRequest handles health operation.
 //
-// Health check.
+// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
 //
 // GET /health
 func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2385,7 +1920,7 @@ func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.Re
 
 	var rawBody []byte
 
-	var response *HealthOK
+	var response HealthRes
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:          ctx,
@@ -2401,7 +1936,7 @@ func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.Re
 		type (
 			Request  = struct{}
 			Params   = struct{}
-			Response = *HealthOK
+			Response = HealthRes
 		)
 		response, err = middleware.HookMiddleware[
 			Request,
@@ -2420,8 +1955,19 @@ func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.Re
 		response, err = s.h.Health(ctx)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -2436,7 +1982,7 @@ func (s *Server) handleHealthRequest(args [0]string, argsEscaped bool, w http.Re
 
 // handleInitiateUploadRequest handles initiateUpload operation.
 //
-// Initiate a presigned upload.
+// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
 //
 // POST /v1/drives/{driveID}/uploads
 func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2521,8 +2067,9 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -2549,8 +2096,9 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -2622,8 +2170,19 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 		response, err = s.h.InitiateUpload(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -2638,7 +2197,7 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 
 // handleListDeletedDrivesRequest handles listDeletedDrives operation.
 //
-// List soft-deleted drives (admin only).
+// List all soft-deleted drives. Admin only.
 //
 // GET /v1/admin/drives/deleted
 func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -2723,8 +2282,9 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -2751,8 +2311,9 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -2794,8 +2355,19 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 		response, err = s.h.ListDeletedDrives(ctx)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -2895,8 +2467,9 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -2923,8 +2496,9 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -2966,8 +2540,19 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 		response, err = s.h.ListDrives(ctx)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -2982,7 +2567,7 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 
 // handleLsRequest handles ls operation.
 //
-// List directory contents (POSIX opendir/readdir).
+// List the contents of a directory. Each entry returns its name, type, and inode id.
 //
 // GET /v1/drives/{driveID}/fs/ls
 func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3067,8 +2652,9 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -3095,8 +2681,9 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -3157,8 +2744,19 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 		response, err = s.h.Ls(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -3173,7 +2771,7 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 
 // handleLstatRequest handles lstat operation.
 //
-// Get file metadata without following symlinks (POSIX lstat(2)).
+// Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
 //
 // GET /v1/drives/{driveID}/fs/lstat
 func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3258,8 +2856,9 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -3286,8 +2885,9 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -3348,8 +2948,19 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 		response, err = s.h.Lstat(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -3364,7 +2975,7 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMkdirRequest handles mkdir operation.
 //
-// Create a directory (POSIX mkdir(2)).
+// Create a directory at `path` in the drive. Returns 409 if `path` already exists.
 //
 // POST /v1/drives/{driveID}/fs/mkdir
 func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3449,8 +3060,9 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -3477,8 +3089,9 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -3550,8 +3163,19 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		response, err = s.h.Mkdir(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -3566,7 +3190,8 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMountRequest handles mount operation.
 //
-// Bind-mount another drive at a path (POSIX mount-like).
+// Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via
+// the mount.
 //
 // POST /v1/drives/{driveID}/fs/mount
 func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3651,8 +3276,9 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -3679,8 +3305,9 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -3752,8 +3379,19 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 		response, err = s.h.Mount(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -3768,7 +3406,8 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleMvRequest handles mv operation.
 //
-// Move files or directories (POSIX rename(2)).
+// Move or rename one or more sources to a destination. Source and destination must be on the same
+// drive.
 //
 // POST /v1/drives/{driveID}/fs/mv
 func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -3853,8 +3492,9 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -3881,8 +3521,9 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -3954,8 +3595,19 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		response, err = s.h.Mv(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -3970,7 +3622,7 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 
 // handlePresignDownloadRequest handles presignDownload operation.
 //
-// Get a presigned download URL for an object node.
+// Generate a presigned GET URL for downloading an existing object.
 //
 // GET /v1/drives/{driveID}/downloads
 func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4055,8 +3707,9 @@ func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, 
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -4083,8 +3736,9 @@ func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, 
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -4145,8 +3799,19 @@ func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, 
 		response, err = s.h.PresignDownload(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -4161,7 +3826,7 @@ func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, 
 
 // handleReadlinkRequest handles readlink operation.
 //
-// Read a symbolic link's target (POSIX readlink(2)).
+// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
 //
 // GET /v1/drives/{driveID}/fs/readlink
 func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4246,8 +3911,9 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -4274,8 +3940,9 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -4336,8 +4003,19 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 		response, err = s.h.Readlink(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -4352,7 +4030,7 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 
 // handleRealpathRequest handles realpath operation.
 //
-// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+// Resolve all symlinks and return the canonical absolute path.
 //
 // GET /v1/drives/{driveID}/fs/realpath
 func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4437,8 +4115,9 @@ func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -4465,8 +4144,9 @@ func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -4527,8 +4207,19 @@ func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.
 		response, err = s.h.Realpath(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -4543,7 +4234,7 @@ func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.
 
 // handleRestoreDriveRequest handles restoreDrive operation.
 //
-// Restore a soft-deleted drive.
+// Restore a soft-deleted drive. Admin only.
 //
 // POST /v1/drives/{driveID}/restore
 func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4628,8 +4319,9 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -4656,8 +4348,9 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -4714,8 +4407,19 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 		response, err = s.h.RestoreDrive(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -4730,7 +4434,8 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 
 // handleRmRequest handles rm operation.
 //
-// Remove files or directories (POSIX unlink/rmdir(2)).
+// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
+// contents.
 //
 // DELETE /v1/drives/{driveID}/fs
 func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -4815,8 +4520,9 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -4843,8 +4549,9 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -4916,8 +4623,19 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		response, err = s.h.Rm(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -4932,7 +4650,7 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 
 // handleStatRequest handles stat operation.
 //
-// Get file metadata, following symlinks (POSIX stat(2)).
+// Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5017,8 +4735,9 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -5045,8 +4764,9 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -5107,8 +4827,19 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 		response, err = s.h.Stat(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -5123,7 +4854,8 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 
 // handleSymlinkRequest handles symlink operation.
 //
-// Create a symbolic link (POSIX symlink(2)).
+// Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or
+// relative; the link may dangle.
 //
 // POST /v1/drives/{driveID}/fs/symlink
 func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5208,8 +4940,9 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -5236,8 +4969,9 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -5309,8 +5043,19 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 		response, err = s.h.Symlink(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -5325,7 +5070,7 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 
 // handleTouchRequest handles touch operation.
 //
-// Create an empty file (POSIX open(O_CREAT)).
+// Create an empty regular file at `path`, or update its mtime if it exists.
 //
 // POST /v1/drives/{driveID}/fs/touch
 func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5410,8 +5155,9 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -5438,8 +5184,9 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -5511,8 +5258,19 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 		response, err = s.h.Touch(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -5527,7 +5285,7 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleUnmountRequest handles unmount operation.
 //
-// Remove a bind mount (POSIX umount-like).
+// Remove the bind-mount at `mount_path`.
 //
 // DELETE /v1/drives/{driveID}/fs/unmount
 func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5612,8 +5370,9 @@ func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.R
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -5640,8 +5399,9 @@ func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.R
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -5702,8 +5462,19 @@ func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.R
 		response, err = s.h.Unmount(ctx, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -5718,7 +5489,7 @@ func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.R
 
 // handleUpdateDriveRequest handles updateDrive operation.
 //
-// Update a drive.
+// Update the drive's name and description. Empty fields are left unchanged.
 //
 // PUT /v1/drives/{driveID}/root
 func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -5803,8 +5574,9 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -5831,8 +5603,9 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -5904,8 +5677,19 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 		response, err = s.h.UpdateDrive(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -5920,7 +5704,7 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 
 // handleUpsertUserRequest handles upsertUser operation.
 //
-// Upsert a user from OIDC claims.
+// Create or update a user record. Admin or self-service depending on `provider`.
 //
 // POST /v1/users
 func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -6005,8 +5789,9 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -6033,8 +5818,9 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -6091,8 +5877,19 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 		response, err = s.h.UpsertUser(ctx, request)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -6107,7 +5904,7 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 
 // handleWriteRequest handles write operation.
 //
-// Write inline content to a file.
+// Create or replace the file at `path` with `content`.
 //
 // PUT /v1/drives/{driveID}/fs/write
 func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -6192,8 +5989,9 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -6220,8 +6018,9 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -6293,8 +6092,19 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 		response, err = s.h.Write(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 
@@ -6309,7 +6119,7 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 
 // handleWriteLargeRequest handles writeLarge operation.
 //
-// Create an S3-backed object node.
+// Create or replace the S3 object at `path` with multipart `object` content.
 //
 // POST /v1/drives/{driveID}/fs/object
 func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -6394,8 +6204,9 @@ func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w htt
 					Security:         "BearerAuth",
 					Err:              err,
 				}
-				defer recordError("Security:BearerAuth", err)
-				s.cfg.ErrorHandler(ctx, w, r, err)
+				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+					defer recordError("Security:BearerAuth", err)
+				}
 				return
 			}
 			if ok {
@@ -6422,8 +6233,9 @@ func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w htt
 				OperationContext: opErrContext,
 				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
 			}
-			defer recordError("Security", err)
-			s.cfg.ErrorHandler(ctx, w, r, err)
+			if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
+				defer recordError("Security", err)
+			}
 			return
 		}
 	}
@@ -6495,8 +6307,19 @@ func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w htt
 		response, err = s.h.WriteLarge(ctx, request, params)
 	}
 	if err != nil {
-		defer recordError("Internal", err)
-		s.cfg.ErrorHandler(ctx, w, r, err)
+		if errRes, ok := errors.Into[*ErrorStatusCode](err); ok {
+			if err := encodeErrorResponse(errRes, w, span); err != nil {
+				defer recordError("Internal", err)
+			}
+			return
+		}
+		if errors.Is(err, ht.ErrNotImplemented) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+		if err := encodeErrorResponse(s.h.NewError(ctx, err), w, span); err != nil {
+			defer recordError("Internal", err)
+		}
 		return
 	}
 

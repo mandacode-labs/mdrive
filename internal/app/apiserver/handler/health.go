@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -14,28 +13,23 @@ import (
 
 var ErrServiceDegraded = errorx.New(errorx.KindServiceDegraded, "service degraded")
 
-// HealthDeps captures the components the health check pings. nil values
-// are skipped (useful in development where some backends are absent).
+type ValkeyScanner interface {
+	Scan(ctx context.Context, fn func(string) error) error
+}
+
 type HealthDeps struct {
 	DB         *sql.DB
-	Valkey     session.Scanner
+	Valkey     ValkeyScanner
 	Authorizer permission.Authorizer
 }
 
-// Health returns 200 with status "ok" when all configured
-// dependencies respond, or an error wrapping ErrServiceDegraded
-// (mapped to 503 by FromError) when any dependency is unreachable.
-// A zero-value HealthDeps is treated as 'no dependencies
-// configured' and always returns ok.
-func (h *Handler) Health(ctx context.Context) (*api.HealthOK, error) {
+func (h *Handler) Health(ctx context.Context) (api.HealthRes, error) {
 	if h.healthDeps.DB != nil {
 		if err := h.healthDeps.DB.PingContext(ctx); err != nil {
 			return nil, fmt.Errorf("%w: database: %s", ErrServiceDegraded, err.Error())
 		}
 	}
 	if h.healthDeps.Valkey != nil {
-		// Scan with a no-op callback to confirm connectivity without
-		// actually iterating anything.
 		if err := h.healthDeps.Valkey.Scan(ctx, func(_ string) error { return nil }); err != nil {
 			return nil, fmt.Errorf("%w: valkey: %s", ErrServiceDegraded, err.Error())
 		}

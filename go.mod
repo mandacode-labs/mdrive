@@ -75,6 +75,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zitadel/logging v0.7.0 // indirect
 	github.com/zitadel/schema v1.3.2 // indirect
+	github.com/zitadel/zitadel-go/v3 v3.29.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect

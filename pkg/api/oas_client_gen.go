@@ -28,99 +28,79 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
-	// AuthCallback invokes authCallback operation.
-	//
-	// OAuth callback from Zitadel.
-	//
-	// GET /auth/callback
-	AuthCallback(ctx context.Context, params AuthCallbackParams) (AuthCallbackRes, error)
-	// AuthLogout invokes authLogout operation.
-	//
-	// Destroy the current session.
-	//
-	// POST /auth/logout
-	AuthLogout(ctx context.Context) (AuthLogoutRes, error)
 	// AuthMe invokes authMe operation.
 	//
-	// Get the current authenticated user.
+	// Return the current authenticated user (200) or 401 if no session.
 	//
 	// GET /auth/me
 	AuthMe(ctx context.Context) (AuthMeRes, error)
 	// Cat invokes cat operation.
 	//
-	// Read file contents (POSIX open(O_RDONLY)).
+	// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+	// is not a file.
 	//
 	// GET /v1/drives/{driveID}/fs/cat
 	Cat(ctx context.Context, params CatParams) (CatRes, error)
 	// CompleteUpload invokes completeUpload operation.
 	//
-	// Complete a presigned upload and create the object node.
+	// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+	// the parent directory.
 	//
 	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 	CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
 	// CreateDrive invokes createDrive operation.
 	//
-	// Create a new drive.
+	// Create a new drive owned by the authenticated user with the given storage configuration.
 	//
 	// POST /v1/drives
 	CreateDrive(ctx context.Context, request OptDriveCreate) (CreateDriveRes, error)
 	// DeleteDrive invokes deleteDrive operation.
 	//
-	// Soft-delete a drive.
+	// Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention
+	// window.
 	//
 	// DELETE /v1/drives/{driveID}/root
 	DeleteDrive(ctx context.Context, params DeleteDriveParams) (DeleteDriveRes, error)
 	// GetDrive invokes getDrive operation.
 	//
-	// Get a drive by ID.
+	// Return the drive identified by `driveID` (404 if not found or not owned by the caller).
 	//
 	// GET /v1/drives/{driveID}/root
 	GetDrive(ctx context.Context, params GetDriveParams) (GetDriveRes, error)
 	// GetDriveStorage invokes getDriveStorage operation.
 	//
-	// Get a drive's storage configuration.
+	// Return the storage configuration for the drive.
 	//
 	// GET /v1/drives/{driveID}/storage
 	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error)
 	// GetUser invokes getUser operation.
 	//
-	// Get current user.
+	// Return the user identified by `id`.
 	//
 	// GET /v1/users
 	GetUser(ctx context.Context) (GetUserRes, error)
-	// GoogleLogin invokes googleLogin operation.
-	//
-	// Initiate Google OAuth login (web).
-	//
-	// GET /auth/google
-	GoogleLogin(ctx context.Context) (*GoogleLoginFound, error)
-	// GoogleNativeLogin invokes googleNativeLogin operation.
-	//
-	// Exchange a Google id_token for a mdrive session (mobile).
-	//
-	// POST /auth/google/native
-	GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (GoogleNativeLoginRes, error)
 	// Hardlink invokes hardlink operation.
 	//
-	// Create a hard link (POSIX link(2)).
+	// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+	// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
 	//
 	// POST /v1/drives/{driveID}/fs/hardlink
 	Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Health invokes health operation.
 	//
-	// Health check.
+	// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
 	//
 	// GET /health
-	Health(ctx context.Context) (*HealthOK, error)
+	Health(ctx context.Context) (HealthRes, error)
 	// InitiateUpload invokes initiateUpload operation.
 	//
-	// Initiate a presigned upload.
+	// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
 	//
 	// POST /v1/drives/{driveID}/uploads
 	InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDeletedDrives invokes listDeletedDrives operation.
 	//
-	// List soft-deleted drives (admin only).
+	// List all soft-deleted drives. Admin only.
 	//
 	// GET /v1/admin/drives/deleted
 	ListDeletedDrives(ctx context.Context) (ListDeletedDrivesRes, error)
@@ -132,109 +112,113 @@ type Invoker interface {
 	ListDrives(ctx context.Context) (ListDrivesRes, error)
 	// Ls invokes ls operation.
 	//
-	// List directory contents (POSIX opendir/readdir).
+	// List the contents of a directory. Each entry returns its name, type, and inode id.
 	//
 	// GET /v1/drives/{driveID}/fs/ls
 	Ls(ctx context.Context, params LsParams) (LsRes, error)
 	// Lstat invokes lstat operation.
 	//
-	// Get file metadata without following symlinks (POSIX lstat(2)).
+	// Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
 	//
 	// GET /v1/drives/{driveID}/fs/lstat
 	Lstat(ctx context.Context, params LstatParams) (LstatRes, error)
 	// Mkdir invokes mkdir operation.
 	//
-	// Create a directory (POSIX mkdir(2)).
+	// Create a directory at `path` in the drive. Returns 409 if `path` already exists.
 	//
 	// POST /v1/drives/{driveID}/fs/mkdir
 	Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (MkdirRes, error)
 	// Mount invokes mount operation.
 	//
-	// Bind-mount another drive at a path (POSIX mount-like).
+	// Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via
+	// the mount.
 	//
 	// POST /v1/drives/{driveID}/fs/mount
 	Mount(ctx context.Context, request OptMountReq, params MountParams) (MountRes, error)
 	// Mv invokes mv operation.
 	//
-	// Move files or directories (POSIX rename(2)).
+	// Move or rename one or more sources to a destination. Source and destination must be on the same
+	// drive.
 	//
 	// POST /v1/drives/{driveID}/fs/mv
 	Mv(ctx context.Context, request OptMvReq, params MvParams) (MvRes, error)
 	// PresignDownload invokes presignDownload operation.
 	//
-	// Get a presigned download URL for an object node.
+	// Generate a presigned GET URL for downloading an existing object.
 	//
 	// GET /v1/drives/{driveID}/downloads
 	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Readlink invokes readlink operation.
 	//
-	// Read a symbolic link's target (POSIX readlink(2)).
+	// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
 	//
 	// GET /v1/drives/{driveID}/fs/readlink
 	Readlink(ctx context.Context, params ReadlinkParams) (ReadlinkRes, error)
 	// Realpath invokes realpath operation.
 	//
-	// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+	// Resolve all symlinks and return the canonical absolute path.
 	//
 	// GET /v1/drives/{driveID}/fs/realpath
 	Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error)
 	// RestoreDrive invokes restoreDrive operation.
 	//
-	// Restore a soft-deleted drive.
+	// Restore a soft-deleted drive. Admin only.
 	//
 	// POST /v1/drives/{driveID}/restore
 	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
 	// Rm invokes rm operation.
 	//
-	// Remove files or directories (POSIX unlink/rmdir(2)).
+	// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
+	// contents.
 	//
 	// DELETE /v1/drives/{driveID}/fs
 	Rm(ctx context.Context, request OptRmReq, params RmParams) (RmRes, error)
 	// Stat invokes stat operation.
 	//
-	// Get file metadata, following symlinks (POSIX stat(2)).
+	// Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
 	//
 	// GET /v1/drives/{driveID}/fs/stat
 	Stat(ctx context.Context, params StatParams) (StatRes, error)
 	// Symlink invokes symlink operation.
 	//
-	// Create a symbolic link (POSIX symlink(2)).
+	// Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or
+	// relative; the link may dangle.
 	//
 	// POST /v1/drives/{driveID}/fs/symlink
 	Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error)
 	// Touch invokes touch operation.
 	//
-	// Create an empty file (POSIX open(O_CREAT)).
+	// Create an empty regular file at `path`, or update its mtime if it exists.
 	//
 	// POST /v1/drives/{driveID}/fs/touch
 	Touch(ctx context.Context, request OptTouchReq, params TouchParams) (TouchRes, error)
 	// Unmount invokes unmount operation.
 	//
-	// Remove a bind mount (POSIX umount-like).
+	// Remove the bind-mount at `mount_path`.
 	//
 	// DELETE /v1/drives/{driveID}/fs/unmount
 	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
 	// UpdateDrive invokes updateDrive operation.
 	//
-	// Update a drive.
+	// Update the drive's name and description. Empty fields are left unchanged.
 	//
 	// PUT /v1/drives/{driveID}/root
 	UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
 	// UpsertUser invokes upsertUser operation.
 	//
-	// Upsert a user from OIDC claims.
+	// Create or update a user record. Admin or self-service depending on `provider`.
 	//
 	// POST /v1/users
 	UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error)
 	// Write invokes write operation.
 	//
-	// Write inline content to a file.
+	// Create or replace the file at `path` with `content`.
 	//
 	// PUT /v1/drives/{driveID}/fs/write
 	Write(ctx context.Context, request OptWriteReq, params WriteParams) (WriteRes, error)
 	// WriteLarge invokes writeLarge operation.
 	//
-	// Create an S3-backed object node.
+	// Create or replace the S3 object at `path` with multipart `object` content.
 	//
 	// POST /v1/drives/{driveID}/fs/object
 	WriteLarge(ctx context.Context, request OptWriteLargeReq, params WriteLargeParams) (WriteLargeRes, error)
@@ -281,222 +265,9 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 	return u
 }
 
-// AuthCallback invokes authCallback operation.
-//
-// OAuth callback from Zitadel.
-//
-// GET /auth/callback
-func (c *Client) AuthCallback(ctx context.Context, params AuthCallbackParams) (AuthCallbackRes, error) {
-	res, err := c.sendAuthCallback(ctx, params)
-	return res, err
-}
-
-func (c *Client) sendAuthCallback(ctx context.Context, params AuthCallbackParams) (res AuthCallbackRes, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("authCallback"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/auth/callback"),
-	}
-	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, AuthCallbackOperation,
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/auth/callback"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeQueryParams"
-	q := uri.NewQueryEncoder()
-	{
-		// Encode "code" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "code",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.Code))
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	{
-		// Encode "state" parameter.
-		cfg := uri.QueryParameterEncodingConfig{
-			Name:    "state",
-			Style:   uri.QueryStyleForm,
-			Explode: true,
-		}
-
-		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.State))
-		}); err != nil {
-			return res, errors.Wrap(err, "encode query")
-		}
-	}
-	u.RawQuery = q.Values().Encode()
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "GET", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	body := resp.Body
-	defer body.Close()
-
-	stage = "DecodeResponse"
-	result, err := decodeAuthCallbackResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
-// AuthLogout invokes authLogout operation.
-//
-// Destroy the current session.
-//
-// POST /auth/logout
-func (c *Client) AuthLogout(ctx context.Context) (AuthLogoutRes, error) {
-	res, err := c.sendAuthLogout(ctx)
-	return res, err
-}
-
-func (c *Client) sendAuthLogout(ctx context.Context) (res AuthLogoutRes, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("authLogout"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.URLTemplateKey.String("/auth/logout"),
-	}
-	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, AuthLogoutOperation,
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/auth/logout"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "POST", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, AuthLogoutOperation, r); {
-			case err == nil: // if NO error
-				satisfied[0] |= 1 << 0
-			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
-				// Skip this security.
-			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
-		}
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	body := resp.Body
-	defer body.Close()
-
-	stage = "DecodeResponse"
-	result, err := decodeAuthLogoutResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
 // AuthMe invokes authMe operation.
 //
-// Get the current authenticated user.
+// Return the current authenticated user (200) or 401 if no session.
 //
 // GET /auth/me
 func (c *Client) AuthMe(ctx context.Context) (AuthMeRes, error) {
@@ -603,7 +374,8 @@ func (c *Client) sendAuthMe(ctx context.Context) (res AuthMeRes, err error) {
 
 // Cat invokes cat operation.
 //
-// Read file contents (POSIX open(O_RDONLY)).
+// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+// is not a file.
 //
 // GET /v1/drives/{driveID}/fs/cat
 func (c *Client) Cat(ctx context.Context, params CatParams) (CatRes, error) {
@@ -747,7 +519,8 @@ func (c *Client) sendCat(ctx context.Context, params CatParams) (res CatRes, err
 
 // CompleteUpload invokes completeUpload operation.
 //
-// Complete a presigned upload and create the object node.
+// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+// the parent directory.
 //
 // POST /v1/drives/{driveID}/uploads/{uploadId}/complete
 func (c *Client) CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error) {
@@ -895,7 +668,7 @@ func (c *Client) sendCompleteUpload(ctx context.Context, request OptUploadComple
 
 // CreateDrive invokes createDrive operation.
 //
-// Create a new drive.
+// Create a new drive owned by the authenticated user with the given storage configuration.
 //
 // POST /v1/drives
 func (c *Client) CreateDrive(ctx context.Context, request OptDriveCreate) (CreateDriveRes, error) {
@@ -1005,7 +778,8 @@ func (c *Client) sendCreateDrive(ctx context.Context, request OptDriveCreate) (r
 
 // DeleteDrive invokes deleteDrive operation.
 //
-// Soft-delete a drive.
+// Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention
+// window.
 //
 // DELETE /v1/drives/{driveID}/root
 func (c *Client) DeleteDrive(ctx context.Context, params DeleteDriveParams) (DeleteDriveRes, error) {
@@ -1131,7 +905,7 @@ func (c *Client) sendDeleteDrive(ctx context.Context, params DeleteDriveParams) 
 
 // GetDrive invokes getDrive operation.
 //
-// Get a drive by ID.
+// Return the drive identified by `driveID` (404 if not found or not owned by the caller).
 //
 // GET /v1/drives/{driveID}/root
 func (c *Client) GetDrive(ctx context.Context, params GetDriveParams) (GetDriveRes, error) {
@@ -1257,7 +1031,7 @@ func (c *Client) sendGetDrive(ctx context.Context, params GetDriveParams) (res G
 
 // GetDriveStorage invokes getDriveStorage operation.
 //
-// Get a drive's storage configuration.
+// Return the storage configuration for the drive.
 //
 // GET /v1/drives/{driveID}/storage
 func (c *Client) GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error) {
@@ -1383,7 +1157,7 @@ func (c *Client) sendGetDriveStorage(ctx context.Context, params GetDriveStorage
 
 // GetUser invokes getUser operation.
 //
-// Get current user.
+// Return the user identified by `id`.
 //
 // GET /v1/users
 func (c *Client) GetUser(ctx context.Context) (GetUserRes, error) {
@@ -1488,160 +1262,10 @@ func (c *Client) sendGetUser(ctx context.Context) (res GetUserRes, err error) {
 	return result, nil
 }
 
-// GoogleLogin invokes googleLogin operation.
-//
-// Initiate Google OAuth login (web).
-//
-// GET /auth/google
-func (c *Client) GoogleLogin(ctx context.Context) (*GoogleLoginFound, error) {
-	res, err := c.sendGoogleLogin(ctx)
-	return res, err
-}
-
-func (c *Client) sendGoogleLogin(ctx context.Context) (res *GoogleLoginFound, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("googleLogin"),
-		semconv.HTTPRequestMethodKey.String("GET"),
-		semconv.URLTemplateKey.String("/auth/google"),
-	}
-	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, GoogleLoginOperation,
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/auth/google"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "GET", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	body := resp.Body
-	defer body.Close()
-
-	stage = "DecodeResponse"
-	result, err := decodeGoogleLoginResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
-// GoogleNativeLogin invokes googleNativeLogin operation.
-//
-// Exchange a Google id_token for a mdrive session (mobile).
-//
-// POST /auth/google/native
-func (c *Client) GoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (GoogleNativeLoginRes, error) {
-	res, err := c.sendGoogleNativeLogin(ctx, request)
-	return res, err
-}
-
-func (c *Client) sendGoogleNativeLogin(ctx context.Context, request OptGoogleNativeLoginReq) (res GoogleNativeLoginRes, err error) {
-	otelAttrs := []attribute.KeyValue{
-		otelogen.OperationID("googleNativeLogin"),
-		semconv.HTTPRequestMethodKey.String("POST"),
-		semconv.URLTemplateKey.String("/auth/google/native"),
-	}
-	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
-
-	// Run stopwatch.
-	startTime := time.Now()
-	defer func() {
-		// Use floating point division here for higher precision (instead of Millisecond method).
-		elapsedDuration := time.Since(startTime)
-		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
-	}()
-
-	// Increment request counter.
-	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-
-	// Start a span for this request.
-	ctx, span := c.cfg.Tracer.Start(ctx, GoogleNativeLoginOperation,
-		trace.WithAttributes(otelAttrs...),
-		clientSpanKind,
-	)
-	// Track stage for error reporting.
-	var stage string
-	defer func() {
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, stage)
-			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
-		}
-		span.End()
-	}()
-
-	stage = "BuildURL"
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/auth/google/native"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	stage = "EncodeRequest"
-	r, err := ht.NewRequest(ctx, "POST", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-	if err := encodeGoogleNativeLoginRequest(request, r); err != nil {
-		return res, errors.Wrap(err, "encode request")
-	}
-
-	stage = "SendRequest"
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	body := resp.Body
-	defer body.Close()
-
-	stage = "DecodeResponse"
-	result, err := decodeGoogleNativeLoginResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
 // Hardlink invokes hardlink operation.
 //
-// Create a hard link (POSIX link(2)).
+// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
 //
 // POST /v1/drives/{driveID}/fs/hardlink
 func (c *Client) Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error) {
@@ -1770,15 +1394,15 @@ func (c *Client) sendHardlink(ctx context.Context, request OptHardlinkReq, param
 
 // Health invokes health operation.
 //
-// Health check.
+// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
 //
 // GET /health
-func (c *Client) Health(ctx context.Context) (*HealthOK, error) {
+func (c *Client) Health(ctx context.Context) (HealthRes, error) {
 	res, err := c.sendHealth(ctx)
 	return res, err
 }
 
-func (c *Client) sendHealth(ctx context.Context) (res *HealthOK, err error) {
+func (c *Client) sendHealth(ctx context.Context) (res HealthRes, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("health"),
 		semconv.HTTPRequestMethodKey.String("GET"),
@@ -1844,7 +1468,7 @@ func (c *Client) sendHealth(ctx context.Context) (res *HealthOK, err error) {
 
 // InitiateUpload invokes initiateUpload operation.
 //
-// Initiate a presigned upload.
+// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
 //
 // POST /v1/drives/{driveID}/uploads
 func (c *Client) InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error) {
@@ -1973,7 +1597,7 @@ func (c *Client) sendInitiateUpload(ctx context.Context, request OptPresignReque
 
 // ListDeletedDrives invokes listDeletedDrives operation.
 //
-// List soft-deleted drives (admin only).
+// List all soft-deleted drives. Admin only.
 //
 // GET /v1/admin/drives/deleted
 func (c *Client) ListDeletedDrives(ctx context.Context) (ListDeletedDrivesRes, error) {
@@ -2187,7 +1811,7 @@ func (c *Client) sendListDrives(ctx context.Context) (res ListDrivesRes, err err
 
 // Ls invokes ls operation.
 //
-// List directory contents (POSIX opendir/readdir).
+// List the contents of a directory. Each entry returns its name, type, and inode id.
 //
 // GET /v1/drives/{driveID}/fs/ls
 func (c *Client) Ls(ctx context.Context, params LsParams) (LsRes, error) {
@@ -2331,7 +1955,7 @@ func (c *Client) sendLs(ctx context.Context, params LsParams) (res LsRes, err er
 
 // Lstat invokes lstat operation.
 //
-// Get file metadata without following symlinks (POSIX lstat(2)).
+// Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
 //
 // GET /v1/drives/{driveID}/fs/lstat
 func (c *Client) Lstat(ctx context.Context, params LstatParams) (LstatRes, error) {
@@ -2475,7 +2099,7 @@ func (c *Client) sendLstat(ctx context.Context, params LstatParams) (res LstatRe
 
 // Mkdir invokes mkdir operation.
 //
-// Create a directory (POSIX mkdir(2)).
+// Create a directory at `path` in the drive. Returns 409 if `path` already exists.
 //
 // POST /v1/drives/{driveID}/fs/mkdir
 func (c *Client) Mkdir(ctx context.Context, request OptMkdirReq, params MkdirParams) (MkdirRes, error) {
@@ -2604,7 +2228,8 @@ func (c *Client) sendMkdir(ctx context.Context, request OptMkdirReq, params Mkdi
 
 // Mount invokes mount operation.
 //
-// Bind-mount another drive at a path (POSIX mount-like).
+// Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via
+// the mount.
 //
 // POST /v1/drives/{driveID}/fs/mount
 func (c *Client) Mount(ctx context.Context, request OptMountReq, params MountParams) (MountRes, error) {
@@ -2733,7 +2358,8 @@ func (c *Client) sendMount(ctx context.Context, request OptMountReq, params Moun
 
 // Mv invokes mv operation.
 //
-// Move files or directories (POSIX rename(2)).
+// Move or rename one or more sources to a destination. Source and destination must be on the same
+// drive.
 //
 // POST /v1/drives/{driveID}/fs/mv
 func (c *Client) Mv(ctx context.Context, request OptMvReq, params MvParams) (MvRes, error) {
@@ -2862,7 +2488,7 @@ func (c *Client) sendMv(ctx context.Context, request OptMvReq, params MvParams) 
 
 // PresignDownload invokes presignDownload operation.
 //
-// Get a presigned download URL for an object node.
+// Generate a presigned GET URL for downloading an existing object.
 //
 // GET /v1/drives/{driveID}/downloads
 func (c *Client) PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error) {
@@ -3006,7 +2632,7 @@ func (c *Client) sendPresignDownload(ctx context.Context, params PresignDownload
 
 // Readlink invokes readlink operation.
 //
-// Read a symbolic link's target (POSIX readlink(2)).
+// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
 //
 // GET /v1/drives/{driveID}/fs/readlink
 func (c *Client) Readlink(ctx context.Context, params ReadlinkParams) (ReadlinkRes, error) {
@@ -3150,7 +2776,7 @@ func (c *Client) sendReadlink(ctx context.Context, params ReadlinkParams) (res R
 
 // Realpath invokes realpath operation.
 //
-// Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3)).
+// Resolve all symlinks and return the canonical absolute path.
 //
 // GET /v1/drives/{driveID}/fs/realpath
 func (c *Client) Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error) {
@@ -3294,7 +2920,7 @@ func (c *Client) sendRealpath(ctx context.Context, params RealpathParams) (res R
 
 // RestoreDrive invokes restoreDrive operation.
 //
-// Restore a soft-deleted drive.
+// Restore a soft-deleted drive. Admin only.
 //
 // POST /v1/drives/{driveID}/restore
 func (c *Client) RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error) {
@@ -3420,7 +3046,8 @@ func (c *Client) sendRestoreDrive(ctx context.Context, params RestoreDriveParams
 
 // Rm invokes rm operation.
 //
-// Remove files or directories (POSIX unlink/rmdir(2)).
+// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
+// contents.
 //
 // DELETE /v1/drives/{driveID}/fs
 func (c *Client) Rm(ctx context.Context, request OptRmReq, params RmParams) (RmRes, error) {
@@ -3549,7 +3176,7 @@ func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) 
 
 // Stat invokes stat operation.
 //
-// Get file metadata, following symlinks (POSIX stat(2)).
+// Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
 //
 // GET /v1/drives/{driveID}/fs/stat
 func (c *Client) Stat(ctx context.Context, params StatParams) (StatRes, error) {
@@ -3693,7 +3320,8 @@ func (c *Client) sendStat(ctx context.Context, params StatParams) (res StatRes, 
 
 // Symlink invokes symlink operation.
 //
-// Create a symbolic link (POSIX symlink(2)).
+// Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or
+// relative; the link may dangle.
 //
 // POST /v1/drives/{driveID}/fs/symlink
 func (c *Client) Symlink(ctx context.Context, request OptSymlinkReq, params SymlinkParams) (SymlinkRes, error) {
@@ -3822,7 +3450,7 @@ func (c *Client) sendSymlink(ctx context.Context, request OptSymlinkReq, params 
 
 // Touch invokes touch operation.
 //
-// Create an empty file (POSIX open(O_CREAT)).
+// Create an empty regular file at `path`, or update its mtime if it exists.
 //
 // POST /v1/drives/{driveID}/fs/touch
 func (c *Client) Touch(ctx context.Context, request OptTouchReq, params TouchParams) (TouchRes, error) {
@@ -3951,7 +3579,7 @@ func (c *Client) sendTouch(ctx context.Context, request OptTouchReq, params Touc
 
 // Unmount invokes unmount operation.
 //
-// Remove a bind mount (POSIX umount-like).
+// Remove the bind-mount at `mount_path`.
 //
 // DELETE /v1/drives/{driveID}/fs/unmount
 func (c *Client) Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error) {
@@ -4095,7 +3723,7 @@ func (c *Client) sendUnmount(ctx context.Context, params UnmountParams) (res Unm
 
 // UpdateDrive invokes updateDrive operation.
 //
-// Update a drive.
+// Update the drive's name and description. Empty fields are left unchanged.
 //
 // PUT /v1/drives/{driveID}/root
 func (c *Client) UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error) {
@@ -4224,7 +3852,7 @@ func (c *Client) sendUpdateDrive(ctx context.Context, request OptDriveUpdate, pa
 
 // UpsertUser invokes upsertUser operation.
 //
-// Upsert a user from OIDC claims.
+// Create or update a user record. Admin or self-service depending on `provider`.
 //
 // POST /v1/users
 func (c *Client) UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error) {
@@ -4334,7 +3962,7 @@ func (c *Client) sendUpsertUser(ctx context.Context, request OptUpsertUserReq) (
 
 // Write invokes write operation.
 //
-// Write inline content to a file.
+// Create or replace the file at `path` with `content`.
 //
 // PUT /v1/drives/{driveID}/fs/write
 func (c *Client) Write(ctx context.Context, request OptWriteReq, params WriteParams) (WriteRes, error) {
@@ -4463,7 +4091,7 @@ func (c *Client) sendWrite(ctx context.Context, request OptWriteReq, params Writ
 
 // WriteLarge invokes writeLarge operation.
 //
-// Create an S3-backed object node.
+// Create or replace the S3 object at `path` with multipart `object` content.
 //
 // POST /v1/drives/{driveID}/fs/object
 func (c *Client) WriteLarge(ctx context.Context, request OptWriteLargeReq, params WriteLargeParams) (WriteLargeRes, error) {

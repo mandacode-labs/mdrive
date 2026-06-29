@@ -14,7 +14,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -133,7 +132,7 @@ var _ handler.UploadClient = (*stubUpload)(nil)
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	userSvc := newFakeUserSvc()
-	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, nil, "", "")
+	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, "", "")
 	ogenServer, err := api.NewServer(h, testSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 		apiserver.WriteError(w, err)
 	}))
@@ -147,7 +146,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 type testSecurity struct{}
 
 func (testSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	sess := &session.Session{UserID: testUserID}
+	sess := &auth.Session{UserID: testUserID}
 	return auth.ContextWithSession(ctx, sess), nil
 }
 

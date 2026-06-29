@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
+	zitadelgo "github.com/zitadel/zitadel-go/v3/pkg/authentication"
+
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -13,62 +15,77 @@ type contextKey string
 
 const sessionKey contextKey = "session"
 
-// SecurityHandler implements ogen's SecurityHandler for cookie and bearer auth.
 type SecurityHandler struct {
-	auth       *Service
-	cookieName string
+	auth *Service
 }
 
-func NewSecurityHandler(auth *Service, cookieName string) *SecurityHandler {
-	if cookieName == "" {
-		cookieName = SessionCookieName
-	}
-	return &SecurityHandler{auth: auth, cookieName: cookieName}
+func NewSecurityHandler(auth *Service) *SecurityHandler {
+	return &SecurityHandler{auth: auth}
 }
 
-func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, t api.BearerAuth) (context.Context, error) {
-	if SessionFromContext(ctx) != nil {
+func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	if sess := SessionFromContext(ctx); sess != nil {
 		return ctx, nil
 	}
-	sess, err := s.auth.store.Get(ctx, t.Token)
-	if err != nil {
-		return ctx, fmt.Errorf("bearer session: %w", err)
-	}
-	return ContextWithSession(ctx, sess), nil
+	return ctx, fmt.Errorf("auth: no session for bearer token")
 }
 
-func (s *SecurityHandler) Middleware(next http.Handler) http.Handler {
+func (s *Service) Middleware(next http.Handler) http.Handler {
+	check := zitadelgo.Middleware[AuthCtx](s.authn).CheckAuthentication()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip if the request already presents a bearer token; ogen will handle it.
 		if r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		sess, err := s.extractSessionFromCookie(r)
-		if err != nil {
+		check(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authCtx := zitadelgo.Context[AuthCtx](r.Context())
+			if authCtx == nil || authCtx.UserInfo == nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			sub := authCtx.UserInfo.GetSubject()
+			if sub == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			u, err := s.users.GetByProviderID(r.Context(), s.provider, sub)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			sess := &Session{
+				ID:        sub,
+				UserID:    u.ID(),
+				Provider:  s.provider,
+				IsAdmin:   isAdminClaim(authCtx),
+				CreatedAt: time.Now(),
+				ExpiresAt: time.Now().Add(s.sessionTTL),
+			}
+			r = r.WithContext(ContextWithSession(r.Context(), sess))
+			r.Header.Set("Authorization", "Bearer "+u.ID())
 			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Make the session available in context and synthesize an Authorization
-		// header so the generated ogen security handler validates it normally.
-		r = r.WithContext(ContextWithSession(r.Context(), sess))
-		r.Header.Set("Authorization", "Bearer "+sess.ID)
-		next.ServeHTTP(w, r)
+		})).ServeHTTP(w, r)
 	})
 }
 
-func (s *SecurityHandler) extractSessionFromCookie(r *http.Request) (*session.Session, error) {
-	cookie, err := r.Cookie(s.cookieName)
-	if err != nil || cookie.Value == "" {
-		return nil, fmt.Errorf("no session cookie")
+func isAdminClaim(authCtx AuthCtx) bool {
+	if authCtx.Tokens == nil || authCtx.Tokens.IDTokenClaims == nil {
+		return false
 	}
-	return s.auth.store.Get(r.Context(), cookie.Value)
+	raw, ok := authCtx.Tokens.IDTokenClaims.Claims[AdminRoleClaim]
+	if !ok {
+		return false
+	}
+	roles, ok := raw.(map[string]any)
+	if !ok {
+		return false
+	}
+	_, ok = roles[AdminRole]
+	return ok
 }
 
-func SessionFromContext(ctx context.Context) *session.Session {
-	sess, ok := ctx.Value(sessionKey).(*session.Session)
+func SessionFromContext(ctx context.Context) *Session {
+	sess, ok := ctx.Value(sessionKey).(*Session)
 	if !ok {
 		return nil
 	}
@@ -83,7 +100,6 @@ func UserIDFromContext(ctx context.Context) string {
 	return sess.UserID
 }
 
-// IsAdmin returns true if the session belongs to an admin user.
 func IsAdmin(ctx context.Context) bool {
 	sess := SessionFromContext(ctx)
 	if sess == nil {
@@ -92,8 +108,11 @@ func IsAdmin(ctx context.Context) bool {
 	return sess.IsAdmin
 }
 
-func ContextWithSession(ctx context.Context, s *session.Session) context.Context {
+func ContextWithSession(ctx context.Context, s *Session) context.Context {
 	return context.WithValue(ctx, sessionKey, s)
 }
 
-var _ api.SecurityHandler = (*SecurityHandler)(nil)
+var (
+	_ http.Handler        = (*Service)(nil)
+	_ api.SecurityHandler = (*SecurityHandler)(nil)
+)

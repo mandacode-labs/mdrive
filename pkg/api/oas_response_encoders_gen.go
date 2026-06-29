@@ -8,150 +8,10 @@ import (
 
 	"github.com/go-faster/errors"
 	"github.com/go-faster/jx"
-	"github.com/ogen-go/ogen/conv"
 	ht "github.com/ogen-go/ogen/http"
-	"github.com/ogen-go/ogen/uri"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
-
-func encodeAuthCallbackResponse(response AuthCallbackRes, w http.ResponseWriter, span trace.Span) error {
-	switch response := response.(type) {
-	case *AuthCallbackFound:
-		w.Header().Set("Access-Control-Expose-Headers", "Location,Set-Cookie")
-		// Encoding response headers.
-		{
-			h := uri.NewHeaderEncoder(w.Header())
-			// Encode "Location" header.
-			{
-				cfg := uri.HeaderParameterEncodingConfig{
-					Name:    "Location",
-					Explode: false,
-				}
-				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
-					return e.EncodeValue(conv.StringToString(response.Location))
-				}); err != nil {
-					return errors.Wrap(err, "encode Location header")
-				}
-			}
-			// Encode "Set-Cookie" header.
-			{
-				cfg := uri.HeaderParameterEncodingConfig{
-					Name:    "Set-Cookie",
-					Explode: false,
-				}
-				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
-					return e.EncodeValue(conv.StringToString(response.SetCookie))
-				}); err != nil {
-					return errors.Wrap(err, "encode Set-Cookie header")
-				}
-			}
-		}
-		w.WriteHeader(302)
-		span.SetStatus(codes.Ok, http.StatusText(302))
-
-		return nil
-
-	case *ErrorStatusCode:
-		if err := func() error {
-			if err := response.Validate(); err != nil {
-				return err
-			}
-			return nil
-		}(); err != nil {
-			return errors.Wrap(err, "validate")
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
-
-		e := new(jx.Encoder)
-		response.Response.Encode(e)
-		if _, err := e.WriteTo(w); err != nil {
-			return errors.Wrap(err, "write")
-		}
-
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
-		return nil
-
-	default:
-		return errors.Errorf("unexpected response type: %T", response)
-	}
-}
-
-func encodeAuthLogoutResponse(response AuthLogoutRes, w http.ResponseWriter, span trace.Span) error {
-	switch response := response.(type) {
-	case *AuthLogoutNoContent:
-		w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
-		// Encoding response headers.
-		{
-			h := uri.NewHeaderEncoder(w.Header())
-			// Encode "Set-Cookie" header.
-			{
-				cfg := uri.HeaderParameterEncodingConfig{
-					Name:    "Set-Cookie",
-					Explode: false,
-				}
-				if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
-					return e.EncodeValue(conv.StringToString(response.SetCookie))
-				}); err != nil {
-					return errors.Wrap(err, "encode Set-Cookie header")
-				}
-			}
-		}
-		w.WriteHeader(204)
-		span.SetStatus(codes.Ok, http.StatusText(204))
-
-		return nil
-
-	case *ErrorStatusCode:
-		if err := func() error {
-			if err := response.Validate(); err != nil {
-				return err
-			}
-			return nil
-		}(); err != nil {
-			return errors.Wrap(err, "validate")
-		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
-
-		e := new(jx.Encoder)
-		response.Response.Encode(e)
-		if _, err := e.WriteTo(w); err != nil {
-			return errors.Wrap(err, "write")
-		}
-
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
-		return nil
-
-	default:
-		return errors.Errorf("unexpected response type: %T", response)
-	}
-}
 
 func encodeAuthMeResponse(response AuthMeRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
@@ -168,7 +28,7 @@ func encodeAuthMeResponse(response AuthMeRes, w http.ResponseWriter, span trace.
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *Error:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -178,27 +38,15 @@ func encodeAuthMeResponse(response AuthMeRes, w http.ResponseWriter, span trace.
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
 		return nil
 
 	default:
@@ -223,7 +71,7 @@ func encodeCatResponse(response CatRes, w http.ResponseWriter, span trace.Span) 
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *CatBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -233,27 +81,99 @@ func encodeCatResponse(response CatRes, w http.ResponseWriter, span trace.Span) 
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *CatUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CatForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CatNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CatUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -276,7 +196,7 @@ func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWri
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *CompleteUploadBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -286,27 +206,99 @@ func encodeCompleteUploadResponse(response CompleteUploadRes, w http.ResponseWri
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *CompleteUploadUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CompleteUploadForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CompleteUploadNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CompleteUploadUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -329,7 +321,7 @@ func encodeCreateDriveResponse(response CreateDriveRes, w http.ResponseWriter, s
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *CreateDriveBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -339,27 +331,78 @@ func encodeCreateDriveResponse(response CreateDriveRes, w http.ResponseWriter, s
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *CreateDriveUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CreateDriveForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *CreateDriveConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -375,7 +418,7 @@ func encodeDeleteDriveResponse(response DeleteDriveRes, w http.ResponseWriter, s
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *DeleteDriveBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -385,27 +428,78 @@ func encodeDeleteDriveResponse(response DeleteDriveRes, w http.ResponseWriter, s
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *DeleteDriveUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *DeleteDriveForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *DeleteDriveNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -428,7 +522,7 @@ func encodeGetDriveResponse(response GetDriveRes, w http.ResponseWriter, span tr
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *GetDriveUnauthorized:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -438,27 +532,57 @@ func encodeGetDriveResponse(response GetDriveRes, w http.ResponseWriter, span tr
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *GetDriveForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetDriveNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -481,7 +605,7 @@ func encodeGetDriveStorageResponse(response GetDriveStorageRes, w http.ResponseW
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *GetDriveStorageUnauthorized:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -491,27 +615,57 @@ func encodeGetDriveStorageResponse(response GetDriveStorageRes, w http.ResponseW
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *GetDriveStorageForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetDriveStorageNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -534,7 +688,7 @@ func encodeGetUserResponse(response GetUserRes, w http.ResponseWriter, span trac
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *GetUserUnauthorized:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -544,64 +698,8 @@ func encodeGetUserResponse(response GetUserRes, w http.ResponseWriter, span trac
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
-
-		e := new(jx.Encoder)
-		response.Response.Encode(e)
-		if _, err := e.WriteTo(w); err != nil {
-			return errors.Wrap(err, "write")
-		}
-
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
-		return nil
-
-	default:
-		return errors.Errorf("unexpected response type: %T", response)
-	}
-}
-
-func encodeGoogleLoginResponse(response *GoogleLoginFound, w http.ResponseWriter, span trace.Span) error {
-	w.Header().Set("Access-Control-Expose-Headers", "Location")
-	// Encoding response headers.
-	{
-		h := uri.NewHeaderEncoder(w.Header())
-		// Encode "Location" header.
-		{
-			cfg := uri.HeaderParameterEncodingConfig{
-				Name:    "Location",
-				Explode: false,
-			}
-			if err := h.EncodeParam(cfg, func(e uri.Encoder) error {
-				return e.EncodeValue(conv.StringToString(response.Location))
-			}); err != nil {
-				return errors.Wrap(err, "encode Location header")
-			}
-		}
-	}
-	w.WriteHeader(302)
-	span.SetStatus(codes.Ok, http.StatusText(302))
-
-	return nil
-}
-
-func encodeGoogleNativeLoginResponse(response GoogleNativeLoginRes, w http.ResponseWriter, span trace.Span) error {
-	switch response := response.(type) {
-	case *GoogleNativeLoginOK:
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(200)
-		span.SetStatus(codes.Ok, http.StatusText(200))
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
 		response.Encode(e)
@@ -611,7 +709,7 @@ func encodeGoogleNativeLoginResponse(response GoogleNativeLoginRes, w http.Respo
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *GetUserNotFound:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -621,27 +719,15 @@ func encodeGoogleNativeLoginResponse(response GoogleNativeLoginRes, w http.Respo
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
 		return nil
 
 	default:
@@ -657,7 +743,7 @@ func encodeHardlinkResponse(response HardlinkRes, w http.ResponseWriter, span tr
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *HardlinkBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -667,27 +753,120 @@ func encodeHardlinkResponse(response HardlinkRes, w http.ResponseWriter, span tr
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *HardlinkUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HardlinkForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HardlinkNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HardlinkConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HardlinkUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -695,18 +874,45 @@ func encodeHardlinkResponse(response HardlinkRes, w http.ResponseWriter, span tr
 	}
 }
 
-func encodeHealthResponse(response *HealthOK, w http.ResponseWriter, span trace.Span) error {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(200)
-	span.SetStatus(codes.Ok, http.StatusText(200))
+func encodeHealthResponse(response HealthRes, w http.ResponseWriter, span trace.Span) error {
+	switch response := response.(type) {
+	case *HealthOK:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+		span.SetStatus(codes.Ok, http.StatusText(200))
 
-	e := new(jx.Encoder)
-	response.Encode(e)
-	if _, err := e.WriteTo(w); err != nil {
-		return errors.Wrap(err, "write")
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(503)
+		span.SetStatus(codes.Error, http.StatusText(503))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
 	}
-
-	return nil
 }
 
 func encodeInitiateUploadResponse(response InitiateUploadRes, w http.ResponseWriter, span trace.Span) error {
@@ -724,7 +930,7 @@ func encodeInitiateUploadResponse(response InitiateUploadRes, w http.ResponseWri
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *InitiateUploadBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -734,27 +940,78 @@ func encodeInitiateUploadResponse(response InitiateUploadRes, w http.ResponseWri
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *InitiateUploadUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *InitiateUploadForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *InitiateUploadNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -785,7 +1042,7 @@ func encodeListDeletedDrivesResponse(response ListDeletedDrivesRes, w http.Respo
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *ListDeletedDrivesUnauthorized:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -795,27 +1052,36 @@ func encodeListDeletedDrivesResponse(response ListDeletedDrivesRes, w http.Respo
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *ListDeletedDrivesForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -846,7 +1112,7 @@ func encodeListDrivesResponse(response ListDrivesRes, w http.ResponseWriter, spa
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *Error:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -856,27 +1122,15 @@ func encodeListDrivesResponse(response ListDrivesRes, w http.ResponseWriter, spa
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
-		}
 		return nil
 
 	default:
@@ -899,7 +1153,7 @@ func encodeLsResponse(response LsRes, w http.ResponseWriter, span trace.Span) er
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *LsBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -909,27 +1163,99 @@ func encodeLsResponse(response LsRes, w http.ResponseWriter, span trace.Span) er
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *LsUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LsForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LsNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LsUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -952,7 +1278,7 @@ func encodeLstatResponse(response LstatRes, w http.ResponseWriter, span trace.Sp
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *LstatBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -962,27 +1288,99 @@ func encodeLstatResponse(response LstatRes, w http.ResponseWriter, span trace.Sp
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *LstatUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LstatForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LstatNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *LstatUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -998,7 +1396,7 @@ func encodeMkdirResponse(response MkdirRes, w http.ResponseWriter, span trace.Sp
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *MkdirBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1008,27 +1406,120 @@ func encodeMkdirResponse(response MkdirRes, w http.ResponseWriter, span trace.Sp
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *MkdirUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MkdirForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MkdirNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MkdirConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MkdirUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1044,7 +1535,7 @@ func encodeMountResponse(response MountRes, w http.ResponseWriter, span trace.Sp
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *MountBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1054,27 +1545,120 @@ func encodeMountResponse(response MountRes, w http.ResponseWriter, span trace.Sp
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *MountUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MountForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MountNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MountConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MountUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1090,7 +1674,7 @@ func encodeMvResponse(response MvRes, w http.ResponseWriter, span trace.Span) er
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *MvBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1100,27 +1684,120 @@ func encodeMvResponse(response MvRes, w http.ResponseWriter, span trace.Span) er
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *MvUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MvForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MvNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MvConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *MvUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1143,7 +1820,7 @@ func encodePresignDownloadResponse(response PresignDownloadRes, w http.ResponseW
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *PresignDownloadBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1153,27 +1830,78 @@ func encodePresignDownloadResponse(response PresignDownloadRes, w http.ResponseW
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *PresignDownloadUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *PresignDownloadForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *PresignDownloadNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1196,7 +1924,7 @@ func encodeReadlinkResponse(response ReadlinkRes, w http.ResponseWriter, span tr
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *ReadlinkBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1206,27 +1934,99 @@ func encodeReadlinkResponse(response ReadlinkRes, w http.ResponseWriter, span tr
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *ReadlinkUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReadlinkForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReadlinkNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReadlinkUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1249,7 +2049,7 @@ func encodeRealpathResponse(response RealpathRes, w http.ResponseWriter, span tr
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *RealpathBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1259,27 +2059,99 @@ func encodeRealpathResponse(response RealpathRes, w http.ResponseWriter, span tr
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *RealpathUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RealpathForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RealpathNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RealpathUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1302,7 +2174,7 @@ func encodeRestoreDriveResponse(response RestoreDriveRes, w http.ResponseWriter,
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *RestoreDriveBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1312,27 +2184,78 @@ func encodeRestoreDriveResponse(response RestoreDriveRes, w http.ResponseWriter,
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *RestoreDriveUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RestoreDriveForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RestoreDriveNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1348,7 +2271,7 @@ func encodeRmResponse(response RmRes, w http.ResponseWriter, span trace.Span) er
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *RmBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1358,27 +2281,120 @@ func encodeRmResponse(response RmRes, w http.ResponseWriter, span trace.Span) er
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *RmUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RmForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RmNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RmConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *RmUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1401,7 +2417,7 @@ func encodeStatResponse(response StatRes, w http.ResponseWriter, span trace.Span
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *StatBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1411,27 +2427,99 @@ func encodeStatResponse(response StatRes, w http.ResponseWriter, span trace.Span
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *StatUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *StatForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *StatNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *StatUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1447,7 +2535,7 @@ func encodeSymlinkResponse(response SymlinkRes, w http.ResponseWriter, span trac
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *SymlinkBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1457,27 +2545,120 @@ func encodeSymlinkResponse(response SymlinkRes, w http.ResponseWriter, span trac
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *SymlinkUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *SymlinkForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *SymlinkNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *SymlinkConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *SymlinkUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1493,7 +2674,7 @@ func encodeTouchResponse(response TouchRes, w http.ResponseWriter, span trace.Sp
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *TouchBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1503,27 +2684,120 @@ func encodeTouchResponse(response TouchRes, w http.ResponseWriter, span trace.Sp
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *TouchUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TouchForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TouchNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TouchConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TouchUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1539,7 +2813,7 @@ func encodeUnmountResponse(response UnmountRes, w http.ResponseWriter, span trac
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *UnmountBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1549,27 +2823,120 @@ func encodeUnmountResponse(response UnmountRes, w http.ResponseWriter, span trac
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *UnmountUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UnmountForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UnmountNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UnmountConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UnmountUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1592,7 +2959,7 @@ func encodeUpdateDriveResponse(response UpdateDriveRes, w http.ResponseWriter, s
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *UpdateDriveBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1602,27 +2969,78 @@ func encodeUpdateDriveResponse(response UpdateDriveRes, w http.ResponseWriter, s
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *UpdateDriveUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UpdateDriveForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *UpdateDriveConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1638,7 +3056,7 @@ func encodeUpsertUserResponse(response UpsertUserRes, w http.ResponseWriter, spa
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *UpsertUserBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1648,27 +3066,36 @@ func encodeUpsertUserResponse(response UpsertUserRes, w http.ResponseWriter, spa
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *UpsertUserUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1684,7 +3111,7 @@ func encodeWriteResponse(response WriteRes, w http.ResponseWriter, span trace.Sp
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *WriteBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1694,27 +3121,120 @@ func encodeWriteResponse(response WriteRes, w http.ResponseWriter, span trace.Sp
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *WriteUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
@@ -1730,7 +3250,7 @@ func encodeWriteLargeResponse(response WriteLargeRes, w http.ResponseWriter, spa
 
 		return nil
 
-	case *ErrorStatusCode:
+	case *WriteLargeBadRequest:
 		if err := func() error {
 			if err := response.Validate(); err != nil {
 				return err
@@ -1740,30 +3260,158 @@ func encodeWriteLargeResponse(response WriteLargeRes, w http.ResponseWriter, spa
 			return errors.Wrap(err, "validate")
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		code := response.StatusCode
-		if code == 0 {
-			// Set default status code.
-			code = http.StatusOK
-		}
-		w.WriteHeader(code)
-		if st := http.StatusText(code); code >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, st)
-		} else {
-			span.SetStatus(codes.Ok, st)
-		}
+		w.WriteHeader(400)
+		span.SetStatus(codes.Error, http.StatusText(400))
 
 		e := new(jx.Encoder)
-		response.Response.Encode(e)
+		response.Encode(e)
 		if _, err := e.WriteTo(w); err != nil {
 			return errors.Wrap(err, "write")
 		}
 
-		if code >= http.StatusInternalServerError {
-			return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+		return nil
+
+	case *WriteLargeUnauthorized:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+		span.SetStatus(codes.Error, http.StatusText(401))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteLargeForbidden:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+		span.SetStatus(codes.Error, http.StatusText(403))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteLargeNotFound:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+		span.SetStatus(codes.Error, http.StatusText(404))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteLargeConflict:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+		span.SetStatus(codes.Error, http.StatusText(409))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *WriteLargeUnprocessableEntity:
+		if err := func() error {
+			if err := response.Validate(); err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrap(err, "validate")
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(422)
+		span.SetStatus(codes.Error, http.StatusText(422))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
 		return nil
 
 	default:
 		return errors.Errorf("unexpected response type: %T", response)
 	}
+}
+
+func encodeErrorResponse(response *ErrorStatusCode, w http.ResponseWriter, span trace.Span) error {
+	if err := func() error {
+		if err := response.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "validate")
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	code := response.StatusCode
+	if code == 0 {
+		// Set default status code.
+		code = http.StatusOK
+	}
+	w.WriteHeader(code)
+	if st := http.StatusText(code); code >= http.StatusBadRequest {
+		span.SetStatus(codes.Error, st)
+	} else {
+		span.SetStatus(codes.Ok, st)
+	}
+
+	e := new(jx.Encoder)
+	response.Response.Encode(e)
+	if _, err := e.WriteTo(w); err != nil {
+		return errors.Wrap(err, "write")
+	}
+
+	if code >= http.StatusInternalServerError {
+		return errors.Wrapf(ht.ErrInternalServerErrorResponse, "code: %d, message: %s", code, http.StatusText(code))
+	}
+	return nil
+
 }

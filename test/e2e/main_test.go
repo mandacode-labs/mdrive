@@ -24,7 +24,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -121,7 +120,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Path:          fs,
 	})
 
-	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, nil, "", "",
+	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, "", "",
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       "e2e-bucket",
 			Region:       "us-east-1",
@@ -184,6 +183,6 @@ type e2eSecurity struct {
 }
 
 func (e e2eSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	sess := &session.Session{UserID: e.userID}
+	sess := &auth.Session{UserID: e.userID}
 	return auth.ContextWithSession(ctx, sess), nil
 }

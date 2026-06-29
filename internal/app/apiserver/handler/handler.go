@@ -2,13 +2,13 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -71,25 +71,12 @@ type UploadClient interface {
 	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (upload.PresignInfo, error)
 }
 
-// AuthClient is the consumer-declared interface for authentication operations.
-type AuthClient interface {
-	ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error)
-	ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error)
-	AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error)
-	VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error)
-	CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error)
-	DeleteSession(ctx context.Context, id string) error
-	StorePKCE(ctx context.Context, state, verifier string) error
-	GetPKCE(ctx context.Context, state string) (string, error)
-}
-
 type Handler struct {
 	fs             FSClient
 	drive          DriveClient
 	users          UserClient
 	upload         UploadClient
 	authorizer     permission.Authorizer
-	auth           AuthClient
 	redirectURI    string
 	postLoginURL   string
 	cookieConfig   CookieConfig
@@ -98,31 +85,15 @@ type Handler struct {
 	healthDeps     HealthDeps
 }
 
-// CookieConfig is an alias for config.CookieConfig used in handler
-// options. The parsed http.SameSite is materialized via the
-// SameSiteMode() method when needed.
 type CookieConfig = config.CookieConfig
 
-// New wires the handler. The auth client is optional; when nil,
-// requests are expected to arrive without a session (e.g. health
-// checks) and any auth-protected endpoint will return an error.
-//
-// redirectURI is the EXACT callback URL registered in the
-// upstream OIDC provider (Zitadel/Keycloak). Pass the value the
-// provider holds in its Redirect URIs whitelist — not a base URL.
-//
-// postLoginURL is where the browser is redirected after a
-// successful OIDC callback. Typically the frontend app URL
-// (e.g. "https://app.mdrive.com"). When empty, redirectURI is
-// used as fallback.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, redirectURI, postLoginURL string, opts ...Option) *Handler {
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, redirectURI, postLoginURL string, opts ...Option) *Handler {
 	h := &Handler{
 		fs:           fs,
 		drive:        drive,
 		users:        users,
 		upload:       upload,
 		authorizer:   authorizer,
-		auth:         auth,
 		redirectURI:  redirectURI,
 		postLoginURL: postLoginURL,
 	}
@@ -162,13 +133,34 @@ func (h *Handler) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
-// requirePerm centralizes the handler's permission check. All
-// writes use ActionEdit; reads use ActionView (the caller
-// may need to call ResolveForPermission first if the path may
-// cross a mount — see fs.go).
 func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
 	return permission.Require(ctx, h.authorizer, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
+// NewError converts a domain error to an ErrorStatusCode for ogen's
+// default error response path. WithErrorHandler is also wired in
+// server.go, but ogen's new interface method takes priority for
+// default responses — if we returned an empty ErrorStatusCode here,
+// every error would default to 200 OK.
+func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
+	var de errorx.Error
+	if errors.As(err, &de) {
+		switch de.Kind() {
+		case errorx.KindNotFound:
+			return &api.ErrorStatusCode{StatusCode: http.StatusNotFound, Response: api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}}
+		case errorx.KindConflict:
+			return &api.ErrorStatusCode{StatusCode: http.StatusConflict, Response: api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}}
+		case errorx.KindBadRequest:
+			return &api.ErrorStatusCode{StatusCode: http.StatusBadRequest, Response: api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}}
+		case errorx.KindForbidden:
+			return &api.ErrorStatusCode{StatusCode: http.StatusForbidden, Response: api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}}
+		case errorx.KindUnauthenticated:
+			return &api.ErrorStatusCode{StatusCode: http.StatusUnauthorized, Response: api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}}
+		case errorx.KindServiceDegraded:
+			return &api.ErrorStatusCode{StatusCode: http.StatusServiceUnavailable, Response: api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}}
+		}
+	}
+	return &api.ErrorStatusCode{StatusCode: http.StatusInternalServerError, Response: api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}}
+}
+
 var _ api.Handler = (*Handler)(nil)
-var _ AuthClient = (*auth.Service)(nil)

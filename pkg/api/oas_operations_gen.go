@@ -6,8 +6,6 @@ package api
 type OperationName = string
 
 const (
-	AuthCallbackOperation      OperationName = "AuthCallback"
-	AuthLogoutOperation        OperationName = "AuthLogout"
 	AuthMeOperation            OperationName = "AuthMe"
 	CatOperation               OperationName = "Cat"
 	CompleteUploadOperation    OperationName = "CompleteUpload"
@@ -16,8 +14,6 @@ const (
 	GetDriveOperation          OperationName = "GetDrive"
 	GetDriveStorageOperation   OperationName = "GetDriveStorage"
 	GetUserOperation           OperationName = "GetUser"
-	GoogleLoginOperation       OperationName = "GoogleLogin"
-	GoogleNativeLoginOperation OperationName = "GoogleNativeLogin"
 	HardlinkOperation          OperationName = "Hardlink"
 	HealthOperation            OperationName = "Health"
 	InitiateUploadOperation    OperationName = "InitiateUpload"
