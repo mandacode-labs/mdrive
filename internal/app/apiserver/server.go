@@ -65,12 +65,16 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 
 	// Build the middleware chain once. With SessionSecurity the
 	// session-auth middleware wraps the ogen server; with
-	// AnonSecurity it is a no-op. The requestID and CORS middlewares
-	// are applied in the same chain.
-	var finalHandler http.Handler = ogenServer
+	// AnonSecurity it is a no-op. The openapi passthrough mounts
+	// BEFORE the auth wrapper so /openapi.json is reachable without
+	// a session; every other path is forwarded to the secured
+	// ogen server. The requestID and CORS middlewares are applied
+	// in the same chain.
+	var secured http.Handler = ogenServer
 	if a.Security != nil {
-		finalHandler = a.Security.Middleware(ogenServer)
+		secured = a.Security.Middleware(ogenServer)
 	}
+	finalHandler := openAPIPassthrough(secured)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
 
