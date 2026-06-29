@@ -45,59 +45,33 @@ spec:
             - --config
             - /app/config/config.yaml
           env:
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.database.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.database.existingSecretKey | default "database-password" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "DATABASE_PASSWORD" "existingSecret" .Values.secrets.database.existingSecret "secretKey" (.Values.secrets.database.existingSecretKey | default "database-password") "root" .) | nindent 12 }}
             - name: VALKEY_USER
               value: {{ .Values.config.valkey.user | default "default" | quote }}
             {{- if or .Values.secrets.valkey.password .Values.secrets.valkey.existingSecret }}
-            - name: VALKEY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.valkey.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.valkey.existingSecretKey | default "valkey-password" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "VALKEY_PASSWORD" "existingSecret" .Values.secrets.valkey.existingSecret "secretKey" (.Values.secrets.valkey.existingSecretKey | default "valkey-password") "root" .) | nindent 12 }}
             {{- end }}
             {{- if or .Values.secrets.storage.access_key .Values.secrets.storage.existingSecret }}
-            - name: STORAGE_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key" }}
-            - name: STORAGE_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "STORAGE_ACCESS_KEY" "existingSecret" .Values.secrets.storage.existingSecret "secretKey" (.Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key") "root" .) | nindent 12 }}
+            {{- include "mdrive.secretEnv" (dict "envName" "STORAGE_SECRET_KEY" "existingSecret" .Values.secrets.storage.existingSecret "secretKey" (.Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key") "root" .) | nindent 12 }}
             {{- end }}
             {{- if or .Values.secrets.crypto.master_key .Values.secrets.crypto.existingSecret }}
-            - name: CRYPTO_MASTER_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.crypto.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.crypto.existingSecretKey | default "crypto-master-key" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "CRYPTO_MASTER_KEY" "existingSecret" .Values.secrets.crypto.existingSecret "secretKey" (.Values.secrets.crypto.existingSecretKey | default "crypto-master-key") "root" .) | nindent 12 }}
+            {{- end }}
+            {{- if and .Values.config.auth.encryption_key (ne .Values.config.auth.encryption_key "") }}
+            - name: AUTH_ENCRYPTION_KEY
+              value: {{ .Values.config.auth.encryption_key | quote }}
+            {{- else if or .Values.secrets.auth.encryption_key .Values.secrets.auth.existingSecret }}
+            {{- include "mdrive.secretEnv" (dict "envName" "AUTH_ENCRYPTION_KEY" "existingSecret" .Values.secrets.auth.existingSecret "secretKey" (.Values.secrets.auth.existingSecretKey | default "auth-encryption-key") "root" .) | nindent 12 }}
             {{- end }}
             {{- if or .Values.secrets.openfga.api_token .Values.secrets.openfga.existingSecret }}
-            - name: OPENFGA_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.openfga.existingSecretKeyApiToken | default "openfga-api-token" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "OPENFGA_API_TOKEN" "existingSecret" .Values.secrets.openfga.existingSecret "secretKey" (.Values.secrets.openfga.existingSecretKeyApiToken | default "openfga-api-token") "root" .) | nindent 12 }}
             {{- end }}
             {{- if or .Values.secrets.openfga.client_id .Values.secrets.openfga.existingSecret }}
-            - name: OPENFGA_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.openfga.existingSecretKeyClientID | default "openfga-client-id" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "OPENFGA_CLIENT_ID" "existingSecret" .Values.secrets.openfga.existingSecret "secretKey" (.Values.secrets.openfga.existingSecretKeyClientID | default "openfga-client-id") "root" .) | nindent 12 }}
             {{- end }}
             {{- if or .Values.secrets.openfga.client_secret .Values.secrets.openfga.existingSecret }}
-            - name: OPENFGA_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.openfga.existingSecret | default (include "mdrive.fullname" .) }}
-                  key: {{ .Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret" }}
+            {{- include "mdrive.secretEnv" (dict "envName" "OPENFGA_CLIENT_SECRET" "existingSecret" .Values.secrets.openfga.existingSecret "secretKey" (.Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret") "root" .) | nindent 12 }}
             {{- end }}
             - name: OPENFGA_SCOPES
               value: {{ .Values.config.openfga.scopes | quote }}

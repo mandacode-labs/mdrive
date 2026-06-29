@@ -15,6 +15,17 @@
 {{- end }}
 {{- end }}
 
+{{- /* Renders one secret env binding. Pass the root context as
+     .root so the fullname lookup works. */ -}}
+{{- define "mdrive.secretEnv" -}}
+{{- $secretName := .existingSecret | default (include "mdrive.fullname" .root) -}}
+- name: {{ .envName }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ .secretKey }}
+{{- end -}}
+
 {{- define "mdrive.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
@@ -74,29 +85,13 @@ Params:
     - --config
     - /app/config/config.yaml
   env:
-    - name: DATABASE_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: {{ .root.Values.secrets.database.existingSecret | default (include "mdrive.fullname" .root) }}
-          key: {{ .root.Values.secrets.database.existingSecretKey | default "database-password" }}
+    {{- include "mdrive.secretEnv" (dict "envName" "DATABASE_PASSWORD" "existingSecret" .root.Values.secrets.database.existingSecret "secretKey" (.root.Values.secrets.database.existingSecretKey | default "database-password") "root" .root) | nindent 4 }}
     {{- if or .root.Values.secrets.storage.access_key .root.Values.secrets.storage.existingSecret }}
-    - name: STORAGE_ACCESS_KEY
-      valueFrom:
-        secretKeyRef:
-          name: {{ .root.Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .root) }}
-          key: {{ .root.Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key" }}
-    - name: STORAGE_SECRET_KEY
-      valueFrom:
-        secretKeyRef:
-          name: {{ .root.Values.secrets.storage.existingSecret | default (include "mdrive.fullname" .root) }}
-          key: {{ .root.Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key" }}
+    {{- include "mdrive.secretEnv" (dict "envName" "STORAGE_ACCESS_KEY" "existingSecret" .root.Values.secrets.storage.existingSecret "secretKey" (.root.Values.secrets.storage.existingSecretKeyAccess | default "storage-access-key") "root" .root) | nindent 4 }}
+    {{- include "mdrive.secretEnv" (dict "envName" "STORAGE_SECRET_KEY" "existingSecret" .root.Values.secrets.storage.existingSecret "secretKey" (.root.Values.secrets.storage.existingSecretKeySecret | default "storage-secret-key") "root" .root) | nindent 4 }}
     {{- end }}
     {{- if or .root.Values.secrets.crypto.master_key .root.Values.secrets.crypto.existingSecret }}
-    - name: CRYPTO_MASTER_KEY
-      valueFrom:
-        secretKeyRef:
-          name: {{ .root.Values.secrets.crypto.existingSecret | default (include "mdrive.fullname" .root) }}
-          key: {{ .root.Values.secrets.crypto.existingSecretKey | default "crypto-master-key" }}
+    {{- include "mdrive.secretEnv" (dict "envName" "CRYPTO_MASTER_KEY" "existingSecret" .root.Values.secrets.crypto.existingSecret "secretKey" (.root.Values.secrets.crypto.existingSecretKey | default "crypto-master-key") "root" .root) | nindent 4 }}
     {{- end }}
     {{- with .env }}
     {{- toYaml . | nindent 4 }}

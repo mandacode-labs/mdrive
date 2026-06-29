@@ -191,12 +191,9 @@ config:
     # the SPA/frontend root. When empty, zitadel-go defaults to
     # the request's scheme+host+"/".
     post_logout_url: ""
-    # Encryption key used by zitadel-go to encrypt the session
-    # cookie (the OIDC userinfo + tokens are stored encrypted in
-    # the cookie itself). Required when auth.issuer is set.
-    # MUST be at least 16 characters; use a random secret in
-    # production. Prefer setting this via the auth.encryption_key
-    # existingSecret (see secrets section below).
+    # zitadel-go session cookie + OIDC state encryption key.
+    # Required when auth.issuer is set (enforced by values.schema.json).
+    # Min 16 chars; use secrets.auth.existingSecret in production.
     encryption_key: ""
     # DEPRECATED: use redirect_uri directly. Derives
     # <frontend_url>/auth/callback automatically via the
@@ -214,7 +211,7 @@ config:
     client_secret: ""
     token_issuer: ""
     audience: ""
-    # OAuth2 scope for client_credentials token requests.
+    # OAuth2 scope for client_credentials token requests
     # Required when auth_mode=client_credentials; ignored otherwise.
     # OIDC providers (Zitadel/Keycloak/Auth0) reject scope-less
     # requests per RFC 6749 §4.4. 'openid' is the standard safe
