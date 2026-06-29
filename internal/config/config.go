@@ -155,7 +155,8 @@ type AuthConfig struct {
 	ClientID     string        `mapstructure:"client_id"`
 	SessionTTL   time.Duration `mapstructure:"session_ttl"`
 	RedirectURI  string        `mapstructure:"redirect_uri"`
-	FrontendURL  string        `mapstructure:"frontend_url"`
+	FrontendURL  string        `mapstructure:"frontend_url"` // deprecated
+	PostLoginURL string        `mapstructure:"post_login_url"`
 }
 
 // OpenFGAConfig holds OpenFGA settings.

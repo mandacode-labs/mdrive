@@ -121,7 +121,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		Path:          fs,
 	})
 
-	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, nil, "",
+	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, nil, "", "",
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       "e2e-bucket",
 			Region:       "us-east-1",

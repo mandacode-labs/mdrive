@@ -91,6 +91,7 @@ type Handler struct {
 	authorizer     permission.Authorizer
 	auth           AuthClient
 	redirectURI    string
+	postLoginURL   string
 	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
 	presignTTL     time.Duration
@@ -109,15 +110,21 @@ type CookieConfig = config.CookieConfig
 // redirectURI is the EXACT callback URL registered in the
 // upstream OIDC provider (Zitadel/Keycloak). Pass the value the
 // provider holds in its Redirect URIs whitelist — not a base URL.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, redirectURI string, opts ...Option) *Handler {
+//
+// postLoginURL is where the browser is redirected after a
+// successful OIDC callback. Typically the frontend app URL
+// (e.g. "https://app.mdrive.com"). When empty, redirectURI is
+// used as fallback.
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, redirectURI, postLoginURL string, opts ...Option) *Handler {
 	h := &Handler{
-		fs:          fs,
-		drive:       drive,
-		users:       users,
-		upload:      upload,
-		authorizer:  authorizer,
-		auth:        auth,
-		redirectURI: redirectURI,
+		fs:           fs,
+		drive:        drive,
+		users:        users,
+		upload:       upload,
+		authorizer:   authorizer,
+		auth:         auth,
+		redirectURI:  redirectURI,
+		postLoginURL: postLoginURL,
 	}
 	for _, opt := range opts {
 		opt(h)

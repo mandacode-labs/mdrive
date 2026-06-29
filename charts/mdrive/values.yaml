@@ -182,6 +182,11 @@ config:
     # frontend's path; when the browser hits the backend directly,
     # set the backend's URL.
     redirect_uri: ""
+    # The post-login redirect destination the browser is sent to
+    # after a successful OIDC callback. Typically the SPA/frontend
+    # root (e.g. "https://app.mdrive.com").
+    # When empty, redirect_uri is used as fallback.
+    post_login_url: ""
     # DEPRECATED: use redirect_uri directly. Derives
     # <frontend_url>/auth/callback automatically via the
     # MigrateDeprecatedAuth helper for the transition window.
