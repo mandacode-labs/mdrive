@@ -48,15 +48,6 @@ func (n *Node) Readlink() (string, error) {
 	return sc.Target, nil
 }
 
-// ReadSymlink is the legacy name for Readlink. It is kept as an
-// alias so existing callers compile without churn, but new code
-// should call Readlink (matching POSIX readlink(2)).
-//
-// Deprecated: use Node.Readlink.
-func (n *Node) ReadSymlink() (string, error) {
-	return n.Readlink()
-}
-
 // WriteSymlink updates the symlink's target.
 func (n *Node) WriteSymlink(target string) error {
 	if target == "" {
