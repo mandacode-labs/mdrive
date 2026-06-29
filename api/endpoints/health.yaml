@@ -17,3 +17,11 @@ health:
               properties:
                 status:
                   type: string
+      "503":
+        $ref: "../openapi.yaml#/components/responses/ServiceUnavailable"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

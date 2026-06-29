@@ -21,6 +21,18 @@ mkdir:
               path:
                 type: string
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Directory created
       default:
@@ -53,6 +65,18 @@ touch:
               path:
                 type: string
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: File created
       default:
@@ -88,6 +112,18 @@ rm:
               recursive:
                 type: boolean
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "204":
         description: Deleted
       default:
@@ -123,6 +159,18 @@ mv:
               destination:
                 type: string
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Moved
       default:
@@ -152,6 +200,16 @@ ls:
           type: string
           default: "/"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Directory listing
         content:
@@ -183,6 +241,16 @@ cat:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: File content
         content:
@@ -218,6 +286,18 @@ write:
               path: { type: string }
               content: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Written
       default:
@@ -245,6 +325,16 @@ readlink:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Symlink target
         content:
@@ -279,6 +369,16 @@ realpath:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Canonical path
         content:
@@ -319,6 +419,18 @@ symlink:
               target: { type: string }
               linkPath: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Symlink created
       default:
@@ -351,6 +463,18 @@ hardlink:
               srcPath: { type: string }
               linkPath: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Hardlink created
       default:
@@ -383,6 +507,18 @@ mount:
               mountPath: { type: string }
               sourceDriveID: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Mount created
       default:
@@ -410,6 +546,18 @@ unmount:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "204":
         description: Unmounted
       default:
@@ -437,6 +585,16 @@ stat:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: File metadata
         content:
@@ -468,6 +626,16 @@ lstat:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: File metadata (symlink returned as-is)
         content:
@@ -506,6 +674,18 @@ object:
               object:
                 $ref: "../openapi.yaml#/components/schemas/ObjectContent"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Object node created
       default:

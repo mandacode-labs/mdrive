@@ -17,6 +17,14 @@ upload:
           schema:
             $ref: "../openapi.yaml#/components/schemas/PresignRequest"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Presigned upload URL created
         content:
@@ -53,6 +61,16 @@ uploadComplete:
           schema:
             $ref: "../openapi.yaml#/components/schemas/UploadCompleteRequest"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Object node created
         content:
@@ -84,6 +102,14 @@ download:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Presigned download URL
         content:

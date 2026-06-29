@@ -8,6 +8,8 @@ google:
     summary: Initiate Google OAuth login (web)
     security: []
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "302":
         description: Redirect to Zitadel with idp_id=google
         headers:
@@ -33,6 +35,8 @@ googleNative:
             properties:
               idToken: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: Session created
         content:
@@ -69,6 +73,8 @@ callback:
         required: true
         schema: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "302":
         description: Redirect to frontend with session cookie set
         headers:
@@ -116,6 +122,8 @@ me:
       Return the current authenticated user (200) or 401 if no session.
     summary: Get the current authenticated user
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: Current user
         content:

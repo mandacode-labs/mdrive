@@ -12,6 +12,14 @@ drives:
           schema:
             $ref: "../openapi.yaml#/components/schemas/DriveCreate"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
       "200":
         description: Drive created
         content:
@@ -32,6 +40,8 @@ drives:
       List drives owned by the authenticated user.
     summary: List drives owned by the authenticated user
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: List of drives
         content:
@@ -61,6 +71,12 @@ drive:
         required: true
         schema: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Drive
         content:
@@ -91,6 +107,14 @@ drive:
           schema:
             $ref: "../openapi.yaml#/components/schemas/DriveUpdate"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "409":
+        $ref: "../openapi.yaml#/components/responses/Conflict"
       "200":
         description: Updated drive
         content:
@@ -116,6 +140,14 @@ drive:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "204":
         description: Deleted
       default:
@@ -139,6 +171,14 @@ restoreDrive:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Restored drive
         content:
@@ -161,6 +201,10 @@ adminDrives:
       List all soft-deleted drives. Admin only.
     summary: List soft-deleted drives (admin only)
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
       "200":
         description: List of deleted drives
         content:
@@ -190,6 +234,12 @@ storage:
         required: true
         schema: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Storage config
         content:

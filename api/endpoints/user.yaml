@@ -7,6 +7,10 @@ users:
       Return the user identified by `id`.
     summary: Get current user
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: User
         content:
@@ -39,6 +43,10 @@ users:
               provider: { type: string }
               providerID: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: User created or updated
       default:
