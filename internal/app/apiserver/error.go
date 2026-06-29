@@ -13,20 +13,20 @@ import (
 
 // FromError converts a domain error to (HTTP status code, api.Error).
 func FromError(err error) (int, api.Error) {
-	var de errorx.DomainError
+	var de *errorx.Error
 	if errors.As(err, &de) {
-		switch de.Kind() {
-		case errorx.NotFound:
+		switch de.Kind {
+		case errorx.KindNotFound:
 			return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
-		case errorx.Conflict:
+		case errorx.KindConflict:
 			return http.StatusConflict, api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}
-		case errorx.BadRequest:
+		case errorx.KindBadRequest:
 			return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
-		case errorx.Forbidden:
+		case errorx.KindForbidden:
 			return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}
-		case errorx.Unauthenticated:
+		case errorx.KindUnauthenticated:
 			return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}
-		case errorx.ServiceDegraded:
+		case errorx.KindServiceDegraded:
 			return http.StatusServiceUnavailable, api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}
 		}
 	}

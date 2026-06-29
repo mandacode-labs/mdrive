@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-var ErrInvalidMountReference = &Error{kind: errorx.BadRequest, Msg: "node: mount source drive id is required"}
+var ErrInvalidMountReference = &errorx.Error{Kind: errorx.KindBadRequest, Msg: "node: mount source drive id is required"}
 
 // MountContent is the JSON-serialized payload of a mount node. A mount
 // node represents a bind-style reference to another drive's root

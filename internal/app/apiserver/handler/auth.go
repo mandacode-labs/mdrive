@@ -111,7 +111,7 @@ func (h *Handler) AuthLogout(ctx context.Context) (api.AuthLogoutRes, error) {
 	return &api.AuthLogoutNoContent{SetCookie: h.expiredCookie().String()}, nil
 }
 
-var ErrUnauthenticated = &Error{kind: errorx.Unauthenticated, Msg: "auth: not authenticated"}
+var ErrUnauthenticated = &errorx.Error{Kind: errorx.KindUnauthenticated, Msg: "auth: not authenticated"}
 
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	sess := auth.SessionFromContext(ctx)

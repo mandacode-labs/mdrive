@@ -65,4 +65,4 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 	return src, nil
 }
 
-var ErrHardlinkNotSupported = &Error{kind: errorx.BadRequest, Msg: "ln: source node type does not support hardlinks (dir/symlink/mount)"}
+var ErrHardlinkNotSupported = &errorx.Error{Kind: errorx.KindBadRequest, Msg: "ln: source node type does not support hardlinks (dir/symlink/mount)"}

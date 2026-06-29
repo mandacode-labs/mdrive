@@ -70,17 +70,9 @@ const (
 	AuthModeNone AuthMode = "none"
 )
 
-type Error struct {
-	kind errorx.Kind
-	Msg  string
-}
+var ErrInvalidAuthMode = &errorx.Error{Kind: errorx.KindBadRequest, Msg: "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)"}
 
-func (e *Error) Error() string { return e.Msg }
-func (e *Error) Kind() errorx.Kind { return e.kind }
-
-var ErrInvalidAuthMode = &Error{kind: errorx.BadRequest, Msg: "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)"}
-
-var ErrPermission = &Error{kind: errorx.Forbidden, Msg: "permission: denied"}
+var ErrPermission = &errorx.Error{Kind: errorx.KindForbidden, Msg: "permission: denied"}
 
 // NopAuthorizer permits every check. Use this explicitly in
 // development and test code where no real backend is wired; the

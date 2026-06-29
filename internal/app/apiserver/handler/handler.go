@@ -20,6 +20,8 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
+type Error = errorx.Error
+
 // FSClient is the consumer-declared interface for filesystem
 // operations on a vfs service. vfs is filesystem-only: it does
 // not know about users or permissions. The handler is
@@ -99,14 +101,6 @@ type Handler struct {
 // options. The parsed http.SameSite is materialized via the
 // SameSiteMode() method when needed.
 type CookieConfig = config.CookieConfig
-
-type Error struct {
-	kind errorx.Kind
-	Msg  string
-}
-
-func (e *Error) Error() string { return e.Msg }
-func (e *Error) Kind() errorx.Kind { return e.kind }
 
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health

@@ -3,35 +3,37 @@ package errorx
 type Kind int
 
 const (
-	Unknown Kind = iota
-	NotFound
-	Conflict
-	BadRequest
-	Forbidden
-	Unauthenticated
-	ServiceDegraded
+	KindUnknown Kind = iota
+	KindNotFound
+	KindConflict
+	KindBadRequest
+	KindForbidden
+	KindUnauthenticated
+	KindServiceDegraded
 )
 
 func (k Kind) String() string {
 	switch k {
-	case NotFound:
+	case KindNotFound:
 		return "not_found"
-	case Conflict:
+	case KindConflict:
 		return "conflict"
-	case BadRequest:
+	case KindBadRequest:
 		return "bad_request"
-	case Forbidden:
+	case KindForbidden:
 		return "forbidden"
-	case Unauthenticated:
-		return "unauthenticated"
-	case ServiceDegraded:
+	case KindUnauthenticated:
+		return "unauthorized"
+	case KindServiceDegraded:
 		return "service_degraded"
 	default:
 		return "unknown"
 	}
 }
 
-type DomainError interface {
-	error
-	Kind() Kind
+type Error struct {
+	Kind Kind
+	Msg  string
 }
+
+func (e *Error) Error() string { return e.Msg }
