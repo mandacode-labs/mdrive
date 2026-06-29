@@ -1,6 +1,10 @@
 upload:
   post:
     operationId: initiateUpload
+    tags:
+      - uploads
+    description: |
+      Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
     summary: Initiate a presigned upload
     parameters:
       - name: driveID
@@ -13,6 +17,14 @@ upload:
           schema:
             $ref: "../openapi.yaml#/components/schemas/PresignRequest"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Presigned upload URL created
         content:
@@ -29,6 +41,10 @@ upload:
 uploadComplete:
   post:
     operationId: completeUpload
+    tags:
+      - uploads
+    description: |
+      Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into the parent directory.
     summary: Complete a presigned upload and create the object node
     parameters:
       - name: driveID
@@ -45,6 +61,16 @@ uploadComplete:
           schema:
             $ref: "../openapi.yaml#/components/schemas/UploadCompleteRequest"
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
+      "422":
+        $ref: "../openapi.yaml#/components/responses/UnprocessableEntity"
       "200":
         description: Object node created
         content:
@@ -61,6 +87,10 @@ uploadComplete:
 download:
   get:
     operationId: presignDownload
+    tags:
+      - uploads
+    description: |
+      Generate a presigned GET URL for downloading an existing object.
     summary: Get a presigned download URL for an object node
     parameters:
       - name: driveID
@@ -72,6 +102,14 @@ download:
         required: true
         schema: { type: string }
     responses:
+      "400":
+        $ref: "../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
+      "403":
+        $ref: "../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../openapi.yaml#/components/responses/NotFound"
       "200":
         description: Presigned download URL
         content:

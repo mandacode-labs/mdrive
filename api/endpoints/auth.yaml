@@ -1,9 +1,15 @@
 google:
   get:
     operationId: googleLogin
+    tags:
+      - auth
+    description: |
+      Start Google OIDC login (browser redirect).
     summary: Initiate Google OAuth login (web)
     security: []
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "302":
         description: Redirect to Zitadel with idp_id=google
         headers:
@@ -14,6 +20,10 @@ google:
 googleNative:
   post:
     operationId: googleNativeLogin
+    tags:
+      - auth
+    description: |
+      Native Google OIDC login. Exchanges the ID token for a session cookie.
     summary: Exchange a Google id_token for a mdrive session (mobile)
     security: []
     requestBody:
@@ -25,6 +35,8 @@ googleNative:
             properties:
               idToken: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: Session created
         content:
@@ -45,6 +57,10 @@ googleNative:
 callback:
   get:
     operationId: authCallback
+    tags:
+      - auth
+    description: |
+      OIDC redirect target. Exchanges the authorization code for tokens and starts a session.
     summary: OAuth callback from Zitadel
     security: []
     parameters:
@@ -57,6 +73,8 @@ callback:
         required: true
         schema: { type: string }
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "302":
         description: Redirect to frontend with session cookie set
         headers:
@@ -76,6 +94,10 @@ callback:
 logout:
   post:
     operationId: authLogout
+    tags:
+      - auth
+    description: |
+      Invalidate the current session. Sets the session cookie to expired.
     summary: Destroy the current session
     responses:
       "204":
@@ -94,8 +116,14 @@ logout:
 me:
   get:
     operationId: authMe
+    tags:
+      - auth
+    description: |
+      Return the current authenticated user (200) or 401 if no session.
     summary: Get the current authenticated user
     responses:
+      "401":
+        $ref: "../openapi.yaml#/components/responses/Unauthorized"
       "200":
         description: Current user
         content:

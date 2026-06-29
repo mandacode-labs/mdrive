@@ -1,6 +1,10 @@
 health:
   get:
     operationId: health
+    tags:
+      - health
+    description: |
+      Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
     summary: Health check
     security: []
     responses:
@@ -13,3 +17,11 @@ health:
               properties:
                 status:
                   type: string
+      "503":
+        $ref: "../openapi.yaml#/components/responses/ServiceUnavailable"
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"

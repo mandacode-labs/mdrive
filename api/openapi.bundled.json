@@ -20,10 +20,44 @@
       "bearerAuth": []
     }
   ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Service health and readiness probes."
+    },
+    {
+      "name": "auth",
+      "description": "OIDC login, callback, logout, and session lookup."
+    },
+    {
+      "name": "drives",
+      "description": "Drive CRUD and storage configuration."
+    },
+    {
+      "name": "fs",
+      "description": "POSIX-like filesystem operations on a drive."
+    },
+    {
+      "name": "uploads",
+      "description": "Presigned S3 upload lifecycle."
+    },
+    {
+      "name": "users",
+      "description": "User upsert and lookup."
+    },
+    {
+      "name": "admin",
+      "description": "Admin-only endpoints."
+    }
+  ],
   "paths": {
     "/health": {
       "get": {
         "operationId": "health",
+        "tags": [
+          "health"
+        ],
+        "description": "Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.\n",
         "summary": "Health check",
         "security": [],
         "responses": {
@@ -41,6 +75,19 @@
                 }
               }
             }
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -48,6 +95,10 @@
     "/v1/drives": {
       "post": {
         "operationId": "createDrive",
+        "tags": [
+          "drives"
+        ],
+        "description": "Create a new drive owned by the authenticated user with the given storage configuration.\n",
         "summary": "Create a new drive",
         "requestBody": {
           "content": {
@@ -69,6 +120,18 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -83,6 +146,10 @@
       },
       "get": {
         "operationId": "listDrives",
+        "tags": [
+          "drives"
+        ],
+        "description": "List drives owned by the authenticated user.\n",
         "summary": "List drives owned by the authenticated user",
         "responses": {
           "200": {
@@ -97,6 +164,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "default": {
             "description": "Unexpected error",
@@ -114,6 +184,10 @@
     "/v1/drives/{driveID}/root": {
       "get": {
         "operationId": "getDrive",
+        "tags": [
+          "drives"
+        ],
+        "description": "Return the drive identified by `driveID` (404 if not found or not owned by the caller).\n",
         "summary": "Get a drive by ID",
         "parameters": [
           {
@@ -136,6 +210,15 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -150,6 +233,10 @@
       },
       "put": {
         "operationId": "updateDrive",
+        "tags": [
+          "drives"
+        ],
+        "description": "Update the drive's name and description. Empty fields are left unchanged.\n",
         "summary": "Update a drive",
         "parameters": [
           {
@@ -181,6 +268,18 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -195,6 +294,10 @@
       },
       "delete": {
         "operationId": "deleteDrive",
+        "tags": [
+          "drives"
+        ],
+        "description": "Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention window.\n",
         "summary": "Soft-delete a drive",
         "parameters": [
           {
@@ -209,6 +312,18 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "default": {
             "description": "Unexpected error",
@@ -226,6 +341,10 @@
     "/v1/drives/{driveID}/restore": {
       "post": {
         "operationId": "restoreDrive",
+        "tags": [
+          "admin"
+        ],
+        "description": "Restore a soft-deleted drive. Admin only.\n",
         "summary": "Restore a soft-deleted drive",
         "parameters": [
           {
@@ -248,6 +367,18 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -264,6 +395,10 @@
     "/v1/admin/drives/deleted": {
       "get": {
         "operationId": "listDeletedDrives",
+        "tags": [
+          "admin"
+        ],
+        "description": "List all soft-deleted drives. Admin only.\n",
         "summary": "List soft-deleted drives (admin only)",
         "responses": {
           "200": {
@@ -278,6 +413,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "default": {
             "description": "Unexpected error",
@@ -295,6 +436,10 @@
     "/v1/drives/{driveID}/storage": {
       "get": {
         "operationId": "getDriveStorage",
+        "tags": [
+          "drives"
+        ],
+        "description": "Return the storage configuration for the drive.\n",
         "summary": "Get a drive's storage configuration",
         "parameters": [
           {
@@ -317,6 +462,15 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -333,6 +487,10 @@
     "/v1/drives/{driveID}/fs/mkdir": {
       "post": {
         "operationId": "mkdir",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create a directory at `path` in the drive. Returns 409 if `path` already exists.\n",
         "summary": "Create a directory (POSIX mkdir(2))",
         "parameters": [
           {
@@ -365,6 +523,24 @@
           "200": {
             "description": "Directory created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -381,6 +557,10 @@
     "/v1/drives/{driveID}/fs/touch": {
       "post": {
         "operationId": "touch",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create an empty regular file at `path`, or update its mtime if it exists.\n",
         "summary": "Create an empty file (POSIX open(O_CREAT))",
         "parameters": [
           {
@@ -413,6 +593,24 @@
           "200": {
             "description": "File created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -429,6 +627,10 @@
     "/v1/drives/{driveID}/fs": {
       "delete": {
         "operationId": "rm",
+        "tags": [
+          "fs"
+        ],
+        "description": "Remove one or more filesystem entries. With `recursive=true`, removes directories and their contents.\n",
         "summary": "Remove files or directories (POSIX unlink/rmdir(2))",
         "parameters": [
           {
@@ -467,6 +669,24 @@
           "204": {
             "description": "Deleted"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -483,6 +703,10 @@
     "/v1/drives/{driveID}/fs/mv": {
       "post": {
         "operationId": "mv",
+        "tags": [
+          "fs"
+        ],
+        "description": "Move or rename one or more sources to a destination. Source and destination must be on the same drive.\n",
         "summary": "Move files or directories (POSIX rename(2))",
         "parameters": [
           {
@@ -522,6 +746,24 @@
           "200": {
             "description": "Moved"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -538,6 +780,10 @@
     "/v1/drives/{driveID}/fs/ls": {
       "get": {
         "operationId": "ls",
+        "tags": [
+          "fs"
+        ],
+        "description": "List the contents of a directory. Each entry returns its name, type, and inode id.\n",
         "summary": "List directory contents (POSIX opendir/readdir)",
         "parameters": [
           {
@@ -569,6 +815,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -585,6 +846,10 @@
     "/v1/drives/{driveID}/fs/cat": {
       "get": {
         "operationId": "cat",
+        "tags": [
+          "fs"
+        ],
+        "description": "Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target is not a file.\n",
         "summary": "Read file contents (POSIX open(O_RDONLY))",
         "parameters": [
           {
@@ -615,6 +880,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -631,6 +911,10 @@
     "/v1/drives/{driveID}/fs/write": {
       "put": {
         "operationId": "write",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create or replace the file at `path` with `content`.\n",
         "summary": "Write inline content to a file",
         "parameters": [
           {
@@ -667,6 +951,24 @@
           "200": {
             "description": "Written"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -683,6 +985,10 @@
     "/v1/drives/{driveID}/fs/symlink": {
       "post": {
         "operationId": "symlink",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or relative; the link may dangle.\n",
         "summary": "Create a symbolic link (POSIX symlink(2))",
         "parameters": [
           {
@@ -719,6 +1025,24 @@
           "200": {
             "description": "Symlink created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -735,6 +1059,10 @@
     "/v1/drives/{driveID}/fs/hardlink": {
       "post": {
         "operationId": "hardlink",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink. Source must be a regular file (not a directory, symlink, or mount). Same drive only.\n",
         "summary": "Create a hard link (POSIX link(2))",
         "parameters": [
           {
@@ -771,6 +1099,24 @@
           "200": {
             "description": "Hardlink created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -787,6 +1133,10 @@
     "/v1/drives/{driveID}/fs/mount": {
       "post": {
         "operationId": "mount",
+        "tags": [
+          "fs"
+        ],
+        "description": "Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via the mount.\n",
         "summary": "Bind-mount another drive at a path (POSIX mount-like)",
         "parameters": [
           {
@@ -823,6 +1173,24 @@
           "200": {
             "description": "Mount created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -839,6 +1207,10 @@
     "/v1/drives/{driveID}/fs/unmount": {
       "delete": {
         "operationId": "unmount",
+        "tags": [
+          "fs"
+        ],
+        "description": "Remove the bind-mount at `mount_path`.\n",
         "summary": "Remove a bind mount (POSIX umount-like)",
         "parameters": [
           {
@@ -862,6 +1234,24 @@
           "204": {
             "description": "Unmounted"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -878,6 +1268,10 @@
     "/v1/drives/{driveID}/fs/stat": {
       "get": {
         "operationId": "stat",
+        "tags": [
+          "fs"
+        ],
+        "description": "Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.\n",
         "summary": "Get file metadata, following symlinks (POSIX stat(2))",
         "parameters": [
           {
@@ -908,6 +1302,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -924,6 +1333,10 @@
     "/v1/drives/{driveID}/fs/lstat": {
       "get": {
         "operationId": "lstat",
+        "tags": [
+          "fs"
+        ],
+        "description": "Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.\n",
         "summary": "Get file metadata without following symlinks (POSIX lstat(2))",
         "parameters": [
           {
@@ -954,6 +1367,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -970,6 +1398,10 @@
     "/v1/drives/{driveID}/fs/readlink": {
       "get": {
         "operationId": "readlink",
+        "tags": [
+          "fs"
+        ],
+        "description": "Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.\n",
         "summary": "Read a symbolic link's target (POSIX readlink(2))",
         "parameters": [
           {
@@ -1008,6 +1440,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1024,6 +1471,10 @@
     "/v1/drives/{driveID}/fs/realpath": {
       "get": {
         "operationId": "realpath",
+        "tags": [
+          "fs"
+        ],
+        "description": "Resolve all symlinks and return the canonical absolute path.\n",
         "summary": "Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))",
         "parameters": [
           {
@@ -1066,6 +1517,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1082,6 +1548,10 @@
     "/v1/drives/{driveID}/fs/object": {
       "post": {
         "operationId": "writeLarge",
+        "tags": [
+          "fs"
+        ],
+        "description": "Create or replace the S3 object at `path` with multipart `object` content.\n",
         "summary": "Create an S3-backed object node",
         "parameters": [
           {
@@ -1123,6 +1593,24 @@
           "200": {
             "description": "Object node created"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1139,6 +1627,10 @@
     "/v1/drives/{driveID}/uploads": {
       "post": {
         "operationId": "initiateUpload",
+        "tags": [
+          "uploads"
+        ],
+        "description": "Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.\n",
         "summary": "Initiate a presigned upload",
         "parameters": [
           {
@@ -1170,6 +1662,18 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1186,6 +1690,10 @@
     "/v1/drives/{driveID}/uploads/{uploadId}/complete": {
       "post": {
         "operationId": "completeUpload",
+        "tags": [
+          "uploads"
+        ],
+        "description": "Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into the parent directory.\n",
         "summary": "Complete a presigned upload and create the object node",
         "parameters": [
           {
@@ -1225,6 +1733,21 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1241,6 +1764,10 @@
     "/v1/drives/{driveID}/downloads": {
       "get": {
         "operationId": "presignDownload",
+        "tags": [
+          "uploads"
+        ],
+        "description": "Generate a presigned GET URL for downloading an existing object.\n",
         "summary": "Get a presigned download URL for an object node",
         "parameters": [
           {
@@ -1271,6 +1798,18 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1287,6 +1826,10 @@
     "/v1/users": {
       "get": {
         "operationId": "getUser",
+        "tags": [
+          "users"
+        ],
+        "description": "Return the user identified by `id`.\n",
         "summary": "Get current user",
         "responses": {
           "200": {
@@ -1298,6 +1841,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
           "default": {
             "description": "Unexpected error",
@@ -1313,6 +1862,10 @@
       },
       "post": {
         "operationId": "upsertUser",
+        "tags": [
+          "users"
+        ],
+        "description": "Create or update a user record. Admin or self-service depending on `provider`.\n",
         "summary": "Upsert a user from OIDC claims",
         "requestBody": {
           "content": {
@@ -1346,6 +1899,12 @@
           "200": {
             "description": "User created or updated"
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1362,6 +1921,10 @@
     "/auth/google": {
       "get": {
         "operationId": "googleLogin",
+        "tags": [
+          "auth"
+        ],
+        "description": "Start Google OIDC login (browser redirect).\n",
         "summary": "Initiate Google OAuth login (web)",
         "security": [],
         "responses": {
@@ -1375,6 +1938,9 @@
                 "required": true
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -1382,6 +1948,10 @@
     "/auth/google/native": {
       "post": {
         "operationId": "googleNativeLogin",
+        "tags": [
+          "auth"
+        ],
+        "description": "Native Google OIDC login. Exchanges the ID token for a session cookie.\n",
         "summary": "Exchange a Google id_token for a mdrive session (mobile)",
         "security": [],
         "requestBody": {
@@ -1420,6 +1990,9 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1436,6 +2009,10 @@
     "/auth/callback": {
       "get": {
         "operationId": "authCallback",
+        "tags": [
+          "auth"
+        ],
+        "description": "OIDC redirect target. Exchanges the authorization code for tokens and starts a session.\n",
         "summary": "OAuth callback from Zitadel",
         "security": [],
         "parameters": [
@@ -1474,6 +2051,9 @@
               }
             }
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -1490,6 +2070,10 @@
     "/auth/logout": {
       "post": {
         "operationId": "authLogout",
+        "tags": [
+          "auth"
+        ],
+        "description": "Invalidate the current session. Sets the session cookie to expired.\n",
         "summary": "Destroy the current session",
         "responses": {
           "204": {
@@ -1519,6 +2103,10 @@
     "/auth/me": {
       "get": {
         "operationId": "authMe",
+        "tags": [
+          "auth"
+        ],
+        "description": "Return the current authenticated user (200) or 401 if no session.\n",
         "summary": "Get the current authenticated user",
         "responses": {
           "200": {
@@ -1530,6 +2118,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
           "default": {
             "description": "Unexpected error",
@@ -1551,6 +2142,88 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request payload or path.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid session cookie.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authenticated but lacks the required permission.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource does not exist.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Resource already exists, soft-deleted, or version conflict.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Request understood but cannot be processed (e.g. wrong node type, hardlink source not a file).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "A required backend is unreachable. Returned by /health when degraded.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UnexpectedError": {
+        "description": "Unexpected server error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
       }
     },
     "schemas": {
