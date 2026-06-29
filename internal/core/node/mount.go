@@ -2,12 +2,12 @@ package node
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// ErrInvalidMountReference is returned when a mount's source drive id is empty.
-var ErrInvalidMountReference = errors.New("node: mount source drive id is required")
+var ErrInvalidMountReference = errorx.New(errorx.KindBadRequest, "node: mount source drive id is required")
 
 // MountContent is the JSON-serialized payload of a mount node. A mount
 // node represents a bind-style reference to another drive's root

@@ -3,11 +3,11 @@ package permission
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"
 )
@@ -70,13 +70,9 @@ const (
 	AuthModeNone AuthMode = "none"
 )
 
-// ErrInvalidAuthMode is returned when an unknown AuthMode is provided.
-var ErrInvalidAuthMode = errors.New("permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
+var ErrInvalidAuthMode = errorx.New(errorx.KindBadRequest, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 
-// ErrPermission is the single permission-denied sentinel. All
-// packages that need to report "not allowed" return this directly
-// or wrap it; consumers test with errors.Is(err, permission.ErrPermission).
-var ErrPermission = errors.New("permission: denied")
+var ErrPermission = errorx.New(errorx.KindForbidden, "permission: denied")
 
 // NopAuthorizer permits every check. Use this explicitly in
 // development and test code where no real backend is wired; the

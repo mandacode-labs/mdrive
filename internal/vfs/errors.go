@@ -1,12 +1,12 @@
 package vfs
 
-import "errors"
+import "github.com/mandacode-labs/mdrive/internal/errorx"
 
 var (
-	ErrNotFound     = errors.New("vfs: not found")
-	ErrNotDirectory = errors.New("vfs: not a directory")
-	ErrInvalidPath  = errors.New("vfs: invalid path")
-	ErrCrossDrive   = errors.New("vfs: cross-drive move not supported")
-	ErrMountCycle   = errors.New("vfs: mount cycle detected")
-	ErrPathTooDeep  = errors.New("vfs: max mount hops exceeded")
+	ErrNotFound     = errorx.New(errorx.KindNotFound, "vfs: not found")
+	ErrNotDirectory = errorx.New(errorx.KindBadRequest, "vfs: not a directory")
+	ErrInvalidPath  = errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+	ErrCrossDrive   = errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
+	ErrMountCycle   = errorx.New(errorx.KindBadRequest, "vfs: mount cycle detected")
+	ErrPathTooDeep  = errorx.New(errorx.KindBadRequest, "vfs: max mount hops exceeded")
 )

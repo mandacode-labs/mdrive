@@ -7,70 +7,28 @@ import (
 
 	"github.com/ogen-go/ogen/ogenerrors"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
-	"github.com/mandacode-labs/mdrive/internal/core/drive"
-	"github.com/mandacode-labs/mdrive/internal/core/node"
-	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/permission"
-	"github.com/mandacode-labs/mdrive/internal/upload"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // FromError converts a domain error to (HTTP status code, api.Error).
 func FromError(err error) (int, api.Error) {
-	switch {
-	case errors.Is(err, ogenerrors.ErrSecurityRequirementIsNotSatisfied),
-		errors.Is(err, handler.ErrUnauthenticated):
-		return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}
-
-	case errors.Is(err, handler.ErrServiceDegraded):
-		return http.StatusServiceUnavailable, api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}
-
-	case errors.Is(err, permission.ErrPermission):
-		return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}
-
-	case errors.Is(err, node.ErrNotFound),
-		errors.Is(err, drive.ErrNotFound),
-		errors.Is(err, user.ErrNotFound),
-		errors.Is(err, node.ErrEntryNotFound),
-		errors.Is(err, node.ErrNoContent),
-		errors.Is(err, vfs.ErrNotFound),
-		errors.Is(err, upload.ErrObjectNotUploaded):
-		return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
-
-	case errors.Is(err, node.ErrEntryExists),
-		errors.Is(err, node.ErrRevisionConflict):
-		return http.StatusConflict, api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}
-
-	case errors.Is(err, node.ErrSymlinkCycle),
-		errors.Is(err, vfs.ErrMountCycle),
-		errors.Is(err, vfs.ErrPathTooDeep):
-		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
-
-	case errors.Is(err, node.ErrInvalidName),
-		errors.Is(err, node.ErrInvalidType),
-		errors.Is(err, node.ErrInvalidReference),
-		errors.Is(err, node.ErrInvalidSize),
-		errors.Is(err, node.ErrNotDirectory),
-		errors.Is(err, node.ErrIsDirectory),
-		errors.Is(err, node.ErrIsObject),
-		errors.Is(err, node.ErrInvalidMoveOverwrite),
-		errors.Is(err, node.ErrInvalidMountReference),
-		errors.Is(err, node.ErrContentTooLarge),
-		errors.Is(err, drive.ErrInvalidName),
-		errors.Is(err, drive.ErrInvalidBucket),
-		errors.Is(err, drive.ErrInvalidRegion),
-		errors.Is(err, drive.ErrInvalidCredentials),
-		errors.Is(err, user.ErrProviderRequired),
-		errors.Is(err, user.ErrProviderIDRequired),
-		errors.Is(err, user.ErrNameRequired),
-		errors.Is(err, vfs.ErrInvalidPath),
-		errors.Is(err, vfs.ErrCrossDrive),
-		errors.Is(err, vfs.ErrHardlinkNotSupported),
-		errors.Is(err, upload.ErrUploadMismatch),
-		errors.Is(err, upload.ErrNotFound):
-		return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
+	var de errorx.Error
+	if errors.As(err, &de) {
+		switch de.Kind() {
+		case errorx.KindNotFound:
+			return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
+		case errorx.KindConflict:
+			return http.StatusConflict, api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}
+		case errorx.KindBadRequest:
+			return http.StatusBadRequest, api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}
+		case errorx.KindForbidden:
+			return http.StatusForbidden, api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}
+		case errorx.KindUnauthenticated:
+			return http.StatusUnauthorized, api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}
+		case errorx.KindServiceDegraded:
+			return http.StatusServiceUnavailable, api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}
+		}
 	}
 
 	var secErr *ogenerrors.SecurityError
