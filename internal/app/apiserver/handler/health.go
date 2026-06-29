@@ -12,7 +12,7 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-var ErrServiceDegraded = &errorx.Error{Kind: errorx.KindServiceDegraded, Msg: "service degraded"}
+var ErrServiceDegraded = errorx.New(errorx.KindServiceDegraded, "service degraded")
 
 // HealthDeps captures the components the health check pings. nil values
 // are skipped (useful in development where some backends are absent).

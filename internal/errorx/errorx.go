@@ -31,9 +31,27 @@ func (k Kind) String() string {
 	}
 }
 
-type Error struct {
-	Kind Kind
-	Msg  string
+type Error interface {
+	error
+	Kind() Kind
 }
 
-func (e *Error) Error() string { return e.Msg }
+type errorx struct {
+	kind    Kind
+	message string
+}
+
+func (e *errorx) Error() string {
+	return e.message
+}
+
+func (e *errorx) Kind() Kind {
+	return e.kind
+}
+
+func New(kind Kind, message string) Error {
+	return &errorx{
+		kind:    kind,
+		message: message,
+	}
+}

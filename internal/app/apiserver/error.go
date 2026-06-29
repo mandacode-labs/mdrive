@@ -13,9 +13,9 @@ import (
 
 // FromError converts a domain error to (HTTP status code, api.Error).
 func FromError(err error) (int, api.Error) {
-	var de *errorx.Error
+	var de errorx.Error
 	if errors.As(err, &de) {
-		switch de.Kind {
+		switch de.Kind() {
 		case errorx.KindNotFound:
 			return http.StatusNotFound, api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}
 		case errorx.KindConflict:

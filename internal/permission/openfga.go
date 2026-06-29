@@ -70,9 +70,9 @@ const (
 	AuthModeNone AuthMode = "none"
 )
 
-var ErrInvalidAuthMode = &errorx.Error{Kind: errorx.KindBadRequest, Msg: "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)"}
+var ErrInvalidAuthMode = errorx.New(errorx.KindBadRequest, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 
-var ErrPermission = &errorx.Error{Kind: errorx.KindForbidden, Msg: "permission: denied"}
+var ErrPermission = errorx.New(errorx.KindForbidden, "permission: denied")
 
 // NopAuthorizer permits every check. Use this explicitly in
 // development and test code where no real backend is wired; the
