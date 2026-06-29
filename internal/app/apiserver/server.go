@@ -74,7 +74,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if a.Security != nil {
 		secured = a.Security.Middleware(ogenServer)
 	}
-	finalHandler := openAPIPassthrough(secured)
+	finalHandler := OpenAPIPassthrough(secured)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
 
