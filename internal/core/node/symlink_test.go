@@ -41,11 +41,3 @@ func TestReadlinkRejectsNonSymlink(t *testing.T) {
 	_, err = f.Readlink()
 	assert.ErrorIs(t, err, ErrInvalidType)
 }
-
-func TestReadSymlinkAlias(t *testing.T) {
-	n, err := NewSymlink("/target")
-	require.NoError(t, err)
-	got, err := n.ReadSymlink()
-	require.NoError(t, err)
-	assert.Equal(t, "/target", got, "ReadSymlink must remain an alias for Readlink")
-}

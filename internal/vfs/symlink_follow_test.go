@@ -106,3 +106,73 @@ func TestSymlinkChain(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "real", string(content))
 }
+
+// TestSymlinkDanglingTarget: a symlink whose target does not exist
+// is created without error (POSIX allows dangling links), and
+// Resolve surfaces ErrNotFound when following it.
+func TestSymlinkDanglingTarget(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	nodeSvc := node.NewService(repo)
+	root, err := nodeSvc.CreateDirectory(ctx)
+	require.NoError(t, err)
+	svc := NewService(ServiceConfig{
+		NodeClient:  nodeSvc,
+		DriveClient: &fakeDrive{rootID: root.ID()},
+		Logger:      nil,
+	})
+
+	// Create a symlink to a target that does not exist.
+	_, err = svc.Symlink(ctx, "d1", "/does-not-exist", "/dangling")
+	require.NoError(t, err, "dangling symlink must be creatable")
+
+	// Readlink returns the target unchanged.
+	ls, err := svc.Lstat(ctx, "d1", "/dangling")
+	require.NoError(t, err)
+	target, err := ls.Node.Readlink()
+	require.NoError(t, err)
+	assert.Equal(t, "/does-not-exist", target)
+
+	// Resolve follows the link and surfaces ErrNotFound.
+	_, err = svc.Resolve(ctx, "d1", "/dangling")
+	assert.ErrorIs(t, err, ErrNotFound,
+		"following a dangling symlink must return ErrNotFound")
+}
+
+// TestSymlinkRelativeTarget: a symlink with a relative target is
+// resolved relative to the symlink's parent directory, matching
+// POSIX symlink(2) semantics.
+func TestSymlinkRelativeTarget(t *testing.T) {
+	ctx := context.Background()
+	repo := newFakeRepo()
+	nodeSvc := node.NewService(repo)
+	root, err := nodeSvc.CreateDirectory(ctx)
+	require.NoError(t, err)
+	svc := NewService(ServiceConfig{
+		NodeClient:  nodeSvc,
+		DriveClient: &fakeDrive{rootID: root.ID()},
+		Logger:      nil,
+	})
+
+	_, err = svc.Mkdir(ctx, "d1", "/data")
+	require.NoError(t, err)
+	_, err = svc.Touch(ctx, "d1", "/data/sibling.txt")
+	require.NoError(t, err)
+	require.NoError(t, svc.Write(ctx, "d1", "/data/sibling.txt", "sibling"))
+
+	// Create a symlink with a relative target from /data/ to
+	// /data/sibling.txt. POSIX resolves this relative to the
+	// symlink's parent directory (/data), so 'sibling.txt' is
+	// interpreted as /data/sibling.txt.
+	_, err = svc.Symlink(ctx, "d1", "sibling.txt", "/data/link")
+	require.NoError(t, err)
+
+	res, err := svc.Resolve(ctx, "d1", "/data/link")
+	require.NoError(t, err)
+	assert.Equal(t, node.NodeTypeFile, res.Node.Type(),
+		"relative symlink must resolve to the sibling file")
+
+	content, err := svc.Cat(ctx, "d1", "/data/link")
+	require.NoError(t, err)
+	assert.Equal(t, "sibling", string(content))
+}
