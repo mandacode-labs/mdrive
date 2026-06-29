@@ -138,7 +138,8 @@ func newTestServer(t *testing.T) *httptest.Server {
 		apiserver.WriteError(w, err)
 	}))
 	require.NoError(t, err)
-	return httptest.NewServer(ogenServer)
+	srv := httptest.NewServer(apiserver.OpenAPIPassthrough(ogenServer))
+	return srv
 }
 
 // testSecurity injects a session for the test user on every

@@ -150,6 +150,10 @@ make test-e2e              # requires Docker
 - [Testing](docs/TESTING.md) — Test pyramid, CI integration
 - [Roadmap](docs/ROADMAP.md) — Completed, short term, medium term, long term
 
+## API
+
+The bundled OpenAPI 3.1 spec is served by the running server at `GET /openapi.json` (public, no auth required, `Cache-Control: public, max-age=300`). Import the URL into Postman / Insomnia / Swagger UI to explore the contract. The same spec lives at `api/openapi.bundled.json` for offline inspection.
+
 ## Project Structure
 
 ```
