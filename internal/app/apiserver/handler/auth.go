@@ -33,7 +33,7 @@ func (h *Handler) GoogleLogin(ctx context.Context) (*api.GoogleLoginFound, error
 	if err := h.auth.StorePKCE(ctx, state, verifier); err != nil {
 		return nil, fmt.Errorf("store pkce: %w", err)
 	}
-	authURL, err := h.auth.AuthorizeURL(ctx, providerGoogle, h.frontendURL+"/auth/callback", state, challenge)
+	authURL, err := h.auth.AuthorizeURL(ctx, providerGoogle, h.redirectURI, state, challenge)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if err != nil {
 		return nil, fmt.Errorf("pkce verifier: %w", err)
 	}
-	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.frontendURL+"/auth/callback", verifier)
+	tokens, err := h.auth.ExchangeCode(ctx, params.Code, h.redirectURI, verifier)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 		return nil, err
 	}
 	return &api.AuthCallbackFound{
-		Location:  h.frontendURL,
+		Location:  h.redirectURI,
 		SetCookie: h.sessionCookie(sess.ID, sess.ExpiresAt).String(),
 	}, nil
 }

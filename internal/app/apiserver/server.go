@@ -40,7 +40,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if perm != nil {
 		healthDeps.Authorizer = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Config.Auth.FrontendURL,
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Config.Auth.RedirectURI,
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       a.Config.Storage.Bucket,
 			Region:       a.Config.Storage.Region,
