@@ -58,7 +58,10 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		securityHandler = a.Security
 	}
 
-	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(errorHandler))
+	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+		a.Log.Error("handler error", "method", r.Method, "path", r.URL.Path, "error", err)
+		WriteError(w, err)
+	}))
 	if err != nil {
 		return nil, fmt.Errorf("apiserver: create ogen server: %w", err)
 	}
@@ -126,9 +129,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func errorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-	WriteError(w, err)
-}
 
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	if !cfg.Enabled {
