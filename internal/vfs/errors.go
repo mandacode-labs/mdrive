@@ -1,12 +1,20 @@
 package vfs
 
-import "errors"
+import "github.com/mandacode-labs/mdrive/internal/errorx"
+
+type Error struct {
+	kind errorx.Kind
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Kind() errorx.Kind { return e.kind }
 
 var (
-	ErrNotFound     = errors.New("vfs: not found")
-	ErrNotDirectory = errors.New("vfs: not a directory")
-	ErrInvalidPath  = errors.New("vfs: invalid path")
-	ErrCrossDrive   = errors.New("vfs: cross-drive move not supported")
-	ErrMountCycle   = errors.New("vfs: mount cycle detected")
-	ErrPathTooDeep  = errors.New("vfs: max mount hops exceeded")
+	ErrNotFound     = &Error{kind: errorx.NotFound, Msg: "vfs: not found"}
+	ErrNotDirectory = &Error{kind: errorx.BadRequest, Msg: "vfs: not a directory"}
+	ErrInvalidPath  = &Error{kind: errorx.BadRequest, Msg: "vfs: invalid path"}
+	ErrCrossDrive   = &Error{kind: errorx.BadRequest, Msg: "vfs: cross-drive move not supported"}
+	ErrMountCycle   = &Error{kind: errorx.BadRequest, Msg: "vfs: mount cycle detected"}
+	ErrPathTooDeep  = &Error{kind: errorx.BadRequest, Msg: "vfs: max mount hops exceeded"}
 )

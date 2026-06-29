@@ -1,60 +1,29 @@
 package node
 
-import "errors"
+import "github.com/mandacode-labs/mdrive/internal/errorx"
 
-// Node-domain sentinel errors. Use errors.Is(err, node.ErrXxx) to check.
+type Error struct {
+	kind errorx.Kind
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Kind() errorx.Kind { return e.kind }
+
 var (
-	// ErrNotFound is returned when a node is not present in the repository.
-	ErrNotFound = errors.New("node: not found")
-
-	// ErrEntryExists is returned when adding a directory entry that already exists.
-	ErrEntryExists = errors.New("node: entry already exists")
-
-	// ErrEntryNotFound is returned when removing or looking up a directory entry that does not exist.
-	ErrEntryNotFound = errors.New("node: entry not found")
-
-	// ErrNotDirectory is returned when an operation requires a directory node.
-	ErrNotDirectory = errors.New("node: not a directory")
-
-	// ErrInvalidType is returned when an operation is attempted on the wrong node type.
-	ErrInvalidType = errors.New("node: invalid type for operation")
-
-	// ErrInvalidName is returned when a name is empty or otherwise invalid.
-	ErrInvalidName = errors.New("node: invalid name")
-
-	// ErrInvalidReference is returned when an object reference is missing required fields.
-	ErrInvalidReference = errors.New("node: invalid object reference")
-
-	// ErrInvalidSize is returned when a size value is negative.
-	ErrInvalidSize = errors.New("node: invalid size")
-
-	// ErrNoContent is returned when reading a node that has no inline content.
-	ErrNoContent = errors.New("node: no content")
-
-	// ErrContentTooLarge is returned when content exceeds MaxContentSize.
-	ErrContentTooLarge = errors.New("node: content exceeds maximum size")
-
-	// ErrRevisionConflict is returned when a Save detects that the node's
-	// revision has changed since it was loaded (concurrent update).
-	ErrRevisionConflict = errors.New("node: revision conflict")
-
-	// ErrIsDirectory is returned when overwriting/replacing an entry that
-	// points to a directory (POSIX: cannot overwrite a directory with a
-	// non-directory).
-	ErrIsDirectory = errors.New("node: target is a directory")
-
-	// ErrIsObject is returned when a caller asks vfs to inline the
-	// bytes of an S3-backed object node. vfs is the inode-tree
-	// manager and does not do S3 I/O; object-node bytes are reached
-	// through the upload presign-download flow.
-	ErrIsObject = errors.New("node: target is an S3 object; use the presign-download endpoint")
-
-	// ErrInvalidMoveOverwrite is returned when a move would overwrite
-	// an entry whose type does not match the source (e.g. moving a
-	// file onto a directory or vice versa).
-	ErrInvalidMoveOverwrite = errors.New("node: cannot overwrite entry of different type")
-
-	// ErrSymlinkCycle is returned when symlink resolution exceeds the
-	// hop limit (POSIX ELOOP). Mirrors Linux's MAXSYMLINKS budget.
-	ErrSymlinkCycle = errors.New("node: symlink cycle or too many hops")
+	ErrNotFound          = &Error{kind: errorx.NotFound, Msg: "node: not found"}
+	ErrEntryExists       = &Error{kind: errorx.Conflict, Msg: "node: entry already exists"}
+	ErrEntryNotFound     = &Error{kind: errorx.NotFound, Msg: "node: entry not found"}
+	ErrNotDirectory      = &Error{kind: errorx.BadRequest, Msg: "node: not a directory"}
+	ErrInvalidType       = &Error{kind: errorx.BadRequest, Msg: "node: invalid type for operation"}
+	ErrInvalidName       = &Error{kind: errorx.BadRequest, Msg: "node: invalid name"}
+	ErrInvalidReference  = &Error{kind: errorx.BadRequest, Msg: "node: invalid object reference"}
+	ErrInvalidSize       = &Error{kind: errorx.BadRequest, Msg: "node: invalid size"}
+	ErrNoContent         = &Error{kind: errorx.NotFound, Msg: "node: no content"}
+	ErrContentTooLarge   = &Error{kind: errorx.BadRequest, Msg: "node: content exceeds maximum size"}
+	ErrRevisionConflict  = &Error{kind: errorx.Conflict, Msg: "node: revision conflict"}
+	ErrIsDirectory       = &Error{kind: errorx.BadRequest, Msg: "node: target is a directory"}
+	ErrIsObject          = &Error{kind: errorx.BadRequest, Msg: "node: target is an S3 object; use the presign-download endpoint"}
+	ErrInvalidMoveOverwrite = &Error{kind: errorx.BadRequest, Msg: "node: cannot overwrite entry of different type"}
+	ErrSymlinkCycle      = &Error{kind: errorx.BadRequest, Msg: "node: symlink cycle or too many hops"}
 )

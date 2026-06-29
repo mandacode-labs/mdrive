@@ -13,6 +13,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -110,11 +111,7 @@ func (h *Handler) AuthLogout(ctx context.Context) (api.AuthLogoutRes, error) {
 	return &api.AuthLogoutNoContent{SetCookie: h.expiredCookie().String()}, nil
 }
 
-// ErrUnauthenticated is returned by AuthMe when no session is in
-// the request context. It maps to HTTP 401 in FromError; using a
-// local sentinel avoids leaking ogen-internal errors from this
-// package.
-var ErrUnauthenticated = errors.New("auth: not authenticated")
+var ErrUnauthenticated = &Error{kind: errorx.Unauthenticated, Msg: "auth: not authenticated"}
 
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	sess := auth.SessionFromContext(ctx)

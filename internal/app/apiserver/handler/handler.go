@@ -13,6 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
@@ -98,6 +99,14 @@ type Handler struct {
 // options. The parsed http.SameSite is materialized via the
 // SameSiteMode() method when needed.
 type CookieConfig = config.CookieConfig
+
+type Error struct {
+	kind errorx.Kind
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Kind() errorx.Kind { return e.kind }
 
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health

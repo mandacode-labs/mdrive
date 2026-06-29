@@ -1,26 +1,20 @@
 package drive
 
-import "errors"
+import "github.com/mandacode-labs/mdrive/internal/errorx"
 
-// Drive-domain sentinel errors. Use errors.Is(err, drive.ErrXxx) to check.
+type Error struct {
+	kind errorx.Kind
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Kind() errorx.Kind { return e.kind }
+
 var (
-	// ErrNotFound is returned when a drive is not present in the repository.
-	ErrNotFound = errors.New("drive: not found")
-
-	// ErrInvalidName is returned when a drive name is empty or otherwise invalid.
-	ErrInvalidName = errors.New("drive: invalid name")
-
-	// ErrInvalidBucket is returned when storage bucket is missing.
-	ErrInvalidBucket = errors.New("drive: storage bucket is required")
-
-	// ErrInvalidRegion is returned when storage region is missing.
-	ErrInvalidRegion = errors.New("drive: storage region is required")
-
-	// ErrInvalidCredentials is returned when storage credentials are missing.
-	ErrInvalidCredentials = errors.New("drive: storage credentials are required")
-
-	// ErrDecryptionFailed is returned when stored credentials cannot be decrypted.
-	// This usually means the master key changed or the data was created before
-	// encryption was enabled; the owner must re-enter credentials.
-	ErrDecryptionFailed = errors.New("drive: failed to decrypt storage credentials")
+	ErrNotFound          = &Error{kind: errorx.NotFound, Msg: "drive: not found"}
+	ErrInvalidName       = &Error{kind: errorx.BadRequest, Msg: "drive: invalid name"}
+	ErrInvalidBucket     = &Error{kind: errorx.BadRequest, Msg: "drive: storage bucket is required"}
+	ErrInvalidRegion     = &Error{kind: errorx.BadRequest, Msg: "drive: storage region is required"}
+	ErrInvalidCredentials = &Error{kind: errorx.BadRequest, Msg: "drive: storage credentials are required"}
+	ErrDecryptionFailed  = &Error{kind: errorx.BadRequest, Msg: "drive: failed to decrypt storage credentials"}
 )

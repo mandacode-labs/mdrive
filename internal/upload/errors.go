@@ -1,17 +1,18 @@
 package upload
 
-import "errors"
+import "github.com/mandacode-labs/mdrive/internal/errorx"
 
-// Common errors returned by the upload package.
-//
-// Permission errors come from the handler layer (via
-// permission.ErrPermission) and are not re-defined here.
+type Error struct {
+	kind errorx.Kind
+	Msg  string
+}
+
+func (e *Error) Error() string { return e.Msg }
+func (e *Error) Kind() errorx.Kind { return e.kind }
+
 var (
-	// TokenRegistry errors.
-	ErrNotFound = errors.New("upload: token not found")
-
-	// Orchestration errors returned by Service.
-	ErrUploadMismatch         = errors.New("upload: token does not match drive")
-	ErrUploadOwnershipMismatch = errors.New("upload: token does not match user")
-	ErrObjectNotUploaded      = errors.New("upload: S3 object was not uploaded")
+	ErrNotFound                = &Error{kind: errorx.BadRequest, Msg: "upload: token not found"}
+	ErrUploadMismatch          = &Error{kind: errorx.BadRequest, Msg: "upload: token does not match drive"}
+	ErrUploadOwnershipMismatch = &Error{kind: errorx.Forbidden, Msg: "upload: token does not match user"}
+	ErrObjectNotUploaded       = &Error{kind: errorx.NotFound, Msg: "upload: S3 object was not uploaded"}
 )

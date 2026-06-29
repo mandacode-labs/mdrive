@@ -3,20 +3,16 @@ package handler
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// ErrServiceDegraded is returned by Health when any configured
-// dependency is unreachable. FromError maps it to HTTP 503 so
-// load balancers and probes can route around the unhealthy
-// instance.
-var ErrServiceDegraded = errors.New("service degraded")
+var ErrServiceDegraded = &Error{kind: errorx.ServiceDegraded, Msg: "service degraded"}
 
 // HealthDeps captures the components the health check pings. nil values
 // are skipped (useful in development where some backends are absent).

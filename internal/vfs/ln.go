@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Symlink creates a directory entry at linkPath pointing at
@@ -64,12 +65,4 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 	return src, nil
 }
 
-// ErrHardlinkNotSupported is returned when the source node type does
-// not support hardlinks.
-var ErrHardlinkNotSupported = &hardlinkError{}
-
-type hardlinkError struct{}
-
-func (*hardlinkError) Error() string {
-	return "ln: source node type does not support hardlinks (dir/symlink/mount)"
-}
+var ErrHardlinkNotSupported = &Error{kind: errorx.BadRequest, Msg: "ln: source node type does not support hardlinks (dir/symlink/mount)"}
