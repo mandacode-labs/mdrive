@@ -53,9 +53,19 @@ type CORSConfig struct {
 }
 
 // CookieConfig holds session cookie settings.
+//
+// Domain is the explicit host (or .parent for sub-domain
+// sharing) to attach the cookie to. Empty string (default) means
+// the cookie is bound to the exact host of the Set-Cookie response;
+// with split-domain deployments (frontend at mdrive.mandacode.com,
+// backend at api.mdrive.mandacode.com) the cookie will not be
+// sent on the frontend's cross-origin requests, so set Domain to
+// the parent ("mdrive.mandacode.com") for sub-domain sharing.
+// See handler.cookieBase for the actual Set-Cookie construction.
 type CookieConfig struct {
 	Name     string        `mapstructure:"name"`
 	Path     string        `mapstructure:"path"`
+	Domain   string        `mapstructure:"domain"`
 	Secure   bool          `mapstructure:"secure"`
 	HttpOnly bool          `mapstructure:"http_only"`
 	SameSite string        `mapstructure:"same_site"`

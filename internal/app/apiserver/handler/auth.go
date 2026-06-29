@@ -171,6 +171,7 @@ func (h *Handler) cookieBase() http.Cookie {
 	return http.Cookie{
 		Name:     h.cookieConfig.Name,
 		Path:     h.cookieConfig.Path,
+		Domain:   h.cookieConfig.Domain,
 		HttpOnly: h.cookieConfig.HttpOnly,
 		Secure:   h.cookieConfig.Secure,
 		SameSite: h.cookieConfig.SameSiteMode(),
