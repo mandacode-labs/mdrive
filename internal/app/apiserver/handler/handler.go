@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -135,11 +137,30 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, drive
 	return permission.Require(ctx, h.authorizer, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
-// NewError satisfies the api.Handler interface. The actual
-// error-to-HTTP mapping happens via api.WithErrorHandler in
-// server.go; this method just returns an empty status code.
-func (h *Handler) NewError(_ context.Context, _ error) *api.ErrorStatusCode {
-	return &api.ErrorStatusCode{}
+// NewError converts a domain error to an ErrorStatusCode for ogen's
+// default error response path. WithErrorHandler is also wired in
+// server.go, but ogen's new interface method takes priority for
+// default responses — if we returned an empty ErrorStatusCode here,
+// every error would default to 200 OK.
+func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
+	var de errorx.Error
+	if errors.As(err, &de) {
+		switch de.Kind() {
+		case errorx.KindNotFound:
+			return &api.ErrorStatusCode{StatusCode: http.StatusNotFound, Response: api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}}
+		case errorx.KindConflict:
+			return &api.ErrorStatusCode{StatusCode: http.StatusConflict, Response: api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}}
+		case errorx.KindBadRequest:
+			return &api.ErrorStatusCode{StatusCode: http.StatusBadRequest, Response: api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}}
+		case errorx.KindForbidden:
+			return &api.ErrorStatusCode{StatusCode: http.StatusForbidden, Response: api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}}
+		case errorx.KindUnauthenticated:
+			return &api.ErrorStatusCode{StatusCode: http.StatusUnauthorized, Response: api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}}
+		case errorx.KindServiceDegraded:
+			return &api.ErrorStatusCode{StatusCode: http.StatusServiceUnavailable, Response: api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}}
+		}
+	}
+	return &api.ErrorStatusCode{StatusCode: http.StatusInternalServerError, Response: api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}}
 }
 
 var _ api.Handler = (*Handler)(nil)
