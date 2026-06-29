@@ -10,6 +10,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/client"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"golang.org/x/oauth2"
 
 	"github.com/mandacode-labs/mdrive/internal/auth/session"
 )
@@ -86,15 +87,17 @@ func (s *Service) ExchangeCode(ctx context.Context, code, redirectURI, codeVerif
 	if err != nil {
 		return nil, err
 	}
-	request := &oidc.AccessTokenRequest{
-		Code:         code,
-		RedirectURI:  redirectURI,
-		ClientID:     s.config.ClientID,
-		CodeVerifier: codeVerifier,
-	}
-	caller := &tokenEndpointCaller{dc: dc, http: s.httpClient}
 
-	token, err := client.CallTokenEndpoint(ctx, request, caller)
+	config := &oauth2.Config{
+		ClientID:    s.config.ClientID,
+		RedirectURL: redirectURI,
+		Endpoint:    oauth2.Endpoint{TokenURL: dc.TokenEndpoint},
+	}
+	ctx = context.WithValue(ctx, oauth2.HTTPClient, s.httpClient)
+
+	token, err := config.Exchange(ctx, code,
+		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("auth: code exchange: %w", err)
 	}
