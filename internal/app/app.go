@@ -64,6 +64,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	if err := cfg.Validate(cfg.App.Env); err != nil {
 		return nil, err
 	}
+	cfg.MigrateDeprecatedAuth()
 
 	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
 

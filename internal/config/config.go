@@ -132,12 +132,29 @@ type ValkeyConfig struct {
 }
 
 // AuthConfig holds authentication settings.
+//
+// RedirectURI is the EXACT callback URL registered in the
+// upstream OIDC provider (Zitadel/Keycloak). It must be the URL
+// the BROWSER uses to reach the callback endpoint (not the URL
+// the backend serves internally). Example: for the default
+// callback path /auth/callback, register
+// "https://api.mdrive.com/auth/callback" if the browser hits the
+// backend directly, or "https://mdrive.mandacode.com/api/auth/callback"
+// if a frontend proxy is in front.
+//
+// FrontendURL is deprecated: it was combined with the implicit
+// /auth/callback path to build the redirect_uri, but that hides
+// the value the OIDC provider is matching against. Set RedirectURI
+// directly. Config.MigrateDeprecatedAuth() still derives
+// RedirectURI from FrontendURL+"/auth/callback" for the transition
+// window so existing deployments keep working.
 type AuthConfig struct {
-	Provider    string        `mapstructure:"provider"` // "zitadel", "keycloak"
-	Issuer      string        `mapstructure:"issuer"`
-	ClientID    string        `mapstructure:"client_id"`
-	SessionTTL  time.Duration `mapstructure:"session_ttl"`
-	FrontendURL string        `mapstructure:"frontend_url"`
+	Provider     string        `mapstructure:"provider"` // "zitadel", "keycloak"
+	Issuer       string        `mapstructure:"issuer"`
+	ClientID     string        `mapstructure:"client_id"`
+	SessionTTL   time.Duration `mapstructure:"session_ttl"`
+	RedirectURI  string        `mapstructure:"redirect_uri"`
+	FrontendURL  string        `mapstructure:"frontend_url"`
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -263,6 +280,16 @@ func (c *Config) Validate(env string) error {
 		}
 	}
 	return nil
+}
+
+// MigrateDeprecatedAuth handles the frontend_url → redirect_uri
+// rename. If only FrontendURL is set, derive RedirectURI from it
+// (the previous behavior) so existing deployments keep working.
+// New deployments should set RedirectURI directly.
+func (c *Config) MigrateDeprecatedAuth() {
+	if c.Auth.RedirectURI == "" && c.Auth.FrontendURL != "" {
+		c.Auth.RedirectURI = c.Auth.FrontendURL + "/auth/callback"
+	}
 }
 
 var (

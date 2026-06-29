@@ -87,7 +87,7 @@ type Handler struct {
 	upload         UploadClient
 	authorizer     permission.Authorizer
 	auth           AuthClient
-	frontendURL    string
+	redirectURI    string
 	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
 	presignTTL     time.Duration
@@ -102,7 +102,11 @@ type CookieConfig = config.CookieConfig
 // New wires the handler. The auth client is optional; when nil,
 // requests are expected to arrive without a session (e.g. health
 // checks) and any auth-protected endpoint will return an error.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, frontendURL string, opts ...Option) *Handler {
+//
+// redirectURI is the EXACT callback URL registered in the
+// upstream OIDC provider (Zitadel/Keycloak). Pass the value the
+// provider holds in its Redirect URIs whitelist — not a base URL.
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, redirectURI string, opts ...Option) *Handler {
 	h := &Handler{
 		fs:          fs,
 		drive:       drive,
@@ -110,7 +114,7 @@ func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, 
 		upload:      upload,
 		authorizer:  authorizer,
 		auth:        auth,
-		frontendURL: frontendURL,
+		redirectURI: redirectURI,
 	}
 	for _, opt := range opts {
 		opt(h)

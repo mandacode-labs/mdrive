@@ -171,6 +171,18 @@ config:
     issuer: ""
     client_id: ""
     session_ttl: "24h"
+    # EXACT callback URL registered in Zitadel Application → your app
+    # → Redirect URIs. Must match exactly (scheme, host, port, path)
+    # or Zitadel rejects the authorization request with
+    # "invalid_request: missing in client configuration".
+    # Browser-facing URL: when the frontend proxies, set the
+    # frontend's path; when the browser hits the backend directly,
+    # set the backend's URL.
+    redirect_uri: ""
+    # DEPRECATED: use redirect_uri directly. Derives
+    # <frontend_url>/auth/callback automatically via the
+    # MigrateDeprecatedAuth helper for the transition window.
+    # Will be removed in a future release.
     frontend_url: ""
 
   openfga:
