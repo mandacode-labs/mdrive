@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/ent"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/upload/s3"
@@ -20,7 +19,7 @@ const defaultProcessLimit = 1000
 // Runner is the common interface for a GC job that runs to
 // completion when invoked. Each subcommand of the `gc` CLI
 // produces a Runner from the per-job constructor (NewTombstoneCleaner,
-// NewDrivePurger, NewUploadExpirer, NewSessionExpirer). The runners
+// NewDrivePurger, NewUploadExpirer). The runners
 // depend only on the specific services they need — no shared
 // "app context" struct — so the gc package can stay out of the
 // app.App type's import cycle.
@@ -197,54 +196,9 @@ func (u *UploadExpirer) Run(ctx context.Context) error {
 	return nil
 }
 
-// SessionExpirer removes expired sessions from the session store. It scans
-// the store (when supported) and deletes any session whose ExpiresAt has
-// passed. Backends that do not implement session.Scanner are skipped with
-// a warning.
-type SessionExpirer struct {
-	store session.Store
-	log   *slog.Logger
-}
-
-func NewSessionExpirer(store session.Store, log *slog.Logger) *SessionExpirer {
-	return &SessionExpirer{store: store, log: log}
-}
-
-func (s *SessionExpirer) Run(ctx context.Context) error {
-	s.log.Info("gc: expire-sessions starting")
-	defer s.log.Info("gc: expire-sessions complete")
-
-	if s.store == nil {
-		s.log.Warn("gc: no session store; skipping")
-		return nil
-	}
-	scanner, ok := s.store.(session.Scanner)
-	if !ok {
-		s.log.Warn("gc: session store does not support Scan; skipping")
-		return nil
-	}
-	var scanned, deleted int
-	err := scanner.Scan(ctx, func(id string) error {
-		scanned++
-		sess, err := s.store.Get(ctx, id)
-		if err != nil {
-			_ = s.store.Delete(ctx, id)
-			deleted++
-			return nil
-		}
-		if sess.IsExpired() {
-			if err := s.store.Delete(ctx, id); err == nil {
-				deleted++
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("gc: session scan: %w", err)
-	}
-	s.log.Info("gc: sessions", "scanned", scanned, "deleted", deleted)
-	return nil
-}
+// SessionExpirer was removed when the cookie-based zitadel-go
+// session replaced the server-side session store. zitadel-go's
+// session has its own TTL handled by the SDK; no GC needed.
 
 func stringPtr(s string) *string {
 	if s == "" {

@@ -3,6 +3,7 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"net/url"
 	"time"
@@ -11,50 +12,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// AuthCallbackFound is response for AuthCallback operation.
-type AuthCallbackFound struct {
-	Location  string
-	SetCookie string
+func (s *ErrorStatusCode) Error() string {
+	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
-
-// GetLocation returns the value of Location.
-func (s *AuthCallbackFound) GetLocation() string {
-	return s.Location
-}
-
-// GetSetCookie returns the value of SetCookie.
-func (s *AuthCallbackFound) GetSetCookie() string {
-	return s.SetCookie
-}
-
-// SetLocation sets the value of Location.
-func (s *AuthCallbackFound) SetLocation(val string) {
-	s.Location = val
-}
-
-// SetSetCookie sets the value of SetCookie.
-func (s *AuthCallbackFound) SetSetCookie(val string) {
-	s.SetCookie = val
-}
-
-func (*AuthCallbackFound) authCallbackRes() {}
-
-// AuthLogoutNoContent is response for AuthLogout operation.
-type AuthLogoutNoContent struct {
-	SetCookie string
-}
-
-// GetSetCookie returns the value of SetCookie.
-func (s *AuthLogoutNoContent) GetSetCookie() string {
-	return s.SetCookie
-}
-
-// SetSetCookie sets the value of SetCookie.
-func (s *AuthLogoutNoContent) SetSetCookie(val string) {
-	s.SetCookie = val
-}
-
-func (*AuthLogoutNoContent) authLogoutRes() {}
 
 type BearerAuth struct {
 	Token string
@@ -81,6 +41,18 @@ func (s *BearerAuth) SetRoles(val []string) {
 	s.Roles = val
 }
 
+type CatBadRequest Error
+
+func (*CatBadRequest) catRes() {}
+
+type CatForbidden Error
+
+func (*CatForbidden) catRes() {}
+
+type CatNotFound Error
+
+func (*CatNotFound) catRes() {}
+
 type CatOK struct {
 	Data io.Reader
 }
@@ -97,10 +69,70 @@ func (s CatOK) Read(p []byte) (n int, err error) {
 
 func (*CatOK) catRes() {}
 
+type CatUnauthorized Error
+
+func (*CatUnauthorized) catRes() {}
+
+type CatUnprocessableEntity Error
+
+func (*CatUnprocessableEntity) catRes() {}
+
+type CompleteUploadBadRequest Error
+
+func (*CompleteUploadBadRequest) completeUploadRes() {}
+
+type CompleteUploadForbidden Error
+
+func (*CompleteUploadForbidden) completeUploadRes() {}
+
+type CompleteUploadNotFound Error
+
+func (*CompleteUploadNotFound) completeUploadRes() {}
+
+type CompleteUploadUnauthorized Error
+
+func (*CompleteUploadUnauthorized) completeUploadRes() {}
+
+type CompleteUploadUnprocessableEntity Error
+
+func (*CompleteUploadUnprocessableEntity) completeUploadRes() {}
+
+type CreateDriveBadRequest Error
+
+func (*CreateDriveBadRequest) createDriveRes() {}
+
+type CreateDriveConflict Error
+
+func (*CreateDriveConflict) createDriveRes() {}
+
+type CreateDriveForbidden Error
+
+func (*CreateDriveForbidden) createDriveRes() {}
+
+type CreateDriveUnauthorized Error
+
+func (*CreateDriveUnauthorized) createDriveRes() {}
+
+type DeleteDriveBadRequest Error
+
+func (*DeleteDriveBadRequest) deleteDriveRes() {}
+
+type DeleteDriveForbidden Error
+
+func (*DeleteDriveForbidden) deleteDriveRes() {}
+
 // DeleteDriveNoContent is response for DeleteDrive operation.
 type DeleteDriveNoContent struct{}
 
 func (*DeleteDriveNoContent) deleteDriveRes() {}
+
+type DeleteDriveNotFound Error
+
+func (*DeleteDriveNotFound) deleteDriveRes() {}
+
+type DeleteDriveUnauthorized Error
+
+func (*DeleteDriveUnauthorized) deleteDriveRes() {}
 
 // Ref: #/components/schemas/DirContent
 type DirContent struct {
@@ -394,6 +426,10 @@ func (s *Error) SetMessage(val string) {
 	s.Message = val
 }
 
+func (*Error) authMeRes()     {}
+func (*Error) healthRes()     {}
+func (*Error) listDrivesRes() {}
+
 // Machine-readable error code.
 type ErrorCode string
 
@@ -497,95 +533,53 @@ func (s *ErrorStatusCode) SetResponse(val Error) {
 	s.Response = val
 }
 
-func (*ErrorStatusCode) authCallbackRes()      {}
-func (*ErrorStatusCode) authLogoutRes()        {}
-func (*ErrorStatusCode) authMeRes()            {}
-func (*ErrorStatusCode) catRes()               {}
-func (*ErrorStatusCode) completeUploadRes()    {}
-func (*ErrorStatusCode) createDriveRes()       {}
-func (*ErrorStatusCode) deleteDriveRes()       {}
-func (*ErrorStatusCode) getDriveRes()          {}
-func (*ErrorStatusCode) getDriveStorageRes()   {}
-func (*ErrorStatusCode) getUserRes()           {}
-func (*ErrorStatusCode) googleNativeLoginRes() {}
-func (*ErrorStatusCode) hardlinkRes()          {}
-func (*ErrorStatusCode) initiateUploadRes()    {}
-func (*ErrorStatusCode) listDeletedDrivesRes() {}
-func (*ErrorStatusCode) listDrivesRes()        {}
-func (*ErrorStatusCode) lsRes()                {}
-func (*ErrorStatusCode) lstatRes()             {}
-func (*ErrorStatusCode) mkdirRes()             {}
-func (*ErrorStatusCode) mountRes()             {}
-func (*ErrorStatusCode) mvRes()                {}
-func (*ErrorStatusCode) presignDownloadRes()   {}
-func (*ErrorStatusCode) readlinkRes()          {}
-func (*ErrorStatusCode) realpathRes()          {}
-func (*ErrorStatusCode) restoreDriveRes()      {}
-func (*ErrorStatusCode) rmRes()                {}
-func (*ErrorStatusCode) statRes()              {}
-func (*ErrorStatusCode) symlinkRes()           {}
-func (*ErrorStatusCode) touchRes()             {}
-func (*ErrorStatusCode) unmountRes()           {}
-func (*ErrorStatusCode) updateDriveRes()       {}
-func (*ErrorStatusCode) upsertUserRes()        {}
-func (*ErrorStatusCode) writeLargeRes()        {}
-func (*ErrorStatusCode) writeRes()             {}
+type GetDriveForbidden Error
 
-// GoogleLoginFound is response for GoogleLogin operation.
-type GoogleLoginFound struct {
-	Location string
-}
+func (*GetDriveForbidden) getDriveRes() {}
 
-// GetLocation returns the value of Location.
-func (s *GoogleLoginFound) GetLocation() string {
-	return s.Location
-}
+type GetDriveNotFound Error
 
-// SetLocation sets the value of Location.
-func (s *GoogleLoginFound) SetLocation(val string) {
-	s.Location = val
-}
+func (*GetDriveNotFound) getDriveRes() {}
 
-type GoogleNativeLoginOK struct {
-	Token OptString `json:"token"`
-	User  OptUser   `json:"user"`
-}
+type GetDriveStorageForbidden Error
 
-// GetToken returns the value of Token.
-func (s *GoogleNativeLoginOK) GetToken() OptString {
-	return s.Token
-}
+func (*GetDriveStorageForbidden) getDriveStorageRes() {}
 
-// GetUser returns the value of User.
-func (s *GoogleNativeLoginOK) GetUser() OptUser {
-	return s.User
-}
+type GetDriveStorageNotFound Error
 
-// SetToken sets the value of Token.
-func (s *GoogleNativeLoginOK) SetToken(val OptString) {
-	s.Token = val
-}
+func (*GetDriveStorageNotFound) getDriveStorageRes() {}
 
-// SetUser sets the value of User.
-func (s *GoogleNativeLoginOK) SetUser(val OptUser) {
-	s.User = val
-}
+type GetDriveStorageUnauthorized Error
 
-func (*GoogleNativeLoginOK) googleNativeLoginRes() {}
+func (*GetDriveStorageUnauthorized) getDriveStorageRes() {}
 
-type GoogleNativeLoginReq struct {
-	IdToken string `json:"idToken"`
-}
+type GetDriveUnauthorized Error
 
-// GetIdToken returns the value of IdToken.
-func (s *GoogleNativeLoginReq) GetIdToken() string {
-	return s.IdToken
-}
+func (*GetDriveUnauthorized) getDriveRes() {}
 
-// SetIdToken sets the value of IdToken.
-func (s *GoogleNativeLoginReq) SetIdToken(val string) {
-	s.IdToken = val
-}
+type GetUserNotFound Error
+
+func (*GetUserNotFound) getUserRes() {}
+
+type GetUserUnauthorized Error
+
+func (*GetUserUnauthorized) getUserRes() {}
+
+type HardlinkBadRequest Error
+
+func (*HardlinkBadRequest) hardlinkRes() {}
+
+type HardlinkConflict Error
+
+func (*HardlinkConflict) hardlinkRes() {}
+
+type HardlinkForbidden Error
+
+func (*HardlinkForbidden) hardlinkRes() {}
+
+type HardlinkNotFound Error
+
+func (*HardlinkNotFound) hardlinkRes() {}
 
 // HardlinkOK is response for Hardlink operation.
 type HardlinkOK struct{}
@@ -617,6 +611,14 @@ func (s *HardlinkReq) SetLinkPath(val string) {
 	s.LinkPath = val
 }
 
+type HardlinkUnauthorized Error
+
+func (*HardlinkUnauthorized) hardlinkRes() {}
+
+type HardlinkUnprocessableEntity Error
+
+func (*HardlinkUnprocessableEntity) hardlinkRes() {}
+
 type HealthOK struct {
 	Status OptString `json:"status"`
 }
@@ -631,13 +633,95 @@ func (s *HealthOK) SetStatus(val OptString) {
 	s.Status = val
 }
 
+func (*HealthOK) healthRes() {}
+
+type InitiateUploadBadRequest Error
+
+func (*InitiateUploadBadRequest) initiateUploadRes() {}
+
+type InitiateUploadForbidden Error
+
+func (*InitiateUploadForbidden) initiateUploadRes() {}
+
+type InitiateUploadNotFound Error
+
+func (*InitiateUploadNotFound) initiateUploadRes() {}
+
+type InitiateUploadUnauthorized Error
+
+func (*InitiateUploadUnauthorized) initiateUploadRes() {}
+
+type ListDeletedDrivesForbidden Error
+
+func (*ListDeletedDrivesForbidden) listDeletedDrivesRes() {}
+
 type ListDeletedDrivesOKApplicationJSON []Drive
 
 func (*ListDeletedDrivesOKApplicationJSON) listDeletedDrivesRes() {}
 
+type ListDeletedDrivesUnauthorized Error
+
+func (*ListDeletedDrivesUnauthorized) listDeletedDrivesRes() {}
+
 type ListDrivesOKApplicationJSON []Drive
 
 func (*ListDrivesOKApplicationJSON) listDrivesRes() {}
+
+type LsBadRequest Error
+
+func (*LsBadRequest) lsRes() {}
+
+type LsForbidden Error
+
+func (*LsForbidden) lsRes() {}
+
+type LsNotFound Error
+
+func (*LsNotFound) lsRes() {}
+
+type LsUnauthorized Error
+
+func (*LsUnauthorized) lsRes() {}
+
+type LsUnprocessableEntity Error
+
+func (*LsUnprocessableEntity) lsRes() {}
+
+type LstatBadRequest Error
+
+func (*LstatBadRequest) lstatRes() {}
+
+type LstatForbidden Error
+
+func (*LstatForbidden) lstatRes() {}
+
+type LstatNotFound Error
+
+func (*LstatNotFound) lstatRes() {}
+
+type LstatUnauthorized Error
+
+func (*LstatUnauthorized) lstatRes() {}
+
+type LstatUnprocessableEntity Error
+
+func (*LstatUnprocessableEntity) lstatRes() {}
+
+type MkdirBadRequest Error
+
+func (*MkdirBadRequest) mkdirRes() {}
+
+type MkdirConflict Error
+
+func (*MkdirConflict) mkdirRes() {}
+
+type MkdirForbidden Error
+
+func (*MkdirForbidden) mkdirRes() {}
+
+type MkdirNotFound Error
+
+func (*MkdirNotFound) mkdirRes() {}
 
 // MkdirOK is response for Mkdir operation.
 type MkdirOK struct{}
@@ -657,6 +741,30 @@ func (s *MkdirReq) GetPath() string {
 func (s *MkdirReq) SetPath(val string) {
 	s.Path = val
 }
+
+type MkdirUnauthorized Error
+
+func (*MkdirUnauthorized) mkdirRes() {}
+
+type MkdirUnprocessableEntity Error
+
+func (*MkdirUnprocessableEntity) mkdirRes() {}
+
+type MountBadRequest Error
+
+func (*MountBadRequest) mountRes() {}
+
+type MountConflict Error
+
+func (*MountConflict) mountRes() {}
+
+type MountForbidden Error
+
+func (*MountForbidden) mountRes() {}
+
+type MountNotFound Error
+
+func (*MountNotFound) mountRes() {}
 
 // MountOK is response for Mount operation.
 type MountOK struct{}
@@ -688,6 +796,30 @@ func (s *MountReq) SetSourceDriveID(val string) {
 	s.SourceDriveID = val
 }
 
+type MountUnauthorized Error
+
+func (*MountUnauthorized) mountRes() {}
+
+type MountUnprocessableEntity Error
+
+func (*MountUnprocessableEntity) mountRes() {}
+
+type MvBadRequest Error
+
+func (*MvBadRequest) mvRes() {}
+
+type MvConflict Error
+
+func (*MvConflict) mvRes() {}
+
+type MvForbidden Error
+
+func (*MvForbidden) mvRes() {}
+
+type MvNotFound Error
+
+func (*MvNotFound) mvRes() {}
+
 // MvOK is response for Mv operation.
 type MvOK struct{}
 
@@ -717,6 +849,14 @@ func (s *MvReq) SetSources(val []string) {
 func (s *MvReq) SetDestination(val string) {
 	s.Destination = val
 }
+
+type MvUnauthorized Error
+
+func (*MvUnauthorized) mvRes() {}
+
+type MvUnprocessableEntity Error
+
+func (*MvUnprocessableEntity) mvRes() {}
 
 // POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
 // (chmod(2) bits | S_IFMT); ino is the inode id; the four
@@ -1110,52 +1250,6 @@ func (o OptDriveUpdate) Get() (v DriveUpdate, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDriveUpdate) Or(d DriveUpdate) DriveUpdate {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptGoogleNativeLoginReq returns new OptGoogleNativeLoginReq with value set to v.
-func NewOptGoogleNativeLoginReq(v GoogleNativeLoginReq) OptGoogleNativeLoginReq {
-	return OptGoogleNativeLoginReq{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptGoogleNativeLoginReq is optional GoogleNativeLoginReq.
-type OptGoogleNativeLoginReq struct {
-	Value GoogleNativeLoginReq
-	Set   bool
-}
-
-// IsSet returns true if OptGoogleNativeLoginReq was set.
-func (o OptGoogleNativeLoginReq) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptGoogleNativeLoginReq) Reset() {
-	var v GoogleNativeLoginReq
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptGoogleNativeLoginReq) SetTo(v GoogleNativeLoginReq) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptGoogleNativeLoginReq) Get() (v GoogleNativeLoginReq, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptGoogleNativeLoginReq) Or(d GoogleNativeLoginReq) GoogleNativeLoginReq {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1806,52 +1900,6 @@ func (o OptUpsertUserReq) Or(d UpsertUserReq) UpsertUserReq {
 	return d
 }
 
-// NewOptUser returns new OptUser with value set to v.
-func NewOptUser(v User) OptUser {
-	return OptUser{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptUser is optional User.
-type OptUser struct {
-	Value User
-	Set   bool
-}
-
-// IsSet returns true if OptUser was set.
-func (o OptUser) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptUser) Reset() {
-	var v User
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptUser) SetTo(v User) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptUser) Get() (v User, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptUser) Or(d User) User {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
 // NewOptWriteLargeReq returns new OptWriteLargeReq with value set to v.
 func NewOptWriteLargeReq(v WriteLargeReq) OptWriteLargeReq {
 	return OptWriteLargeReq{
@@ -1943,6 +1991,22 @@ func (o OptWriteReq) Or(d WriteReq) WriteReq {
 	}
 	return d
 }
+
+type PresignDownloadBadRequest Error
+
+func (*PresignDownloadBadRequest) presignDownloadRes() {}
+
+type PresignDownloadForbidden Error
+
+func (*PresignDownloadForbidden) presignDownloadRes() {}
+
+type PresignDownloadNotFound Error
+
+func (*PresignDownloadNotFound) presignDownloadRes() {}
+
+type PresignDownloadUnauthorized Error
+
+func (*PresignDownloadUnauthorized) presignDownloadRes() {}
 
 // Ref: #/components/schemas/PresignRequest
 type PresignRequest struct {
@@ -2072,6 +2136,18 @@ func (s *PresignResponseHeaders) init() PresignResponseHeaders {
 	return m
 }
 
+type ReadlinkBadRequest Error
+
+func (*ReadlinkBadRequest) readlinkRes() {}
+
+type ReadlinkForbidden Error
+
+func (*ReadlinkForbidden) readlinkRes() {}
+
+type ReadlinkNotFound Error
+
+func (*ReadlinkNotFound) readlinkRes() {}
+
 type ReadlinkOK struct {
 	Target string `json:"target"`
 }
@@ -2087,6 +2163,26 @@ func (s *ReadlinkOK) SetTarget(val string) {
 }
 
 func (*ReadlinkOK) readlinkRes() {}
+
+type ReadlinkUnauthorized Error
+
+func (*ReadlinkUnauthorized) readlinkRes() {}
+
+type ReadlinkUnprocessableEntity Error
+
+func (*ReadlinkUnprocessableEntity) readlinkRes() {}
+
+type RealpathBadRequest Error
+
+func (*RealpathBadRequest) realpathRes() {}
+
+type RealpathForbidden Error
+
+func (*RealpathForbidden) realpathRes() {}
+
+type RealpathNotFound Error
+
+func (*RealpathNotFound) realpathRes() {}
 
 type RealpathOK struct {
 	DriveID string `json:"driveID"`
@@ -2115,10 +2211,50 @@ func (s *RealpathOK) SetPath(val string) {
 
 func (*RealpathOK) realpathRes() {}
 
+type RealpathUnauthorized Error
+
+func (*RealpathUnauthorized) realpathRes() {}
+
+type RealpathUnprocessableEntity Error
+
+func (*RealpathUnprocessableEntity) realpathRes() {}
+
+type RestoreDriveBadRequest Error
+
+func (*RestoreDriveBadRequest) restoreDriveRes() {}
+
+type RestoreDriveForbidden Error
+
+func (*RestoreDriveForbidden) restoreDriveRes() {}
+
+type RestoreDriveNotFound Error
+
+func (*RestoreDriveNotFound) restoreDriveRes() {}
+
+type RestoreDriveUnauthorized Error
+
+func (*RestoreDriveUnauthorized) restoreDriveRes() {}
+
+type RmBadRequest Error
+
+func (*RmBadRequest) rmRes() {}
+
+type RmConflict Error
+
+func (*RmConflict) rmRes() {}
+
+type RmForbidden Error
+
+func (*RmForbidden) rmRes() {}
+
 // RmNoContent is response for Rm operation.
 type RmNoContent struct{}
 
 func (*RmNoContent) rmRes() {}
+
+type RmNotFound Error
+
+func (*RmNotFound) rmRes() {}
 
 type RmReq struct {
 	Paths     []string `json:"paths"`
@@ -2144,6 +2280,34 @@ func (s *RmReq) SetPaths(val []string) {
 func (s *RmReq) SetRecursive(val OptBool) {
 	s.Recursive = val
 }
+
+type RmUnauthorized Error
+
+func (*RmUnauthorized) rmRes() {}
+
+type RmUnprocessableEntity Error
+
+func (*RmUnprocessableEntity) rmRes() {}
+
+type StatBadRequest Error
+
+func (*StatBadRequest) statRes() {}
+
+type StatForbidden Error
+
+func (*StatForbidden) statRes() {}
+
+type StatNotFound Error
+
+func (*StatNotFound) statRes() {}
+
+type StatUnauthorized Error
+
+func (*StatUnauthorized) statRes() {}
+
+type StatUnprocessableEntity Error
+
+func (*StatUnprocessableEntity) statRes() {}
 
 // Ref: #/components/schemas/StorageConfig
 type StorageConfig struct {
@@ -2217,6 +2381,22 @@ func (s *StorageConfig) SetUsePathStyle(val OptBool) {
 
 func (*StorageConfig) getDriveStorageRes() {}
 
+type SymlinkBadRequest Error
+
+func (*SymlinkBadRequest) symlinkRes() {}
+
+type SymlinkConflict Error
+
+func (*SymlinkConflict) symlinkRes() {}
+
+type SymlinkForbidden Error
+
+func (*SymlinkForbidden) symlinkRes() {}
+
+type SymlinkNotFound Error
+
+func (*SymlinkNotFound) symlinkRes() {}
+
 // SymlinkOK is response for Symlink operation.
 type SymlinkOK struct{}
 
@@ -2247,6 +2427,30 @@ func (s *SymlinkReq) SetLinkPath(val string) {
 	s.LinkPath = val
 }
 
+type SymlinkUnauthorized Error
+
+func (*SymlinkUnauthorized) symlinkRes() {}
+
+type SymlinkUnprocessableEntity Error
+
+func (*SymlinkUnprocessableEntity) symlinkRes() {}
+
+type TouchBadRequest Error
+
+func (*TouchBadRequest) touchRes() {}
+
+type TouchConflict Error
+
+func (*TouchConflict) touchRes() {}
+
+type TouchForbidden Error
+
+func (*TouchForbidden) touchRes() {}
+
+type TouchNotFound Error
+
+func (*TouchNotFound) touchRes() {}
+
 // TouchOK is response for Touch operation.
 type TouchOK struct{}
 
@@ -2266,10 +2470,58 @@ func (s *TouchReq) SetPath(val string) {
 	s.Path = val
 }
 
+type TouchUnauthorized Error
+
+func (*TouchUnauthorized) touchRes() {}
+
+type TouchUnprocessableEntity Error
+
+func (*TouchUnprocessableEntity) touchRes() {}
+
+type UnmountBadRequest Error
+
+func (*UnmountBadRequest) unmountRes() {}
+
+type UnmountConflict Error
+
+func (*UnmountConflict) unmountRes() {}
+
+type UnmountForbidden Error
+
+func (*UnmountForbidden) unmountRes() {}
+
 // UnmountNoContent is response for Unmount operation.
 type UnmountNoContent struct{}
 
 func (*UnmountNoContent) unmountRes() {}
+
+type UnmountNotFound Error
+
+func (*UnmountNotFound) unmountRes() {}
+
+type UnmountUnauthorized Error
+
+func (*UnmountUnauthorized) unmountRes() {}
+
+type UnmountUnprocessableEntity Error
+
+func (*UnmountUnprocessableEntity) unmountRes() {}
+
+type UpdateDriveBadRequest Error
+
+func (*UpdateDriveBadRequest) updateDriveRes() {}
+
+type UpdateDriveConflict Error
+
+func (*UpdateDriveConflict) updateDriveRes() {}
+
+type UpdateDriveForbidden Error
+
+func (*UpdateDriveForbidden) updateDriveRes() {}
+
+type UpdateDriveUnauthorized Error
+
+func (*UpdateDriveUnauthorized) updateDriveRes() {}
 
 // Ref: #/components/schemas/UploadCompleteRequest
 type UploadCompleteRequest struct {
@@ -2349,6 +2601,10 @@ func (s *UploadCompleteResponse) SetAtime(val OptDateTime) {
 
 func (*UploadCompleteResponse) completeUploadRes() {}
 
+type UpsertUserBadRequest Error
+
+func (*UpsertUserBadRequest) upsertUserRes() {}
+
 // UpsertUserOK is response for UpsertUser operation.
 type UpsertUserOK struct{}
 
@@ -2400,6 +2656,10 @@ func (s *UpsertUserReq) SetProvider(val string) {
 func (s *UpsertUserReq) SetProviderID(val string) {
 	s.ProviderID = val
 }
+
+type UpsertUserUnauthorized Error
+
+func (*UpsertUserUnauthorized) upsertUserRes() {}
 
 // Ref: #/components/schemas/User
 type User struct {
@@ -2496,6 +2756,34 @@ func (s *User) SetUpdatedAt(val OptDateTime) {
 func (*User) authMeRes()  {}
 func (*User) getUserRes() {}
 
+type WriteBadRequest Error
+
+func (*WriteBadRequest) writeRes() {}
+
+type WriteConflict Error
+
+func (*WriteConflict) writeRes() {}
+
+type WriteForbidden Error
+
+func (*WriteForbidden) writeRes() {}
+
+type WriteLargeBadRequest Error
+
+func (*WriteLargeBadRequest) writeLargeRes() {}
+
+type WriteLargeConflict Error
+
+func (*WriteLargeConflict) writeLargeRes() {}
+
+type WriteLargeForbidden Error
+
+func (*WriteLargeForbidden) writeLargeRes() {}
+
+type WriteLargeNotFound Error
+
+func (*WriteLargeNotFound) writeLargeRes() {}
+
 // WriteLargeOK is response for WriteLarge operation.
 type WriteLargeOK struct{}
 
@@ -2537,6 +2825,18 @@ func (s *WriteLargeReq) SetObject(val ObjectContent) {
 	s.Object = val
 }
 
+type WriteLargeUnauthorized Error
+
+func (*WriteLargeUnauthorized) writeLargeRes() {}
+
+type WriteLargeUnprocessableEntity Error
+
+func (*WriteLargeUnprocessableEntity) writeLargeRes() {}
+
+type WriteNotFound Error
+
+func (*WriteNotFound) writeRes() {}
+
 // WriteOK is response for Write operation.
 type WriteOK struct{}
 
@@ -2566,3 +2866,11 @@ func (s *WriteReq) SetPath(val string) {
 func (s *WriteReq) SetContent(val string) {
 	s.Content = val
 }
+
+type WriteUnauthorized Error
+
+func (*WriteUnauthorized) writeRes() {}
+
+type WriteUnprocessableEntity Error
+
+func (*WriteUnprocessableEntity) writeRes() {}

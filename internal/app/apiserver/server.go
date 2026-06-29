@@ -15,7 +15,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
+	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
@@ -31,16 +31,11 @@ type Server struct {
 
 func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) (*Server, error) {
 	cookieCfg := a.Config.HTTP.Cookie
-	healthDeps := handler.HealthDeps{
-		DB: a.DB,
-	}
-	if s, ok := a.SessionStore.(session.Scanner); ok {
-		healthDeps.Valkey = s
-	}
+	healthDeps := handler.HealthDeps{DB: a.DB}
 	if perm != nil {
 		healthDeps.Authorizer = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Auth, a.Config.Auth.RedirectURI, a.Config.Auth.PostLoginURL,
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Config.Auth.RedirectURI, a.Config.Auth.PostLoginURL,
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       a.Config.Storage.Bucket,
 			Region:       a.Config.Storage.Region,
@@ -66,18 +61,12 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		return nil, fmt.Errorf("apiserver: create ogen server: %w", err)
 	}
 
-	// Build the middleware chain once. With SessionSecurity the
-	// session-auth middleware wraps the ogen server; with
-	// AnonSecurity it is a no-op. The openapi passthrough mounts
-	// BEFORE the auth wrapper so /openapi.json is reachable without
-	// a session; every other path is forwarded to the secured
-	// ogen server. The requestID and CORS middlewares are applied
-	// in the same chain.
 	var secured http.Handler = ogenServer
-	if a.Security != nil {
-		secured = a.Security.Middleware(ogenServer)
+	if a.Auth != nil {
+		secured = a.Auth.Middleware(ogenServer)
 	}
-	finalHandler := OpenAPIPassthrough(secured)
+	finalHandler := AuthPassthrough(secured, a.Auth)
+	finalHandler = OpenAPIPassthrough(finalHandler)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
 
@@ -109,7 +98,7 @@ func (s *Server) Run() error {
 	}()
 
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGINT)
 	<-quit
 	s.app.Log.Info("received shutdown signal")
 
@@ -128,7 +117,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	s.app.Log.Info("api server stopped")
 	return nil
 }
-
 
 func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	if !cfg.Enabled {
@@ -150,16 +138,15 @@ func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			if allowAll && !cfg.AllowCredentials {
-				// Safe to set literal * when credentials are off.
+			switch {
+			case allowAll && !cfg.AllowCredentials:
 				w.Header().Set("Access-Control-Allow-Origin", "*")
-			} else if allowAll && cfg.AllowCredentials {
-				// Spec: Access-Control-Allow-Origin: * is forbidden
-				// when credentials are true. Echo the request origin
-				// for wildcard-like behaviour.
+			case allowAll && cfg.AllowCredentials:
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-			} else if _, ok := origins[origin]; ok {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
+			default:
+				if _, ok := origins[origin]; ok {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+				}
 			}
 			if cfg.AllowCredentials {
 				w.Header().Set("Access-Control-Allow-Credentials", strconv.FormatBool(cfg.AllowCredentials))
@@ -181,6 +168,25 @@ func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+// AuthPassthrough routes OIDC login/callback/logout to zitadel-go's
+// authenticator and forwards everything else to next. Mounted in
+// the middleware chain BEFORE the ogen server so ogen never sees
+// the auth-flow paths. When auth is not configured, the request
+// is forwarded as-is.
+func AuthPassthrough(next http.Handler, auth *auth.Service) http.Handler {
+	if auth == nil {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/auth/login", "/auth/callback", "/auth/logout":
+			auth.ServeHTTP(w, r)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

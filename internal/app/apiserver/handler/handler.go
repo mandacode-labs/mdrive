@@ -5,10 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -71,25 +69,12 @@ type UploadClient interface {
 	PresignDownload(ctx context.Context, userID, driveID, path string, expiry time.Duration) (upload.PresignInfo, error)
 }
 
-// AuthClient is the consumer-declared interface for authentication operations.
-type AuthClient interface {
-	ExchangeJWT(ctx context.Context, assertion string) (*oidc.Tokens[*oidc.IDTokenClaims], error)
-	ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (*oidc.Tokens[*oidc.IDTokenClaims], error)
-	AuthorizeURL(ctx context.Context, provider, redirectURI, state, codeChallenge string) (string, error)
-	VerifyIDToken(ctx context.Context, raw string) (*oidc.IDTokenClaims, error)
-	CreateSession(ctx context.Context, userID, provider string, isAdmin bool) (*session.Session, error)
-	DeleteSession(ctx context.Context, id string) error
-	StorePKCE(ctx context.Context, state, verifier string) error
-	GetPKCE(ctx context.Context, state string) (string, error)
-}
-
 type Handler struct {
 	fs             FSClient
 	drive          DriveClient
 	users          UserClient
 	upload         UploadClient
 	authorizer     permission.Authorizer
-	auth           AuthClient
 	redirectURI    string
 	postLoginURL   string
 	cookieConfig   CookieConfig
@@ -98,31 +83,15 @@ type Handler struct {
 	healthDeps     HealthDeps
 }
 
-// CookieConfig is an alias for config.CookieConfig used in handler
-// options. The parsed http.SameSite is materialized via the
-// SameSiteMode() method when needed.
 type CookieConfig = config.CookieConfig
 
-// New wires the handler. The auth client is optional; when nil,
-// requests are expected to arrive without a session (e.g. health
-// checks) and any auth-protected endpoint will return an error.
-//
-// redirectURI is the EXACT callback URL registered in the
-// upstream OIDC provider (Zitadel/Keycloak). Pass the value the
-// provider holds in its Redirect URIs whitelist — not a base URL.
-//
-// postLoginURL is where the browser is redirected after a
-// successful OIDC callback. Typically the frontend app URL
-// (e.g. "https://app.mdrive.com"). When empty, redirectURI is
-// used as fallback.
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, auth AuthClient, redirectURI, postLoginURL string, opts ...Option) *Handler {
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, redirectURI, postLoginURL string, opts ...Option) *Handler {
 	h := &Handler{
 		fs:           fs,
 		drive:        drive,
 		users:        users,
 		upload:       upload,
 		authorizer:   authorizer,
-		auth:         auth,
 		redirectURI:  redirectURI,
 		postLoginURL: postLoginURL,
 	}
@@ -162,13 +131,15 @@ func (h *Handler) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
-// requirePerm centralizes the handler's permission check. All
-// writes use ActionEdit; reads use ActionView (the caller
-// may need to call ResolveForPermission first if the path may
-// cross a mount — see fs.go).
 func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
 	return permission.Require(ctx, h.authorizer, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 }
 
+// NewError satisfies the api.Handler interface. The actual
+// error-to-HTTP mapping happens via api.WithErrorHandler in
+// server.go; this method just returns an empty status code.
+func (h *Handler) NewError(_ context.Context, _ error) *api.ErrorStatusCode {
+	return &api.ErrorStatusCode{}
+}
+
 var _ api.Handler = (*Handler)(nil)
-var _ AuthClient = (*auth.Service)(nil)

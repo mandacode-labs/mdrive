@@ -26,8 +26,6 @@ func NewCmd() *cobra.Command {
 		func(a *app.App) gcjobs.Runner {
 			return gcjobs.NewUploadExpirer(a.UploadToken, a.UploadSvc, a.Garbage, a.Log)
 		})
-	addJob(cmd, "expire-sessions", "Remove expired sessions",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewSessionExpirer(a.SessionStore, a.Log) })
 	return cmd
 }
 

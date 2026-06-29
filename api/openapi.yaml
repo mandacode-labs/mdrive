@@ -17,7 +17,7 @@ tags:
   - name: health
     description: Service health and readiness probes.
   - name: auth
-    description: OIDC login, callback, logout, and session lookup.
+    description: Session lookup (login/logout/callback are handled by zitadel-go middleware, not exposed via this spec).
   - name: drives
     description: Drive CRUD and storage configuration.
   - name: fs
@@ -107,18 +107,6 @@ paths:
 
   /v1/users:
     $ref: "./endpoints/user.yaml#/users"
-
-  /auth/google:
-    $ref: "./endpoints/auth.yaml#/google"
-
-  /auth/google/native:
-    $ref: "./endpoints/auth.yaml#/googleNative"
-
-  /auth/callback:
-    $ref: "./endpoints/auth.yaml#/callback"
-
-  /auth/logout:
-    $ref: "./endpoints/auth.yaml#/logout"
 
   /auth/me:
     $ref: "./endpoints/auth.yaml#/me"

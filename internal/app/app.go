@@ -19,7 +19,6 @@ import (
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/app/gc"
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/auth/session"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -32,7 +31,7 @@ import (
 )
 
 // App holds all wired components. Fields are grouped loosely
-// into HTTP-serving services (NodeSvc, DriveSvc, ..., Security),
+// into HTTP-serving services (NodeSvc, DriveSvc, ..., Auth),
 // background-job services (same, plus Garbage), and lifecycle
 // (DB, Ent, Config, Log).
 type App struct {
@@ -46,7 +45,6 @@ type App struct {
 	UploadToken  upload.TokenRegistry
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
-	SessionStore session.Store
 	Garbage      *gc.GarbageRecorder
 	Auth         *auth.Service
 	Security     *auth.SecurityHandler
@@ -83,7 +81,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	garbage := gc.NewGarbageRecorder(entClient)
 
-	vClient, uploadReg, err := newValkeyClient(ctx, cfg.Valkey, log)
+	uploadReg, err := newUploadRegistry(ctx, cfg.Valkey, log)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -101,7 +99,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	store, authenticator, sec, err := newAuth(ctx, cfg, log, vClient)
+	authenticator, sec, err := newAuth(ctx, cfg, log, repos.UserSvc)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -117,7 +115,6 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg),
 		VFS:          newVFS(repos, garbage, log),
-		SessionStore: store,
 		Garbage:      garbage,
 		Auth:         authenticator,
 		Security:     sec,
@@ -268,28 +265,32 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 	return checker, nil
 }
 
-// newAuth wires OIDC + session store. In dev (no auth config)
-// the store is in-memory and the security handler is nil; the
+// newAuth wires zitadel-go's OIDC authenticator. In dev (no auth
+// config) the service is nil and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
-func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, vClient valkey.Client) (session.Store, *auth.Service, *auth.SecurityHandler, error) {
-	var store session.Store = session.NewMemoryStore()
+func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *user.Service) (*auth.Service, *auth.SecurityHandler, error) {
 	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
-		return store, nil, nil, nil
+		return nil, nil, nil
 	}
-	if vClient != nil {
-		store = session.NewValkeyStore(vClient)
+	if cfg.Auth.EncryptionKey == "" {
+		return nil, nil, fmt.Errorf("auth: encryption_key required when auth.issuer is set")
 	}
-	authenticator, err := auth.NewService(ctx, auth.Config{
-		Issuer:       cfg.Auth.Issuer,
-		ClientID:     cfg.Auth.ClientID,
-		SessionStore: store,
-		SessionTTL:   cfg.Auth.SessionTTL,
-	})
+	authenticator, err := auth.New(ctx, auth.Config{
+		Issuer:        cfg.Auth.Issuer,
+		ClientID:      cfg.Auth.ClientID,
+		RedirectURI:   cfg.Auth.RedirectURI,
+		PostLogoutURL: cfg.Auth.PostLogoutURL,
+		CookieName:    cfg.HTTP.Cookie.Name,
+		EncryptionKey: cfg.Auth.EncryptionKey,
+		SessionTTL:    cfg.Auth.SessionTTL,
+		Scopes:        []string{"openid", "profile", "email"},
+		Provider:      "zitadel",
+	}, users)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	sec := auth.NewSecurityHandler(authenticator, cfg.HTTP.Cookie.Name)
-	return store, authenticator, sec, nil
+	sec := auth.NewSecurityHandler(authenticator)
+	return authenticator, sec, nil
 }
 
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
@@ -363,10 +364,10 @@ func newS3Client(ctx context.Context, cfg config.StorageConfig, log *slog.Logger
 	return client, nil
 }
 
-func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig, log *slog.Logger) (valkey.Client, upload.TokenRegistry, error) {
+func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig, log *slog.Logger) (upload.TokenRegistry, error) {
 	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
 		log.Warn("valkey: no addresses configured; using MemoryRegistry (development only)")
-		return nil, upload.NewMemoryRegistry(), nil
+		return upload.NewMemoryRegistry(), nil
 	}
 	client, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: cfg.Addrs,
@@ -375,8 +376,8 @@ func newValkeyClient(ctx context.Context, cfg config.ValkeyConfig, log *slog.Log
 		SelectDB:    cfg.DB,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("valkey client: %w", err)
+		return nil, fmt.Errorf("valkey client: %w", err)
 	}
 	log.Info("valkey client initialized", "addrs", cfg.Addrs, "db", cfg.DB)
-	return client, upload.NewValkeyRegistry(client), nil
+	return upload.NewValkeyRegistry(client), nil
 }
