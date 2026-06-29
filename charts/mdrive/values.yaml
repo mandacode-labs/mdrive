@@ -133,11 +133,6 @@ config:
     cookie:
       name: mdrive_session
       path: /
-      # Empty = bind to exact Set-Cookie host. For split-domain
-      # deployments (frontend mdrive.mandacode.com, backend
-      # api.mdrive.mandacode.com) set to the parent host
-      # "mdrive.mandacode.com" so the cookie is sent on
-      # cross-sub-domain requests.
       domain: ""
       secure: true
       http_only: true
