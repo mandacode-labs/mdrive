@@ -92,8 +92,12 @@ func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParam
 	if err != nil {
 		return nil, err
 	}
+	location := h.postLoginURL
+	if location == "" {
+		location = h.redirectURI
+	}
 	return &api.AuthCallbackFound{
-		Location:  h.redirectURI,
+		Location:  location,
 		SetCookie: h.sessionCookie(sess.ID, sess.ExpiresAt).String(),
 	}, nil
 }
@@ -129,6 +133,12 @@ func (h *Handler) createOrUpdateUser(ctx context.Context, sub, name, email, prov
 	var eptr *string
 	if email != "" {
 		eptr = &email
+	}
+	if name == "" {
+		name = email
+	}
+	if name == "" {
+		name = sub
 	}
 	return h.users.UpsertFromOIDC(ctx, &user.CreateCommand{
 		Name:       name,
