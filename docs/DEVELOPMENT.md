@@ -137,6 +137,31 @@ fga store create --name "mdrive"
 - Sessions stored in Valkey (or memory for dev)
 - PKCE enforced via session-backed code verifier storage
 
+### Redirect URI configuration
+
+`auth.redirect_uri` is the EXACT URL registered in Zitadel →
+Project → Application → your app → **Redirect URIs**. It must
+match exactly (scheme, host, port, path) or Zitadel rejects
+the authorization request with:
+
+```
+{"error":"invalid_request","error_description":"The requested
+redirect_uri is missing in the client configuration."}
+```
+
+Set the value the **browser** uses to reach the callback
+endpoint:
+
+- Direct backend call: `https://api.mdrive.com/auth/callback`
+- Frontend proxy: `https://mdrive.mandacode.com/api/auth/callback`
+
+`auth.frontend_url` is deprecated: it was combined with the
+implicit `/auth/callback` path to derive the redirect URI, but
+that hid the value the OIDC provider matches against. The
+`MigrateDeprecatedAuth` helper at startup still derives
+`redirect_uri` from `frontend_url` for existing deployments
+until they migrate.
+
 ## Layer responsibilities
 
 | Layer | Responsibility | Does NOT |
