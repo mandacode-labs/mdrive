@@ -18,7 +18,8 @@
             "post_login_url": { "type": "string" },
             "post_logout_url": { "type": "string" },
             "session_ttl": { "type": "string" },
-            "frontend_url": { "type": "string" }
+            "cookie_domain": { "type": "string" },
+            "cookie_same_site": { "type": "string" }
           }
         }
       }

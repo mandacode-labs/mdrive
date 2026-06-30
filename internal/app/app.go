@@ -63,7 +63,6 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	if err := cfg.Validate(cfg.App.Env); err != nil {
 		return nil, err
 	}
-	cfg.MigrateDeprecatedAuth()
 
 	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
 
@@ -279,6 +278,7 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 	authenticator, err := auth.New(ctx, auth.Config{
 		Issuer:         cfg.Auth.Issuer,
 		ClientID:       cfg.Auth.ClientID,
+		ClientSecret:   cfg.Auth.ClientSecret,
 		RedirectURI:    cfg.Auth.RedirectURI,
 		PostLoginURL:   cfg.Auth.PostLoginURL,
 		PostLogoutURL:  cfg.Auth.PostLogoutURL,

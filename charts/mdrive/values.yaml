@@ -189,16 +189,17 @@ config:
     # Where to send the browser after /auth/logout. Typically
     # the SPA/frontend root. When empty, defaults to /.
     post_logout_url: ""
+    # Cookie domain (e.g. ".mdrive.mandacode.com") so the session
+    # cookie is shared across api/frontend subdomains. Empty means
+    # host-only (single subdomain).
+    cookie_domain: ""
+    # Cookie SameSite: "lax" (default), "strict", or "none".
+    cookie_same_site: "lax"
     # Allowlist of hostnames for the post-login redirect target
     # (?redirect_uri=). Production sets the SPA hostname here.
     # The backend validates scheme=https and host equality
     # (case-insensitive) and falls back to post_login_url otherwise.
     allowed_origins: []
-    # DEPRECATED: use redirect_uri directly. Derives
-    # <frontend_url>/auth/callback automatically via the
-    # MigrateDeprecatedAuth helper for the transition window.
-    # Will be removed in a future release.
-    frontend_url: ""
 
   openfga:
     auth_mode: "api_token"  # api_token | client_credentials | none
@@ -234,6 +235,7 @@ secrets:
     existingSecretKey: valkey-password
   auth:
     encryption_key: ""
+    client_secret: ""
     existingSecret: ""
     existingSecretKey: auth-encryption-key
   storage:
