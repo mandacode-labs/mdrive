@@ -61,10 +61,12 @@ internal/
   app/                    application wiring (DI)
     apiserver/            HTTP server (server.go, handler/, error.go)
     gc/                   GC runner
-  auth/                   OIDC authentication (Zitadel)
-    authenticator.go      auth.Service, token exchange, PKCE
+  auth/                   OIDC authentication (Keycloak)
+    auth.go               Service, Config, OIDC provider discovery
+    flow.go               authenticate/callback/logout HTTP handlers
+    claims.go             Keycloak realm_access.roles parser
+    session.go            encrypted cookie session (AES-GCM)
     security.go           ogen SecurityHandler, session middleware
-    session/              session.Store, ValkeyStore, MemoryStore
   cli/                    cobra commands (api-server, gc)
   config/                 viper-based configuration
   core/                   domain entities
@@ -130,24 +132,19 @@ fga store create --name "mdrive"
 - `store_id` is required — server fails without it
 - `authorization_model_id` is optional — if empty, writes the embedded model and uses the returned ID
 
-## Zitadel Auth
+## Keycloak Auth
 
-- `api_url` + `client_id` + `issuer` must be configured
-- Google OAuth: `GET /auth/google`, `POST /auth/google/native`
-- Sessions stored in Valkey (or memory for dev)
-- PKCE enforced via session-backed code verifier storage
+- `auth.issuer` is the Keycloak realm URL (e.g. `https://sso.example.com/realms/mdrive`)
+- `auth.client_id` must be configured
+- PKCE enforced with S256, state cookie encrypted with AES-GCM
+- Sessions are encrypted cookies (no server-side session store)
 
 ### Redirect URI configuration
 
-`auth.redirect_uri` is the EXACT URL registered in Zitadel →
-Project → Application → your app → **Redirect URIs**. It must
-match exactly (scheme, host, port, path) or Zitadel rejects
-the authorization request with:
-
-```
-{"error":"invalid_request","error_description":"The requested
-redirect_uri is missing in the client configuration."}
-```
+`auth.redirect_uri` is the EXACT URL registered in Keycloak →
+Realm → Client → **Redirect URIs**. It must match exactly
+(scheme, host, port, path) or Keycloak rejects the authorization
+request.
 
 Set the value the **browser** uses to reach the callback
 endpoint:
@@ -157,7 +154,7 @@ endpoint:
 
 `auth.frontend_url` is deprecated: it was combined with the
 implicit `/auth/callback` path to derive the redirect URI, but
-that hid the value the OIDC provider matches against. The
+that hid the value the IdP matches against. The
 `MigrateDeprecatedAuth` helper at startup still derives
 `redirect_uri` from `frontend_url` for existing deployments
 until they migrate.

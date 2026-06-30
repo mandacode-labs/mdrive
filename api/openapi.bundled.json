@@ -27,7 +27,7 @@
     },
     {
       "name": "auth",
-      "description": "Session lookup (login/logout/callback are handled by zitadel-go middleware, not exposed via this spec)."
+      "description": "Session lookup (login/logout/callback are handled by auth middleware, not exposed via this spec)."
     },
     {
       "name": "drives",
@@ -1924,7 +1924,7 @@
         "tags": [
           "auth"
         ],
-        "description": "Initiates OIDC login. Handled by zitadel-go's authenticator\nmounted at the /auth path prefix in the chart; returns 302 to\nthe configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI\nclient cannot follow the redirect — use a browser.\n",
+        "description": "Initiates OIDC login. Handled by the auth Service mounted at\nthe /auth path prefix; returns 302 to the configured issuer\n(Keycloak). The OpenAPI\nclient cannot follow the redirect — use a browser.\n",
         "summary": "Initiate OIDC login (browser redirect to IdP)",
         "security": [],
         "responses": {
@@ -1958,7 +1958,7 @@
         "tags": [
           "auth"
         ],
-        "description": "OIDC redirect target. Handled by zitadel-go's authenticator:\nexchanges the authorization code for tokens, fetches userinfo,\nupserts the user via WithOnAuthenticated, sets the session cookie,\nand redirects to the original URL (or /). The OpenAPI client\ncannot follow the OIDC dance — use a browser.\n",
+        "description": "OIDC redirect target. Handled by the auth Service: exchanges\nthe authorization code for tokens (PKCE), fetches userinfo,\nupserts the user, sets the session cookie, and redirects to\nthe post-login URL (or /). The OpenAPI client\ncannot follow the OIDC dance — use a browser.\n",
         "summary": "OIDC callback from IdP (browser flow)",
         "security": [],
         "parameters": [
@@ -2016,7 +2016,7 @@
         "tags": [
           "auth"
         ],
-        "description": "OIDC RP-initiated logout. Handled by zitadel-go: redirects to\nthe IdP end_session_endpoint, then clears the session cookie\nand redirects to auth.post_logout_url.\n",
+        "description": "OIDC RP-initiated logout. Handled by the auth Service: clears\nthe session cookie and redirects to the IdP's\nend_session_endpoint with post_logout_redirect_uri.\n",
         "summary": "Destroy the current session",
         "security": [],
         "responses": {

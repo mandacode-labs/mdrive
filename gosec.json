@@ -7,6 +7,10 @@
     {
       "path": "internal/app/apiserver/handler/auth.go",
       "rules": ["G124"]
+    },
+    {
+      "path": "internal/auth/session.go",
+      "rules": ["G124"]
     }
   ]
 }

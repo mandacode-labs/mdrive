@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	zitadelgo "github.com/zitadel/zitadel-go/v3/pkg/authentication"
-
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -31,57 +29,33 @@ func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationN
 }
 
 func (s *Service) Middleware(next http.Handler) http.Handler {
-	check := zitadelgo.Middleware[AuthCtx](s.authn).CheckAuthentication()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		check(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authCtx := zitadelgo.Context[AuthCtx](r.Context())
-			if authCtx == nil || authCtx.UserInfo == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			sub := authCtx.UserInfo.GetSubject()
-			if sub == "" {
-				next.ServeHTTP(w, r)
-				return
-			}
-			u, err := s.users.GetByProviderID(r.Context(), s.provider, sub)
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			sess := &Session{
-				ID:        sub,
-				UserID:    u.ID(),
-				Provider:  s.provider,
-				IsAdmin:   isAdminClaim(authCtx),
-				CreatedAt: time.Now(),
-				ExpiresAt: time.Now().Add(s.sessionTTL),
-			}
-			r = r.WithContext(ContextWithSession(r.Context(), sess))
-			r.Header.Set("Authorization", "Bearer "+u.ID())
+		sess, err := s.readSessionCookie(r)
+		if err != nil || sess == nil {
 			next.ServeHTTP(w, r)
-		})).ServeHTTP(w, r)
+			return
+		}
+		u, err := s.users.GetByProviderID(r.Context(), s.providerName, sess.Subject)
+		if err != nil || u == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		session := &Session{
+			ID:        sess.Subject,
+			UserID:    u.ID(),
+			Provider:  s.providerName,
+			IsAdmin:   sess.IsAdmin,
+			CreatedAt: time.Now(),
+			ExpiresAt: time.Now().Add(s.sessionTTL),
+		}
+		r = r.WithContext(ContextWithSession(r.Context(), session))
+		r.Header.Set("Authorization", "Bearer "+u.ID())
+		next.ServeHTTP(w, r)
 	})
-}
-
-func isAdminClaim(authCtx AuthCtx) bool {
-	if authCtx.Tokens == nil || authCtx.Tokens.IDTokenClaims == nil {
-		return false
-	}
-	raw, ok := authCtx.Tokens.IDTokenClaims.Claims[AdminRoleClaim]
-	if !ok {
-		return false
-	}
-	roles, ok := raw.(map[string]any)
-	if !ok {
-		return false
-	}
-	_, ok = roles[AdminRole]
-	return ok
 }
 
 func SessionFromContext(ctx context.Context) *Session {
@@ -112,7 +86,4 @@ func ContextWithSession(ctx context.Context, s *Session) context.Context {
 	return context.WithValue(ctx, sessionKey, s)
 }
 
-var (
-	_ http.Handler        = (*Service)(nil)
-	_ api.SecurityHandler = (*SecurityHandler)(nil)
-)
+var _ api.SecurityHandler = (*SecurityHandler)(nil)

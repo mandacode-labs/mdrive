@@ -170,14 +170,13 @@ config:
     tls: false
 
   auth:
-    provider: zitadel
+    provider: keycloak
     issuer: ""
     client_id: ""
     session_ttl: "24h"
-    # EXACT callback URL registered in Zitadel Application → your app
-    # → Redirect URIs. Must match exactly (scheme, host, port, path)
-    # or Zitadel rejects the authorization request with
-    # "invalid_request: missing in client configuration".
+    # EXACT callback URL registered in Keycloak → Client → Redirect URIs.
+    # Must match exactly (scheme, host, port, path) or Keycloak rejects
+    # the authorization request.
     # Browser-facing URL: when the frontend proxies, set the
     # frontend's path; when the browser hits the backend directly,
     # set the backend's URL.
@@ -188,8 +187,7 @@ config:
     # When empty, redirect_uri is used as fallback.
     post_login_url: ""
     # Where to send the browser after /auth/logout. Typically
-    # the SPA/frontend root. When empty, zitadel-go defaults to
-    # the request's scheme+host+"/".
+    # the SPA/frontend root. When empty, defaults to /.
     post_logout_url: ""
     # Allowlist of hostnames for the post-login redirect target
     # (?redirect_uri=). Production sets the SPA hostname here.
@@ -214,7 +212,7 @@ config:
     audience: ""
     # OAuth2 scope for client_credentials token requests
     # Required when auth_mode=client_credentials; ignored otherwise.
-    # OIDC providers (Zitadel/Keycloak/Auth0) reject scope-less
+    # Keycloak rejects scope-less
     # requests per RFC 6749 §4.4. 'openid' is the standard safe
     # value; override if your IdP requires something specific.
     scopes: ""

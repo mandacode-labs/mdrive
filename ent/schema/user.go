@@ -53,7 +53,7 @@ func (User) Fields() []ent.Field {
 			Nillable().
 			MaxLen(255),
 
-		// OIDC provider (e.g., "zitadel", "keycloak", "google").
+		// OIDC provider (e.g., "keycloak").
 		field.String("provider").
 			MaxLen(32),
 

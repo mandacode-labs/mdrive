@@ -135,7 +135,7 @@ type ValkeyConfig struct {
 // AuthConfig holds authentication settings.
 //
 // RedirectURI is the EXACT callback URL registered in the
-// upstream OIDC provider (Zitadel/Keycloak). It must be the URL
+// upstream OIDC provider (Keycloak). It must be the URL
 // the BROWSER uses to reach the callback endpoint (not the URL
 // the backend serves internally). Example: for the default
 // callback path /auth/callback, register
@@ -150,7 +150,7 @@ type ValkeyConfig struct {
 // RedirectURI from FrontendURL+"/auth/callback" for the transition
 // window so existing deployments keep working.
 type AuthConfig struct {
-	Provider       string        `mapstructure:"provider"` // "zitadel", "keycloak"
+	Provider       string        `mapstructure:"provider"` // "keycloak"
 	Issuer         string        `mapstructure:"issuer"`
 	ClientID       string        `mapstructure:"client_id"`
 	SessionTTL     time.Duration `mapstructure:"session_ttl"`
@@ -161,7 +161,7 @@ type AuthConfig struct {
 	EncryptionKey  string        `mapstructure:"encryption_key"`
 	CookieDomain   string        `mapstructure:"cookie_domain"`
 	CookieSameSite string        `mapstructure:"cookie_same_site"` // "lax" | "strict" | "none"
-	AllowedOrigins []string      `mapstructure:"allowed_origins"` // post-login redirect allowlist
+	AllowedOrigins []string      `mapstructure:"allowed_origins"`  // post-login redirect allowlist
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -176,9 +176,8 @@ type AuthConfig struct {
 //
 // Scopes is the OAuth2 scope string sent with the client_credentials
 // token request. It is empty by default; client_credentials mode
-// requires it (Zitadel/Keycloak/Auth0 reject scope-less requests per
-// RFC 6749 §4.4). Configure explicitly per IdP — "openid" is the
-// universal safe value for standard OIDC providers.
+// requires it (Keycloak rejects scope-less requests per
+// RFC 6749 §4.4). Set to "openid" for standard OIDC providers.
 type OpenFGAConfig struct {
 	AuthMode             string `mapstructure:"auth_mode"`
 	APIURL               string `mapstructure:"api_url"`
@@ -270,7 +269,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("valkey.password", "")
 	v.SetDefault("valkey.db", 0)
 	v.SetDefault("valkey.tls", false)
-	v.SetDefault("auth.provider", "zitadel")
+	v.SetDefault("auth.provider", "keycloak")
 	v.SetDefault("auth.issuer", "")
 	v.SetDefault("auth.client_id", "")
 	v.SetDefault("auth.session_ttl", "24h")
@@ -328,8 +327,8 @@ func (c *Config) MigrateDeprecatedAuth() {
 }
 
 var (
-	errProductionMasterKeyRequired  = errors.New("config: crypto.master_key is required in production")
-	errProductionOpenFGARequired    = errors.New("config: openfga.api_url is required in production")
-	errProductionOpenFGAScopesRequired = errors.New("config: openfga.scopes is required in production when auth_mode=client_credentials (Zitadel/Keycloak/Auth0 reject scope-less token requests per RFC 6749 §4.4)")
-	errProductionEncryptionKeySize   = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
+	errProductionMasterKeyRequired     = errors.New("config: crypto.master_key is required in production")
+	errProductionOpenFGARequired       = errors.New("config: openfga.api_url is required in production")
+	errProductionOpenFGAScopesRequired = errors.New("config: openfga.scopes is required in production when auth_mode=client_credentials (Keycloak rejects scope-less token requests per RFC 6749 §4.4)")
+	errProductionEncryptionKeySize     = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
 )
