@@ -8,6 +8,25 @@
       "type": "object",
       "additionalProperties": true,
       "properties": {
+        "http": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "cookie": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "name": { "type": "string" },
+                "path": { "type": "string" },
+                "domain": { "type": "string" },
+                "secure": { "type": "boolean" },
+                "http_only": { "type": "boolean" },
+                "same_site": { "type": "string" },
+                "ttl": { "type": "string" }
+              }
+            }
+          }
+        },
         "auth": {
           "type": "object",
           "additionalProperties": true,
@@ -17,9 +36,7 @@
             "redirect_uri": { "type": "string" },
             "post_login_url": { "type": "string" },
             "post_logout_url": { "type": "string" },
-            "session_ttl": { "type": "string" },
-            "cookie_domain": { "type": "string" },
-            "cookie_same_site": { "type": "string" }
+            "session_ttl": { "type": "string" }
           }
         }
       }

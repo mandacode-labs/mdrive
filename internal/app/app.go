@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
@@ -283,8 +282,8 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 		PostLoginURL:   cfg.Auth.PostLoginURL,
 		PostLogoutURL:  cfg.Auth.PostLogoutURL,
 		CookieName:     cfg.HTTP.Cookie.Name,
-		CookieDomain:   cfg.Auth.CookieDomain,
-		CookieSameSite: parseSameSite(cfg.Auth.CookieSameSite),
+		CookieDomain:   cfg.HTTP.Cookie.Domain,
+		CookieSameSite: cfg.HTTP.Cookie.SameSiteMode(),
 		EncryptionKey:  cfg.Auth.EncryptionKey,
 		SessionTTL:     cfg.Auth.SessionTTL,
 		Scopes:         []string{"openid", "profile", "email"},
@@ -295,17 +294,6 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 	}
 	sec := auth.NewSecurityHandler(authenticator)
 	return authenticator, sec, nil
-}
-
-func parseSameSite(s string) http.SameSite {
-	switch s {
-	case "strict":
-		return http.SameSiteStrictMode
-	case "none":
-		return http.SameSiteNoneMode
-	default:
-		return http.SameSiteLaxMode
-	}
 }
 
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP

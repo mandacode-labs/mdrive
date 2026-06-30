@@ -189,12 +189,6 @@ config:
     # Where to send the browser after /auth/logout. Typically
     # the SPA/frontend root. When empty, defaults to /.
     post_logout_url: ""
-    # Cookie domain (e.g. ".mdrive.mandacode.com") so the session
-    # cookie is shared across api/frontend subdomains. Empty means
-    # host-only (single subdomain).
-    cookie_domain: ""
-    # Cookie SameSite: "lax" (default), "strict", or "none".
-    cookie_same_site: "lax"
 
   openfga:
     auth_mode: "api_token"  # api_token | client_credentials | none
