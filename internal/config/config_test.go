@@ -164,6 +164,42 @@ func TestValidateScopesOptionalInDevelopment(t *testing.T) {
 		"empty scopes should be tolerated in development")
 }
 
+// TestAuthConfigCookieFields verifies that AuthConfig.CookieDomain
+// and AuthConfig.CookieSameSite are wired from the YAML tree
+// (chart values.yaml) into the struct via mapstructure.
+func TestAuthConfigCookieFields(t *testing.T) {
+	for _, k := range []string{"COOKIE_DOMAIN", "COOKIE_SAME_SITE"} {
+		_ = os.Unsetenv(k)
+	}
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: production
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+auth:
+  issuer: https://sso.example.com
+  client_id: client-123
+  cookie_domain: ".mdrive.mandacode.com"
+  cookie_same_site: "lax"
+`), 0o600))
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, ".mdrive.mandacode.com", cfg.Auth.CookieDomain,
+		"CookieDomain must come from config.auth.cookie_domain")
+	assert.Equal(t, "lax", cfg.Auth.CookieSameSite,
+		"CookieSameSite must come from config.auth.cookie_same_site (parsed downstream by app.parseSameSite)")
+}
+
 // TestAuthEncryptionKeyEnvOverride verifies that chart-injected
 // AUTH_ENCRYPTION_KEY wins over YAML's empty default. PR-61 added
 // encryption_key wiring; without the post-Unmarshal re-read, viper's
