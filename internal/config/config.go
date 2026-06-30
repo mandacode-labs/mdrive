@@ -208,23 +208,23 @@ func LoadFromPath(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// viper's Unmarshal does not propagate AutomaticEnv values into
-	// struct fields. Re-pull env-resolved values via GetString which
-	// honours AutomaticEnv (the chart wires these env names; add a
-	// line when adding a new chart-injected env).
+	// viper's Unmarshal iterates AllSettings and skips AutomaticEnv for
+	// nested keys. UnmarshalKey uses v.Get() under the hood, which
+	// honours AutomaticEnv — so chart-injected env wins over YAML's
+	// empty default. Add a line when adding a new chart-injected env.
 	overrideEnv(v, &cfg)
 
 	return &cfg, nil
 }
 
 func overrideEnv(v *viper.Viper, cfg *Config) {
-	cfg.Auth.EncryptionKey = v.GetString("auth.encryption_key")
-	cfg.Database.Password = v.GetString("database.password")
-	cfg.Valkey.Password = v.GetString("valkey.password")
-	cfg.Crypto.MasterKey = v.GetString("crypto.master_key")
-	cfg.OpenFGA.APIToken = v.GetString("openfga.api_token")
-	cfg.OpenFGA.ClientID = v.GetString("openfga.client_id")
-	cfg.OpenFGA.ClientSecret = v.GetString("openfga.client_secret")
+	_ = v.UnmarshalKey("auth.encryption_key", &cfg.Auth.EncryptionKey)
+	_ = v.UnmarshalKey("database.password", &cfg.Database.Password)
+	_ = v.UnmarshalKey("valkey.password", &cfg.Valkey.Password)
+	_ = v.UnmarshalKey("crypto.master_key", &cfg.Crypto.MasterKey)
+	_ = v.UnmarshalKey("openfga.api_token", &cfg.OpenFGA.APIToken)
+	_ = v.UnmarshalKey("openfga.client_id", &cfg.OpenFGA.ClientID)
+	_ = v.UnmarshalKey("openfga.client_secret", &cfg.OpenFGA.ClientSecret)
 }
 
 func setDefaults(v *viper.Viper) {
