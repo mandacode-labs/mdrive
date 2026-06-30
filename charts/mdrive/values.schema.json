@@ -54,8 +54,11 @@
           "additionalProperties": true,
           "properties": {
             "encryption_key": { "type": "string" },
+            "client_secret": { "type": "string" },
             "existingSecret": { "type": "string" },
-            "existingSecretKey": { "type": "string" }
+            "existingSecretKey": { "type": "string" },
+            "clientSecretExistingSecret": { "type": "string" },
+            "clientSecretExistingSecretKey": { "type": "string" }
           }
         }
       }

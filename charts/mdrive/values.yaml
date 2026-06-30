@@ -234,6 +234,10 @@ secrets:
     client_secret: ""
     existingSecret: ""
     existingSecretKey: auth-encryption-key
+    # For client_secret: prefer an existing K8s Secret over inline
+    # values (production secrets should not live in git history).
+    clientSecretExistingSecret: ""
+    clientSecretExistingSecretKey: auth-client-secret
   storage:
     access_key: ""
     secret_key: ""
