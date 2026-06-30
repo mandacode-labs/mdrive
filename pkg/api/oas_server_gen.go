@@ -8,6 +8,33 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AuthCallback implements authCallback operation.
+	//
+	// OIDC redirect target. Handled by zitadel-go's authenticator:
+	// exchanges the authorization code for tokens, fetches userinfo,
+	// upserts the user via WithOnAuthenticated, sets the session cookie,
+	// and redirects to the original URL (or /). The OpenAPI client
+	// cannot follow the OIDC dance — use a browser.
+	//
+	// GET /auth/callback
+	AuthCallback(ctx context.Context, params AuthCallbackParams) (*AuthCallbackFound, error)
+	// AuthLogin implements authLogin operation.
+	//
+	// Initiates OIDC login. Handled by zitadel-go's authenticator
+	// mounted at the /auth path prefix in the chart; returns 302 to
+	// the configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI
+	// client cannot follow the redirect — use a browser.
+	//
+	// GET /auth/login
+	AuthLogin(ctx context.Context) (*AuthLoginFound, error)
+	// AuthLogout implements authLogout operation.
+	//
+	// OIDC RP-initiated logout. Handled by zitadel-go: redirects to
+	// the IdP end_session_endpoint, then clears the session cookie
+	// and redirects to auth.post_logout_url.
+	//
+	// POST /auth/logout
+	AuthLogout(ctx context.Context) (*AuthLogoutFound, error)
 	// AuthMe implements authMe operation.
 	//
 	// Return the current authenticated user (200) or 401 if no session.

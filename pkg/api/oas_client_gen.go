@@ -28,6 +28,33 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AuthCallback invokes authCallback operation.
+	//
+	// OIDC redirect target. Handled by zitadel-go's authenticator:
+	// exchanges the authorization code for tokens, fetches userinfo,
+	// upserts the user via WithOnAuthenticated, sets the session cookie,
+	// and redirects to the original URL (or /). The OpenAPI client
+	// cannot follow the OIDC dance — use a browser.
+	//
+	// GET /auth/callback
+	AuthCallback(ctx context.Context, params AuthCallbackParams) (*AuthCallbackFound, error)
+	// AuthLogin invokes authLogin operation.
+	//
+	// Initiates OIDC login. Handled by zitadel-go's authenticator
+	// mounted at the /auth path prefix in the chart; returns 302 to
+	// the configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI
+	// client cannot follow the redirect — use a browser.
+	//
+	// GET /auth/login
+	AuthLogin(ctx context.Context) (*AuthLoginFound, error)
+	// AuthLogout invokes authLogout operation.
+	//
+	// OIDC RP-initiated logout. Handled by zitadel-go: redirects to
+	// the IdP end_session_endpoint, then clears the session cookie
+	// and redirects to auth.post_logout_url.
+	//
+	// POST /auth/logout
+	AuthLogout(ctx context.Context) (*AuthLogoutFound, error)
 	// AuthMe invokes authMe operation.
 	//
 	// Return the current authenticated user (200) or 401 if no session.
@@ -263,6 +290,269 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AuthCallback invokes authCallback operation.
+//
+// OIDC redirect target. Handled by zitadel-go's authenticator:
+// exchanges the authorization code for tokens, fetches userinfo,
+// upserts the user via WithOnAuthenticated, sets the session cookie,
+// and redirects to the original URL (or /). The OpenAPI client
+// cannot follow the OIDC dance — use a browser.
+//
+// GET /auth/callback
+func (c *Client) AuthCallback(ctx context.Context, params AuthCallbackParams) (*AuthCallbackFound, error) {
+	res, err := c.sendAuthCallback(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendAuthCallback(ctx context.Context, params AuthCallbackParams) (res *AuthCallbackFound, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("authCallback"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/auth/callback"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, AuthCallbackOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/auth/callback"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeQueryParams"
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "code" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "code",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.Code))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "state" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.State))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeAuthCallbackResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// AuthLogin invokes authLogin operation.
+//
+// Initiates OIDC login. Handled by zitadel-go's authenticator
+// mounted at the /auth path prefix in the chart; returns 302 to
+// the configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI
+// client cannot follow the redirect — use a browser.
+//
+// GET /auth/login
+func (c *Client) AuthLogin(ctx context.Context) (*AuthLoginFound, error) {
+	res, err := c.sendAuthLogin(ctx)
+	return res, err
+}
+
+func (c *Client) sendAuthLogin(ctx context.Context) (res *AuthLoginFound, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("authLogin"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.URLTemplateKey.String("/auth/login"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, AuthLoginOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/auth/login"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeAuthLoginResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// AuthLogout invokes authLogout operation.
+//
+// OIDC RP-initiated logout. Handled by zitadel-go: redirects to
+// the IdP end_session_endpoint, then clears the session cookie
+// and redirects to auth.post_logout_url.
+//
+// POST /auth/logout
+func (c *Client) AuthLogout(ctx context.Context) (*AuthLogoutFound, error) {
+	res, err := c.sendAuthLogout(ctx)
+	return res, err
+}
+
+func (c *Client) sendAuthLogout(ctx context.Context) (res *AuthLogoutFound, err error) {
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("authLogout"),
+		semconv.HTTPRequestMethodKey.String("POST"),
+		semconv.URLTemplateKey.String("/auth/logout"),
+	}
+	otelAttrs = append(otelAttrs, c.cfg.Attributes...)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		elapsedDuration := time.Since(startTime)
+		c.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), metric.WithAttributes(otelAttrs...))
+	}()
+
+	// Increment request counter.
+	c.requests.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+
+	// Start a span for this request.
+	ctx, span := c.cfg.Tracer.Start(ctx, AuthLogoutOperation,
+		trace.WithAttributes(otelAttrs...),
+		clientSpanKind,
+	)
+	// Track stage for error reporting.
+	var stage string
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, stage)
+			c.errors.Add(ctx, 1, metric.WithAttributes(otelAttrs...))
+		}
+		span.End()
+	}()
+
+	stage = "BuildURL"
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/auth/logout"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	stage = "EncodeRequest"
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	stage = "SendRequest"
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	body := resp.Body
+	defer body.Close()
+
+	stage = "DecodeResponse"
+	result, err := decodeAuthLogoutResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // AuthMe invokes authMe operation.

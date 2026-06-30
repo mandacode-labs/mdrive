@@ -163,4 +163,24 @@ func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
 	return &api.ErrorStatusCode{StatusCode: http.StatusInternalServerError, Response: api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}}
 }
 
+// AuthLogin is a stub. The chart's AuthPassthrough middleware routes
+// /auth/login to zitadel-go's authenticator before ogen sees it; this
+// method only runs if the middleware is misconfigured. Returning a
+// redirect keeps clients that follow the spec sane in that case.
+func (h *Handler) AuthLogin(ctx context.Context) (*api.AuthLoginFound, error) {
+	return &api.AuthLoginFound{Location: h.redirectURI}, nil
+}
+
+// AuthCallback is a stub. Handled by zitadel-go in the chart's
+// AuthPassthrough middleware. Kept for spec completeness.
+func (h *Handler) AuthCallback(ctx context.Context, params api.AuthCallbackParams) (*api.AuthCallbackFound, error) {
+	return &api.AuthCallbackFound{Location: h.redirectURI}, nil
+}
+
+// AuthLogout is a stub. Handled by zitadel-go in the chart's
+// AuthPassthrough middleware. Kept for spec completeness.
+func (h *Handler) AuthLogout(ctx context.Context) (*api.AuthLogoutFound, error) {
+	return &api.AuthLogoutFound{Location: h.redirectURI}, nil
+}
+
 var _ api.Handler = (*Handler)(nil)

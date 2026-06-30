@@ -16,6 +16,73 @@ func (s *ErrorStatusCode) Error() string {
 	return fmt.Sprintf("code %d: %+v", s.StatusCode, s.Response)
 }
 
+// AuthCallbackFound is response for AuthCallback operation.
+type AuthCallbackFound struct {
+	Location  string
+	SetCookie string
+}
+
+// GetLocation returns the value of Location.
+func (s *AuthCallbackFound) GetLocation() string {
+	return s.Location
+}
+
+// GetSetCookie returns the value of SetCookie.
+func (s *AuthCallbackFound) GetSetCookie() string {
+	return s.SetCookie
+}
+
+// SetLocation sets the value of Location.
+func (s *AuthCallbackFound) SetLocation(val string) {
+	s.Location = val
+}
+
+// SetSetCookie sets the value of SetCookie.
+func (s *AuthCallbackFound) SetSetCookie(val string) {
+	s.SetCookie = val
+}
+
+// AuthLoginFound is response for AuthLogin operation.
+type AuthLoginFound struct {
+	Location string
+}
+
+// GetLocation returns the value of Location.
+func (s *AuthLoginFound) GetLocation() string {
+	return s.Location
+}
+
+// SetLocation sets the value of Location.
+func (s *AuthLoginFound) SetLocation(val string) {
+	s.Location = val
+}
+
+// AuthLogoutFound is response for AuthLogout operation.
+type AuthLogoutFound struct {
+	Location  string
+	SetCookie string
+}
+
+// GetLocation returns the value of Location.
+func (s *AuthLogoutFound) GetLocation() string {
+	return s.Location
+}
+
+// GetSetCookie returns the value of SetCookie.
+func (s *AuthLogoutFound) GetSetCookie() string {
+	return s.SetCookie
+}
+
+// SetLocation sets the value of Location.
+func (s *AuthLogoutFound) SetLocation(val string) {
+	s.Location = val
+}
+
+// SetSetCookie sets the value of SetCookie.
+func (s *AuthLogoutFound) SetSetCookie(val string) {
+	s.SetCookie = val
+}
+
 type BearerAuth struct {
 	Token string
 	Roles []string

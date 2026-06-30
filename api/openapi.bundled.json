@@ -1918,6 +1918,138 @@
         }
       }
     },
+    "/auth/login": {
+      "get": {
+        "operationId": "authLogin",
+        "tags": [
+          "auth"
+        ],
+        "description": "Initiates OIDC login. Handled by zitadel-go's authenticator\nmounted at the /auth path prefix in the chart; returns 302 to\nthe configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI\nclient cannot follow the redirect — use a browser.\n",
+        "summary": "Initiate OIDC login (browser redirect to IdP)",
+        "security": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to IdP authorization endpoint",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/callback": {
+      "get": {
+        "operationId": "authCallback",
+        "tags": [
+          "auth"
+        ],
+        "description": "OIDC redirect target. Handled by zitadel-go's authenticator:\nexchanges the authorization code for tokens, fetches userinfo,\nupserts the user via WithOnAuthenticated, sets the session cookie,\nand redirects to the original URL (or /). The OpenAPI client\ncannot follow the OIDC dance — use a browser.\n",
+        "summary": "OIDC callback from IdP (browser flow)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to post-login URL with session cookie set",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "authLogout",
+        "tags": [
+          "auth"
+        ],
+        "description": "OIDC RP-initiated logout. Handled by zitadel-go: redirects to\nthe IdP end_session_endpoint, then clears the session cookie\nand redirects to auth.post_logout_url.\n",
+        "summary": "Destroy the current session",
+        "security": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to post-logout URL with cookie cleared",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            }
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/me": {
       "get": {
         "operationId": "authMe",

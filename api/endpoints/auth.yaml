@@ -1,3 +1,96 @@
+login:
+  get:
+    operationId: authLogin
+    tags:
+      - auth
+    description: |
+      Initiates OIDC login. Handled by zitadel-go's authenticator
+      mounted at the /auth path prefix in the chart; returns 302 to
+      the configured issuer (Zitadel/Keycloak/Auth0). The OpenAPI
+      client cannot follow the redirect — use a browser.
+    summary: Initiate OIDC login (browser redirect to IdP)
+    security: []
+    responses:
+      "302":
+        description: Redirect to IdP authorization endpoint
+        headers:
+          Location:
+            schema: { type: string }
+            required: true
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+callback:
+  get:
+    operationId: authCallback
+    tags:
+      - auth
+    description: |
+      OIDC redirect target. Handled by zitadel-go's authenticator:
+      exchanges the authorization code for tokens, fetches userinfo,
+      upserts the user via WithOnAuthenticated, sets the session cookie,
+      and redirects to the original URL (or /). The OpenAPI client
+      cannot follow the OIDC dance — use a browser.
+    summary: OIDC callback from IdP (browser flow)
+    security: []
+    parameters:
+      - name: code
+        in: query
+        required: true
+        schema: { type: string }
+      - name: state
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      "302":
+        description: Redirect to post-login URL with session cookie set
+        headers:
+          Location:
+            schema: { type: string }
+            required: true
+          Set-Cookie:
+            schema: { type: string }
+            required: true
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
+logout:
+  post:
+    operationId: authLogout
+    tags:
+      - auth
+    description: |
+      OIDC RP-initiated logout. Handled by zitadel-go: redirects to
+      the IdP end_session_endpoint, then clears the session cookie
+      and redirects to auth.post_logout_url.
+    summary: Destroy the current session
+    security: []
+    responses:
+      "302":
+        description: Redirect to post-logout URL with cookie cleared
+        headers:
+          Location:
+            schema: { type: string }
+            required: true
+          Set-Cookie:
+            schema: { type: string }
+            required: true
+      default:
+        description: Unexpected error
+        content:
+          application/json:
+            schema:
+              $ref: "../openapi.yaml#/components/schemas/Error"
+
 me:
   get:
     operationId: authMe
