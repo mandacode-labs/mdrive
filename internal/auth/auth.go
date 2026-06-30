@@ -1,3 +1,9 @@
+// Package auth provides OIDC authentication and encrypted-cookie
+// session management backed by Keycloak.
+//
+// The flow is the standard OpenID Connect Authorization Code +
+// PKCE (RFC 6749 + RFC 7636). Sessions are encrypted with AES-GCM
+// and stored only in the cookie — no server-side session store.
 package auth
 
 import (
@@ -12,11 +18,14 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
+// UserUpserter is the slice of user.Service the auth package needs.
 type UserUpserter interface {
 	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
 	GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error)
 }
 
+// Config wires the auth service. EncryptionKey must be exactly 16,
+// 24, or 32 bytes for AES-GCM (validated at startup by config.Validate).
 type Config struct {
 	Issuer         string
 	ClientID       string
@@ -33,6 +42,7 @@ type Config struct {
 	Provider       string
 }
 
+// Service runs the OIDC flow and issues encrypted session cookies.
 type Service struct {
 	provider       *oidc.Provider
 	verifier       *oidc.IDTokenVerifier
@@ -46,9 +56,11 @@ type Service struct {
 	postLoginURL   string
 	postLogoutURL  string
 	sessionTTL     time.Duration
-	scopes         []string
 }
 
+// New discovers the IdP via OIDC discovery and returns a ready
+// Service. Returns an error if the issuer's discovery document
+// cannot be reached.
 func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) {
 	if len(cfg.Scopes) == 0 {
 		cfg.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
@@ -65,7 +77,7 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 		return nil, fmt.Errorf("auth: discover provider: %w", err)
 	}
 
-	svc := &Service{
+	return &Service{
 		provider: p,
 		verifier: p.Verifier(&oidc.Config{ClientID: cfg.ClientID}),
 		oauth2Cfg: oauth2.Config{
@@ -84,15 +96,8 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 		postLoginURL:   cfg.PostLoginURL,
 		postLogoutURL:  cfg.PostLogoutURL,
 		sessionTTL:     cfg.SessionTTL,
-		scopes:         cfg.Scopes,
-	}
-	return svc, nil
+	}, nil
 }
 
-func (s *Service) PostLoginURL() string {
-	return s.postLoginURL
-}
-
-func (s *Service) PostLogoutURL() string {
-	return s.postLogoutURL
-}
+func (s *Service) PostLoginURL() string { return s.postLoginURL }
+func (s *Service) PostLogoutURL() string { return s.postLogoutURL }
