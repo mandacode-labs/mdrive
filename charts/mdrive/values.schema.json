@@ -42,6 +42,25 @@
               "items": { "type": "string" }
             }
           }
+        },
+        "openfga": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "auth_mode": { "type": "string" },
+            "api_url": { "type": "string" },
+            "store_id": { "type": "string" },
+            "authorization_model_id": { "type": "string" },
+            "api_token": { "type": "string" },
+            "client_id": { "type": "string" },
+            "client_secret": { "type": "string" },
+            "token_issuer": { "type": "string" },
+            "audience": { "type": "string" },
+            "scopes": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
         }
       }
     },
