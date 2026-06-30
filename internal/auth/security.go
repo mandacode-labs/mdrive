@@ -13,6 +13,10 @@ type contextKey string
 
 const sessionKey contextKey = "session"
 
+// SecurityHandler satisfies ogen's api.SecurityHandler contract.
+// It is the bearer-token path: when the request already carries
+// an Authorization header, the cookie-bridge middleware has
+// already populated the context.
 type SecurityHandler struct {
 	auth *Service
 }
@@ -22,12 +26,18 @@ func NewSecurityHandler(auth *Service) *SecurityHandler {
 }
 
 func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
-	if sess := SessionFromContext(ctx); sess != nil {
+	if SessionFromContext(ctx) != nil {
 		return ctx, nil
 	}
 	return ctx, fmt.Errorf("auth: no session for bearer token")
 }
 
+// Middleware bridges cookie-based OIDC sessions to ogen's
+// bearer-auth contract. If the request already carries an
+// Authorization header, it is passed through unchanged. Otherwise
+// the session cookie is read, the user is looked up, and a
+// synthesized "Bearer <userID>" header plus a context-bound
+// Session are attached for downstream handlers.
 func (s *Service) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -44,20 +54,22 @@ func (s *Service) Middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		session := &Session{
+		ctx := ContextWithSession(r.Context(), &Session{
 			ID:        sess.Subject,
 			UserID:    u.ID(),
 			Provider:  s.providerName,
 			IsAdmin:   sess.IsAdmin,
 			CreatedAt: time.Now(),
 			ExpiresAt: time.Now().Add(s.sessionTTL),
-		}
-		r = r.WithContext(ContextWithSession(r.Context(), session))
+		})
+		r = r.WithContext(ctx)
 		r.Header.Set("Authorization", "Bearer "+u.ID())
 		next.ServeHTTP(w, r)
 	})
 }
 
+// SessionFromContext returns the Session attached by Middleware,
+// or nil if the request is unauthenticated.
 func SessionFromContext(ctx context.Context) *Session {
 	sess, ok := ctx.Value(sessionKey).(*Session)
 	if !ok {
@@ -66,24 +78,28 @@ func SessionFromContext(ctx context.Context) *Session {
 	return sess
 }
 
+// UserIDFromContext returns the authenticated user's id, or "" if
+// the request is unauthenticated.
 func UserIDFromContext(ctx context.Context) string {
-	sess := SessionFromContext(ctx)
-	if sess == nil {
-		return ""
+	if sess := SessionFromContext(ctx); sess != nil {
+		return sess.UserID
 	}
-	return sess.UserID
+	return ""
 }
 
+// IsAdmin reports whether the authenticated principal holds the
+// admin role. Returns false for unauthenticated requests.
 func IsAdmin(ctx context.Context) bool {
-	sess := SessionFromContext(ctx)
-	if sess == nil {
-		return false
+	if sess := SessionFromContext(ctx); sess != nil {
+		return sess.IsAdmin
 	}
-	return sess.IsAdmin
+	return false
 }
 
-func ContextWithSession(ctx context.Context, s *Session) context.Context {
-	return context.WithValue(ctx, sessionKey, s)
+// ContextWithSession attaches a Session to ctx. Used by tests and
+// any caller that wants to simulate an authenticated request.
+func ContextWithSession(ctx context.Context, sess *Session) context.Context {
+	return context.WithValue(ctx, sessionKey, sess)
 }
 
 var _ api.SecurityHandler = (*SecurityHandler)(nil)

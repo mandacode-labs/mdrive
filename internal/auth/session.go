@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// Session is the in-context view of the authenticated principal.
+// The cookie payload is a separate (smaller) struct.
 type Session struct {
 	ID        string
 	UserID    string
@@ -21,11 +23,17 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+// sessionData is the encrypted cookie payload. It carries the
+// OIDC subject, resolved user id, and the raw id_token so logout
+// can send `id_token_hint` to the IdP.
 type sessionData struct {
 	Subject   string    `json:"sub"`
 	UserID    string    `json:"uid"`
 	Provider  string    `json:"prv"`
 	IsAdmin   bool      `json:"adm"`
+	IDToken   string    `json:"idt"`
+	Name      string    `json:"nm"`
+	Email     string    `json:"em"`
 	ExpiresAt time.Time `json:"exp"`
 }
 
@@ -48,12 +56,11 @@ func encrypt(plain []byte, key []byte) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("aes: new gcm: %w", err)
 	}
-	nonce := make([]byte, aesgcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+	n := make([]byte, aesgcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, n); err != nil {
 		return "", fmt.Errorf("aes: nonce: %w", err)
 	}
-	ciphertext := aesgcm.Seal(nil, nonce, plain, nil)
-	return base64.RawURLEncoding.EncodeToString(append(nonce, ciphertext...)), nil
+	return base64.RawURLEncoding.EncodeToString(aesgcm.Seal(n, n, plain, nil)), nil
 }
 
 func decrypt(s string, key []byte) ([]byte, error) {
