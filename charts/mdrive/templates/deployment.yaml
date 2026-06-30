@@ -114,7 +114,7 @@ spec:
                   key: {{ .Values.secrets.openfga.existingSecretKeyClientSecret | default "openfga-client-secret" }}
             {{- end }}
             - name: OPENFGA_SCOPES
-              value: {{ .Values.config.openfga.scopes | quote }}
+              value: {{ .Values.config.openfga.scopes | default (list) | join " " | quote }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -132,6 +132,29 @@ fga store create --name "mdrive"
 - `store_id` is required — server fails without it
 - `authorization_model_id` is optional — if empty, writes the embedded model and uses the returned ID
 
+### client_credentials scopes
+
+When `openfga.auth_mode=client_credentials`, set `openfga.scopes` to one
+or more Keycloak **client scope names**. Example:
+
+```yaml
+openfga:
+  auth_mode: "client_credentials"
+  client_id: "openfga-client"
+  client_secret: "..."
+  token_issuer: "https://sso.example.com/realms/mdrive"
+  audience: "openfga"
+  scopes:
+    - "openfga-api"
+```
+
+**Do not** use `openid`, `profile`, `email` — these are user-context
+scopes and Keycloak rejects them in client_credentials grants. Create a
+dedicated client scope in Keycloak (Admin Console → Realm → Client
+scopes → Create) and add it to your openfga client's optional scopes.
+Empty `scopes: []` is also accepted — Keycloak will send a scope-less
+token request and some IdPs accept that.
+
 ## Keycloak Auth
 
 - `auth.issuer` is the Keycloak realm URL (e.g. `https://sso.example.com/realms/mdrive`)

@@ -207,12 +207,12 @@ config:
     client_secret: ""
     token_issuer: ""
     audience: ""
-    # OAuth2 scope for client_credentials token requests
-    # Required when auth_mode=client_credentials; ignored otherwise.
-    # Keycloak rejects scope-less
-    # requests per RFC 6749 §4.4. 'openid' is the standard safe
-    # value; override if your IdP requires something specific.
-    scopes: ""
+    # OAuth2 scopes for client_credentials token requests. Empty
+    # is allowed (the SDK sends no scope param). When set, each
+    # entry must be a Keycloak client scope name (e.g. "openfga-api");
+    # user-context scopes like openid/profile/email are invalid for
+    # client_credentials grants.
+    scopes: []
 
 # Secrets (passed as environment variables, overriding config values).
 #

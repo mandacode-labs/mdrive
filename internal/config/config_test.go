@@ -100,8 +100,9 @@ valkey:
 }
 
 // TestOpenFGAScopesEmptyDefault verifies that openfga.scopes
-// defaults to empty (no implicit value). Operators must set it
-// explicitly when auth_mode=client_credentials.
+// defaults to an empty array. Operators may leave it unset for
+// IdPs that allow scope-less token requests, or override with
+// Keycloak client scope names (e.g. ["openfga-api"]).
 func TestOpenFGAScopesEmptyDefault(t *testing.T) {
 	for _, k := range []string{"OPENFGA_SCOPES"} {
 		_ = os.Unsetenv(k)
@@ -124,46 +125,55 @@ database:
 
 	cfg, err := LoadFromPath(cfgPath)
 	require.NoError(t, err)
-	assert.Equal(t, "", cfg.OpenFGA.Scopes,
-		"openfga.scopes should default to empty; do not silently set 'openid' (different IdPs require different scopes)")
+	assert.Empty(t, cfg.OpenFGA.Scopes,
+		"openfga.scopes should default to empty array")
 }
 
-// TestValidateRequiresScopesForClientCredentials verifies the
-// production fail-fast: client_credentials mode without scopes
-// must be rejected at startup. RFC 6749 §4.4 requires the scope
-// parameter; OIDC providers reject scope-less requests.
-func TestValidateRequiresScopesForClientCredentials(t *testing.T) {
+// TestOpenFGAScopesYAMLOverride verifies that explicit scope
+// names are passed through to the config struct.
+func TestOpenFGAScopesYAMLOverride(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: development
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+openfga:
+  scopes:
+    - openfga-api
+`), 0o600))
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"openfga-api"}, cfg.OpenFGA.Scopes,
+		"YAML scope list should pass through as []string")
+}
+
+// TestValidateScopesEmptyAllowed verifies that empty openfga.scopes
+// is accepted in both development and production. RFC 6749 §3.3
+// makes the scope parameter OPTIONAL; some IdPs (including
+// Keycloak with no client scope configured) accept scope-less
+// client_credentials token requests.
+func TestValidateScopesEmptyAllowed(t *testing.T) {
 	cfg := &Config{
 		Crypto: CryptoConfig{MasterKey: "x"},
 		OpenFGA: OpenFGAConfig{
 			APIURL:   "http://openfga:8080",
 			AuthMode: "client_credentials",
-			Scopes:   "",
+			ClientID: "client-123",
+			Scopes:   nil,
 		},
 	}
-	err := cfg.Validate("production")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "scopes")
-
-	// Setting scopes makes Validate pass (other production
-	// invariants are already satisfied).
-	cfg.OpenFGA.Scopes = "openid"
-	assert.NoError(t, cfg.Validate("production"))
-}
-
-// TestValidateScopesOptionalInDevelopment verifies that the
-// scopes requirement is a production-only invariant. In dev
-// mode (env=development) the empty scopes default is allowed.
-func TestValidateScopesOptionalInDevelopment(t *testing.T) {
-	cfg := &Config{
-		OpenFGA: OpenFGAConfig{
-			APIURL:   "http://openfga:8080",
-			AuthMode: "client_credentials",
-			Scopes:   "",
-		},
-	}
-	assert.NoError(t, cfg.Validate("development"),
-		"empty scopes should be tolerated in development")
+	assert.NoError(t, cfg.Validate("production"),
+		"empty/nil scopes must be allowed in production")
+	assert.NoError(t, cfg.Validate("development"))
 }
 
 // TestValidateRejectsInvalidAESKeySize verifies that production

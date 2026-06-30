@@ -3,6 +3,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -172,14 +173,14 @@ type AuthConfig struct {
 type OpenFGAConfig struct {
 	AuthMode             string `mapstructure:"auth_mode"`
 	APIURL               string `mapstructure:"api_url"`
-	StoreID              string `mapstructure:"store_id"`
-	AuthorizationModelID string `mapstructure:"authorization_model_id"`
-	APIToken             string `mapstructure:"api_token"`
-	ClientID             string `mapstructure:"client_id"`
-	ClientSecret         string `mapstructure:"client_secret"`
-	TokenIssuer          string `mapstructure:"token_issuer"`
-	Audience             string `mapstructure:"audience"`
-	Scopes               string `mapstructure:"scopes"`
+	StoreID              string   `mapstructure:"store_id"`
+	AuthorizationModelID string   `mapstructure:"authorization_model_id"`
+	APIToken             string   `mapstructure:"api_token"`
+	ClientID             string   `mapstructure:"client_id"`
+	ClientSecret         string   `mapstructure:"client_secret"`
+	TokenIssuer          string   `mapstructure:"token_issuer"`
+	Audience             string   `mapstructure:"audience"`
+	Scopes               []string `mapstructure:"scopes"` // optional client_credentials scopes (e.g. ["openfga-api"])
 }
 
 // LoadFromPath reads the configuration from the given file path.
@@ -276,7 +277,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("openfga.client_secret", "")
 	v.SetDefault("openfga.token_issuer", "")
 	v.SetDefault("openfga.audience", "")
-	v.SetDefault("openfga.scopes", "")
+	v.SetDefault("openfga.scopes", []string{})
 }
 
 // Validate enforces production-vs-development invariants. Returns
@@ -291,8 +292,8 @@ func (c *Config) Validate(env string) error {
 		if c.OpenFGA.APIURL == "" {
 			return errProductionOpenFGARequired
 		}
-		if c.OpenFGA.AuthMode == "client_credentials" && c.OpenFGA.Scopes == "" {
-			return errProductionOpenFGAScopesRequired
+		if c.OpenFGA.AuthMode == "client_credentials" && c.OpenFGA.ClientID == "" {
+			return fmt.Errorf("config: openfga.client_id is required in production when auth_mode=client_credentials")
 		}
 		if c.Auth.EncryptionKey != "" && !isValidAESKey(c.Auth.EncryptionKey) {
 			return errProductionEncryptionKeySize
@@ -312,6 +313,5 @@ func isValidAESKey(s string) bool {
 var (
 	errProductionMasterKeyRequired     = errors.New("config: crypto.master_key is required in production")
 	errProductionOpenFGARequired       = errors.New("config: openfga.api_url is required in production")
-	errProductionOpenFGAScopesRequired = errors.New("config: openfga.scopes is required in production when auth_mode=client_credentials (Keycloak rejects scope-less token requests per RFC 6749 §4.4)")
 	errProductionEncryptionKeySize     = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
 )
