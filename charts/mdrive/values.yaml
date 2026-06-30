@@ -191,10 +191,6 @@ config:
     # the SPA/frontend root. When empty, zitadel-go defaults to
     # the request's scheme+host+"/".
     post_logout_url: ""
-    # zitadel-go session cookie + OIDC state encryption key.
-    # Required when auth.issuer is set (enforced by values.schema.json).
-    # Min 16 chars; use secrets.auth.existingSecret in production.
-    encryption_key: ""
     # DEPRECATED: use redirect_uri directly. Derives
     # <frontend_url>/auth/callback automatically via the
     # MigrateDeprecatedAuth helper for the transition window.
