@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,10 +191,11 @@ func TestValidateRejectsInvalidAESKeySize(t *testing.T) {
 	}
 }
 
-// TestAuthConfigCookieFields verifies that AuthConfig.CookieDomain
-// and AuthConfig.CookieSameSite are wired from the YAML tree
-// (chart values.yaml) into the struct via mapstructure.
-func TestAuthConfigCookieFields(t *testing.T) {
+// TestHTTPCookieFields verifies that HTTPConfig.Cookie.Domain and
+// SameSite are wired from the YAML tree (chart values.yaml) into
+// the struct via mapstructure, and that SameSiteMode parses the
+// string into the http.SameSite enum.
+func TestHTTPCookieFields(t *testing.T) {
 	for _, k := range []string{"COOKIE_DOMAIN", "COOKIE_SAME_SITE"} {
 		_ = os.Unsetenv(k)
 	}
@@ -211,19 +213,18 @@ database:
   password: ""
   name: mdrive
   sslmode: disable
-auth:
-  issuer: https://sso.example.com
-  client_id: client-123
-  cookie_domain: ".mdrive.mandacode.com"
-  cookie_same_site: "lax"
+http:
+  cookie:
+    domain: ".mdrive.mandacode.com"
+    same_site: "strict"
 `), 0o600))
 
 	cfg, err := LoadFromPath(cfgPath)
 	require.NoError(t, err)
-	assert.Equal(t, ".mdrive.mandacode.com", cfg.Auth.CookieDomain,
-		"CookieDomain must come from config.auth.cookie_domain")
-	assert.Equal(t, "lax", cfg.Auth.CookieSameSite,
-		"CookieSameSite must come from config.auth.cookie_same_site (parsed downstream by app.parseSameSite)")
+	assert.Equal(t, ".mdrive.mandacode.com", cfg.HTTP.Cookie.Domain,
+		"Cookie.Domain must come from config.http.cookie.domain")
+	assert.Equal(t, http.SameSiteStrictMode, cfg.HTTP.Cookie.SameSiteMode(),
+		"SameSiteMode must parse config.http.cookie.same_site into http.SameSite")
 }
 
 // TestAuthEncryptionKeyEnvOverride verifies that chart-injected

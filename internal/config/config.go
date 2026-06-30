@@ -143,17 +143,15 @@ type ValkeyConfig struct {
 // "https://mdrive.mandacode.com/api/auth/callback" if a frontend
 // proxy is in front.
 type AuthConfig struct {
-	Provider       string        `mapstructure:"provider"` // "keycloak"
-	Issuer         string        `mapstructure:"issuer"`
-	ClientID       string        `mapstructure:"client_id"`
-	ClientSecret   string        `mapstructure:"client_secret"`
-	SessionTTL     time.Duration `mapstructure:"session_ttl"`
-	RedirectURI    string        `mapstructure:"redirect_uri"`
-	PostLoginURL   string        `mapstructure:"post_login_url"`
-	PostLogoutURL  string        `mapstructure:"post_logout_url"`
-	EncryptionKey  string        `mapstructure:"encryption_key"`
-	CookieDomain   string        `mapstructure:"cookie_domain"`
-	CookieSameSite string        `mapstructure:"cookie_same_site"` // "lax" | "strict" | "none"
+	Provider      string        `mapstructure:"provider"` // "keycloak"
+	Issuer        string        `mapstructure:"issuer"`
+	ClientID      string        `mapstructure:"client_id"`
+	ClientSecret  string        `mapstructure:"client_secret"`
+	SessionTTL    time.Duration `mapstructure:"session_ttl"`
+	RedirectURI   string        `mapstructure:"redirect_uri"`
+	PostLoginURL  string        `mapstructure:"post_login_url"`
+	PostLogoutURL string        `mapstructure:"post_logout_url"`
+	EncryptionKey string        `mapstructure:"encryption_key"`
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -267,8 +265,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.client_id", "")
 	v.SetDefault("auth.client_secret", "")
 	v.SetDefault("auth.session_ttl", "24h")
-	v.SetDefault("auth.cookie_domain", "")
-	v.SetDefault("auth.cookie_same_site", "lax")
 	v.SetDefault("openfga.auth_mode", "api_token")
 	v.SetDefault("openfga.api_url", "")
 	v.SetDefault("openfga.store_id", "")
