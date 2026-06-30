@@ -108,6 +108,15 @@ paths:
   /v1/users:
     $ref: "./endpoints/user.yaml#/users"
 
+  /auth/login:
+    $ref: "./endpoints/auth.yaml#/login"
+
+  /auth/callback:
+    $ref: "./endpoints/auth.yaml#/callback"
+
+  /auth/logout:
+    $ref: "./endpoints/auth.yaml#/logout"
+
   /auth/me:
     $ref: "./endpoints/auth.yaml#/me"
 
