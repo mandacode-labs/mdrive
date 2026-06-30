@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -36,7 +35,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if perm != nil {
 		healthDeps.Authorizer = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Config.Auth.RedirectURI, a.Config.Auth.PostLoginURL,
+	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Config.Auth.RedirectURI,
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       a.Config.Storage.Bucket,
 			Region:       a.Config.Storage.Region,
@@ -66,7 +65,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	if a.Auth != nil {
 		secured = a.Auth.Middleware(ogenServer)
 	}
-	finalHandler := AuthPassthrough(secured, a.Auth, a.Config.Auth.PostLoginURL, a.Config.Auth.AllowedOrigins)
+	finalHandler := AuthPassthrough(secured, a.Auth)
 	finalHandler = OpenAPIPassthrough(finalHandler)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
@@ -174,24 +173,18 @@ func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 }
 
 // AuthPassthrough routes OIDC login/callback/logout to the auth
-// Service and forwards everything else to next. Mounted in
-// the middleware chain BEFORE the ogen server so ogen never sees
-// the auth-flow paths. When auth is not configured, the request
-// is forwarded as-is.
-//
-// For /auth/login, extracts ?redirect_uri= and validates it against
-// the AllowedOrigins allowlist. This is the post-login redirect
-// target where the user lands after authentication. Without this
-// filter, a malicious site could craft a link with an evil
-// redirect_uri and phish the user.
-func AuthPassthrough(next http.Handler, auth *auth.Service, postLoginURL string, allowedOrigins []string) http.Handler {
+// Service and forwards everything else to next. Mounted in the
+// middleware chain BEFORE the ogen server so ogen never sees the
+// auth-flow paths. When auth is not configured, the request is
+// forwarded as-is.
+func AuthPassthrough(next http.Handler, auth *auth.Service) http.Handler {
 	if auth == nil {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/auth/login":
-			auth.Authenticate(w, r, resolveRedirectURI(r, postLoginURL, allowedOrigins))
+			auth.Authenticate(w, r)
 			return
 		case "/auth/callback":
 			auth.Callback(w, r)
@@ -202,44 +195,4 @@ func AuthPassthrough(next http.Handler, auth *auth.Service, postLoginURL string,
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// resolveRedirectURI validates the caller-supplied ?redirect_uri
-// against the allowed-origins allowlist. Empty, unparseable, or
-// disallowed targets fall back to the safe post-login URL.
-// Only https:// scheme with a matching host is accepted; relative
-// paths (no host) are treated as safe; protocol-relative "//evil"
-// URLs are rejected.
-func resolveRedirectURI(r *http.Request, fallback string, allowed []string) string {
-	target := r.URL.Query().Get("redirect_uri")
-	if isAllowedRedirect(target, allowed) {
-		return target
-	}
-	return fallback
-}
-
-func isAllowedRedirect(target string, allowed []string) bool {
-	if target == "" {
-		return false
-	}
-	if strings.HasPrefix(target, "//") {
-		return false
-	}
-	u, err := url.Parse(target)
-	if err != nil {
-		return false
-	}
-	host := u.Hostname()
-	if host == "" {
-		return u.Scheme == ""
-	}
-	if u.Scheme != "https" {
-		return false
-	}
-	for _, a := range allowed {
-		if strings.EqualFold(host, a) {
-			return true
-		}
-	}
-	return false
 }

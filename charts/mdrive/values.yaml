@@ -195,11 +195,6 @@ config:
     cookie_domain: ""
     # Cookie SameSite: "lax" (default), "strict", or "none".
     cookie_same_site: "lax"
-    # Allowlist of hostnames for the post-login redirect target
-    # (?redirect_uri=). Production sets the SPA hostname here.
-    # The backend validates scheme=https and host equality
-    # (case-insensitive) and falls back to post_login_url otherwise.
-    allowed_origins: []
 
   openfga:
     auth_mode: "api_token"  # api_token | client_credentials | none
