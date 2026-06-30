@@ -207,7 +207,24 @@ func LoadFromPath(path string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
+
+	// viper's Unmarshal iterates AllSettings and skips AutomaticEnv for
+	// nested keys. UnmarshalKey uses v.Get() under the hood, which
+	// honours AutomaticEnv — so chart-injected env wins over YAML's
+	// empty default. Add a line when adding a new chart-injected env.
+	overrideEnv(v, &cfg)
+
 	return &cfg, nil
+}
+
+func overrideEnv(v *viper.Viper, cfg *Config) {
+	_ = v.UnmarshalKey("auth.encryption_key", &cfg.Auth.EncryptionKey)
+	_ = v.UnmarshalKey("database.password", &cfg.Database.Password)
+	_ = v.UnmarshalKey("valkey.password", &cfg.Valkey.Password)
+	_ = v.UnmarshalKey("crypto.master_key", &cfg.Crypto.MasterKey)
+	_ = v.UnmarshalKey("openfga.api_token", &cfg.OpenFGA.APIToken)
+	_ = v.UnmarshalKey("openfga.client_id", &cfg.OpenFGA.ClientID)
+	_ = v.UnmarshalKey("openfga.client_secret", &cfg.OpenFGA.ClientSecret)
 }
 
 func setDefaults(v *viper.Viper) {
