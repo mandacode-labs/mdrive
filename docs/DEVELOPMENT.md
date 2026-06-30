@@ -152,13 +152,6 @@ endpoint:
 - Direct backend call: `https://api.mdrive.com/auth/callback`
 - Frontend proxy: `https://mdrive.mandacode.com/api/auth/callback`
 
-`auth.frontend_url` is deprecated: it was combined with the
-implicit `/auth/callback` path to derive the redirect URI, but
-that hid the value the IdP matches against. The
-`MigrateDeprecatedAuth` helper at startup still derives
-`redirect_uri` from `frontend_url` for existing deployments
-until they migrate.
-
 ## Layer responsibilities
 
 | Layer | Responsibility | Does NOT |

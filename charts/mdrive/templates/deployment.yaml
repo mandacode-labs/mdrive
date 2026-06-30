@@ -85,6 +85,13 @@ spec:
                   name: {{ .Values.secrets.auth.existingSecret | default (include "mdrive.fullname" .) }}
                   key: {{ .Values.secrets.auth.existingSecretKey | default "auth-encryption-key" }}
             {{- end }}
+            {{- if .Values.secrets.auth.client_secret }}
+            - name: AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mdrive.fullname" . }}
+                  key: auth-client-secret
+            {{- end }}
             {{- if or .Values.secrets.openfga.api_token .Values.secrets.openfga.existingSecret }}
             - name: OPENFGA_API_TOKEN
               valueFrom:
