@@ -73,7 +73,7 @@ func TestConsumeStateCookieRejectsMissingCookie(t *testing.T) {
 
 func TestConsumeStateCookieRejectsMismatchedState(t *testing.T) {
 	svc := &Service{encKey: newTestKey(t), cookieName: "mdrive_session"}
-	sd := stateData{State: "real-state", Verifier: "v", RequestedURI: "/"}
+	sd := stateData{State: "real-state", Verifier: "v"}
 	raw, err := json.Marshal(sd)
 	require.NoError(t, err)
 	enc, err := encrypt(raw, svc.encKey)
@@ -93,7 +93,7 @@ func TestConsumeStateCookieRejectsMismatchedState(t *testing.T) {
 
 func TestConsumeStateCookieClearsCookieOnSuccess(t *testing.T) {
 	svc := &Service{encKey: newTestKey(t), cookieName: "mdrive_session"}
-	sd := stateData{State: "matching", Verifier: "v", RequestedURI: "/dashboard"}
+	sd := stateData{State: "matching", Verifier: "v"}
 	raw, err := json.Marshal(sd)
 	require.NoError(t, err)
 	enc, err := encrypt(raw, svc.encKey)
@@ -107,7 +107,6 @@ func TestConsumeStateCookieClearsCookieOnSuccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "matching", got.State)
 	assert.Equal(t, "v", got.Verifier)
-	assert.Equal(t, "/dashboard", got.RequestedURI)
 
 	cleared := w.Header().Get("Set-Cookie")
 	assert.Contains(t, cleared, "Max-Age=0", "state cookie must be one-time use")

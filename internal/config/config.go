@@ -154,7 +154,6 @@ type AuthConfig struct {
 	EncryptionKey  string        `mapstructure:"encryption_key"`
 	CookieDomain   string        `mapstructure:"cookie_domain"`
 	CookieSameSite string        `mapstructure:"cookie_same_site"` // "lax" | "strict" | "none"
-	AllowedOrigins []string      `mapstructure:"allowed_origins"`  // post-login redirect allowlist
 }
 
 // OpenFGAConfig holds OpenFGA settings.

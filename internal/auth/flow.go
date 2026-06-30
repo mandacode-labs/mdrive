@@ -15,12 +15,11 @@ import (
 )
 
 // stateData is the encrypted payload of the "auth_state" cookie.
-// It carries the PKCE verifier, the original `state` token (to
-// detect CSRF on callback), and the post-login redirect target.
+// It carries the PKCE verifier and the original `state` token
+// (to detect CSRF on callback).
 type stateData struct {
-	State        string `json:"s"`
-	Verifier     string `json:"v"`
-	RequestedURI string `json:"ru"`
+	State    string `json:"s"`
+	Verifier string `json:"v"`
 }
 
 // idTokenClaims captures the standard OIDC ID token claims we
@@ -41,14 +40,13 @@ type userInfoClaims struct {
 // It mints a state token + PKCE verifier, persists them in an
 // encrypted short-lived cookie, and redirects the browser to the
 // IdP's authorization endpoint.
-func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request, requestedURI string) {
+func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 	verifier := oauth2.GenerateVerifier()
 	state := nonce()
 
 	payload, err := json.Marshal(stateData{
-		State:        state,
-		Verifier:     verifier,
-		RequestedURI: requestedURI,
+		State:    state,
+		Verifier: verifier,
 	})
 	if err != nil {
 		http.Error(w, "auth: internal error", http.StatusInternalServerError)
@@ -66,8 +64,8 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request, requested
 
 // Callback exchanges the authorization code for tokens, verifies
 // the ID token, upserts the user, and issues the session cookie.
-// On success the browser is redirected to the requested post-login
-// URL (validated upstream by AuthPassthrough).
+// On success the browser is redirected to the configured
+// post-login URL.
 func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
@@ -125,10 +123,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target := sd.RequestedURI
-	if target == "" {
-		target = s.postLoginURL
-	}
+	target := s.postLoginURL
 	if target == "" {
 		target = "/"
 	}

@@ -132,7 +132,7 @@ var _ handler.UploadClient = (*stubUpload)(nil)
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	userSvc := newFakeUserSvc()
-	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, "", "")
+	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, "")
 	ogenServer, err := api.NewServer(h, testSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 		apiserver.WriteError(w, err)
 	}))

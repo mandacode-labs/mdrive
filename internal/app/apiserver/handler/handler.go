@@ -78,7 +78,6 @@ type Handler struct {
 	upload         UploadClient
 	authorizer     permission.Authorizer
 	redirectURI    string
-	postLoginURL   string
 	cookieConfig   CookieConfig
 	defaultStorage drive.StorageConfig
 	presignTTL     time.Duration
@@ -87,15 +86,14 @@ type Handler struct {
 
 type CookieConfig = config.CookieConfig
 
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, redirectURI, postLoginURL string, opts ...Option) *Handler {
+func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, redirectURI string, opts ...Option) *Handler {
 	h := &Handler{
-		fs:           fs,
-		drive:        drive,
-		users:        users,
-		upload:       upload,
-		authorizer:   authorizer,
-		redirectURI:  redirectURI,
-		postLoginURL: postLoginURL,
+		fs:          fs,
+		drive:       drive,
+		users:       users,
+		upload:      upload,
+		authorizer:  authorizer,
+		redirectURI: redirectURI,
 	}
 	for _, opt := range opts {
 		opt(h)
