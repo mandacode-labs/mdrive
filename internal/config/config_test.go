@@ -163,3 +163,90 @@ func TestValidateScopesOptionalInDevelopment(t *testing.T) {
 	assert.NoError(t, cfg.Validate("development"),
 		"empty scopes should be tolerated in development")
 }
+
+// TestAuthEncryptionKeyEnvOverride verifies that AUTH_ENCRYPTION_KEY
+// env var (the name the Helm chart deploys) overrides the YAML
+// value. PR-61 introduced encryption_key wiring; without BindEnv,
+// viper's AutomaticEnv would only see CONFIG_AUTH_ENCRYPTION_KEY
+// (the dot-notation-mapped name), so the chart-injected env is
+// silently dropped — exactly what the production rollout exposed.
+func TestAuthEncryptionKeyEnvOverride(t *testing.T) {
+	for _, k := range []string{"AUTH_ENCRYPTION_KEY", "CONFIG_AUTH_ENCRYPTION_KEY"} {
+		_ = os.Unsetenv(k)
+	}
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: production
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+auth:
+  issuer: https://sso.example.com
+  client_id: client-123
+`), 0o600))
+
+	t.Setenv("AUTH_ENCRYPTION_KEY", "env-key-32-chars-long-aaaaaaa")
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, "env-key-32-chars-long-aaaaaaa", cfg.Auth.EncryptionKey,
+		"AUTH_ENCRYPTION_KEY env must bind to cfg.Auth.EncryptionKey (chart injects this name)")
+}
+
+// TestOpenFGASecretKeyEnvOverride verifies the same env-binding pattern
+// for every other secret the chart wires via Secret references:
+// DATABASE_PASSWORD, VALKEY_PASSWORD, CRYPTO_MASTER_KEY, OPENFGA_*.
+// Catches the same class of viper mapping bug for all of them at once.
+func TestOpenFGASecretKeyEnvOverride(t *testing.T) {
+	for _, k := range []string{
+		"DATABASE_PASSWORD", "VALKEY_PASSWORD", "CRYPTO_MASTER_KEY",
+		"OPENFGA_API_TOKEN", "OPENFGA_CLIENT_ID", "OPENFGA_CLIENT_SECRET",
+	} {
+		_ = os.Unsetenv(k)
+	}
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: production
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+valkey:
+  password: ""
+openfga:
+  api_token: ""
+  client_id: ""
+  client_secret: ""
+`), 0o600))
+
+	t.Setenv("DATABASE_PASSWORD", "db-env-pass")
+	t.Setenv("VALKEY_PASSWORD", "vk-env-pass")
+	t.Setenv("CRYPTO_MASTER_KEY", "crypto-env-key")
+	t.Setenv("OPENFGA_API_TOKEN", "ofg-api-token")
+	t.Setenv("OPENFGA_CLIENT_ID", "ofg-client-id")
+	t.Setenv("OPENFGA_CLIENT_SECRET", "ofg-client-secret")
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, "db-env-pass", cfg.Database.Password)
+	assert.Equal(t, "vk-env-pass", cfg.Valkey.Password)
+	assert.Equal(t, "crypto-env-key", cfg.Crypto.MasterKey)
+	assert.Equal(t, "ofg-api-token", cfg.OpenFGA.APIToken)
+	assert.Equal(t, "ofg-client-id", cfg.OpenFGA.ClientID)
+	assert.Equal(t, "ofg-client-secret", cfg.OpenFGA.ClientSecret)
+}

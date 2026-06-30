@@ -198,6 +198,14 @@ func LoadFromPath(path string) (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
+	// BindEnv: viper's AutomaticEnv with SetEnvKeyReplacer only matches
+	// top-level keys (e.g. config.foo → CONFIG_FOO). Nested keys like
+	// config.auth.encryption_key need explicit binding to AUTH_ENCRYPTION_KEY,
+	// otherwise the env var injected by the chart is silently dropped.
+	// Without these calls, encryption_key (and any other nested env wired
+	// by the chart) would always be empty even though the env is set.
+	bindEnv(v)
+
 	setDefaults(v)
 
 	if err := v.ReadInConfig(); err != nil {
@@ -208,6 +216,20 @@ func LoadFromPath(path string) (*Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// bindEnv registers explicit env-var bindings for every chart-managed
+// secret / config key. The names match what charts/mdrive/templates/
+// deployment.yaml deploys. Add a binding whenever a new env-var is
+// introduced in the chart.
+func bindEnv(v *viper.Viper) {
+	_ = v.BindEnv("database.password", "DATABASE_PASSWORD")
+	_ = v.BindEnv("valkey.password", "VALKEY_PASSWORD")
+	_ = v.BindEnv("crypto.master_key", "CRYPTO_MASTER_KEY")
+	_ = v.BindEnv("auth.encryption_key", "AUTH_ENCRYPTION_KEY")
+	_ = v.BindEnv("openfga.api_token", "OPENFGA_API_TOKEN")
+	_ = v.BindEnv("openfga.client_id", "OPENFGA_CLIENT_ID")
+	_ = v.BindEnv("openfga.client_secret", "OPENFGA_CLIENT_SECRET")
 }
 
 func setDefaults(v *viper.Viper) {
