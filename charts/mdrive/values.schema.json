@@ -36,7 +36,11 @@
             "redirect_uri": { "type": "string" },
             "post_login_url": { "type": "string" },
             "post_logout_url": { "type": "string" },
-            "session_ttl": { "type": "string" }
+            "session_ttl": { "type": "string" },
+            "scopes": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
           }
         }
       }

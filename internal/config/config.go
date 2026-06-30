@@ -152,6 +152,7 @@ type AuthConfig struct {
 	PostLoginURL  string        `mapstructure:"post_login_url"`
 	PostLogoutURL string        `mapstructure:"post_logout_url"`
 	EncryptionKey string        `mapstructure:"encryption_key"`
+	Scopes        []string      `mapstructure:"scopes"` // OIDC scopes (default: openid, profile, email)
 }
 
 // OpenFGAConfig holds OpenFGA settings.
@@ -265,6 +266,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.client_id", "")
 	v.SetDefault("auth.client_secret", "")
 	v.SetDefault("auth.session_ttl", "24h")
+	v.SetDefault("auth.scopes", []string{"openid", "profile", "email"})
 	v.SetDefault("openfga.auth_mode", "api_token")
 	v.SetDefault("openfga.api_url", "")
 	v.SetDefault("openfga.store_id", "")

@@ -189,6 +189,13 @@ config:
     # Where to send the browser after /auth/logout. Typically
     # the SPA/frontend root. When empty, defaults to /.
     post_logout_url: ""
+    # OIDC scopes sent in the authorization request. The default
+    # covers the standard OIDC profile + email claims. Override
+    # here to add IdP-specific scopes (e.g. Keycloak realm roles).
+    scopes:
+      - openid
+      - profile
+      - email
 
   openfga:
     auth_mode: "api_token"  # api_token | client_credentials | none
