@@ -164,12 +164,11 @@ func TestValidateScopesOptionalInDevelopment(t *testing.T) {
 		"empty scopes should be tolerated in development")
 }
 
-// TestAuthEncryptionKeyEnvOverride verifies that AUTH_ENCRYPTION_KEY
-// env var (the name the Helm chart deploys) overrides the YAML
-// value. PR-61 introduced encryption_key wiring; without BindEnv,
-// viper's AutomaticEnv would only see CONFIG_AUTH_ENCRYPTION_KEY
-// (the dot-notation-mapped name), so the chart-injected env is
-// silently dropped — exactly what the production rollout exposed.
+// TestAuthEncryptionKeyEnvOverride verifies that chart-injected
+// AUTH_ENCRYPTION_KEY wins over YAML's empty default. PR-61 added
+// encryption_key wiring; without the post-Unmarshal re-read, viper's
+// Unmarshal drops the env value (YAML's "" shadows it). Production
+// rollout failed exactly this way until the override was added.
 func TestAuthEncryptionKeyEnvOverride(t *testing.T) {
 	for _, k := range []string{"AUTH_ENCRYPTION_KEY", "CONFIG_AUTH_ENCRYPTION_KEY"} {
 		_ = os.Unsetenv(k)
@@ -197,14 +196,11 @@ auth:
 
 	cfg, err := LoadFromPath(cfgPath)
 	require.NoError(t, err)
-	assert.Equal(t, "env-key-32-chars-long-aaaaaaa", cfg.Auth.EncryptionKey,
-		"AUTH_ENCRYPTION_KEY env must bind to cfg.Auth.EncryptionKey (chart injects this name)")
+	assert.Equal(t, "env-key-32-chars-long-aaaaaaa", cfg.Auth.EncryptionKey)
 }
 
 // TestOpenFGASecretKeyEnvOverride verifies the same env-binding pattern
-// for every other secret the chart wires via Secret references:
-// DATABASE_PASSWORD, VALKEY_PASSWORD, CRYPTO_MASTER_KEY, OPENFGA_*.
-// Catches the same class of viper mapping bug for all of them at once.
+// for every other secret the chart wires via Secret references.
 func TestOpenFGASecretKeyEnvOverride(t *testing.T) {
 	for _, k := range []string{
 		"DATABASE_PASSWORD", "VALKEY_PASSWORD", "CRYPTO_MASTER_KEY",
