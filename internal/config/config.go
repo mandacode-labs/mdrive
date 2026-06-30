@@ -299,8 +299,19 @@ func (c *Config) Validate(env string) error {
 		if c.OpenFGA.AuthMode == "client_credentials" && c.OpenFGA.Scopes == "" {
 			return errProductionOpenFGAScopesRequired
 		}
+		if c.Auth.EncryptionKey != "" && !isValidAESKey(c.Auth.EncryptionKey) {
+			return errProductionEncryptionKeySize
+		}
 	}
 	return nil
+}
+
+func isValidAESKey(s string) bool {
+	switch len(s) {
+	case 16, 24, 32:
+		return true
+	}
+	return false
 }
 
 // MigrateDeprecatedAuth handles the frontend_url → redirect_uri
@@ -317,4 +328,5 @@ var (
 	errProductionMasterKeyRequired  = errors.New("config: crypto.master_key is required in production")
 	errProductionOpenFGARequired    = errors.New("config: openfga.api_url is required in production")
 	errProductionOpenFGAScopesRequired = errors.New("config: openfga.scopes is required in production when auth_mode=client_credentials (Zitadel/Keycloak/Auth0 reject scope-less token requests per RFC 6749 §4.4)")
+	errProductionEncryptionKeySize   = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
 )
