@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -162,6 +163,31 @@ func TestValidateScopesOptionalInDevelopment(t *testing.T) {
 	}
 	assert.NoError(t, cfg.Validate("development"),
 		"empty scopes should be tolerated in development")
+}
+
+// TestValidateRejectsInvalidAESKeySize verifies that production
+// fails fast when the chart-injected encryption_key is not 16/24/32
+// bytes (the only sizes aes.NewCipher accepts).
+func TestValidateRejectsInvalidAESKeySize(t *testing.T) {
+	build := func(keyLen int) *Config {
+		return &Config{
+			App:    AppConfig{Env: "production"},
+			Crypto: CryptoConfig{MasterKey: "x"},
+			Auth:   AuthConfig{EncryptionKey: strings.Repeat("a", keyLen)},
+			OpenFGA: OpenFGAConfig{
+				APIURL:   "http://openfga:8080",
+				AuthMode: "api_token",
+				APIToken: "x",
+			},
+		}
+	}
+	assert.NoError(t, build(16).Validate("production"), "16 bytes is a valid AES-128 key")
+	assert.NoError(t, build(24).Validate("production"), "24 bytes is a valid AES-192 key")
+	assert.NoError(t, build(32).Validate("production"), "32 bytes is a valid AES-256 key")
+	for _, n := range []int{8, 15, 17, 31, 33, 64} {
+		assert.Error(t, build(n).Validate("production"),
+			"%d bytes is not a valid AES key size", n)
+	}
 }
 
 // TestAuthConfigCookieFields verifies that AuthConfig.CookieDomain
