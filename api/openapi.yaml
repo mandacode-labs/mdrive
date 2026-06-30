@@ -17,7 +17,7 @@ tags:
   - name: health
     description: Service health and readiness probes.
   - name: auth
-    description: Session lookup (login/logout/callback are handled by zitadel-go middleware, not exposed via this spec).
+    description: Session lookup (login/logout/callback are handled by auth middleware, not exposed via this spec).
   - name: drives
     description: Drive CRUD and storage configuration.
   - name: fs

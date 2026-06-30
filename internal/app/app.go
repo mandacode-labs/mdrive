@@ -266,7 +266,7 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 	return checker, nil
 }
 
-// newAuth wires zitadel-go's OIDC authenticator. In dev (no auth
+// newAuth wires the OIDC authenticator (Keycloak). In dev (no auth
 // config) the service is nil and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
 func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *user.Service) (*auth.Service, *auth.SecurityHandler, error) {
@@ -288,7 +288,7 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 		EncryptionKey:  cfg.Auth.EncryptionKey,
 		SessionTTL:     cfg.Auth.SessionTTL,
 		Scopes:         []string{"openid", "profile", "email"},
-		Provider:       "zitadel",
+		Provider:       cfg.Auth.Provider,
 	}, users)
 	if err != nil {
 		return nil, nil, err

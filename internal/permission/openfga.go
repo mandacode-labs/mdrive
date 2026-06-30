@@ -217,7 +217,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires token_issuer and audience")
 		}
 		if cfg.Scopes == "" {
-			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires scopes (Zitadel/Keycloak/Auth0 reject scope-less token requests per RFC 6749 §4.4; use 'openid' for standard OIDC providers)")
+			return nil, fmt.Errorf("openfga: auth_mode=client_credentials requires scopes (Keycloak rejects scope-less token requests per RFC 6749 §4.4; use 'openid' for standard OIDC providers)")
 		}
 		if cfg.APIToken != "" {
 			return nil, fmt.Errorf("openfga: auth_mode=client_credentials does not accept api_token")

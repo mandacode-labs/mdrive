@@ -196,9 +196,9 @@ func (u *UploadExpirer) Run(ctx context.Context) error {
 	return nil
 }
 
-// SessionExpirer was removed when the cookie-based zitadel-go
-// session replaced the server-side session store. zitadel-go's
-// session has its own TTL handled by the SDK; no GC needed.
+// SessionExpirer was removed when the encrypted cookie session
+// replaced the server-side session store. The OIDC cookie session
+// has its own TTL; no GC needed.
 
 func stringPtr(s string) *string {
 	if s == "" {

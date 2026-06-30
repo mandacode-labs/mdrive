@@ -173,8 +173,8 @@ func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
 	})
 }
 
-// AuthPassthrough routes OIDC login/callback/logout to zitadel-go's
-// authenticator and forwards everything else to next. Mounted in
+// AuthPassthrough routes OIDC login/callback/logout to the auth
+// Service and forwards everything else to next. Mounted in
 // the middleware chain BEFORE the ogen server so ogen never sees
 // the auth-flow paths. When auth is not configured, the request
 // is forwarded as-is.

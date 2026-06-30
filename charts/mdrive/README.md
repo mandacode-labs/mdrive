@@ -18,17 +18,17 @@ encryption key source (see `values.schema.json` for the exact rules).
 
 ## OIDC login flow
 
-`/auth/login`, `/auth/callback`, `/auth/logout` are handled by
-[zitadel-go](https://github.com/zitadel/zitadel-go)'s `Authenticator`
-mounted at the `/auth` path prefix by the chart's `AuthPassthrough`
-middleware. The OpenAPI spec lists these endpoints (with the OIDC
-browser-redirect contract) but ogen never actually serves them — the
-middleware runs first.
+`/auth/login`, `/auth/callback`, `/auth/logout` are handled by the
+mdrive auth Service (hand-rolled OIDC middleware using
+[coreos/go-oidc](https://github.com/coreos/go-oidc)) mounted at the `/auth`
+path prefix by the chart's `AuthPassthrough` middleware. The OpenAPI spec
+lists these endpoints (with the OIDC browser-redirect contract) but ogen
+never actually serves them — the middleware runs first.
 
 The flow:
 
 ```
-Browser                     mdrive (chart)                  IdP (Zitadel)
+Browser                     mdrive (chart)                  IdP (Keycloak)
   │                              │                              │
   │ GET /auth/login              │                              │
   ├─────────────────────────────►│                              │
@@ -41,15 +41,15 @@ Browser                     mdrive (chart)                  IdP (Zitadel)
   │                              │                              │
   │ GET /auth/callback?code=..&state=..                          │
   ├─────────────────────────────►│                              │
-  │                              │ POST /token (code exchange)  │
+  │                              │ POST /token (PKCE exchange)  │
   │                              ├─────────────────────────────►│
-  │                              │◄────── access/refresh ──────┤
+  │                              │◄────── access/id_token ─────┤
   │                              │ GET /userinfo                │
   │                              ├─────────────────────────────►│
   │                              │◄────── user profile ─────────┤
-  │                              │ (user upserted via          │
-  │                              │  WithOnAuthenticated)        │
-  │ 302 Set-Cookie: mdrive_session=...                            │
+  │                              │ (user upserted, session      │
+  │                              │  cookie encrypted with AES)  │
+  │ 302 Set-Cookie: mdrive_session=...                           │
   │◄─────────────────────────────┤                              │
 ```
 
