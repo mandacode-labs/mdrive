@@ -36,7 +36,11 @@
             "redirect_uri": { "type": "string" },
             "post_login_url": { "type": "string" },
             "post_logout_url": { "type": "string" },
-            "session_ttl": { "type": "string" }
+            "session_ttl": { "type": "string" },
+            "scopes": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
           }
         }
       }
@@ -50,8 +54,11 @@
           "additionalProperties": true,
           "properties": {
             "encryption_key": { "type": "string" },
+            "client_secret": { "type": "string" },
             "existingSecret": { "type": "string" },
-            "existingSecretKey": { "type": "string" }
+            "existingSecretKey": { "type": "string" },
+            "clientSecretExistingSecret": { "type": "string" },
+            "clientSecretExistingSecretKey": { "type": "string" }
           }
         }
       }

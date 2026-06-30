@@ -286,7 +286,7 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 		CookieSameSite: cfg.HTTP.Cookie.SameSiteMode(),
 		EncryptionKey:  cfg.Auth.EncryptionKey,
 		SessionTTL:     cfg.Auth.SessionTTL,
-		Scopes:         []string{"openid", "profile", "email"},
+		Scopes:         cfg.Auth.Scopes,
 		Provider:       cfg.Auth.Provider,
 	}, users)
 	if err != nil {

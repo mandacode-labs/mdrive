@@ -191,7 +191,66 @@ func TestValidateRejectsInvalidAESKeySize(t *testing.T) {
 	}
 }
 
-// TestHTTPCookieFields verifies that HTTPConfig.Cookie.Domain and
+// TestAuthScopesDefault verifies that the OIDC standard scopes
+// (openid, profile, email) are set when the config does not
+// override them. The default lives in config.setDefaults so the
+// chart can leave config.auth.scopes unset.
+func TestAuthScopesDefault(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: development
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+auth:
+  issuer: https://sso.example.com
+  client_id: client-123
+`), 0o600))
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"openid", "profile", "email"}, cfg.Auth.Scopes,
+		"OIDC standard scopes must default to openid/profile/email")
+}
+
+// TestAuthScopesYAMLOverride verifies that an explicit config.auth.scopes
+// value wins over the default. Real-world use: add a custom scope
+// like \"roles\" so it appears in the access token.
+func TestAuthScopesYAMLOverride(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(`
+app:
+  env: development
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: mdrive
+  password: ""
+  name: mdrive
+  sslmode: disable
+auth:
+  issuer: https://sso.example.com
+  client_id: client-123
+  scopes:
+    - openid
+    - profile
+    - roles
+`), 0o600))
+
+	cfg, err := LoadFromPath(cfgPath)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"openid", "profile", "roles"}, cfg.Auth.Scopes,
+		"YAML scopes override must replace the default")
+}
 // SameSite are wired from the YAML tree (chart values.yaml) into
 // the struct via mapstructure, and that SameSiteMode parses the
 // string into the http.SameSite enum.
