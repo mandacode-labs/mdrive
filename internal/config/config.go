@@ -150,15 +150,18 @@ type ValkeyConfig struct {
 // RedirectURI from FrontendURL+"/auth/callback" for the transition
 // window so existing deployments keep working.
 type AuthConfig struct {
-	Provider      string        `mapstructure:"provider"` // "zitadel", "keycloak"
-	Issuer        string        `mapstructure:"issuer"`
-	ClientID      string        `mapstructure:"client_id"`
-	SessionTTL    time.Duration `mapstructure:"session_ttl"`
-	RedirectURI   string        `mapstructure:"redirect_uri"`
-	FrontendURL   string        `mapstructure:"frontend_url"` // deprecated
-	PostLoginURL  string        `mapstructure:"post_login_url"`
-	PostLogoutURL string        `mapstructure:"post_logout_url"`
-	EncryptionKey string        `mapstructure:"encryption_key"`
+	Provider       string        `mapstructure:"provider"` // "zitadel", "keycloak"
+	Issuer         string        `mapstructure:"issuer"`
+	ClientID       string        `mapstructure:"client_id"`
+	SessionTTL     time.Duration `mapstructure:"session_ttl"`
+	RedirectURI    string        `mapstructure:"redirect_uri"`
+	FrontendURL    string        `mapstructure:"frontend_url"` // deprecated
+	PostLoginURL   string        `mapstructure:"post_login_url"`
+	PostLogoutURL  string        `mapstructure:"post_logout_url"`
+	EncryptionKey  string        `mapstructure:"encryption_key"`
+	CookieDomain   string        `mapstructure:"cookie_domain"`
+	CookieSameSite string        `mapstructure:"cookie_same_site"` // "lax" | "strict" | "none"
+	AllowedOrigins []string      `mapstructure:"allowed_origins"` // post-login redirect allowlist
 }
 
 // OpenFGAConfig holds OpenFGA settings.

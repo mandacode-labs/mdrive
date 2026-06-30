@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -276,21 +277,35 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 		return nil, nil, fmt.Errorf("auth: encryption_key required when auth.issuer is set")
 	}
 	authenticator, err := auth.New(ctx, auth.Config{
-		Issuer:        cfg.Auth.Issuer,
-		ClientID:      cfg.Auth.ClientID,
-		RedirectURI:   cfg.Auth.RedirectURI,
-		PostLogoutURL: cfg.Auth.PostLogoutURL,
-		CookieName:    cfg.HTTP.Cookie.Name,
-		EncryptionKey: cfg.Auth.EncryptionKey,
-		SessionTTL:    cfg.Auth.SessionTTL,
-		Scopes:        []string{"openid", "profile", "email"},
-		Provider:      "zitadel",
+		Issuer:         cfg.Auth.Issuer,
+		ClientID:       cfg.Auth.ClientID,
+		RedirectURI:    cfg.Auth.RedirectURI,
+		PostLoginURL:   cfg.Auth.PostLoginURL,
+		PostLogoutURL:  cfg.Auth.PostLogoutURL,
+		CookieName:     cfg.HTTP.Cookie.Name,
+		CookieDomain:   cfg.Auth.CookieDomain,
+		CookieSameSite: parseSameSite(cfg.Auth.CookieSameSite),
+		EncryptionKey:  cfg.Auth.EncryptionKey,
+		SessionTTL:     cfg.Auth.SessionTTL,
+		Scopes:         []string{"openid", "profile", "email"},
+		Provider:       "zitadel",
 	}, users)
 	if err != nil {
 		return nil, nil, err
 	}
 	sec := auth.NewSecurityHandler(authenticator)
 	return authenticator, sec, nil
+}
+
+func parseSameSite(s string) http.SameSite {
+	switch s {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "none":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
 
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
