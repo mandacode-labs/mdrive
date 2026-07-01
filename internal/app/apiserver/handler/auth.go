@@ -12,7 +12,7 @@ var ErrUnauthenticated = errorx.New(errorx.KindUnauthenticated, "auth: not authe
 
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	sess := auth.SessionFromContext(ctx)
-	if sess == nil {
+	if sess == nil || sess.UserID == "" {
 		return nil, ErrUnauthenticated
 	}
 	u, err := h.users.GetByID(ctx, sess.UserID)
