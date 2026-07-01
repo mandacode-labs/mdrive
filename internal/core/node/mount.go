@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
@@ -42,11 +41,11 @@ func NewMount(sourceDriveID string) (*Node, error) {
 func (n *Node) ReadMount() (string, error) {
 	content, err := n.read()
 	if err != nil {
-		return "", fmt.Errorf("failed to read mount content: %w", err)
+		return "", errorx.Wrap(err, "node: read mount content")
 	}
 	var mc MountContent
 	if err := json.Unmarshal(content, &mc); err != nil {
-		return "", fmt.Errorf("failed to unmarshal mount content: %w", err)
+		return "", errorx.Wrap(err, "node: unmarshal mount content")
 	}
 	return mc.SourceDriveID, nil
 }

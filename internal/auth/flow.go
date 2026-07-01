@@ -3,8 +3,6 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -65,7 +63,7 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 		Verifier: verifier,
 	})
 	if err != nil {
-		logx.Error(r.Context(), errorx.Wrap(err, errorx.KindServiceDegraded, "auth: marshal state payload failed"),
+		logx.Error(r.Context(), errorx.Wrap(err, "auth: marshal state payload failed"),
 			"auth: marshal state payload failed",
 			slog.String("path", "/auth/login"),
 		)
@@ -74,7 +72,7 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 	enc, err := encrypt(payload, s.encKey)
 	if err != nil {
-		logx.Error(r.Context(), errorx.Wrap(err, errorx.KindServiceDegraded, "auth: encrypt state failed"),
+		logx.Error(r.Context(), errorx.Wrap(err, "auth: encrypt state failed"),
 			"auth: encrypt state failed",
 			slog.String("path", "/auth/login"),
 		)
@@ -97,14 +95,11 @@ func writeError(w http.ResponseWriter, err error) {
 }
 
 // statusForError resolves an error to its HTTP status via errorx.
-// Single-source-of-truth lives in errorx.Kind.Status(); this helper
-// only adds the non-errorx fallback.
+// Single-source-of-truth lives in errorx.KindOf; this helper is
+// kept for backward-compatible callers that need a 500 fallback
+// when no errorx.Error is in the chain.
 func statusForError(err error) int {
-	var de errorx.Error
-	if !errors.As(err, &de) {
-		return http.StatusInternalServerError
-	}
-	return de.Kind().Status()
+	return errorx.KindOf(err).Status()
 }
 
 // Callback exchanges the authorization code for tokens, verifies
@@ -134,7 +129,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.oauth2Cfg.Exchange(r.Context(), code, oauth2.VerifierOption(sd.Verifier))
 	if err != nil {
-		err = errorx.Wrap(err, errorx.KindServiceDegraded, "auth: token exchange failed")
+		err = errorx.Wrap(err, "auth: token exchange failed")
 		logx.Error(r.Context(), err, "token exchange failed",
 			slog.String("path", "/auth/callback"),
 		)
@@ -152,7 +147,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	idToken, err := s.verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		err = errorx.Wrap(err, errorx.KindUnauthenticated, "auth: id_token verification failed")
+		err = errorx.Wrap(err, "auth: id_token verification failed")
 		logx.Error(r.Context(), err, "id_token verification failed",
 			slog.String("path", "/auth/callback"),
 		)
@@ -213,19 +208,19 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 func (s *Service) consumeStateCookie(w http.ResponseWriter, r *http.Request, state string) (*stateData, error) {
 	c, err := r.Cookie("auth_state")
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", errStateMissing, err)
+		return nil, errorx.WrapSentinel(errStateMissing, err, "auth: consume state cookie missing")
 	}
 	s.setCookie(w, r, "auth_state", "", -1)
 	raw, err := decrypt(c.Value, s.encKey)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", errStateDecrypt, err)
+		return nil, errorx.WrapSentinel(errStateDecrypt, err, "auth: consume state cookie decrypt failed")
 	}
 	var sd stateData
 	if err := json.Unmarshal(raw, &sd); err != nil {
-		return nil, fmt.Errorf("%w: %v", errStateCorrupt, err)
+		return nil, errorx.WrapSentinel(errStateCorrupt, err, "auth: consume state cookie corrupt")
 	}
 	if sd.State == "" || sd.State != state {
-		return nil, fmt.Errorf("%w: have %q want %q", errStateMismatch, sd.State, state)
+		return nil, errorx.WrapSentinel(errStateMismatch, nil, "auth: consume state cookie mismatch (have=%q want=%q)", sd.State, state)
 	}
 	return &sd, nil
 }
@@ -267,7 +262,7 @@ func (s *Service) Logout(w http.ResponseWriter, r *http.Request) {
 func (s *Service) resolveIdentity(ctx context.Context, idToken *oidc.IDToken, token *oauth2.Token) (string, string, error) {
 	var claims idTokenClaims
 	if err := idToken.Claims(&claims); err != nil {
-		return "", "", fmt.Errorf("decode id_token claims: %w", err)
+		return "", "", errorx.Wrap(err, "auth: decode id_token claims")
 	}
 	if claims.Name != "" && claims.Email != "" {
 		return claims.Name, claims.Email, nil
@@ -278,14 +273,14 @@ func (s *Service) resolveIdentity(ctx context.Context, idToken *oidc.IDToken, to
 		if claims.Name != "" || claims.Email != "" {
 			return claims.Name, claims.Email, nil
 		}
-		return "", "", fmt.Errorf("userinfo: %w", err)
+		return "", "", errorx.Wrap(err, "auth: userinfo")
 	}
 	var ui userInfoClaims
 	if err := userInfo.Claims(&ui); err != nil {
 		if claims.Name != "" || claims.Email != "" {
 			return claims.Name, claims.Email, nil
 		}
-		return "", "", fmt.Errorf("decode userinfo claims: %w", err)
+		return "", "", errorx.Wrap(err, "auth: decode userinfo claims")
 	}
 	if claims.Name == "" {
 		claims.Name = ui.Name

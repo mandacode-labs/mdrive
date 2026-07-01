@@ -2,7 +2,7 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // newInlineNode constructs a Node of the given type whose inline
@@ -16,7 +16,7 @@ import (
 func newInlineNode(kind NodeType, payload any, size int64) (*Node, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("node: marshal %s content: %w", kind, err)
+		return nil, errorx.Wrap(err, "node: marshal content (kind=%s)", string(kind))
 	}
 	if len(data) > MaxContentSize {
 		return nil, ErrContentTooLarge

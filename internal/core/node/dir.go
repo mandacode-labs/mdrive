@@ -2,9 +2,9 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // DirEntry follows the Linux struct linux_dirent pattern: an inode reference plus a name.
@@ -46,7 +46,7 @@ func (d *DirContent) findEntry(name string) *DirEntry {
 func NewDirectory() (*Node, error) {
 	data, err := json.Marshal(NewDirContent(nil))
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal directory content: %w", err)
+		return nil, errorx.Wrap(err, "node: marshal directory content")
 	}
 	n := newNode(NodeTypeDirectory)
 	if err := n.write(Content(data), 0); err != nil {
@@ -59,11 +59,11 @@ func NewDirectory() (*Node, error) {
 func (n *Node) ReadDir() (DirContent, error) {
 	content, err := n.read()
 	if err != nil {
-		return DirContent{}, fmt.Errorf("failed to read directory content: %w", err)
+		return DirContent{}, errorx.Wrap(err, "node: read directory content")
 	}
 	var dc DirContent
 	if err := json.Unmarshal(content, &dc); err != nil {
-		return DirContent{}, fmt.Errorf("failed to unmarshal directory content: %w", err)
+		return DirContent{}, errorx.Wrap(err, "node: unmarshal directory content")
 	}
 	return dc, nil
 }
@@ -75,7 +75,7 @@ func (n *Node) WriteDir(dc DirContent) error {
 	}
 	data, err := json.Marshal(&dc)
 	if err != nil {
-		return fmt.Errorf("failed to marshal directory content: %w", err)
+		return errorx.Wrap(err, "node: marshal directory content (entries=%d)", len(dc.Entries))
 	}
 	if len(data) > MaxContentSize {
 		return ErrContentTooLarge
@@ -130,7 +130,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 			return ErrInvalidName
 		}
 		if child == nil {
-			return fmt.Errorf("node: add entries: nil child for %q", name)
+			return errorx.New(errorx.KindBadRequest, "node: add entries: nil child for "+name)
 		}
 		if _, ok := existing[name]; ok {
 			return ErrEntryExists

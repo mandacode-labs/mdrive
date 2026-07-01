@@ -5,6 +5,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entuser "github.com/mandacode-labs/mdrive/ent/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // entRepository implements domain.Repository using Ent.
@@ -12,7 +13,7 @@ type entRepository struct {
 	client *ent.Client
 }
 
-// NewRepository creates a new entRepository.
+// NewRepository creates an entRepository.
 func NewRepository(client *ent.Client) Repository {
 	return &entRepository{client: client}
 }
@@ -28,7 +29,8 @@ func (r *entRepository) Create(ctx context.Context, cmd *CreateCommand) (*User, 
 		SetProviderID(cmd.ProviderID).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, "user.repo.create: id_len=%d, provider=%s, provider_id_len=%d",
+			len(id), cmd.Provider, len(cmd.ProviderID))
 	}
 	return fromEnt(u), nil
 }
@@ -39,7 +41,7 @@ func (r *entRepository) GetByID(ctx context.Context, id string) (*User, error) {
 		if ent.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, errorx.Wrap(err, "user.repo.get_by_id: id_len=%d", len(id))
 	}
 	return fromEnt(u), nil
 }
@@ -50,7 +52,7 @@ func (r *entRepository) GetByPublicID(ctx context.Context, publicID string) (*Us
 		if ent.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, errorx.Wrap(err, "user.repo.get_by_public_id: public_id_len=%d", len(publicID))
 	}
 	return fromEnt(u), nil
 }
@@ -63,7 +65,8 @@ func (r *entRepository) GetByProviderID(ctx context.Context, provider, providerI
 		if ent.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, errorx.Wrap(err, "user.repo.get_by_provider_id: provider=%s, provider_id_len=%d",
+			provider, len(providerID))
 	}
 	return fromEnt(u), nil
 }
@@ -74,13 +77,16 @@ func (r *entRepository) Update(ctx context.Context, u *User) (*User, error) {
 		SetNillableEmail(u.Email()).
 		Save(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, "user.repo.update: id_len=%d", len(u.ID()))
 	}
 	return fromEnt(updated), nil
 }
 
 func (r *entRepository) Delete(ctx context.Context, id string) error {
-	return r.client.User.DeleteOneID(id).Exec(ctx)
+	if err := r.client.User.DeleteOneID(id).Exec(ctx); err != nil {
+		return errorx.Wrap(err, "user.repo.delete: id_len=%d", len(id))
+	}
+	return nil
 }
 
 // Exist reports whether a user with the given ID exists.

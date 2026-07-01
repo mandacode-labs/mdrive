@@ -2,9 +2,9 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Cat returns the inline bytes of a file node. The path is resolved
@@ -17,14 +17,14 @@ import (
 func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
-		return nil, fmt.Errorf("cat: %w", err)
+		return nil, errorx.Wrap(err, "vfs: cat resolve (path=%s)", path)
 	}
 	n := res.Node
 	switch {
 	case n.IsFile():
 		raw, err := n.ReadFile()
 		if err != nil {
-			return nil, fmt.Errorf("cat: read: %w", err)
+			return nil, errorx.Wrap(err, "vfs: cat read file (path=%s)", path)
 		}
 		return []byte(raw), nil
 	case n.IsObject():
@@ -32,6 +32,6 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 	case n.IsDir():
 		return nil, node.ErrIsDirectory
 	default:
-		return nil, fmt.Errorf("cat: cannot read %s", n.Type())
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: cannot read type="+string(n.Type()))
 	}
 }

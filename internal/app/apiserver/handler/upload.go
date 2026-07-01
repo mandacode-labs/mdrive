@@ -2,9 +2,9 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -30,7 +30,7 @@ func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest,
 	}
 	u, err := url.Parse(info.URL)
 	if err != nil {
-		return nil, fmt.Errorf("parse presigned url: %w", err)
+		return nil, errorx.Wrap(err, "upload: parse presigned url")
 	}
 	return &api.PresignResponse{
 		UploadId:  info.UploadID,
@@ -74,7 +74,7 @@ func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloa
 	}
 	u, err := url.Parse(info.URL)
 	if err != nil {
-		return nil, fmt.Errorf("parse presigned url: %w", err)
+		return nil, errorx.Wrap(err, "upload: parse presigned url")
 	}
 	return &api.DownloadResponse{
 		Method:    info.Method,

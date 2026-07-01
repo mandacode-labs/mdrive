@@ -2,10 +2,10 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
@@ -22,34 +22,22 @@ import (
 // source exists and is accessible).
 func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
 	if driveID == sourceDriveID {
-		return fmt.Errorf("mount: cannot mount a drive onto itself")
+		return errorx.New(errorx.KindBadRequest, "vfs: mount self-cycle (drive_id="+driveID+")")
 	}
-	// Validate source drive exists and has a root.
 	src, err := s.DriveClient.GetByID(ctx, sourceDriveID)
 	if err != nil {
-		return fmt.Errorf("mount: source drive lookup: %w", err)
+		return errorx.Wrap(err, "vfs: mount source drive lookup (source_drive=%s)", sourceDriveID)
 	}
 	if src == nil || src.RootNodeID() == nil {
-		return fmt.Errorf("mount: source drive has no root node")
+		return errorx.New(errorx.KindNotFound, "vfs: mount source drive has no root (source_drive="+sourceDriveID+")")
 	}
-	// Reject soft-deleted source drives. Mounting a deleted drive
-	// would let a caller reach data through a path that the rest
-	// of the system treats as gone: the drive is hidden from
-	// ListByOwner, restored only by an admin, and the
-	// rootNodeID may be released when the soft-delete is
-	// eventually hardened. Same check on the target drive is
-	// the caller's responsibility: a mount can be removed by
-	// the drive's owner (or admin via the cli) before they
-	// soft-delete it, but mounting into a soft-deleted target
-	// is a separate question that the handler layer should
-	// gate.
 	if src.DeletedAt() != nil {
-		return fmt.Errorf("mount: source drive %s is soft-deleted", sourceDriveID)
+		return errorx.New(errorx.KindConflict, "vfs: mount source drive is soft-deleted (source_drive="+sourceDriveID+")")
 	}
 
 	parent, name, err := s.requireEditPath(ctx, driveID, mountPath)
 	if err != nil {
-		return fmt.Errorf("mount: %w", err)
+		return errorx.Wrap(err, "vfs: mount require edit path (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	mount, err := node.NewMount(sourceDriveID)
 	if err != nil {
@@ -62,7 +50,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 			slog.String("path", mountPath),
 			slog.String("err", err.Error()),
 		)
-		return fmt.Errorf("mount: %w", err)
+		return errorx.Wrap(err, "vfs: mount create and link (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	logx.Info(ctx, "vfs.mount.created",
 		slog.String("from_drive", driveID),
@@ -83,25 +71,22 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	if err != nil {
 		return err
 	}
-	// Use a single resolver instance so the resolve + resolveParent
-	// pair see the same *Node pointer for any shared intermediate
-	// nodes.
 	r := s.newResolver()
 	out, err := r.resolve(ctx, rootID, mountPath, true)
 	if err != nil {
-		return fmt.Errorf("unmount: %w", err)
+		return errorx.Wrap(err, "vfs: unmount resolve (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	n := out.Node
 	if !n.IsMount() {
-		return fmt.Errorf("unmount: %s is not a mount", mountPath)
+		return errorx.New(errorx.KindBadRequest, "vfs: unmount target is not a mount (drive_id="+driveID+", mount_path="+mountPath+")")
 	}
 	srcDrive, err := n.ReadMount()
 	if err != nil {
-		return fmt.Errorf("unmount: read mount: %w", err)
+		return errorx.Wrap(err, "vfs: unmount read mount (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	parent, name, err := r.resolveParent(ctx, rootID, mountPath)
 	if err != nil {
-		return fmt.Errorf("unmount: resolve parent: %w", err)
+		return errorx.Wrap(err, "vfs: unmount resolve parent (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	if _, err := s.NodeClient.Unlink(ctx, parent, name); err != nil {
 		logx.Debug(ctx, "vfs.unmount.failed",
@@ -109,7 +94,7 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 			slog.String("path", mountPath),
 			slog.String("err", err.Error()),
 		)
-		return fmt.Errorf("unmount: unlink: %w", err)
+		return errorx.Wrap(err, "vfs: unmount unlink (drive_id=%s, mount_path=%s)", driveID, mountPath)
 	}
 	logx.Info(ctx, "vfs.unmount.completed",
 		slog.String("drive_id", driveID),

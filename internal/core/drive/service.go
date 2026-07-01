@@ -2,12 +2,12 @@ package drive
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
@@ -45,21 +45,21 @@ func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator
 // pass the authenticated user.
 func (s *Service) Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
 	if name == "" {
-		return nil, uuid.Nil, ErrInvalidName
+		return nil, uuid.Nil, errorx.Wrap(ErrInvalidName, "name is empty")
 	}
 	if actorID == "" {
-		return nil, uuid.Nil, fmt.Errorf("drive: owner_id is required")
+		return nil, uuid.Nil, errorx.New(errorx.KindBadRequest, "drive: owner_id is required")
 	}
 	if err := storageCfgValid(&cfg); err != nil {
-		return nil, uuid.Nil, err
+		return nil, uuid.Nil, errorx.Wrap(err, "drive: storage invalid")
 	}
 
 	exists, err := s.ownerChecker.Exist(ctx, actorID)
 	if err != nil {
-		return nil, uuid.Nil, fmt.Errorf("check owner: %w", err)
+		return nil, uuid.Nil, errorx.Wrap(err, "drive: owner check failed (actor_id=%s)", actorID)
 	}
 	if !exists {
-		return nil, uuid.Nil, fmt.Errorf("drive: owner not found")
+		return nil, uuid.Nil, errorx.Wrap(ErrOwnerNotFound, "actor_id=%s", actorID)
 	}
 
 	id := ulid.Make().String()
@@ -74,24 +74,25 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 
 	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
 	if err != nil {
-		return nil, uuid.Nil, fmt.Errorf("create root node: %w", err)
+		return nil, uuid.Nil, errorx.Wrap(err, "drive: root node creation failed (id=%s)", id)
 	}
 	d.SetRootNodeID(rootID)
 
 	var updated *Drive
 	err = s.WithTx(ctx, func(tx *Service) error {
 		if err := tx.repo.Create(ctx, d, storage); err != nil {
-			return fmt.Errorf("create drive: %w", err)
+			return errorx.Wrap(err, "drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)",
+				len(d.ID()), len(d.OwnerID()), rootID)
 		}
 		u, err := tx.repo.Update(ctx, d)
 		if err != nil {
-			return fmt.Errorf("update drive with root: %w", err)
+			return errorx.Wrap(err, "drive: repo update failed (id_len=%d)", len(d.ID()))
 		}
 		updated = u
 		return nil
 	})
 	if err != nil {
-		return nil, uuid.Nil, err
+		return nil, uuid.Nil, errorx.Wrap(err, "drive: tx failed (id=%s, root_id=%s)", id, rootID)
 	}
 	return updated, rootID, nil
 }
@@ -182,7 +183,7 @@ func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
 		return nil, err
 	}
 	if d.DeletedAt() == nil {
-		return nil, fmt.Errorf("drive: not deleted")
+		return nil, errorx.New(errorx.KindBadRequest, "drive: not deleted")
 	}
 	if err := s.repo.Restore(ctx, id); err != nil {
 		return nil, err

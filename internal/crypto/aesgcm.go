@@ -8,11 +8,12 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -35,15 +36,15 @@ func NewAESGCM(masterKeyHex string) (*AESGCM, error) {
 	}
 	key, err := hex.DecodeString(masterKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("crypto: decode master key: %w", err)
+		return nil, errorx.Wrap(err, "crypto: decode master key")
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("crypto: create aes cipher: %w", err)
+		return nil, errorx.Wrap(err, "crypto: create aes cipher")
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("crypto: create gcm: %w", err)
+		return nil, errorx.Wrap(err, "crypto: create gcm")
 	}
 	return &AESGCM{gcm: gcm}, nil
 }
@@ -61,7 +62,7 @@ func GenerateMasterKey() (string, error) {
 func (a *AESGCM) Encrypt(plaintext []byte) ([]byte, error) {
 	nonce := make([]byte, a.gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("crypto: generate nonce: %w", err)
+		return nil, errorx.Wrap(err, "crypto: generate nonce")
 	}
 	out := a.gcm.Seal(nonce, nonce, plaintext, nil)
 	return []byte(base64.StdEncoding.EncodeToString(out)), nil
@@ -74,7 +75,7 @@ func (a *AESGCM) Decrypt(ciphertext []byte) ([]byte, error) {
 	}
 	data, err := base64.StdEncoding.DecodeString(string(ciphertext))
 	if err != nil {
-		return nil, fmt.Errorf("crypto: decode ciphertext: %w", err)
+		return nil, errorx.Wrap(err, "crypto: decode ciphertext")
 	}
 	nonceSize := a.gcm.NonceSize()
 	if len(data) < nonceSize {

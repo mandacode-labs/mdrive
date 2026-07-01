@@ -25,11 +25,9 @@ package logx
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -99,7 +97,9 @@ func Debug(ctx context.Context, msg string, attrs ...slog.Attr) {
 // Error logs err using errorx to determine the HTTP status and the
 // log level. msg is the user-facing log message (e.g. "handler
 // error"). The error message itself is always emitted under "err";
-// the kind string and HTTP status come from errorx.
+// the kind string and HTTP status come from errorx; the full
+// "outer -> inner" chain under "err_chain" so a single log line
+// shows the propagation path through every Wrap call.
 //
 // 5xx errors include a stack trace under "stack" so the operator
 // can locate the source without re-running with -tags=tracing.
@@ -116,6 +116,7 @@ func Error(ctx context.Context, err error, msg string, attrs ...slog.Attr) {
 
 	base := []slog.Attr{
 		slog.String("err", err.Error()),
+		slog.String("err_chain", errorx.Chain(err)),
 		slog.String("error_type", fmt.Sprintf("%T", err)),
 		slog.String("kind", kind),
 		slog.Int("status", status),
@@ -232,11 +233,8 @@ func (h *handler) WithGroup(name string) slog.Handler {
 }
 
 func classify(err error) (int, string) {
-	var de errorx.Error
-	if errors.As(err, &de) {
-		return de.Kind().Status(), de.Kind().String()
-	}
-	return http.StatusInternalServerError, "unknown"
+	kind := errorx.KindOf(err)
+	return kind.Status(), kind.String()
 }
 
 func levelForStatus(status int) slog.Level {

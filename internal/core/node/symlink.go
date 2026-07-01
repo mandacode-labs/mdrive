@@ -2,7 +2,7 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // SymlinkContent is the JSON-serialized target of a symlink node.
@@ -39,11 +39,11 @@ func (n *Node) Readlink() (string, error) {
 	}
 	content, err := n.read()
 	if err != nil {
-		return "", fmt.Errorf("failed to read symlink content: %w", err)
+		return "", errorx.Wrap(err, "node: read symlink content")
 	}
 	var sc SymlinkContent
 	if err := json.Unmarshal(content, &sc); err != nil {
-		return "", fmt.Errorf("failed to unmarshal symlink content: %w", err)
+		return "", errorx.Wrap(err, "node: unmarshal symlink content")
 	}
 	return sc.Target, nil
 }
@@ -58,7 +58,7 @@ func (n *Node) WriteSymlink(target string) error {
 	}
 	data, err := json.Marshal(NewSymlinkContent(target))
 	if err != nil {
-		return fmt.Errorf("failed to marshal symlink content: %w", err)
+		return errorx.Wrap(err, "node: marshal symlink content")
 	}
 	if len(data) > MaxContentSize {
 		return ErrContentTooLarge

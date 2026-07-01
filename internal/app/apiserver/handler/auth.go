@@ -8,7 +8,11 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-var ErrUnauthenticated = errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")
+var (
+	ErrUnauthenticated   = errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")
+	ErrServiceDegraded   = errorx.New(errorx.KindServiceDegraded, "auth: upstream failure")
+	ErrUserNotFoundLocal = errorx.New(errorx.KindNotFound, "auth: user not found")
+)
 
 // AuthMe returns the authenticated user. Errors are returned as
 // *api.Error so ogen picks them up via the AuthMeRes interface;
@@ -17,14 +21,14 @@ var ErrUnauthenticated = errorx.New(errorx.KindUnauthenticated, "auth: not authe
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	uid := h.userID(ctx)
 	if uid == "" {
-		return apiErr(errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")), nil
+		return apiErr(ErrUnauthenticated), nil
 	}
 	u, err := h.users.GetByID(ctx, uid)
 	if err != nil {
-		return apiErr(errorx.Wrap(err, errorx.KindServiceDegraded, "auth: user lookup failed")), nil
+		return apiErr(errorx.Wrap(ErrServiceDegraded, "auth: user lookup failed (uid=%s, err=%v)", uid, err)), nil
 	}
 	if u == nil {
-		return apiErr(errorx.New(errorx.KindNotFound, "auth: user not found")), nil
+		return apiErr(ErrUserNotFoundLocal), nil
 	}
 	return userToAPI(u), nil
 }

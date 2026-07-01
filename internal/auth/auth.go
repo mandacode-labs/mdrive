@@ -8,11 +8,11 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"golang.org/x/oauth2"
 
 	"github.com/mandacode-labs/mdrive/api"
@@ -78,12 +78,12 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 
 	p, err := oidc.NewProvider(ctx, cfg.Issuer)
 	if err != nil {
-		return nil, fmt.Errorf("auth: discover provider: %w", err)
+		return nil, errorx.Wrap(err, "auth: discover provider (issuer=%s)", cfg.Issuer)
 	}
 
 	noAuth, err := anonymousPaths(api.Spec)
 	if err != nil {
-		return nil, fmt.Errorf("auth: load anonymous paths: %w", err)
+		return nil, errorx.Wrap(err, "auth: load anonymous paths")
 	}
 
 	return &Service{

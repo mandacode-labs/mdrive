@@ -2,8 +2,9 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"time"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Service provides domain-level user operations.
@@ -30,7 +31,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 
 	existing, err := s.repo.GetByProviderID(ctx, cmd.Provider, cmd.ProviderID)
 	if err != nil {
-		return nil, fmt.Errorf("user: lookup: %w", err)
+		return nil, errorx.Wrap(err, "user: upsert lookup (provider=%s, provider_id_len=%d)", cmd.Provider, len(cmd.ProviderID))
 	}
 	if existing != nil {
 		if existing.Name() != cmd.Name || emailDiffers(existing, cmd) {
@@ -41,7 +42,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 			)
 			saved, err := s.repo.Update(ctx, updated)
 			if err != nil {
-				return nil, fmt.Errorf("user: update: %w", err)
+				return nil, errorx.Wrap(err, "user: upsert update (id_len=%d)", len(updated.ID()))
 			}
 			return saved, nil
 		}
@@ -50,7 +51,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 
 	created, err := s.repo.Create(ctx, cmd)
 	if err != nil {
-		return nil, fmt.Errorf("user: create: %w", err)
+		return nil, errorx.Wrap(err, "user: upsert create (provider=%s)", cmd.Provider)
 	}
 	return created, nil
 }

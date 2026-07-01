@@ -2,8 +2,9 @@ package upload
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // PresignMeta holds server-side state for an in-progress upload.
@@ -28,7 +29,7 @@ func (m PresignMeta) Encode() ([]byte, error) {
 func DecodePresignMeta(data []byte) (PresignMeta, error) {
 	var m PresignMeta
 	if err := json.Unmarshal(data, &m); err != nil {
-		return PresignMeta{}, fmt.Errorf("upload: decode meta: %w", err)
+		return PresignMeta{}, errorx.Wrap(err, "upload: decode meta (bytes_len=%d)", len(data))
 	}
 	return m, nil
 }

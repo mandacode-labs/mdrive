@@ -3,11 +3,12 @@ package upload
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/valkey-io/valkey-go"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // ValkeyRegistry implements TokenRegistry with Valkey (or Redis).
@@ -45,7 +46,7 @@ func (r *ValkeyRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Dur
 	key := r.keyFunc(meta.UploadID)
 	resp := r.client.Do(ctx, r.client.B().Set().Key(key).Value(valkey.BinaryString(data)).ExSeconds(int64(ttl.Seconds())).Build())
 	if err := resp.Error(); err != nil {
-		return fmt.Errorf("upload: valkey set: %w", err)
+		return errorx.Wrap(err, "upload: valkey set (upload_id=%s)", meta.UploadID)
 	}
 	return nil
 }
@@ -57,11 +58,11 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 		if errors.Is(err, valkey.Nil) {
 			return PresignMeta{}, ErrNotFound
 		}
-		return PresignMeta{}, fmt.Errorf("upload: valkey get: %w", err)
+		return PresignMeta{}, errorx.Wrap(err, "upload: valkey get (upload_id=%s)", uploadID)
 	}
 	data, err := resp.AsBytes()
 	if err != nil {
-		return PresignMeta{}, fmt.Errorf("upload: valkey as bytes: %w", err)
+		return PresignMeta{}, errorx.Wrap(err, "upload: valkey as bytes (upload_id=%s)", uploadID)
 	}
 	meta, err := DecodePresignMeta(data)
 	if err != nil {
@@ -78,7 +79,7 @@ func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
 	key := r.keyFunc(uploadID)
 	resp := r.client.Do(ctx, r.client.B().Del().Key(key).Build())
 	if err := resp.Error(); err != nil {
-		return fmt.Errorf("upload: valkey del: %w", err)
+		return errorx.Wrap(err, "upload: valkey del (upload_id=%s)", uploadID)
 	}
 	return nil
 }
@@ -99,11 +100,11 @@ func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) err
 	for {
 		resp := r.client.Do(ctx, r.client.B().Scan().Cursor(cursor).Match(prefix+"*").Count(100).Build())
 		if err := resp.Error(); err != nil {
-			return fmt.Errorf("upload: valkey scan: %w", err)
+			return errorx.Wrap(err, "upload: valkey scan (prefix=%s)", prefix)
 		}
 		arr, err := resp.AsScanEntry()
 		if err != nil {
-			return fmt.Errorf("upload: valkey scan entry: %w", err)
+			return errorx.Wrap(err, "upload: valkey scan entry (prefix=%s)", prefix)
 		}
 		for _, k := range arr.Elements {
 			id := strings.TrimPrefix(k, prefix)

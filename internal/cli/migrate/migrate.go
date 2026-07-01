@@ -5,7 +5,6 @@ import (
 	"context"
 	"embed"
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
@@ -13,6 +12,8 @@ import (
 
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/spf13/cobra"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 //go:embed migrations/*.sql migrations/atlas.sum
@@ -165,7 +166,7 @@ func newApplyCmd() *cobra.Command {
 func apply(ctx context.Context, databaseURL string) error {
 	migrations, err := fs.Sub(defaultMigrations, "migrations")
 	if err != nil {
-		return fmt.Errorf("migrations subdir: %w", err)
+		return errorx.Wrap(err, "migrate: fs sub")
 	}
 	return applyWith(ctx, databaseURL, migrations, defaultAtlasBin)
 }
@@ -173,19 +174,19 @@ func apply(ctx context.Context, databaseURL string) error {
 func applyWith(ctx context.Context, databaseURL string, migrations fs.FS, atlasBin string) error {
 	workDir, err := atlasexec.NewWorkingDir(atlasexec.WithMigrations(migrations))
 	if err != nil {
-		return fmt.Errorf("atlas working dir: %w", err)
+		return errorx.Wrap(err, "migrate: atlas working dir")
 	}
 	defer func() { _ = workDir.Close() }()
 
 	client, err := atlasexec.NewClient(workDir.Path(), atlasBin)
 	if err != nil {
-		return fmt.Errorf("atlas client: %w", err)
+		return errorx.Wrap(err, "migrate: atlas client (bin=%s)", atlasBin)
 	}
 
 	if _, err := client.MigrateApply(ctx, &atlasexec.MigrateApplyParams{
 		URL: databaseURL,
 	}); err != nil {
-		return fmt.Errorf("apply migrations: %w", err)
+		return errorx.Wrap(err, "migrate: atlas apply")
 	}
 	return nil
 }

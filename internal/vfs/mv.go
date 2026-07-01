@@ -2,11 +2,11 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
@@ -50,12 +50,12 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 
 	if len(overwriteRefs) > 0 && s.GarbageRecorder != nil {
 		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
-			logx.Error(ctx, fmt.Errorf("mv: post-commit tombstone enqueue failed (nodes already moved): %w", err),
+			logx.Error(ctx, errorx.Wrap(err, "vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs)),
 				"vfs.mv.tombstone_failed",
 				slog.String("drive_id", srcDriveID),
 				slog.Int("ref_count", len(overwriteRefs)),
 			)
-			return fmt.Errorf("mv: post-commit tombstone enqueue failed (nodes already moved): %w", err)
+			return errorx.Wrap(err, "vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs))
 		}
 		logx.Info(ctx, "vfs.mv.tombstoned",
 			slog.String("drive_id", srcDriveID),
@@ -105,21 +105,21 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	// mount, the move would cross drives, which mv rejects.
 	srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 	if err != nil {
-		return nil, fmt.Errorf("mv: src %s: %w", srcPath, err)
+		return nil, errorx.Wrap(err, "vfs: mv resolve src (src_path=%s)", srcPath)
 	}
 	if srcOut.Remaining != "" {
 		return nil, ErrCrossDrive
 	}
 	srcParent, srcName, err := r.resolveParent(ctx, rootID, srcPath)
 	if err != nil {
-		return nil, fmt.Errorf("mv: resolve src parent: %w", err)
+		return nil, errorx.Wrap(err, "vfs: mv resolve src parent (src_path=%s)", srcPath)
 	}
 	dstParent, dstName, err := r.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
-		return nil, fmt.Errorf("mv: dest: %w", err)
+		return nil, errorx.Wrap(err, "vfs: mv resolve dst parent (dst_path=%s)", dstPath)
 	}
 	if !dstParent.IsDir() {
-		return nil, fmt.Errorf("mv: dest: %w", ErrNotDirectory)
+		return nil, errorx.Wrap(ErrNotDirectory, "vfs: mv dest (dst_path=%s)", dstPath)
 	}
 
 	overwriteRefs, err := s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
@@ -149,11 +149,11 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	r := s.newResolver()
 	dstOut, err := r.resolve(ctx, rootID, dstPath, true)
 	if err != nil {
-		return nil, fmt.Errorf("mv: dest: %w", err)
+		return nil, errorx.Wrap(err, "vfs: mv resolve dst (dst_path=%s)", dstPath)
 	}
 	dstDir := dstOut.Node
 	if !dstDir.IsDir() {
-		return nil, fmt.Errorf("mv: dest: %w", ErrNotDirectory)
+		return nil, errorx.Wrap(ErrNotDirectory, "vfs: mv dest (dst_path=%s)", dstPath)
 	}
 
 	type srcInfo struct {
@@ -167,17 +167,17 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	for _, srcPath := range srcPaths {
 		srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 		if err != nil {
-			return nil, fmt.Errorf("mv: %s: %w", srcPath, err)
+			return nil, errorx.Wrap(err, "vfs: mv batch resolve src (src_path=%s)", srcPath)
 		}
 		if srcOut.Remaining != "" {
 			return nil, ErrCrossDrive
 		}
 		sp, sn, err := r.resolveParent(ctx, rootID, srcPath)
 		if err != nil {
-			return nil, fmt.Errorf("mv: %s: resolve parent: %w", srcPath, err)
+			return nil, errorx.Wrap(err, "vfs: mv batch resolve src parent (src_path=%s)", srcPath)
 		}
 		if _, dup := seen[sn]; dup {
-			return nil, fmt.Errorf("mv: duplicate source basename %q in batch", sn)
+			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv duplicate source basename "+sn+" in batch")
 		}
 		seen[sn] = struct{}{}
 		sources = append(sources, srcInfo{node: srcOut.Node, baseName: sn, srcParent: sp, srcName: sn})
@@ -185,7 +185,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 
 	for _, si := range sources {
 		if si.node.ID() == dstDir.ID() {
-			return nil, fmt.Errorf("mv: cannot move directory into itself")
+			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv cannot move directory into itself")
 		}
 	}
 
@@ -242,7 +242,7 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	}
 
 	if err := s.NodeClient.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
-		return nil, fmt.Errorf("mv: %w", err)
+		return nil, errorx.Wrap(err, "vfs: mv move entry (src_name=%s, dst_name=%s)", srcName, dstName)
 	}
 
 	if overwriteRef != nil {

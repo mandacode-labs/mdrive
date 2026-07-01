@@ -2,11 +2,11 @@ package gc
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entdrivestorage "github.com/mandacode-labs/mdrive/ent/drivestorage"
 	entgctombstone "github.com/mandacode-labs/mdrive/ent/gctombstone"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
@@ -49,7 +49,7 @@ func (g *GarbageRecorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageR
 	}
 	_, err := g.client.GCTombstone.CreateBulk(bulk...).Save(ctx)
 	if err != nil {
-		return fmt.Errorf("gc: insert tombstones: %w", err)
+		return errorx.Wrap(err, "gc: tombstone insert (count=%d)", len(refs))
 	}
 	return nil
 }
@@ -70,7 +70,7 @@ func QueryTombstones(ctx context.Context, client *ent.Client, limit int) ([]Tomb
 		Limit(limit).
 		All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("gc: query tombstones: %w", err)
+		return nil, errorx.Wrap(err, "gc: tombstone query (limit=%d)", limit)
 	}
 	if len(rows) == 0 {
 		return nil, nil
@@ -99,7 +99,7 @@ func DeleteTombstones(ctx context.Context, client *ent.Client, ids []int) error 
 	}
 	_, err := client.GCTombstone.Delete().Where(entgctombstone.IDIn(ids...)).Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("gc: delete tombstones: %w", err)
+		return errorx.Wrap(err, "gc: tombstone delete (count=%d)", len(ids))
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ type StorageForBucket struct {
 func FindStorageByBucket(ctx context.Context, client *ent.Client, bucket string) (StorageForBucket, error) {
 	s, err := client.DriveStorage.Query().Where(entdrivestorage.BucketEQ(bucket)).First(ctx)
 	if err != nil {
-		return StorageForBucket{}, fmt.Errorf("gc: storage for bucket %s: %w", bucket, err)
+		return StorageForBucket{}, errorx.Wrap(err, "gc: storage for bucket (bucket=%s)", bucket)
 	}
 	var endpoint string
 	if s.Endpoint != nil {

@@ -1,14 +1,13 @@
 package apiserver
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 func NewCmd() *cobra.Command {
@@ -36,7 +35,7 @@ func newRunCmd() *cobra.Command {
 			}
 			srv, err := server.NewServer(a, a.VFS, a.DriveSvc, a.UploadSvc, a.UserSvc, a.Authorizer)
 			if err != nil {
-				return fmt.Errorf("apiserver: %w", err)
+				return errorx.Wrap(err, "apiserver: new server")
 			}
 			return srv.Run()
 		},

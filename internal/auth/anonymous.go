@@ -2,7 +2,8 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // anonymousPaths returns the set of URL paths whose OpenAPI operation
@@ -26,7 +27,7 @@ func anonymousPaths(spec []byte) (map[string]bool, error) {
 		Paths map[string]map[string]json.RawMessage `json:"paths"`
 	}
 	if err := json.Unmarshal(spec, &s); err != nil {
-		return nil, fmt.Errorf("auth: parse openapi spec: %w", err)
+		return nil, errorx.Wrap(err, "auth: parse openapi spec (bytes=%d)", len(spec))
 	}
 	out := make(map[string]bool)
 	for path, methods := range s.Paths {

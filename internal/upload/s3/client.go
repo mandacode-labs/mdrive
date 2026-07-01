@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -17,6 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Config for the S3 client.
@@ -53,7 +54,7 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("s3: load aws config: %w", err)
+		return nil, errorx.Wrap(err, "s3: load aws config")
 	}
 
 	api := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
@@ -77,7 +78,7 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 func (c *Client) PutObject(ctx context.Context, bucket, key string, reader io.Reader) error {
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("s3: read body: %w", err)
+		return errorx.Wrap(err, "s3: read body")
 	}
 	_, err = c.api.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:               aws.String(bucket),
@@ -136,7 +137,7 @@ func (c *Client) ObjectExists(ctx context.Context, bucket, key string) (bool, er
 	if errors.As(err, &httpErr) && httpErr.Response != nil && httpErr.Response.StatusCode == 404 {
 		return false, nil
 	}
-	return false, fmt.Errorf("s3: head object: %w", err)
+	return false, errorx.Wrap(err, "s3: head object")
 }
 
 // GetObject downloads an object as a byte slice.

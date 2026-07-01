@@ -2,7 +2,7 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // ObjectContent is the JSON-serialized reference to externally-stored data (e.g., S3).
@@ -48,11 +48,11 @@ func NewObject(content ObjectContent, size int64) (*Node, error) {
 func (n *Node) ReadObject() (ObjectContent, error) {
 	content, err := n.read()
 	if err != nil {
-		return ObjectContent{}, fmt.Errorf("failed to read object content: %w", err)
+		return ObjectContent{}, errorx.Wrap(err, "node: read object content")
 	}
 	var oc ObjectContent
 	if err := json.Unmarshal(content, &oc); err != nil {
-		return ObjectContent{}, fmt.Errorf("failed to unmarshal object content: %w", err)
+		return ObjectContent{}, errorx.Wrap(err, "node: unmarshal object content")
 	}
 	return oc, nil
 }
@@ -70,7 +70,7 @@ func (n *Node) WriteObject(content ObjectContent, size int64) error {
 	}
 	data, err := json.Marshal(&content)
 	if err != nil {
-		return fmt.Errorf("failed to marshal object content: %w", err)
+		return errorx.Wrap(err, "node: marshal object content")
 	}
 	if len(data) > MaxContentSize {
 		return ErrContentTooLarge

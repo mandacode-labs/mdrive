@@ -6,10 +6,11 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Session is the in-context view of the authenticated principal.
@@ -47,18 +48,40 @@ func nonce() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	neg := i < 0
+	if neg {
+		i = -i
+	}
+	var b [20]byte
+	pos := len(b)
+	for i > 0 {
+		pos--
+		b[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	if neg {
+		pos--
+		b[pos] = '-'
+	}
+	return string(b[pos:])
+}
+
 func encrypt(plain []byte, key []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", fmt.Errorf("aes: new cipher: %w", err)
+		return "", errorx.Wrap(err, "aes: new cipher (key_len=%d)", len(key))
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", fmt.Errorf("aes: new gcm: %w", err)
+		return "", errorx.Wrap(err, "aes: new gcm")
 	}
 	n := make([]byte, aesgcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, n); err != nil {
-		return "", fmt.Errorf("aes: nonce: %w", err)
+		return "", errorx.Wrap(err, "aes: nonce")
 	}
 	return base64.RawURLEncoding.EncodeToString(aesgcm.Seal(n, n, plain, nil)), nil
 }
@@ -66,23 +89,23 @@ func encrypt(plain []byte, key []byte) (string, error) {
 func decrypt(s string, key []byte) ([]byte, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
-		return nil, fmt.Errorf("base64: decode: %w", err)
+		return nil, errorx.Wrap(err, "base64: decode")
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("aes: new cipher: %w", err)
+		return nil, errorx.Wrap(err, "aes: new cipher (key_len=%d)", len(key))
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("aes: new gcm: %w", err)
+		return nil, errorx.Wrap(err, "aes: new gcm")
 	}
 	nonceSize := aesgcm.NonceSize()
 	if len(raw) < nonceSize {
-		return nil, fmt.Errorf("aes: ciphertext too short")
+		return nil, errorx.New(errorx.KindBadRequest, "aes: ciphertext too short (len="+itoa(len(raw))+", nonce_size="+itoa(nonceSize)+")")
 	}
 	plain, err := aesgcm.Open(nil, raw[:nonceSize], raw[nonceSize:], nil)
 	if err != nil {
-		return nil, fmt.Errorf("aes: open: %w", err)
+		return nil, errorx.Wrap(err, "aes: open")
 	}
 	return plain, nil
 }
@@ -108,11 +131,11 @@ func (s *Service) setCookie(w http.ResponseWriter, r *http.Request, name, value 
 func (s *Service) writeSessionCookie(w http.ResponseWriter, r *http.Request, data *sessionData) error {
 	raw, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("session: marshal: %w", err)
+		return errorx.Wrap(err, "session: marshal")
 	}
 	enc, err := encrypt(raw, s.encKey)
 	if err != nil {
-		return fmt.Errorf("session: encrypt: %w", err)
+		return errorx.Wrap(err, "session: encrypt")
 	}
 	maxAge := int(time.Until(data.ExpiresAt).Seconds())
 	if maxAge < 1 {
@@ -140,7 +163,7 @@ func (s *Service) readSessionCookie(r *http.Request) (*sessionData, error) {
 		return nil, err
 	}
 	if data.IsExpired() {
-		return nil, fmt.Errorf("session: expired")
+		return nil, errorx.New(errorx.KindBadRequest, "session: expired")
 	}
 	return &data, nil
 }

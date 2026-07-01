@@ -20,6 +20,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -63,7 +64,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		WriteError(w, err)
 	}))
 	if err != nil {
-		return nil, fmt.Errorf("apiserver: create ogen server: %w", err)
+		return nil, errorx.Wrap(err, "apiserver: create ogen server")
 	}
 
 	var secured http.Handler = ogenServer
@@ -95,7 +96,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 func (s *Server) Run() error {
 	ln, err := net.Listen("tcp", s.addr)
 	if err != nil {
-		return fmt.Errorf("listen on %s: %w", s.addr, err)
+		return errorx.Wrap(err, "apiserver: listen (addr=%s)", s.addr)
 	}
 	logx.Info(context.Background(), "api_server.starting",
 		slog.String("addr", s.addr),

@@ -3,10 +3,11 @@ package node
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Service provides domain-level node operations.
@@ -24,7 +25,7 @@ type Service struct {
 	repo Repository
 }
 
-// NewService creates a new Service.
+// NewService creates a Service.
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
@@ -75,10 +76,10 @@ func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node,
 func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
 	n, err := factory()
 	if err != nil {
-		return nil, fmt.Errorf("node: create %s: %w", kind, err)
+		return nil, errorx.Wrap(ErrInvalidReference, "node: create %s factory failed", kind)
 	}
 	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, fmt.Errorf("node: save %s: %w", kind, err)
+		return nil, errorx.Wrap(err, "node: save %s", kind)
 	}
 	return n, nil
 }
@@ -93,20 +94,20 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 // should discard the pointer.
 func (s *Service) Link(ctx context.Context, parent *Node, name string, child *Node) error {
 	if parent == nil || child == nil {
-		return fmt.Errorf("node: link: nil parent or child")
+		return errorx.New(errorx.KindBadRequest, "node: link requires non-nil parent and child")
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		if err := parent.AddEntry(name, child); err != nil {
-			return fmt.Errorf("node: link: %w", err)
+			return errorx.Wrap(err, "node: link add entry (name=%s)", name)
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
-			return err
+			return errorx.Wrap(err, "node: link save parent")
 		}
 		child.nlink++
 		now := time.Now()
 		child.ctime = now
 		child.rev = child.rev.Next()
-		return tx.repo.Save(ctx, child)
+		return errorx.Wrap(tx.repo.Save(ctx, child), "node: link save child")
 	})
 }
 
@@ -117,20 +118,20 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 // child): the directory is left unchanged.
 func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error {
 	if parent == nil {
-		return fmt.Errorf("node: bulk link: nil parent")
+		return errorx.New(errorx.KindBadRequest, "node: bulk link requires non-nil parent")
 	}
 	if len(entries) == 0 {
 		return nil
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		if err := parent.AddEntries(entries); err != nil {
-			return fmt.Errorf("node: bulk link: %w", err)
+			return errorx.Wrap(err, "node: bulk link add entries (count=%d)", len(entries))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
-			return err
+			return errorx.Wrap(err, "node: bulk link save parent")
 		}
 		now := time.Now()
-		for _, child := range entries {
+		for name, child := range entries {
 			if child == nil {
 				continue
 			}
@@ -138,7 +139,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 			child.ctime = now
 			child.rev = child.rev.Next()
 			if err := tx.repo.Save(ctx, child); err != nil {
-				return fmt.Errorf("node: bulk link: save child: %w", err)
+				return errorx.Wrap(err, "node: bulk link save child (name=%s)", name)
 			}
 		}
 		return nil
@@ -150,13 +151,13 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 // (caller may use it for S3 cleanup) or nil if only the link was removed.
 func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node, error) {
 	if parent == nil {
-		return nil, fmt.Errorf("node: unlink: nil parent")
+		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
 	}
 	var deleted *Node
 	err := s.WithTx(ctx, func(tx *Service) error {
 		dc, err := parent.ReadDir()
 		if err != nil {
-			return fmt.Errorf("node: unlink: read dir: %w", err)
+			return errorx.Wrap(err, "node: unlink read dir (name=%s)", name)
 		}
 		var childID uuid.UUID
 		var found bool
@@ -171,27 +172,27 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 			return ErrEntryNotFound
 		}
 		if err := parent.RemoveEntry(name); err != nil {
-			return fmt.Errorf("node: unlink: %w", err)
+			return errorx.Wrap(err, "node: unlink remove entry (name=%s)", name)
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
-			return err
+			return errorx.Wrap(err, "node: unlink save parent (name=%s)", name)
 		}
 		if childID == uuid.Nil {
 			return nil
 		}
 		child, err := tx.GetByID(ctx, childID)
 		if err != nil {
-			return fmt.Errorf("node: unlink: get child: %w", err)
+			return errorx.Wrap(err, "node: unlink get child (name=%s, child_id=%s)", name, childID)
 		}
 		if child.nlink > 1 {
 			child.nlink--
 			now := time.Now()
 			child.ctime = now
 			child.rev = child.rev.Next()
-			return tx.repo.Save(ctx, child)
+			return errorx.Wrap(tx.repo.Save(ctx, child), "node: unlink decrement child nlink")
 		}
 		if err := tx.repo.Delete(ctx, childID); err != nil {
-			return fmt.Errorf("node: unlink: delete: %w", err)
+			return errorx.Wrap(err, "node: unlink delete child (child_id=%s)", childID)
 		}
 		deleted = child
 		return nil
@@ -212,7 +213,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 // Returns the deleted child (caller may use it for S3 cleanup) or nil.
 func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string) (*Node, error) {
 	if parent == nil {
-		return nil, fmt.Errorf("node: unlink: nil parent")
+		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
 	}
 	entry, err := parent.Lookup(name)
 	if err != nil {
@@ -223,7 +224,7 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 	}
 	child, err := s.GetByID(ctx, entry.InodeID)
 	if err != nil {
-		return nil, fmt.Errorf("unlink: get existing: %w", err)
+		return nil, errorx.Wrap(err, "node: unlink_or_replace get existing (name=%s, inode_id=%s)", name, entry.InodeID)
 	}
 	if child.IsDir() {
 		return nil, ErrIsDirectory
@@ -247,12 +248,12 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 // Returns ErrEntryNotFound if srcName is not in srcParent.
 func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error {
 	if srcParent == nil || dstParent == nil {
-		return fmt.Errorf("node: move entry: nil parent")
+		return errorx.New(errorx.KindBadRequest, "node: move entry requires non-nil parents")
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		srcDC, err := srcParent.ReadDir()
 		if err != nil {
-			return fmt.Errorf("move entry: read src dir: %w", err)
+			return errorx.Wrap(err, "move entry read src dir (src_name=%s)", srcName)
 		}
 		var (
 			srcInodeID uuid.UUID
@@ -282,7 +283,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		)
 		dstDC, err := dstParent.ReadDir()
 		if err != nil {
-			return fmt.Errorf("move entry: read dst dir: %w", err)
+			return errorx.Wrap(err, "move entry read dst dir (dst_name=%s)", dstName)
 		}
 		for _, e := range dstDC.Entries {
 			if e.Name == dstName {
@@ -327,10 +328,10 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		}
 		if srcParent.ID() == dstParent.ID() {
 			if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
-				return fmt.Errorf("move entry: write parent: %w", err)
+				return errorx.Wrap(err, "move entry write parent")
 			}
 			if err := tx.repo.Save(ctx, srcParent); err != nil {
-				return fmt.Errorf("move entry: save parent: %w", err)
+				return errorx.Wrap(err, "move entry save parent")
 			}
 		} else {
 			newDstEntries := make([]DirEntry, 0, len(dstDC.Entries)+1)
@@ -338,7 +339,6 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 				if e.Name == dstName {
 					continue
 				}
-				newDstEntries = append(newDstEntries, e)
 			}
 			newDstEntries = append(newDstEntries, DirEntry{
 				InodeID: srcInodeID,
@@ -346,33 +346,33 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 				Type:    srcType,
 			})
 			if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
-				return fmt.Errorf("move entry: write src dir: %w", err)
+				return errorx.Wrap(err, "move entry write src dir")
 			}
 			if err := tx.repo.Save(ctx, srcParent); err != nil {
-				return fmt.Errorf("move entry: save src: %w", err)
+				return errorx.Wrap(err, "move entry save src")
 			}
 			if err := dstParent.WriteDir(DirContent{Entries: newDstEntries}); err != nil {
-				return fmt.Errorf("move entry: write dst dir: %w", err)
+				return errorx.Wrap(err, "move entry write dst dir")
 			}
 			if err := tx.repo.Save(ctx, dstParent); err != nil {
-				return fmt.Errorf("move entry: save dst: %w", err)
+				return errorx.Wrap(err, "move entry save dst")
 			}
 		}
 
 		if existingInodeKnown {
 			overwrite, err := tx.GetByID(ctx, existingInodeID)
 			if err != nil {
-				return fmt.Errorf("move entry: load overwrite target: %w", err)
+				return errorx.Wrap(err, "move entry load overwrite target (inode_id=%s)", existingInodeID)
 			}
 			if overwrite.nlink <= 1 {
 				if err := tx.repo.Delete(ctx, existingInodeID); err != nil {
-					return fmt.Errorf("move entry: delete overwritten inode: %w", err)
+					return errorx.Wrap(err, "move entry delete overwritten inode (inode_id=%s)", existingInodeID)
 				}
 			} else {
 				overwrite.nlink--
 				overwrite.rev = overwrite.rev.Next()
 				if err := tx.repo.Save(ctx, overwrite); err != nil {
-					return fmt.Errorf("move entry: save overwritten inode: %w", err)
+					return errorx.Wrap(err, "move entry save overwritten inode")
 				}
 			}
 		}
@@ -384,7 +384,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 	n, err := s.repo.Get(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("node: get: %w", err)
+		return nil, errorx.Wrap(err, "node: get (id=%s)", id)
 	}
 	return n, nil
 }
@@ -394,7 +394,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 // update (for an existing one) based on the node's staleRev.
 func (s *Service) Save(ctx context.Context, n *Node) error {
 	if n == nil {
-		return fmt.Errorf("node: save: nil node")
+		return errorx.New(errorx.KindBadRequest, "node: save requires non-nil node")
 	}
 	return s.repo.Save(ctx, n)
 }
@@ -412,7 +412,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 // Missing entries are silently ignored (POSIX rm -f semantics).
 func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error) {
 	if parent == nil {
-		return nil, fmt.Errorf("node: bulk unlink: nil parent")
+		return nil, errorx.New(errorx.KindBadRequest, "node: bulk unlink requires non-nil parent")
 	}
 	if len(names) == 0 {
 		return nil, nil
@@ -421,7 +421,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 	err := s.WithTx(ctx, func(tx *Service) error {
 		dc, err := parent.ReadDir()
 		if err != nil {
-			return fmt.Errorf("node: bulk unlink: read dir: %w", err)
+			return errorx.Wrap(err, "node: bulk unlink read dir")
 		}
 		byName := make(map[string]uuid.UUID, len(dc.Entries))
 		for _, e := range dc.Entries {
@@ -444,10 +444,10 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 			planned = append(planned, childPlan{id: id})
 		}
 		if err := parent.RemoveEntries(names); err != nil {
-			return fmt.Errorf("node: bulk unlink: %w", err)
+			return errorx.Wrap(err, "node: bulk unlink remove entries (count=%d)", len(names))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
-			return err
+			return errorx.Wrap(err, "node: bulk unlink save parent")
 		}
 		now := time.Now()
 		for _, p := range planned {
@@ -456,19 +456,19 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 				if errors.Is(err, ErrNotFound) {
 					continue
 				}
-				return fmt.Errorf("node: bulk unlink: get child: %w", err)
+				return errorx.Wrap(err, "node: bulk unlink get child (id=%s)", p.id)
 			}
 			if child.nlink > 1 {
 				child.nlink--
 				child.ctime = now
 				child.rev = child.rev.Next()
 				if err := tx.repo.Save(ctx, child); err != nil {
-					return err
+					return errorx.Wrap(err, "node: bulk unlink save child nlink decrement")
 				}
 				continue
 			}
 			if err := tx.repo.Delete(ctx, p.id); err != nil {
-				return fmt.Errorf("node: bulk unlink: delete: %w", err)
+				return errorx.Wrap(err, "node: bulk unlink delete (id=%s)", p.id)
 			}
 			deleted = append(deleted, child)
 		}

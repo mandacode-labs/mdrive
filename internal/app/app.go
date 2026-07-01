@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 
 	"entgo.io/ent/dialect"
@@ -13,6 +12,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/valkey-io/valkey-go"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/app/gc"
@@ -176,7 +177,7 @@ func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, er
 func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error) {
 	if cfg.Crypto.MasterKey == "" {
 		if cfg.App.Env == "production" {
-			return nil, fmt.Errorf("crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
+			return nil, errorx.New(errorx.KindBadRequest, "crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
 		}
 		logx.Warn(ctx, "crypto.noop.in_use",
 			slog.String("note", "drive storage secrets will be stored in plaintext"),
@@ -185,7 +186,7 @@ func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error
 	}
 	cipher, err := cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
 	if err != nil {
-		return nil, fmt.Errorf("crypto: initialize cipher: %w", err)
+		return nil, errorx.Wrap(err, "crypto: initialize aesgcm")
 	}
 	return cipher, nil
 }
@@ -229,7 +230,7 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, error) {
 	if cfg.OpenFGA.APIURL == "" {
 		if cfg.App.Env == "production" {
-			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
+			return nil, errorx.New(errorx.KindBadRequest, "openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
 		}
 		logx.Warn(ctx, "openfga.nop.in_use")
 		return permission.NopAuthorizer{}, nil
@@ -247,7 +248,7 @@ func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, er
 		Scopes:               cfg.OpenFGA.Scopes,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("openfga: initialize: %w", err)
+		return nil, errorx.Wrap(err, "openfga: initialize (api_url=%s)", cfg.OpenFGA.APIURL)
 	}
 	return checker, nil
 }
@@ -260,7 +261,7 @@ func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*aut
 		return nil, nil, nil
 	}
 	if cfg.Auth.EncryptionKey == "" {
-		return nil, nil, fmt.Errorf("auth: encryption_key required when auth.issuer is set")
+		return nil, nil, errorx.New(errorx.KindBadRequest, "auth: encryption_key required when auth.issuer is set")
 	}
 	authenticator, err := auth.New(ctx, auth.Config{
 		Issuer:         cfg.Auth.Issuer,
@@ -349,7 +350,7 @@ func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, err
 		UsePathStyle: cfg.UsePathStyle,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("s3 client: %w", err)
+		return nil, errorx.Wrap(err, "s3: client (region=%s)", cfg.Region)
 	}
 	logx.Info(ctx, "s3.client.initialized",
 		slog.Any("endpoint", endpoint),
@@ -373,7 +374,7 @@ func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig) (upload.Tok
 		SelectDB:    cfg.DB,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("valkey client: %w", err)
+		return nil, errorx.Wrap(err, "valkey: client (db=%d)", cfg.DB)
 	}
 	logx.Info(ctx, "valkey.client.initialized",
 		slog.Any("addrs", cfg.Addrs),

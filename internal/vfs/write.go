@@ -2,9 +2,9 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Write creates or overwrites inline content at path.
@@ -25,7 +25,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	if err != nil {
 		parent, name, perr := r.resolveParent(ctx, rootID, path)
 		if perr != nil {
-			return fmt.Errorf("write: %w", perr)
+			return errorx.Wrap(perr, "vfs: write resolve parent (path=%s)", path)
 		}
 		f, ferr := node.NewFile(content)
 		if ferr != nil {
@@ -35,10 +35,10 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	}
 	n := out.Node
 	if !n.IsFile() {
-		return fmt.Errorf("write: cannot write to %s", n.Type())
+		return errorx.New(errorx.KindBadRequest, "vfs: write target is not a file (type="+string(n.Type())+")")
 	}
 	if err := n.WriteFile(content); err != nil {
-		return fmt.Errorf("write: %w", err)
+		return errorx.Wrap(err, "vfs: write encode content (path=%s)", path)
 	}
 	return s.NodeClient.Save(ctx, n)
 }

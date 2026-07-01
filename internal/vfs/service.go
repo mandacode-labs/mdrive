@@ -2,12 +2,12 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 var (
@@ -166,7 +166,7 @@ func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, er
 func (s *Service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
 	d, err := s.DriveClient.GetByID(ctx, driveID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("vfs: %w", err)
+		return uuid.Nil, errorx.Wrap(err, "vfs: get root node (drive_id=%s)", driveID)
 	}
 	if d == nil || d.RootNodeID() == nil {
 		return uuid.Nil, ErrNotFound

@@ -2,7 +2,8 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // FileContent is the JSON-serialized content of a small text file node.
@@ -40,7 +41,7 @@ func NewFile(raw string) (*Node, error) {
 func (n *Node) WriteFile(raw string) error {
 	data, err := json.Marshal(NewFileContent(raw))
 	if err != nil {
-		return fmt.Errorf("failed to marshal file content: %w", err)
+		return errorx.Wrap(err, "node: marshal file content")
 	}
 	if len(data) > MaxContentSize {
 		return ErrContentTooLarge
@@ -52,11 +53,11 @@ func (n *Node) WriteFile(raw string) error {
 func (n *Node) ReadFile() (string, error) {
 	content, err := n.read()
 	if err != nil {
-		return "", fmt.Errorf("failed to read content: %w", err)
+		return "", errorx.Wrap(err, "node: read file content")
 	}
 	var fc FileContent
 	if err := json.Unmarshal(content, &fc); err != nil {
-		return "", fmt.Errorf("failed to unmarshal file content: %w", err)
+		return "", errorx.Wrap(err, "node: unmarshal file content")
 	}
 	return fc.Raw, nil
 }

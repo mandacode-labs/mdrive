@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
@@ -48,14 +48,12 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 
 	if len(allRefs) > 0 && s.GarbageRecorder != nil {
 		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
-			// Logged at error: this leaves orphan S3 objects that
-			// must be reclaimed by the gc orphan-scan job.
-			logx.Error(ctx, fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err),
+			logx.Error(ctx, errorx.Wrap(err, "vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs)),
 				"vfs.rm.tombstone_failed",
 				slog.String("drive_id", driveID),
 				slog.Int("ref_count", len(allRefs)),
 			)
-			return fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err)
+			return errorx.Wrap(err, "vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs))
 		}
 		logx.Info(ctx, "vfs.rm.tombstoned",
 			slog.String("drive_id", driveID),
@@ -75,17 +73,15 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 
 // rmPath resolves the path and dispatches to the appropriate internal handler.
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
-	// Use a single resolver so the resolve + resolveParent pair see
-	// the same *Node pointer for any shared intermediate nodes.
 	r := s.newResolver()
 	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
-		return nil, fmt.Errorf("rm: %s: %w", path, err)
+		return nil, errorx.Wrap(err, "vfs: rm resolve (path=%s)", path)
 	}
 	n := out.Node
 	if n.IsDir() {
 		if !recursive {
-			return nil, fmt.Errorf("rm: %s: is a directory (use -r)", path)
+			return nil, errorx.New(errorx.KindBadRequest, "vfs: rm target is a directory (path="+path+", use -r)")
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}
@@ -99,14 +95,14 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]GarbageRef, error) {
 	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
-		return nil, fmt.Errorf("rm: resolve parent: %w", err)
+		return nil, errorx.Wrap(err, "vfs: rm resolve parent (path=%s)", path)
 	}
 	if parent == nil || name == "" {
 		return nil, nil
 	}
 	deleted, err := s.NodeClient.Unlink(ctx, parent, name)
 	if err != nil {
-		return nil, fmt.Errorf("rm: unlink: %w", err)
+		return nil, errorx.Wrap(err, "vfs: rm unlink (path=%s, name=%s)", path, name)
 	}
 
 	var refs []GarbageRef
@@ -135,12 +131,10 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 // rmRecursive removes a directory and all its children. Returns S3 references
 // from all object nodes discovered during the traversal.
 func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
-	// Use a single resolver for the whole traversal so the recursive
-	// child loads share the cache with each other.
 	r := s.newResolver()
 	dc, err := n.ReadDir()
 	if err != nil {
-		return nil, fmt.Errorf("rm: read dir: %w", err)
+		return nil, errorx.Wrap(err, "vfs: rm read dir (path=%s)", path)
 	}
 
 	var allRefs []GarbageRef
@@ -153,7 +147,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 		if child == nil {
 			child, err = s.NodeClient.GetByID(ctx, e.InodeID)
 			if err != nil {
-				return nil, fmt.Errorf("rm: get child %s: %w", childPath, err)
+				return nil, errorx.Wrap(err, "vfs: rm get child (path=%s, child_id=%s)", childPath, e.InodeID)
 			}
 		}
 		var refs []GarbageRef
