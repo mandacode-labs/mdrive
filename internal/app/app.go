@@ -24,6 +24,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	cryptopkg "github.com/mandacode-labs/mdrive/internal/crypto"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/upload/s3"
@@ -127,6 +128,29 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 // environment and level. In non-production the output goes to
 // stderr with a text handler for human-readable logs; in
 // production the output is JSON suitable for ingestion by an
+// contextHandler injects per-call context attributes (notably the
+// request_id set by RequestIDMiddleware) into every log line, so
+// downstream logx helpers do not need to call
+// logx.RequestIDFromContext on every emit. Wrap the inner handler
+// with slog.New so the existing With("env", ...) base attrs are
+// preserved.
+type contextHandler struct{ slog.Handler }
+
+func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
+	if id := logx.RequestIDFromContext(ctx); id != "" {
+		r.AddAttrs(slog.String("request_id", id))
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return contextHandler{Handler: h.Handler.WithAttrs(attrs)}
+}
+
+func (h contextHandler) WithGroup(name string) slog.Handler {
+	return contextHandler{Handler: h.Handler.WithGroup(name)}
+}
+
 // aggregator.
 func newLogger(env, level string) *slog.Logger {
 	lvl := parseLogLevel(level)
@@ -137,7 +161,7 @@ func newLogger(env, level string) *slog.Logger {
 	} else {
 		h = slog.NewTextHandler(os.Stderr, opts)
 	}
-	return slog.New(h).With("env", env)
+	return slog.New(contextHandler{Handler: h}).With("env", env)
 }
 
 func parseLogLevel(s string) slog.Level {

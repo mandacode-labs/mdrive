@@ -77,17 +77,17 @@ func TestHandleBearerAuthPassesWithSession(t *testing.T) {
 	assert.Equal(t, ctx, out, "ctx must be returned unchanged")
 }
 
-// TestMiddlewareRejectsMissingCookie verifies Middleware now
+// TestAuthBridgeRejectsMissingCookie verifies AuthBridge now
 // responds 401 directly when the session cookie is absent or
 // invalid. Previously it passed the request through anonymously,
 // which surfaced as 500 from ogen's NewError.
-func TestMiddlewareRejectsMissingCookie(t *testing.T) {
+func TestAuthBridgeRejectsMissingCookie(t *testing.T) {
 	svc := newSecurityTestService(t, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/anything", nil)
 
-	svc.Middleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("next should not be called when session is invalid")
 	})).ServeHTTP(w, r)
 
@@ -98,10 +98,10 @@ func TestMiddlewareRejectsMissingCookie(t *testing.T) {
 		"body must include the error reason")
 }
 
-// TestMiddlewareRejectsUnknownUser verifies Middleware responds
+// TestAuthBridgeRejectsUnknownUser verifies AuthBridge responds
 // 401 when the session decrypts fine but the user is gone from
 // the DB (cookie outlives the account, etc).
-func TestMiddlewareRejectsUnknownUser(t *testing.T) {
+func TestAuthBridgeRejectsUnknownUser(t *testing.T) {
 	users := &stubUserSvc{
 		byProviderID: func(ctx context.Context, provider, providerID string) (*user.User, error) {
 			return nil, nil // user not found
@@ -118,7 +118,7 @@ func TestMiddlewareRejectsUnknownUser(t *testing.T) {
 	enc, _ := encrypt(raw, svc.encKey)
 	r.AddCookie(&http.Cookie{Name: svc.cookieName, Value: enc})
 
-	svc.Middleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Fatal("next should not be called when user is missing")
 	})).ServeHTTP(w, r)
 
@@ -127,9 +127,9 @@ func TestMiddlewareRejectsUnknownUser(t *testing.T) {
 	assert.Contains(t, strings.TrimSpace(string(body)), "user not found")
 }
 
-// TestMiddlewareAttachesSessionOnSuccess verifies the happy path
+// TestAuthBridgeAttachesSessionOnSuccess verifies the happy path
 // still sets Authorization and attaches the session to ctx.
-func TestMiddlewareAttachesSessionOnSuccess(t *testing.T) {
+func TestAuthBridgeAttachesSessionOnSuccess(t *testing.T) {
 	users := &stubUserSvc{
 		byProviderID: func(ctx context.Context, provider, providerID string) (*user.User, error) {
 			return user.NewUser("user-1", "pub-1", "Alice", nil, provider, providerID,
@@ -147,7 +147,7 @@ func TestMiddlewareAttachesSessionOnSuccess(t *testing.T) {
 
 	var seenSess *Session
 	var seenAuth string
-	svc.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	svc.AuthBridge(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seenSess = SessionFromContext(r.Context())
 		seenAuth = r.Header.Get("Authorization")
 		w.WriteHeader(http.StatusOK)

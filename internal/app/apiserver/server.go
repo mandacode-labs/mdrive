@@ -68,7 +68,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 
 	var secured http.Handler = ogenServer
 	if a.Auth != nil {
-		secured = a.Auth.Middleware(ogenServer)
+		secured = a.Auth.AuthBridge(ogenServer)
 	}
 	finalHandler := AuthPassthrough(secured, a.Auth)
 	finalHandler = OpenAPIPassthrough(finalHandler)

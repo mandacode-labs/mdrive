@@ -31,93 +31,123 @@ tags:
 
 paths:
   /health:
+    x-ogen-operation-group: Health
     $ref: "./endpoints/health.yaml#/health"
 
   /v1/drives:
+    x-ogen-operation-group: Drive
     $ref: "./endpoints/drive.yaml#/drives"
 
   /v1/drives/{driveID}/root:
+    x-ogen-operation-group: Drive
     $ref: "./endpoints/drive.yaml#/drive"
 
   /v1/drives/{driveID}/restore:
+    x-ogen-operation-group: Drive
     $ref: "./endpoints/drive.yaml#/restoreDrive"
 
   /v1/admin/drives/deleted:
+    x-ogen-operation-group: Drive
     $ref: "./endpoints/drive.yaml#/adminDrives"
 
   /v1/drives/{driveID}/storage:
+    x-ogen-operation-group: Drive
     $ref: "./endpoints/drive.yaml#/storage"
 
   /v1/drives/{driveID}/fs/mkdir:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/mkdir"
 
   /v1/drives/{driveID}/fs/touch:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/touch"
 
   /v1/drives/{driveID}/fs:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/rm"
 
   /v1/drives/{driveID}/fs/mv:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/mv"
 
   /v1/drives/{driveID}/fs/ls:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/ls"
 
   /v1/drives/{driveID}/fs/cat:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/cat"
 
   /v1/drives/{driveID}/fs/write:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/write"
 
   /v1/drives/{driveID}/fs/symlink:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/symlink"
 
   /v1/drives/{driveID}/fs/hardlink:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/hardlink"
 
   /v1/drives/{driveID}/fs/mount:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/mount"
 
   /v1/drives/{driveID}/fs/unmount:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/unmount"
 
   /v1/drives/{driveID}/fs/stat:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/stat"
 
   /v1/drives/{driveID}/fs/lstat:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/lstat"
 
   /v1/drives/{driveID}/fs/readlink:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/readlink"
 
   /v1/drives/{driveID}/fs/realpath:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/realpath"
 
   /v1/drives/{driveID}/fs/object:
+    x-ogen-operation-group: Fs
     $ref: "./endpoints/fs.yaml#/object"
 
   /v1/drives/{driveID}/uploads:
+    x-ogen-operation-group: Upload
     $ref: "./endpoints/upload.yaml#/upload"
 
   /v1/drives/{driveID}/uploads/{uploadId}/complete:
+    x-ogen-operation-group: Upload
     $ref: "./endpoints/upload.yaml#/uploadComplete"
 
   /v1/drives/{driveID}/downloads:
+    x-ogen-operation-group: Upload
     $ref: "./endpoints/upload.yaml#/download"
 
   /v1/users:
+    x-ogen-operation-group: User
     $ref: "./endpoints/user.yaml#/users"
 
   /auth/login:
+    x-ogen-operation-group: Auth
     $ref: "./endpoints/auth.yaml#/login"
 
   /auth/callback:
+    x-ogen-operation-group: Auth
     $ref: "./endpoints/auth.yaml#/callback"
 
   /auth/logout:
+    x-ogen-operation-group: Auth
     $ref: "./endpoints/auth.yaml#/logout"
 
   /auth/me:
+    x-ogen-operation-group: Auth
     $ref: "./endpoints/auth.yaml#/me"
 
 components:

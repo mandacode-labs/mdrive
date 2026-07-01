@@ -28,6 +28,18 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	AuthInvoker
+	DriveInvoker
+	FsInvoker
+	HealthInvoker
+	UploadInvoker
+	UserInvoker
+}
+
+// AuthInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: Auth
+type AuthInvoker interface {
 	// AuthCallback invokes authCallback operation.
 	//
 	// OIDC redirect target. Handled by the auth Service: exchanges
@@ -61,20 +73,12 @@ type Invoker interface {
 	//
 	// GET /auth/me
 	AuthMe(ctx context.Context) (AuthMeRes, error)
-	// Cat invokes cat operation.
-	//
-	// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
-	// is not a file.
-	//
-	// GET /v1/drives/{driveID}/fs/cat
-	Cat(ctx context.Context, params CatParams) (CatRes, error)
-	// CompleteUpload invokes completeUpload operation.
-	//
-	// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
-	// the parent directory.
-	//
-	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
-	CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
+}
+
+// DriveInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: Drive
+type DriveInvoker interface {
 	// CreateDrive invokes createDrive operation.
 	//
 	// Create a new drive owned by the authenticated user with the given storage configuration.
@@ -100,31 +104,6 @@ type Invoker interface {
 	//
 	// GET /v1/drives/{driveID}/storage
 	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error)
-	// GetUser invokes getUser operation.
-	//
-	// Return the user identified by `id`.
-	//
-	// GET /v1/users
-	GetUser(ctx context.Context) (GetUserRes, error)
-	// Hardlink invokes hardlink operation.
-	//
-	// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
-	// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
-	//
-	// POST /v1/drives/{driveID}/fs/hardlink
-	Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
-	// Health invokes health operation.
-	//
-	// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
-	//
-	// GET /health
-	Health(ctx context.Context) (HealthRes, error)
-	// InitiateUpload invokes initiateUpload operation.
-	//
-	// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
-	//
-	// POST /v1/drives/{driveID}/uploads
-	InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDeletedDrives invokes listDeletedDrives operation.
 	//
 	// List all soft-deleted drives. Admin only.
@@ -137,6 +116,38 @@ type Invoker interface {
 	//
 	// GET /v1/drives
 	ListDrives(ctx context.Context) (ListDrivesRes, error)
+	// RestoreDrive invokes restoreDrive operation.
+	//
+	// Restore a soft-deleted drive. Admin only.
+	//
+	// POST /v1/drives/{driveID}/restore
+	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
+	// UpdateDrive invokes updateDrive operation.
+	//
+	// Update the drive's name and description. Empty fields are left unchanged.
+	//
+	// PUT /v1/drives/{driveID}/root
+	UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
+}
+
+// FsInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: Fs
+type FsInvoker interface {
+	// Cat invokes cat operation.
+	//
+	// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+	// is not a file.
+	//
+	// GET /v1/drives/{driveID}/fs/cat
+	Cat(ctx context.Context, params CatParams) (CatRes, error)
+	// Hardlink invokes hardlink operation.
+	//
+	// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+	// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
+	//
+	// POST /v1/drives/{driveID}/fs/hardlink
+	Hardlink(ctx context.Context, request OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Ls invokes ls operation.
 	//
 	// List the contents of a directory. Each entry returns its name, type, and inode id.
@@ -169,12 +180,6 @@ type Invoker interface {
 	//
 	// POST /v1/drives/{driveID}/fs/mv
 	Mv(ctx context.Context, request OptMvReq, params MvParams) (MvRes, error)
-	// PresignDownload invokes presignDownload operation.
-	//
-	// Generate a presigned GET URL for downloading an existing object.
-	//
-	// GET /v1/drives/{driveID}/downloads
-	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Readlink invokes readlink operation.
 	//
 	// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
@@ -187,12 +192,6 @@ type Invoker interface {
 	//
 	// GET /v1/drives/{driveID}/fs/realpath
 	Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error)
-	// RestoreDrive invokes restoreDrive operation.
-	//
-	// Restore a soft-deleted drive. Admin only.
-	//
-	// POST /v1/drives/{driveID}/restore
-	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
 	// Rm invokes rm operation.
 	//
 	// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
@@ -225,18 +224,6 @@ type Invoker interface {
 	//
 	// DELETE /v1/drives/{driveID}/fs/unmount
 	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
-	// UpdateDrive invokes updateDrive operation.
-	//
-	// Update the drive's name and description. Empty fields are left unchanged.
-	//
-	// PUT /v1/drives/{driveID}/root
-	UpdateDrive(ctx context.Context, request OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
-	// UpsertUser invokes upsertUser operation.
-	//
-	// Create or update a user record. Admin or self-service depending on `provider`.
-	//
-	// POST /v1/users
-	UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error)
 	// Write invokes write operation.
 	//
 	// Create or replace the file at `path` with `content`.
@@ -249,6 +236,61 @@ type Invoker interface {
 	//
 	// POST /v1/drives/{driveID}/fs/object
 	WriteLarge(ctx context.Context, request OptWriteLargeReq, params WriteLargeParams) (WriteLargeRes, error)
+}
+
+// HealthInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: Health
+type HealthInvoker interface {
+	// Health invokes health operation.
+	//
+	// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
+	//
+	// GET /health
+	Health(ctx context.Context) (HealthRes, error)
+}
+
+// UploadInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: Upload
+type UploadInvoker interface {
+	// CompleteUpload invokes completeUpload operation.
+	//
+	// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+	// the parent directory.
+	//
+	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
+	CompleteUpload(ctx context.Context, request OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
+	// InitiateUpload invokes initiateUpload operation.
+	//
+	// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
+	//
+	// POST /v1/drives/{driveID}/uploads
+	InitiateUpload(ctx context.Context, request OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
+	// PresignDownload invokes presignDownload operation.
+	//
+	// Generate a presigned GET URL for downloading an existing object.
+	//
+	// GET /v1/drives/{driveID}/downloads
+	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
+}
+
+// UserInvoker invokes operations described by OpenAPI v3 specification.
+//
+// x-gen-operation-group: User
+type UserInvoker interface {
+	// GetUser invokes getUser operation.
+	//
+	// Return the user identified by `id`.
+	//
+	// GET /v1/users
+	GetUser(ctx context.Context) (GetUserRes, error)
+	// UpsertUser invokes upsertUser operation.
+	//
+	// Create or update a user record. Admin or self-service depending on `provider`.
+	//
+	// POST /v1/users
+	UpsertUser(ctx context.Context, request OptUpsertUserReq) (UpsertUserRes, error)
 }
 
 // Client implements OAS client.
