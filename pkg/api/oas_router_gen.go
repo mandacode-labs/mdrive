@@ -18,7 +18,6 @@ var (
 		"GET": "Authorization",
 	}
 	rn15AllowedHeaders = map[string]string{
-		"GET":  "Authorization",
 		"POST": "Authorization,Content-Type",
 	}
 	rn31AllowedHeaders = map[string]string{
@@ -78,7 +77,7 @@ var (
 	rn16AllowedHeaders = map[string]string{
 		"DELETE": "Authorization",
 		"GET":    "Authorization",
-		"PUT":    "Authorization,Content-Type",
+		"PUT":    "Content-Type",
 	}
 	rn17AllowedHeaders = map[string]string{
 		"GET": "Authorization",
@@ -91,7 +90,7 @@ var (
 	}
 	rn19AllowedHeaders = map[string]string{
 		"GET":  "Authorization",
-		"POST": "Authorization,Content-Type",
+		"POST": "Content-Type",
 	}
 )
 

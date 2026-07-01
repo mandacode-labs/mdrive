@@ -45,7 +45,6 @@ var operationRolesBearerAuth = map[string][]string{
 	HardlinkOperation:          []string{},
 	InitiateUploadOperation:    []string{},
 	ListDeletedDrivesOperation: []string{},
-	ListDrivesOperation:        []string{},
 	LsOperation:                []string{},
 	LstatOperation:             []string{},
 	MkdirOperation:             []string{},
@@ -60,8 +59,6 @@ var operationRolesBearerAuth = map[string][]string{
 	SymlinkOperation:           []string{},
 	TouchOperation:             []string{},
 	UnmountOperation:           []string{},
-	UpdateDriveOperation:       []string{},
-	UpsertUserOperation:        []string{},
 	WriteOperation:             []string{},
 	WriteLargeOperation:        []string{},
 }
