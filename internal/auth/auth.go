@@ -9,6 +9,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -44,6 +45,7 @@ type Config struct {
 
 // Service runs the OIDC flow and issues encrypted session cookies.
 type Service struct {
+	log            *slog.Logger
 	provider       *oidc.Provider
 	verifier       *oidc.IDTokenVerifier
 	oauth2Cfg      oauth2.Config
@@ -78,6 +80,7 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 	}
 
 	return &Service{
+		log:      slog.Default(),
 		provider: p,
 		verifier: p.Verifier(&oidc.Config{ClientID: cfg.ClientID}),
 		oauth2Cfg: oauth2.Config{

@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // stateData is the encrypted payload of the "auth_state" cookie.
@@ -21,6 +24,18 @@ type stateData struct {
 	State    string `json:"s"`
 	Verifier string `json:"v"`
 }
+
+// State-cookie failure sentinels. Each carries a distinct message so
+// logs and HTTP responses tell the operator exactly which step
+// rejected the callback. All four are KindBadRequest because the
+// client is at fault in every case (missing/tampered cookie, CSRF
+// mismatch). Operators see the difference via the message field.
+var (
+	errStateMissing  = errorx.New(errorx.KindBadRequest, "auth: missing state cookie")
+	errStateDecrypt  = errorx.New(errorx.KindBadRequest, "auth: state cookie decrypt failed")
+	errStateCorrupt  = errorx.New(errorx.KindBadRequest, "auth: state cookie corrupt")
+	errStateMismatch = errorx.New(errorx.KindBadRequest, "auth: state mismatch")
+)
 
 // idTokenClaims captures the standard OIDC ID token claims we
 // read for user identity. Keycloak puts name+email in the id_token
@@ -49,11 +64,13 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 		Verifier: verifier,
 	})
 	if err != nil {
+		s.log.ErrorContext(r.Context(), "auth: marshal state payload failed", "error", err)
 		http.Error(w, "auth: internal error", http.StatusInternalServerError)
 		return
 	}
 	enc, err := encrypt(payload, s.encKey)
 	if err != nil {
+		s.log.ErrorContext(r.Context(), "auth: encrypt state failed", "error", err)
 		http.Error(w, "auth: internal error", http.StatusInternalServerError)
 		return
 	}
@@ -62,49 +79,101 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, s.oauth2Cfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier)), http.StatusFound)
 }
 
+// writeError writes a JSON error response using the same status-code
+// mapping the rest of the API uses. statusOverride is honored when
+// non-zero (lets callers force a specific status even when the
+// errorx default would map it elsewhere).
+func writeError(w http.ResponseWriter, err error, statusOverride int) {
+	status := statusForError(err)
+	if statusOverride != 0 {
+		status = statusOverride
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+}
+
+// statusForError returns the HTTP status that errorx.FromError would
+// produce for err, with a sensible fallback for non-errorx errors.
+// Mirrors the table in internal/app/apiserver/error.go so the auth
+// endpoints respond identically to the rest of the API.
+func statusForError(err error) int {
+	var de errorx.Error
+	if errors.As(err, &de) {
+		switch de.Kind() {
+		case errorx.KindNotFound:
+			return http.StatusNotFound
+		case errorx.KindConflict:
+			return http.StatusConflict
+		case errorx.KindBadRequest:
+			return http.StatusBadRequest
+		case errorx.KindForbidden:
+			return http.StatusForbidden
+		case errorx.KindUnauthenticated:
+			return http.StatusUnauthorized
+		case errorx.KindServiceDegraded:
+			return http.StatusServiceUnavailable
+		}
+	}
+	return http.StatusInternalServerError
+}
+
 // Callback exchanges the authorization code for tokens, verifies
 // the ID token, upserts the user, and issues the session cookie.
 // On success the browser is redirected to the configured
 // post-login URL.
 func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
+	log := s.log.With(slog.String("path", "/auth/callback"))
+
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		http.Error(w, "auth: missing code or state", http.StatusBadRequest)
+		log.WarnContext(r.Context(), "callback missing code or state",
+			slog.Bool("has_code", code != ""),
+			slog.Bool("has_state", state != ""))
+		writeError(w, errorx.New(errorx.KindBadRequest, "auth: missing code or state"), 0)
 		return
 	}
 
 	sd, err := s.consumeStateCookie(w, r, state)
 	if err != nil {
-		http.Error(w, "auth: invalid state", http.StatusBadRequest)
+		log.WarnContext(r.Context(), "callback state rejected", slog.String("reason", err.Error()))
+		writeError(w, err, 0)
 		return
 	}
 
 	token, err := s.oauth2Cfg.Exchange(r.Context(), code, oauth2.VerifierOption(sd.Verifier))
 	if err != nil {
-		http.Error(w, "auth: token exchange failed", http.StatusBadGateway)
+		log.WarnContext(r.Context(), "token exchange failed", slog.String("error", err.Error()))
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: token exchange failed"), 0)
 		return
 	}
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		http.Error(w, "auth: missing id_token", http.StatusBadGateway)
+		log.WarnContext(r.Context(), "token response missing id_token")
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: missing id_token"), 0)
 		return
 	}
 	idToken, err := s.verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		http.Error(w, "auth: id_token verification failed", http.StatusBadGateway)
+		log.WarnContext(r.Context(), "id_token verification failed", slog.String("error", err.Error()))
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: id_token verification failed"), 0)
 		return
 	}
 
 	name, email, err := s.resolveIdentity(r.Context(), idToken, token)
 	if err != nil {
-		http.Error(w, "auth: "+err.Error(), http.StatusInternalServerError)
+		log.ErrorContext(r.Context(), "resolve identity failed", slog.String("error", err.Error()))
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: "+err.Error()), 0)
 		return
 	}
 
 	u, err := s.findOrCreateUser(r.Context(), idToken.Subject, name, email)
 	if err != nil {
-		http.Error(w, "auth: "+err.Error(), http.StatusInternalServerError)
+		log.ErrorContext(r.Context(), "user upsert failed",
+			slog.String("sub", idToken.Subject),
+			slog.String("error", err.Error()))
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: "+err.Error()), 0)
 		return
 	}
 
@@ -119,7 +188,8 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: time.Now().Add(s.sessionTTL),
 	}
 	if err := s.writeSessionCookie(w, r, sess); err != nil {
-		http.Error(w, "auth: write session cookie", http.StatusInternalServerError)
+		log.ErrorContext(r.Context(), "write session cookie failed", slog.String("error", err.Error()))
+		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: write session cookie"), 0)
 		return
 	}
 
@@ -132,23 +202,26 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 // consumeStateCookie reads, decrypts, and clears the state cookie,
 // then verifies the `state` query parameter matches the stored one.
-// This is the CSRF guard per RFC 6749 §10.12.
+// This is the CSRF guard per RFC 6749 §10.12. The returned error is
+// always an errorx.KindBadRequest sentinel so the response handler
+// can map it to 400 and the operator can read the exact failure
+// reason from the message field.
 func (s *Service) consumeStateCookie(w http.ResponseWriter, r *http.Request, state string) (*stateData, error) {
 	c, err := r.Cookie("auth_state")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errStateMissing, err)
 	}
 	s.setCookie(w, r, "auth_state", "", -1)
 	raw, err := decrypt(c.Value, s.encKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errStateDecrypt, err)
 	}
 	var sd stateData
 	if err := json.Unmarshal(raw, &sd); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", errStateCorrupt, err)
 	}
 	if sd.State == "" || sd.State != state {
-		return nil, fmt.Errorf("state mismatch")
+		return nil, fmt.Errorf("%w: have %q want %q", errStateMismatch, sd.State, state)
 	}
 	return &sd, nil
 }
