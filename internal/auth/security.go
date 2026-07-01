@@ -69,6 +69,10 @@ func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, op api.Operation
 // (which used to surface as 500 from NewError's fallback path).
 func (s *Service) AuthBridge(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.noAuthPaths[r.URL.Path] {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)
 			return

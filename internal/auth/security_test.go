@@ -178,3 +178,46 @@ func TestAuthBridgeAttachesSessionOnSuccess(t *testing.T) {
 // timeFromUnix is a tiny helper so the test does not import time
 // just for one value.
 func timeFromUnix(sec int64) time.Time { return time.Unix(sec, 0) }
+
+// TestAuthBridgeAllowsAnonymousPath proves the regression fix for
+// the /health 401 incident. AuthBridge must consult the spec-derived
+// anonymous set (s.noAuthPaths) before the cookie check, so paths
+// declared `security: []` in the OpenAPI spec are not gated by the
+// session cookie. The set is populated by New() from the embedded
+// api.Spec; here we set it directly to keep the test independent
+// of the bundled spec contents.
+func TestAuthBridgeAllowsAnonymousPath(t *testing.T) {
+	svc := newSecurityTestService(t, nil)
+	svc.noAuthPaths = map[string]bool{"/health": true}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/health", nil)
+
+	called := false
+	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	})).ServeHTTP(w, r)
+
+	assert.True(t, called,
+		"next must be called for an anonymous path with no cookie")
+	assert.NotEqual(t, http.StatusUnauthorized, w.Code,
+		"anonymous paths must not produce 401")
+}
+
+// TestAuthBridgeRejectsAuthenticatedPath makes sure adding a path
+// to the anonymous set is the ONLY way to make AuthBridge skip it.
+// /v1/drives is authenticated; even with noAuthPaths empty, a
+// missing cookie must produce 401, not pass through.
+func TestAuthBridgeRejectsAuthenticatedPath(t *testing.T) {
+	svc := newSecurityTestService(t, nil)
+	svc.noAuthPaths = map[string]bool{"/health": true}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/v1/drives", nil)
+
+	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("next should not be called for authenticated path without cookie")
+	})).ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}

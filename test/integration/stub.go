@@ -150,6 +150,28 @@ func newTestServerWith(t *testing.T, sec api.SecurityHandler) *httptest.Server {
 	return srv
 }
 
+// newTestServerWithAuthBridge builds a server that exercises the
+// production middleware chain: OpenAPIPassthrough wraps
+// auth.Service.AuthBridge, which wraps the ogen server. The
+// Service is built via auth.NewForTest so its anonymous-path set
+// is populated from the embedded OpenAPI spec exactly as
+// production does. This is the only test setup that catches a
+// regression in the /health 401 incident -- the bare
+// newTestServerWith bypasses AuthBridge.
+func newTestServerWithAuthBridge(t *testing.T) *httptest.Server {
+	t.Helper()
+	userSvc := newFakeUserSvc()
+	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, "")
+	authSvc := auth.NewForTest(userSvc)
+	ogenServer, err := api.NewServer(h, realSecurityHandler{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+		apiserver.WriteError(w, err)
+	}))
+	require.NoError(t, err)
+	chain := authSvc.AuthBridge(ogenServer)
+	srv := httptest.NewServer(apiserver.OpenAPIPassthrough(chain))
+	return srv
+}
+
 // testSecurity injects a session for the test user on every
 // request. Mirrors the production SecurityHandler but skips OIDC.
 type testSecurity struct{}

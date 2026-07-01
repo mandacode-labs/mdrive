@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
+	"github.com/mandacode-labs/mdrive/api"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
@@ -56,6 +57,7 @@ type Service struct {
 	postLoginURL   string
 	postLogoutURL  string
 	sessionTTL     time.Duration
+	noAuthPaths    map[string]bool
 }
 
 // New discovers the IdP via OIDC discovery and returns a ready
@@ -77,6 +79,11 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 		return nil, fmt.Errorf("auth: discover provider: %w", err)
 	}
 
+	noAuth, err := anonymousPaths(api.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("auth: load anonymous paths: %w", err)
+	}
+
 	return &Service{
 		provider: p,
 		verifier: p.Verifier(&oidc.Config{ClientID: cfg.ClientID}),
@@ -96,6 +103,7 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 		postLoginURL:   cfg.PostLoginURL,
 		postLogoutURL:  cfg.PostLogoutURL,
 		sessionTTL:     cfg.SessionTTL,
+		noAuthPaths:    noAuth,
 	}, nil
 }
 
