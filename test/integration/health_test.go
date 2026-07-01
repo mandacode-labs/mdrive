@@ -22,3 +22,27 @@ func TestHealth(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 	assert.Equal(t, "ok", body["status"])
 }
+
+// TestHealthAnonymousWithRealSecurity proves the production
+// security handler does not gate /health. k8s liveness/readiness
+// probes do not carry a session cookie, and the OpenAPI spec
+// marks /health as `security: []`, but ogen 1.22 ignores the
+// per-endpoint override when global security is set. The real
+// SecurityHandler therefore short-circuits the health operation
+// itself, and this test guards that rule. Without it, /health
+// would return 401 in production and the k8s startup probe
+// would fail (the /health 401 incident).
+func TestHealthAnonymousWithRealSecurity(t *testing.T) {
+	srv := newTestServerWith(t, realSecurityHandler{})
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/health")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode,
+		"/health must be 200 even with the real (session-checking) security handler")
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, "ok", body["status"])
+}

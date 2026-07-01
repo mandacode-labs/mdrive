@@ -165,9 +165,19 @@ func (testSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _
 // injected a session and never caught the /auth/me 500
 // regression, which is why we now use the real handler in
 // addition to the legacy one.
+//
+// /health is anonymous: k8s liveness/readiness probes do not
+// carry a session, and the OpenAPI spec's per-endpoint
+// `security: []` override is ignored by ogen 1.22 when global
+// security is set. Mirror the production rule here so the
+// integration test catches a regression if the real handler
+// stops honoring the health operation.
 type realSecurityHandler struct{}
 
-func (realSecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+func (realSecurityHandler) HandleBearerAuth(ctx context.Context, op api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	if op == api.HealthOperation {
+		return ctx, nil
+	}
 	if auth.SessionFromContext(ctx) != nil {
 		return ctx, nil
 	}

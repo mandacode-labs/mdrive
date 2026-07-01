@@ -37,7 +37,19 @@ func NewSecurityHandler(auth *Service) *SecurityHandler {
 // fallback in NewError, which is why /auth/me (and every other
 // authenticated endpoint) returned 500 when the cookie bridge
 // failed silently.
-func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+//
+// /health is anonymous: k8s liveness/readiness probes do not
+// carry a session. The OpenAPI spec has `security: []` for the
+// health endpoint, but ogen 1.22 ignores per-endpoint overrides
+// when global security is set, so the SecurityHandler itself
+// has to short-circuit the health operation. The check is the
+// only place a request's operation is visible to the security
+// path; relying on the URL or middleware would not be safe
+// because the URL is not available at this layer.
+func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, op api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	if op == api.HealthOperation {
+		return ctx, nil
+	}
 	if SessionFromContext(ctx) != nil {
 		return ctx, nil
 	}
