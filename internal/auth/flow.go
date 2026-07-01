@@ -15,6 +15,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // stateData is the encrypted payload of the "auth_state" cookie.
@@ -79,43 +80,25 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, s.oauth2Cfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier)), http.StatusFound)
 }
 
-// writeError writes a JSON error response using the same status-code
-// mapping the rest of the API uses. statusOverride is honored when
-// non-zero (lets callers force a specific status even when the
-// errorx default would map it elsewhere).
-func writeError(w http.ResponseWriter, err error, statusOverride int) {
+// writeError writes a JSON error response using errorx.Kind.Status()
+// for the HTTP code. Identical envelope to the rest of the API so
+// clients can parse /auth/* errors with the same code path.
+func writeError(w http.ResponseWriter, err error) {
 	status := statusForError(err)
-	if statusOverride != 0 {
-		status = statusOverride
-	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 }
 
-// statusForError returns the HTTP status that errorx.FromError would
-// produce for err, with a sensible fallback for non-errorx errors.
-// Mirrors the table in internal/app/apiserver/error.go so the auth
-// endpoints respond identically to the rest of the API.
+// statusForError resolves an error to its HTTP status via errorx.
+// Single-source-of-truth lives in errorx.Kind.Status(); this helper
+// only adds the non-errorx fallback.
 func statusForError(err error) int {
 	var de errorx.Error
-	if errors.As(err, &de) {
-		switch de.Kind() {
-		case errorx.KindNotFound:
-			return http.StatusNotFound
-		case errorx.KindConflict:
-			return http.StatusConflict
-		case errorx.KindBadRequest:
-			return http.StatusBadRequest
-		case errorx.KindForbidden:
-			return http.StatusForbidden
-		case errorx.KindUnauthenticated:
-			return http.StatusUnauthorized
-		case errorx.KindServiceDegraded:
-			return http.StatusServiceUnavailable
-		}
+	if !errors.As(err, &de) {
+		return http.StatusInternalServerError
 	}
-	return http.StatusInternalServerError
+	return de.Kind().Status()
 }
 
 // Callback exchanges the authorization code for tokens, verifies
@@ -123,57 +106,70 @@ func statusForError(err error) int {
 // On success the browser is redirected to the configured
 // post-login URL.
 func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
-	log := s.log.With(slog.String("path", "/auth/callback"))
-
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		log.WarnContext(r.Context(), "callback missing code or state",
-			slog.Bool("has_code", code != ""),
-			slog.Bool("has_state", state != ""))
-		writeError(w, errorx.New(errorx.KindBadRequest, "auth: missing code or state"), 0)
+		err := errorx.New(errorx.KindBadRequest, "auth: missing code or state")
+		logx.Error(r.Context(), s.log, err, "callback missing code or state",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 
 	sd, err := s.consumeStateCookie(w, r, state)
 	if err != nil {
-		log.WarnContext(r.Context(), "callback state rejected", slog.String("reason", err.Error()))
-		writeError(w, err, 0)
+		logx.Error(r.Context(), s.log, err, "callback state rejected",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 
 	token, err := s.oauth2Cfg.Exchange(r.Context(), code, oauth2.VerifierOption(sd.Verifier))
 	if err != nil {
-		log.WarnContext(r.Context(), "token exchange failed", slog.String("error", err.Error()))
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: token exchange failed"), 0)
+		err = fmt.Errorf("auth: token exchange failed: %w", err)
+		logx.Error(r.Context(), s.log, err, "token exchange failed",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		log.WarnContext(r.Context(), "token response missing id_token")
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: missing id_token"), 0)
+		err := errorx.New(errorx.KindServiceDegraded, "auth: missing id_token")
+		logx.Error(r.Context(), s.log, err, "token response missing id_token",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 	idToken, err := s.verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		log.WarnContext(r.Context(), "id_token verification failed", slog.String("error", err.Error()))
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: id_token verification failed"), 0)
+		err = fmt.Errorf("auth: id_token verification failed: %w", err)
+		logx.Error(r.Context(), s.log, err, "id_token verification failed",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 
 	name, email, err := s.resolveIdentity(r.Context(), idToken, token)
 	if err != nil {
-		log.ErrorContext(r.Context(), "resolve identity failed", slog.String("error", err.Error()))
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: "+err.Error()), 0)
+		logx.Error(r.Context(), s.log, err, "resolve identity failed",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 
 	u, err := s.findOrCreateUser(r.Context(), idToken.Subject, name, email)
 	if err != nil {
-		log.ErrorContext(r.Context(), "user upsert failed",
+		logx.Error(r.Context(), s.log, err, "user upsert failed",
+			slog.String("path", "/auth/callback"),
 			slog.String("sub", idToken.Subject),
-			slog.String("error", err.Error()))
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: "+err.Error()), 0)
+		)
+		writeError(w, err)
 		return
 	}
 
@@ -188,8 +184,10 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: time.Now().Add(s.sessionTTL),
 	}
 	if err := s.writeSessionCookie(w, r, sess); err != nil {
-		log.ErrorContext(r.Context(), "write session cookie failed", slog.String("error", err.Error()))
-		writeError(w, errorx.New(errorx.KindServiceDegraded, "auth: write session cookie"), 0)
+		logx.Error(r.Context(), s.log, err, "write session cookie failed",
+			slog.String("path", "/auth/callback"),
+		)
+		writeError(w, err)
 		return
 	}
 
