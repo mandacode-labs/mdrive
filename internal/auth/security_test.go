@@ -75,6 +75,24 @@ func TestHandleBearerAuthPassesWithSession(t *testing.T) {
 	assert.Equal(t, ctx, out, "ctx must be returned unchanged")
 }
 
+// TestHandleBearerAuthAllowsHealthAnonymous proves the regression
+// fix for the /health 401 incident: k8s liveness/readiness
+// probes do not carry a session, and the OpenAPI spec marks
+// /health as `security: []`, but ogen 1.22 ignores that override
+// when global security is set. The SecurityHandler therefore
+// short-circuits the health operation so probes reach the
+// handler that returns 200 (or 503 on degraded backends).
+func TestHandleBearerAuthAllowsHealthAnonymous(t *testing.T) {
+	svc := &Service{}
+	sh := &SecurityHandler{auth: svc}
+
+	ctx := context.Background() // no session
+	out, err := sh.HandleBearerAuth(ctx, api.HealthOperation, api.BearerAuth{Token: "ignored"})
+	require.NoError(t, err,
+		"health operation must not require a session")
+	assert.Equal(t, ctx, out, "ctx must be returned unchanged")
+}
+
 // TestAuthBridgeRejectsMissingCookie verifies AuthBridge now
 // responds 401 directly when the session cookie is absent or
 // invalid. Previously it passed the request through anonymously,
