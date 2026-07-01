@@ -1,5 +1,7 @@
 package errorx
 
+import "errors"
+
 type Kind int
 
 const (
@@ -57,11 +59,13 @@ func (k Kind) Status() int {
 type Error interface {
 	error
 	Kind() Kind
+	Unwrap() error
 }
 
 type errorx struct {
 	kind    Kind
 	message string
+	cause   error
 }
 
 func (e *errorx) Error() string {
@@ -72,9 +76,32 @@ func (e *errorx) Kind() Kind {
 	return e.kind
 }
 
+func (e *errorx) Unwrap() error {
+	return e.cause
+}
+
 func New(kind Kind, message string) Error {
 	return &errorx{
 		kind:    kind,
 		message: message,
 	}
+}
+
+// Wrap wraps an existing error with a Kind. The original error is
+// preserved via errors.Unwrap; if err is already an errorx.Error,
+// its Kind takes precedence over the kind argument.
+func Wrap(err error, kind Kind, message string) Error {
+	if err == nil {
+		return nil
+	}
+	var de Error
+	if errors.As(err, &de) {
+		kind = de.Kind()
+	}
+	wrapped := &errorx{
+		kind:    kind,
+		message: message,
+	}
+	wrapped.cause = err
+	return wrapped
 }
