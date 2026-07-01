@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Mount creates a bind mount of sourceDriveID at mountPath inside
@@ -55,7 +56,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		return err
 	}
 	if err := s.createAndLink(ctx, mount, parent, name); err != nil {
-		s.log().Debug("vfs.mount.failed",
+		logx.Debug(ctx, "vfs.mount.failed",
 			slog.String("from_drive", driveID),
 			slog.String("to_drive", sourceDriveID),
 			slog.String("path", mountPath),
@@ -63,7 +64,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		)
 		return fmt.Errorf("mount: %w", err)
 	}
-	s.log().Info("vfs.mount.created",
+	logx.Info(ctx, "vfs.mount.created",
 		slog.String("from_drive", driveID),
 		slog.String("to_drive", sourceDriveID),
 		slog.String("path", mountPath),
@@ -103,14 +104,14 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 		return fmt.Errorf("unmount: resolve parent: %w", err)
 	}
 	if _, err := s.NodeClient.Unlink(ctx, parent, name); err != nil {
-		s.log().Debug("vfs.unmount.failed",
+		logx.Debug(ctx, "vfs.unmount.failed",
 			slog.String("drive_id", driveID),
 			slog.String("path", mountPath),
 			slog.String("err", err.Error()),
 		)
 		return fmt.Errorf("unmount: unlink: %w", err)
 	}
-	s.log().Info("vfs.unmount.completed",
+	logx.Info(ctx, "vfs.unmount.completed",
 		slog.String("drive_id", driveID),
 		slog.String("path", mountPath),
 		slog.String("source_drive", srcDrive),

@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -34,10 +32,16 @@ import (
 // App holds all wired components. Fields are grouped loosely
 // into HTTP-serving services (NodeSvc, DriveSvc, ..., Auth),
 // background-job services (same, plus Garbage), and lifecycle
-// (DB, Ent, Config, Log).
+// (DB, Ent, Config).
+//
+// Logging flows through slog.Default — the bootstrap
+// (logx.New) installs the configured logger there, and every
+// logx.Info/Warn/Error/Request call resolves the default. No
+// logger is plumbed through the App because nothing in the
+// runtime needs it: handlers, services, and gc runners all use
+// the ctx-based logx API.
 type App struct {
 	Config *config.Config
-	Log    *slog.Logger
 
 	NodeSvc      *node.Service
 	DriveSvc     *drive.Service
@@ -64,14 +68,21 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	log := newLogger(cfg.App.Env, cfg.App.LogLevel)
+	// Install the configured logger as slog.Default. Every
+	// logx.Info/Warn/Error/Request reads slog.Default, so the
+	// rest of the application picks up env/level/format
+	// without explicit plumbing.
+	logx.New(logx.Config{
+		Env:   cfg.App.Env,
+		Level: cfg.App.LogLevel,
+	})
 
-	db, entClient, err := newInfra(ctx, cfg, log)
+	db, entClient, err := newInfra(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	cipher, err := newCrypto(ctx, cfg, log)
+	cipher, err := newCrypto(ctx, cfg)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -81,25 +92,25 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	garbage := gc.NewGarbageRecorder(entClient)
 
-	uploadReg, err := newUploadRegistry(ctx, cfg.Valkey, log)
+	uploadReg, err := newUploadRegistry(ctx, cfg.Valkey)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 
-	s3Client, err := newS3Client(ctx, cfg.Storage, log)
+	s3Client, err := newS3Client(ctx, cfg.Storage)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 
-	permClient, err := newPerm(ctx, cfg, log)
+	permClient, err := newPerm(ctx, cfg)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 
-	authenticator, sec, err := newAuth(ctx, cfg, log, repos.UserSvc)
+	authenticator, sec, err := newAuth(ctx, cfg, repos.UserSvc)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -107,14 +118,13 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	return &App{
 		Config:       cfg,
-		Log:          log,
 		NodeSvc:      repos.NodeSvc,
 		DriveSvc:     repos.DriveSvc,
 		UserSvc:      repos.UserSvc,
 		OwnerChecker: repos.OwnerChecker,
 		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg),
-		VFS:          newVFS(repos, garbage, log),
+		VFS:          newVFS(repos, garbage),
 		Garbage:      garbage,
 		Auth:         authenticator,
 		Security:     sec,
@@ -124,63 +134,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}, nil
 }
 
-// newLogger returns a *slog.Logger configured for the given
-// environment and level. In non-production the output goes to
-// stderr with a text handler for human-readable logs; in
-// production the output is JSON suitable for ingestion by an
-// contextHandler injects per-call context attributes (notably the
-// request_id set by RequestIDMiddleware) into every log line, so
-// downstream logx helpers do not need to call
-// logx.RequestIDFromContext on every emit. Wrap the inner handler
-// with slog.New so the existing With("env", ...) base attrs are
-// preserved.
-type contextHandler struct{ slog.Handler }
-
-func (h contextHandler) Handle(ctx context.Context, r slog.Record) error {
-	if id := logx.RequestIDFromContext(ctx); id != "" {
-		r.AddAttrs(slog.String("request_id", id))
-	}
-	return h.Handler.Handle(ctx, r)
-}
-
-func (h contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return contextHandler{Handler: h.Handler.WithAttrs(attrs)}
-}
-
-func (h contextHandler) WithGroup(name string) slog.Handler {
-	return contextHandler{Handler: h.Handler.WithGroup(name)}
-}
-
-// aggregator.
-func newLogger(env, level string) *slog.Logger {
-	lvl := parseLogLevel(level)
-	opts := &slog.HandlerOptions{Level: lvl}
-	var h slog.Handler
-	if env == "production" {
-		h = slog.NewJSONHandler(os.Stderr, opts)
-	} else {
-		h = slog.NewTextHandler(os.Stderr, opts)
-	}
-	return slog.New(contextHandler{Handler: h}).With("env", env)
-}
-
-func parseLogLevel(s string) slog.Level {
-	switch strings.ToLower(s) {
-	case "debug":
-		return slog.LevelDebug
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
 // newInfra opens the database and ent client. In development
 // the ent schema is auto-created; in production the caller is
 // expected to run migrations separately.
-func newInfra(ctx context.Context, cfg *config.Config, log *slog.Logger) (*sql.DB, *ent.Client, error) {
+func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, error) {
 	db, err := otelsql.Open("postgres", cfg.Database.DSN(),
 		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
 	)
@@ -193,14 +150,19 @@ func newInfra(ctx context.Context, cfg *config.Config, log *slog.Logger) (*sql.D
 		_ = db.Close()
 		return nil, nil, err
 	}
-	log.Info("connected to database", "host", cfg.Database.Host, "database", cfg.Database.Name)
+	logx.Info(ctx, "infra.database.connected",
+		slog.String("host", cfg.Database.Host),
+		slog.String("database", cfg.Database.Name),
+	)
 
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	entClient := ent.NewClient(ent.Driver(drv))
 
 	if cfg.App.Env == "development" {
 		if err := entClient.Schema.Create(ctx); err != nil {
-			log.Warn("auto-migration failed", "err", err)
+			logx.Warn(ctx, "infra.auto_migration.failed",
+				slog.String("err", err.Error()),
+			)
 		}
 	}
 
@@ -211,12 +173,14 @@ func newInfra(ctx context.Context, cfg *config.Config, log *slog.Logger) (*sql.D
 // master key is required; in development the NoOp cipher is
 // used with a loud startup log so the operator sees the data
 // is unprotected.
-func newCrypto(_ context.Context, cfg *config.Config, log *slog.Logger) (cryptopkg.Cipher, error) {
+func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error) {
 	if cfg.Crypto.MasterKey == "" {
 		if cfg.App.Env == "production" {
 			return nil, fmt.Errorf("crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
 		}
-		log.Warn("crypto: master key not configured; using NoOp cipher (drive storage secrets will be stored in plaintext)")
+		logx.Warn(ctx, "crypto.noop.in_use",
+			slog.String("note", "drive storage secrets will be stored in plaintext"),
+		)
 		return cryptopkg.NoOp{}, nil
 	}
 	cipher, err := cryptopkg.NewAESGCM(cfg.Crypto.MasterKey)
@@ -262,12 +226,12 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 // configured, an explicit NopAuthorizer is returned so callers
 // can wire the same Authorizer interface without a hidden
 // fail-open default.
-func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permission.Authorizer, error) {
+func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, error) {
 	if cfg.OpenFGA.APIURL == "" {
 		if cfg.App.Env == "production" {
 			return nil, fmt.Errorf("openfga: APIURL required in production (set OPENFGA_APIURL or openfga.api_url)")
 		}
-		log.Warn("openfga: APIURL not configured; using NopAuthorizer (development only)")
+		logx.Warn(ctx, "openfga.nop.in_use")
 		return permission.NopAuthorizer{}, nil
 	}
 	checker, err := permission.NewFGAChecker(ctx, permission.Config{
@@ -291,7 +255,7 @@ func newPerm(ctx context.Context, cfg *config.Config, log *slog.Logger) (permiss
 // newAuth wires the OIDC authenticator (Keycloak). In dev (no auth
 // config) the service is nil and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
-func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *user.Service) (*auth.Service, *auth.SecurityHandler, error) {
+func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*auth.Service, *auth.SecurityHandler, error) {
 	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
 		return nil, nil, nil
 	}
@@ -323,12 +287,11 @@ func newAuth(ctx context.Context, cfg *config.Config, log *slog.Logger, users *u
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
 // dependency: it manages paths, links, and the tree; it
 // notifies Garbage when object nodes go away.
-func newVFS(repos repositories, garbage *gc.GarbageRecorder, log *slog.Logger) *vfs.Service {
+func newVFS(repos repositories, garbage *gc.GarbageRecorder) *vfs.Service {
 	return vfs.NewService(vfs.ServiceConfig{
 		NodeClient:      repos.NodeSvc,
 		DriveClient:     repos.DriveSvc,
 		GarbageRecorder: garbage,
-		Logger:          log,
 	})
 }
 
@@ -372,7 +335,7 @@ func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, e
 // newS3Client builds an upload/s3 client. The same instance is
 // shared by upload.Service (presign + delete) and the gc
 // tombstone cleaner.
-func newS3Client(ctx context.Context, cfg config.StorageConfig, log *slog.Logger) (*s3.Client, error) {
+func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
 	endpoint := (*string)(nil)
 	if cfg.Endpoint != "" {
 		endpoint = &cfg.Endpoint
@@ -387,13 +350,19 @@ func newS3Client(ctx context.Context, cfg config.StorageConfig, log *slog.Logger
 	if err != nil {
 		return nil, fmt.Errorf("s3 client: %w", err)
 	}
-	log.Info("s3 client initialized", "endpoint", endpoint, "region", cfg.Region, "path_style", cfg.UsePathStyle)
+	logx.Info(ctx, "s3.client.initialized",
+		slog.Any("endpoint", endpoint),
+		slog.String("region", cfg.Region),
+		slog.Bool("path_style", cfg.UsePathStyle),
+	)
 	return client, nil
 }
 
-func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig, log *slog.Logger) (upload.TokenRegistry, error) {
+func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig) (upload.TokenRegistry, error) {
 	if len(cfg.Addrs) == 0 || cfg.Addrs[0] == "" {
-		log.Warn("valkey: no addresses configured; using MemoryRegistry (development only)")
+		logx.Warn(ctx, "valkey.nop.in_use",
+			slog.String("note", "using MemoryRegistry (development only)"),
+		)
 		return upload.NewMemoryRegistry(), nil
 	}
 	client, err := valkey.NewClient(valkey.ClientOption{
@@ -405,6 +374,9 @@ func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig, log *slog.L
 	if err != nil {
 		return nil, fmt.Errorf("valkey client: %w", err)
 	}
-	log.Info("valkey client initialized", "addrs", cfg.Addrs, "db", cfg.DB)
+	logx.Info(ctx, "valkey.client.initialized",
+		slog.Any("addrs", cfg.Addrs),
+		slog.Int("db", cfg.DB),
+	)
 	return upload.NewValkeyRegistry(client), nil
 }

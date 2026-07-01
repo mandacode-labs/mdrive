@@ -82,13 +82,14 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 //
 // Level is decided by status: 5xx -> ERROR, 4xx -> WARN, else ->
 // INFO. request_id is always attached when present in ctx so
-// log lines correlate with the response header.
-func withRequestLog(log *slog.Logger, next http.Handler) http.Handler {
+// log lines correlate with the response header. Emission goes
+// through slog.Default (configured by logx.New at boot).
+func withRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		logx.Request(r.Context(), log, r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds())
+		logx.Request(r.Context(), r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds())
 	})
 }
 
@@ -100,7 +101,7 @@ func withRequestLog(log *slog.Logger, next http.Handler) http.Handler {
 //
 // Mount this as the OUTERMOST wrapper so every panic anywhere in
 // the stack is captured before the response is written.
-func recoverPanic(log *slog.Logger, next http.Handler) http.Handler {
+func recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			rec := recover()
@@ -109,7 +110,7 @@ func recoverPanic(log *slog.Logger, next http.Handler) http.Handler {
 			}
 			err := errorx.New(errorx.KindServiceDegraded,
 				fmt.Sprintf("internal panic: %v", rec))
-			logx.Error(r.Context(), log, err, "panic recovered",
+			logx.Error(r.Context(), err, "panic recovered",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 			)

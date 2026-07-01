@@ -21,7 +21,6 @@ func TestSymlinkFollowAbsoluteTarget(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		NodeClient:   nodeSvc,
 		DriveClient:  &fakeDrive{rootID: root.ID()},
-		Logger: nil,
 	})
 
 	_, err = svc.Mkdir(ctx, "d1", "/data")
@@ -62,7 +61,6 @@ func TestSymlinkCycle(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		NodeClient:   nodeSvc,
 		DriveClient:  &fakeDrive{rootID: root.ID()},
-		Logger: nil,
 	})
 
 	_, err = svc.Symlink(ctx, "d1", "/loop", "/loop")
@@ -83,7 +81,6 @@ func TestSymlinkChain(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		NodeClient:   nodeSvc,
 		DriveClient:  &fakeDrive{rootID: root.ID()},
-		Logger: nil,
 	})
 
 	_, err = svc.Touch(ctx, "d1", "/real.txt")
@@ -119,7 +116,6 @@ func TestSymlinkDanglingTarget(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		NodeClient:  nodeSvc,
 		DriveClient: &fakeDrive{rootID: root.ID()},
-		Logger:      nil,
 	})
 
 	// Create a symlink to a target that does not exist.
@@ -151,7 +147,6 @@ func TestSymlinkRelativeTarget(t *testing.T) {
 	svc := NewService(ServiceConfig{
 		NodeClient:  nodeSvc,
 		DriveClient: &fakeDrive{rootID: root.ID()},
-		Logger:      nil,
 	})
 
 	_, err = svc.Mkdir(ctx, "d1", "/data")

@@ -3,7 +3,6 @@ package vfs
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -65,10 +64,6 @@ type Service struct {
 	NodeClient      NodeClient
 	DriveClient     DriveClient
 	GarbageRecorder GarbageRecorder
-	// Logger receives structured observability events for
-	// multi-step filesystem operations (mount traversal, GC
-	// tombstones, symlink cycles). Optional: nil means no-op.
-	Logger *slog.Logger
 }
 
 // ServiceConfig groups the dependencies of NewService. vfs is
@@ -78,7 +73,6 @@ type ServiceConfig struct {
 	NodeClient      NodeClient
 	DriveClient     DriveClient
 	GarbageRecorder GarbageRecorder
-	Logger          *slog.Logger
 }
 
 func NewService(cfg ServiceConfig) *Service {
@@ -86,20 +80,7 @@ func NewService(cfg ServiceConfig) *Service {
 		NodeClient:      cfg.NodeClient,
 		DriveClient:     cfg.DriveClient,
 		GarbageRecorder: cfg.GarbageRecorder,
-		Logger:          cfg.Logger,
 	}
-}
-
-// log returns the Service's logger. If none was configured (the
-// common case for tests that do not assert on log output) a
-// DiscardHandler is returned so the call sites can log
-// unconditionally without polluting the test output. Production
-// code wires a real logger in app.New.
-func (s *Service) log() *slog.Logger {
-	if s.Logger != nil {
-		return s.Logger
-	}
-	return slog.New(slog.DiscardHandler)
 }
 
 // newResolver returns a fresh resolver backed by the Service's

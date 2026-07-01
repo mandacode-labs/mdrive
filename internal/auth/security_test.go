@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +35,6 @@ func (s *stubUserSvc) GetByProviderID(ctx context.Context, provider, providerID 
 func newSecurityTestService(t *testing.T, users UserUpserter) *Service {
 	t.Helper()
 	return &Service{
-		log:            slog.New(slog.NewTextHandler(io.Discard, nil)),
 		encKey:         newTestKey(t),
 		cookieName:     "mdrive_session",
 		providerName:   "keycloak",

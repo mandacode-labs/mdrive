@@ -65,13 +65,19 @@ func (s *Service) Authenticate(w http.ResponseWriter, r *http.Request) {
 		Verifier: verifier,
 	})
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "auth: marshal state payload failed", "error", err)
+		logx.Error(r.Context(), errorx.Wrap(err, errorx.KindServiceDegraded, "auth: marshal state payload failed"),
+			"auth: marshal state payload failed",
+			slog.String("path", "/auth/login"),
+		)
 		http.Error(w, "auth: internal error", http.StatusInternalServerError)
 		return
 	}
 	enc, err := encrypt(payload, s.encKey)
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "auth: encrypt state failed", "error", err)
+		logx.Error(r.Context(), errorx.Wrap(err, errorx.KindServiceDegraded, "auth: encrypt state failed"),
+			"auth: encrypt state failed",
+			slog.String("path", "/auth/login"),
+		)
 		http.Error(w, "auth: internal error", http.StatusInternalServerError)
 		return
 	}
@@ -110,7 +116,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
 		err := errorx.New(errorx.KindBadRequest, "auth: missing code or state")
-		logx.Error(r.Context(), s.log, err, "callback missing code or state",
+		logx.Error(r.Context(), err, "callback missing code or state",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -119,7 +125,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 	sd, err := s.consumeStateCookie(w, r, state)
 	if err != nil {
-		logx.Error(r.Context(), s.log, err, "callback state rejected",
+		logx.Error(r.Context(), err, "callback state rejected",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -128,8 +134,8 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.oauth2Cfg.Exchange(r.Context(), code, oauth2.VerifierOption(sd.Verifier))
 	if err != nil {
-		err = fmt.Errorf("auth: token exchange failed: %w", err)
-		logx.Error(r.Context(), s.log, err, "token exchange failed",
+		err = errorx.Wrap(err, errorx.KindServiceDegraded, "auth: token exchange failed")
+		logx.Error(r.Context(), err, "token exchange failed",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -138,7 +144,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		err := errorx.New(errorx.KindServiceDegraded, "auth: missing id_token")
-		logx.Error(r.Context(), s.log, err, "token response missing id_token",
+		logx.Error(r.Context(), err, "token response missing id_token",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -146,8 +152,8 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	idToken, err := s.verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		err = fmt.Errorf("auth: id_token verification failed: %w", err)
-		logx.Error(r.Context(), s.log, err, "id_token verification failed",
+		err = errorx.Wrap(err, errorx.KindUnauthenticated, "auth: id_token verification failed")
+		logx.Error(r.Context(), err, "id_token verification failed",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -156,7 +162,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 	name, email, err := s.resolveIdentity(r.Context(), idToken, token)
 	if err != nil {
-		logx.Error(r.Context(), s.log, err, "resolve identity failed",
+		logx.Error(r.Context(), err, "resolve identity failed",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)
@@ -165,7 +171,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 
 	u, err := s.findOrCreateUser(r.Context(), idToken.Subject, name, email)
 	if err != nil {
-		logx.Error(r.Context(), s.log, err, "user upsert failed",
+		logx.Error(r.Context(), err, "user upsert failed",
 			slog.String("path", "/auth/callback"),
 			slog.String("sub", idToken.Subject),
 		)
@@ -184,7 +190,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: time.Now().Add(s.sessionTTL),
 	}
 	if err := s.writeSessionCookie(w, r, sess); err != nil {
-		logx.Error(r.Context(), s.log, err, "write session cookie failed",
+		logx.Error(r.Context(), err, "write session cookie failed",
 			slog.String("path", "/auth/callback"),
 		)
 		writeError(w, err)

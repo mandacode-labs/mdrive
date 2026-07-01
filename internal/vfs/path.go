@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // resolver walks the node tree from a drive root to resolve Unix
@@ -197,7 +199,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 		}
 		if out.Remaining == "" {
 			if hop > 1 {
-				s.log().Debug("vfs.resolve.mount_traversed",
+				logx.Debug(ctx, "vfs.resolve.mount_traversed",
 					slog.String("from_drive", driveID),
 					slog.String("to_drive", currentDrive),
 					slog.Int("hops", hop),
@@ -213,7 +215,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 			return "", nil, err
 		}
 		if _, seen := visited[srcDriveID]; seen {
-			s.log().Warn("vfs.resolve.mount_cycle",
+			logx.Warn(ctx, "vfs.resolve.mount_cycle",
 				slog.String("from_drive", driveID),
 				slog.String("cycle_drive", srcDriveID),
 				slog.String("path", path),
@@ -224,7 +226,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 		currentDrive = srcDriveID
 		currentPath = "/" + out.Remaining
 	}
-	s.log().Warn("vfs.resolve.path_too_deep",
+	logx.Warn(ctx, "vfs.resolve.path_too_deep",
 		slog.String("from_drive", driveID),
 		slog.Int("max_hops", maxMountHops),
 		slog.String("path", path),

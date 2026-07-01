@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Mv moves sources to dest (like `mv src1 src2 ... dest/`).
@@ -38,7 +39,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 		overwriteRefs, err = s.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
 	}
 	if err != nil {
-		s.log().Debug("vfs.mv.failed",
+		logx.Debug(ctx, "vfs.mv.failed",
 			slog.String("drive_id", srcDriveID),
 			slog.Int("src_count", len(srcPaths)),
 			slog.String("dst_path", dstPath),
@@ -49,20 +50,20 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 
 	if len(overwriteRefs) > 0 && s.GarbageRecorder != nil {
 		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
-			s.log().Error("vfs.mv.tombstone_failed",
+			logx.Error(ctx, fmt.Errorf("mv: post-commit tombstone enqueue failed (nodes already moved): %w", err),
+				"vfs.mv.tombstone_failed",
 				slog.String("drive_id", srcDriveID),
 				slog.Int("ref_count", len(overwriteRefs)),
-				slog.String("err", err.Error()),
 			)
 			return fmt.Errorf("mv: post-commit tombstone enqueue failed (nodes already moved): %w", err)
 		}
-		s.log().Info("vfs.mv.tombstoned",
+		logx.Info(ctx, "vfs.mv.tombstoned",
 			slog.String("drive_id", srcDriveID),
 			slog.Int("ref_count", len(overwriteRefs)),
 		)
 	}
 
-	s.log().Debug("vfs.mv.completed",
+	logx.Debug(ctx, "vfs.mv.completed",
 		slog.String("drive_id", srcDriveID),
 		slog.Int("src_count", len(srcPaths)),
 		slog.String("dst_path", dstPath),
@@ -215,7 +216,7 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	// (nlink hit 0), so we need the reference pre-emptively.
 	var overwriteRef *GarbageRef
 	if existing, err := dstParent.Lookup(dstName); err != nil {
-		s.log().Debug("vfs.mv.lookup_dst_failed",
+		logx.Debug(ctx, "vfs.mv.lookup_dst_failed",
 			slog.String("err", err.Error()),
 			slog.String("dst_name", dstName),
 		)
@@ -223,14 +224,14 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 		existingChild, err := s.NodeClient.GetByID(ctx, existing.InodeID)
 		switch {
 		case err != nil:
-			s.log().Warn("vfs.mv.get_overwrite_target_failed",
+			logx.Warn(ctx, "vfs.mv.get_overwrite_target_failed",
 				slog.String("err", err.Error()),
 				slog.String("dst_name", dstName),
 			)
 		case existingChild.IsObject():
 			oc, err := existingChild.ReadObject()
 			if err != nil || oc.Bucket == "" || oc.Key == "" {
-				s.log().Warn("vfs.mv.read_object_content_failed",
+				logx.Warn(ctx, "vfs.mv.read_object_content_failed",
 					slog.String("err", errOrEmpty(err)),
 					slog.String("dst_name", dstName),
 				)

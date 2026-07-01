@@ -103,6 +103,5 @@ func newTestServiceWithNode() (*Service, *node.Service) {
 	return NewService(ServiceConfig{
 		NodeClient:   nodeSvc,
 		DriveClient:  d,
-		Logger: nil,
 	}), nodeSvc
 }
