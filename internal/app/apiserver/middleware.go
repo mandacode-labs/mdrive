@@ -1,28 +1,24 @@
 package apiserver
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"runtime/debug"
 	"time"
-)
 
-type ctxKey int
-
-const (
-	ctxKeyRequestID ctxKey = iota
+	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 const requestIDHeader = "X-Request-Id"
 
-// RequestIDMiddleware ensures every request has a request ID in its
-// context. Inbound X-Request-Id is reused when present, otherwise a new
-// 16-byte hex ID is generated. The ID is echoed back in the response
-// header and stored in the context for downstream handlers and logs.
+// RequestIDMiddleware ensures every request has a request ID stored
+// in its context and echoed in the response header. Inbound
+// X-Request-Id is reused when present; otherwise a new 16-hex-char
+// ID is generated. The ID flows through the context via logx so
+// every downstream log line can be correlated.
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get(requestIDHeader)
@@ -35,18 +31,20 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 			id = generated
 		}
 		w.Header().Set(requestIDHeader, id)
-		ctx := context.WithValue(r.Context(), ctxKeyRequestID, id)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(logx.WithRequestID(r.Context(), id)))
 	})
 }
 
 // RequestIDFromContext returns the request ID stored in ctx, or "" if
-// none is present.
-func RequestIDFromContext(ctx context.Context) string {
-	if v, ok := ctx.Value(ctxKeyRequestID).(string); ok {
-		return v
-	}
-	return ""
+// none is present. Kept as a thin re-export so callers in this
+// package don't need to import logx.
+func RequestIDFromContext(ctx interface {
+	Deadline() (time.Time, bool)
+	Done() <-chan struct{}
+	Err() error
+	Value(key any) any
+}) string {
+	return logx.RequestIDFromContext(ctx)
 }
 
 // statusRecorder captures the response status code and byte count
@@ -78,56 +76,44 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// withRequestLog logs every request after the handler chain finishes.
-// Logs include method, path, status, duration, and request ID so any
-// operator can correlate a user-reported error to a backend trace.
-// Mount this outside the CORS middleware so OPTIONS preflights and
-// panic-recovered 500s are also recorded.
+// withRequestLog logs every request after the handler chain
+// finishes. /health is excluded so k8s probe traffic doesn't
+// drown out real requests in the operator dashboard.
+//
+// Level is decided by status: 5xx -> ERROR, 4xx -> WARN, else ->
+// INFO. request_id is always attached when present in ctx so
+// log lines correlate with the response header.
 func withRequestLog(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-
-		status := rec.status
-		level := slog.LevelInfo
-		switch {
-		case status >= 500:
-			level = slog.LevelError
-		case status >= 400:
-			level = slog.LevelWarn
-		}
-		log.LogAttrs(r.Context(), level, "request",
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-			slog.Int("status", status),
-			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
-			slog.String("request_id", RequestIDFromContext(r.Context())),
-			slog.String("remote", r.RemoteAddr),
-		)
+		logx.Request(r.Context(), log, r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds())
 	})
 }
 
 // recoverPanic catches panics raised inside the handler chain and
-// converts them to a 500 response with a full stack trace logged.
-// Without this, Go's net/http default recover silently returns an
-// empty 500 with no log line, which is exactly the failure mode that
-// hid the original /auth/me 500 from operators.
-// Mount this as the OUTERMOST wrapper so every panic anywhere in the
-// stack is captured and logged before the response is written.
+// converts them to a 500 response. The panic is wrapped in an
+// errorx.KindServiceDegraded error and logged via logx.Error so
+// the operator sees a single, consistent format (status, kind,
+// request_id, stack).
+//
+// Mount this as the OUTERMOST wrapper so every panic anywhere in
+// the stack is captured before the response is written.
 func recoverPanic(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if rec := recover(); rec != nil {
-				log.ErrorContext(r.Context(), "panic recovered",
-					slog.String("method", r.Method),
-					slog.String("path", r.URL.Path),
-					slog.String("request_id", RequestIDFromContext(r.Context())),
-					slog.Any("panic", rec),
-					slog.String("stack", string(debug.Stack())),
-				)
-				WriteError(w, fmt.Errorf("internal panic"))
+			rec := recover()
+			if rec == nil {
+				return
 			}
+			err := errorx.New(errorx.KindServiceDegraded,
+				fmt.Sprintf("internal panic: %v", rec))
+			logx.Error(r.Context(), log, err, "panic recovered",
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+			)
+			WriteError(w, err)
 		}()
 		next.ServeHTTP(w, r)
 	})

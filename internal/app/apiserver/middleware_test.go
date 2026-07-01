@@ -21,7 +21,7 @@ func newTestLog() (*slog.Logger, *strings.Builder) {
 	return log, buf
 }
 
-func TestRecoverPanicConvertsTo500(t *testing.T) {
+func TestRecoverPanicConvertsTo5xx(t *testing.T) {
 	log, _ := newTestLog()
 
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,11 +32,11 @@ func TestRecoverPanicConvertsTo500(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	recoverPanic(log, panicHandler).ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusInternalServerError, rec.Code,
-		"panic must surface as 500, not empty response")
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code,
+		"panic surfaces as 503 (KindServiceDegraded), not a raw 500")
 	var apiErr map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &apiErr),
-		"500 body must be JSON, not empty")
+		"5xx body must be JSON, not empty")
 	assert.Contains(t, apiErr, "code")
 }
 

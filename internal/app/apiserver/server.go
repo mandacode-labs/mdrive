@@ -20,6 +20,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -55,12 +56,9 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	}
 
 	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		a.Log.ErrorContext(ctx, "handler error",
+		logx.Error(ctx, a.Log, err, "handler error",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
-			slog.String("request_id", RequestIDFromContext(ctx)),
-			slog.String("error", err.Error()),
-			slog.String("error_type", fmt.Sprintf("%T", err)),
 		)
 		WriteError(w, err)
 	}))

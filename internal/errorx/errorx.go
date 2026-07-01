@@ -31,6 +31,29 @@ func (k Kind) String() string {
 	}
 }
 
+// Status returns the canonical HTTP status code for the Kind.
+// Single source of truth for HTTP mapping across the codebase.
+// Use this in error handlers, middleware, and any caller that
+// needs to translate an errorx.Error into an HTTP response.
+func (k Kind) Status() int {
+	switch k {
+	case KindNotFound:
+		return 404
+	case KindConflict:
+		return 409
+	case KindBadRequest:
+		return 400
+	case KindForbidden:
+		return 403
+	case KindUnauthenticated:
+		return 401
+	case KindServiceDegraded:
+		return 503
+	default:
+		return 500
+	}
+}
+
 type Error interface {
 	error
 	Kind() Kind
