@@ -10,13 +10,8 @@ servers:
   - url: https://api.mdrive.mandacode.com
     description: Production server
 
-# Global security is intentionally NOT set. Each protected
-# endpoint declares its own `security: [bearerAuth: []]` block,
-# while public endpoints (/health) declare `security: []` to opt
-# out. This is the only way ogen honors a public endpoint: it
-# generates a security check for every operation that has the
-# global security applied, regardless of the endpoint-level
-# `security: []` override.
+security:
+  - bearerAuth: []
 
 tags:
   - name: health

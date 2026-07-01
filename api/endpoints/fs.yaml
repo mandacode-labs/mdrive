@@ -6,8 +6,6 @@ mkdir:
     description: |
       Create a directory at `path` in the drive. Returns 409 if `path` already exists.
     summary: Create a directory (POSIX mkdir(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -52,8 +50,6 @@ touch:
     description: |
       Create an empty regular file at `path`, or update its mtime if it exists.
     summary: Create an empty file (POSIX open(O_CREAT))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -98,8 +94,6 @@ rm:
     description: |
       Remove one or more filesystem entries. With `recursive=true`, removes directories and their contents.
     summary: Remove files or directories (POSIX unlink/rmdir(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -147,8 +141,6 @@ mv:
     description: |
       Move or rename one or more sources to a destination. Source and destination must be on the same drive.
     summary: Move files or directories (POSIX rename(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -196,8 +188,6 @@ ls:
     description: |
       List the contents of a directory. Each entry returns its name, type, and inode id.
     summary: List directory contents (POSIX opendir/readdir)
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -241,8 +231,6 @@ cat:
     description: |
       Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target is not a file.
     summary: Read file contents (POSIX open(O_RDONLY))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -283,8 +271,6 @@ write:
     description: |
       Create or replace the file at `path` with `content`.
     summary: Write inline content to a file
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -329,8 +315,6 @@ readlink:
     description: |
       Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
     summary: Read a symbolic link's target (POSIX readlink(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -375,8 +359,6 @@ realpath:
     description: |
       Resolve all symlinks and return the canonical absolute path.
     summary: Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -422,8 +404,6 @@ symlink:
     description: |
       Create a symlink at `link_path` with `target` (POSIX symlink(2)). `target` may be absolute or relative; the link may dangle.
     summary: Create a symbolic link (POSIX symlink(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -468,8 +448,6 @@ hardlink:
     description: |
       Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink. Source must be a regular file (not a directory, symlink, or mount). Same drive only.
     summary: Create a hard link (POSIX link(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -514,8 +492,6 @@ mount:
     description: |
       Bind-mount another drive's root at `mount_path` in this drive. Path resolution crosses drives via the mount.
     summary: Bind-mount another drive at a path (POSIX mount-like)
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -560,8 +536,6 @@ unmount:
     description: |
       Remove the bind-mount at `mount_path`.
     summary: Remove a bind mount (POSIX umount-like)
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -601,8 +575,6 @@ stat:
     description: |
       Return metadata for the file at `path` (POSIX stat(2)). Follows symlinks.
     summary: Get file metadata, following symlinks (POSIX stat(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -644,8 +616,6 @@ lstat:
     description: |
       Return metadata for the file at `path` (POSIX lstat(2)). Does NOT follow symlinks.
     summary: Get file metadata without following symlinks (POSIX lstat(2))
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -687,8 +657,6 @@ object:
     description: |
       Create or replace the S3 object at `path` with multipart `object` content.
     summary: Create an S3-backed object node
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path

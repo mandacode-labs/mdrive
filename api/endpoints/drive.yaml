@@ -6,8 +6,6 @@ drives:
     description: |
       Create a new drive owned by the authenticated user with the given storage configuration.
     summary: Create a new drive
-    security:
-      - bearerAuth: []
     requestBody:
       content:
         application/json:
@@ -67,8 +65,6 @@ drive:
     description: |
       Return the drive identified by `driveID` (404 if not found or not owned by the caller).
     summary: Get a drive by ID
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -138,8 +134,6 @@ drive:
     description: |
       Soft-delete a drive. The row is marked `deleted_at`; an admin can restore it within the retention window.
     summary: Soft-delete a drive
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -171,8 +165,6 @@ restoreDrive:
     description: |
       Restore a soft-deleted drive. Admin only.
     summary: Restore a soft-deleted drive
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -208,8 +200,6 @@ adminDrives:
     description: |
       List all soft-deleted drives. Admin only.
     summary: List soft-deleted drives (admin only)
-    security:
-      - bearerAuth: []
     responses:
       "401":
         $ref: "../openapi.yaml#/components/responses/Unauthorized"
@@ -238,8 +228,6 @@ storage:
     description: |
       Return the storage configuration for the drive.
     summary: Get a drive's storage configuration
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path

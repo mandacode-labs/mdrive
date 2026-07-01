@@ -6,8 +6,6 @@ upload:
     description: |
       Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
     summary: Initiate a presigned upload
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -48,8 +46,6 @@ uploadComplete:
     description: |
       Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into the parent directory.
     summary: Complete a presigned upload and create the object node
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path
@@ -96,8 +92,6 @@ download:
     description: |
       Generate a presigned GET URL for downloading an existing object.
     summary: Get a presigned download URL for an object node
-    security:
-      - bearerAuth: []
     parameters:
       - name: driveID
         in: path

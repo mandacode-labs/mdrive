@@ -99,8 +99,6 @@ me:
     description: |
       Return the current authenticated user (200) or 401 if no session.
     summary: Get the current authenticated user
-    security:
-      - bearerAuth: []
     responses:
       "401":
         $ref: "../openapi.yaml#/components/responses/Unauthorized"

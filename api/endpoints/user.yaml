@@ -6,8 +6,6 @@ users:
     description: |
       Return the user identified by `id`.
     summary: Get current user
-    security:
-      - bearerAuth: []
     responses:
       "401":
         $ref: "../openapi.yaml#/components/responses/Unauthorized"
