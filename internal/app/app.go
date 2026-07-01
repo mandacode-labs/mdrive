@@ -272,6 +272,7 @@ func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*aut
 		CookieName:     cfg.HTTP.Cookie.Name,
 		CookieDomain:   cfg.HTTP.Cookie.Domain,
 		CookieSameSite: cfg.HTTP.Cookie.SameSiteMode(),
+		CookieSecure:   cfg.HTTP.Cookie.Secure,
 		EncryptionKey:  cfg.Auth.EncryptionKey,
 		SessionTTL:     cfg.Auth.SessionTTL,
 		Scopes:         cfg.Auth.Scopes,

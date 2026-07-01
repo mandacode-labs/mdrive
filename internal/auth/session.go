@@ -88,15 +88,19 @@ func decrypt(s string, key []byte) ([]byte, error) {
 }
 
 func (s *Service) setCookie(w http.ResponseWriter, r *http.Request, name, value string, maxAge int) {
-	secure := r.TLS != nil
-	http.SetCookie(w, &http.Cookie{ // #nosec G124 - Secure dynamically set based on TLS
+	// CookieSecure comes from http.cookie.secure in config. Production
+	// sits behind a TLS-terminating ingress, so r.TLS is always nil on
+	// the pod -- checking it would set Secure=false even when the
+	// operator has explicitly asked for Secure cookies, which makes
+	// the browser drop them on cross-origin XHR from a subdomain.
+	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
 		Path:     "/",
 		Domain:   s.cookieDomain,
 		MaxAge:   maxAge,
 		HttpOnly: true,
-		Secure:   secure,
+		Secure:   s.cookieSecure,
 		SameSite: s.cookieSameSite,
 	})
 }

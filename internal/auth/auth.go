@@ -37,6 +37,7 @@ type Config struct {
 	CookieName     string
 	CookieDomain   string
 	CookieSameSite http.SameSite
+	CookieSecure   bool
 	EncryptionKey  string
 	SessionTTL     time.Duration
 	Scopes         []string
@@ -54,6 +55,7 @@ type Service struct {
 	cookieName     string
 	cookieDomain   string
 	cookieSameSite http.SameSite
+	cookieSecure   bool
 	postLoginURL   string
 	postLogoutURL  string
 	sessionTTL     time.Duration
@@ -100,6 +102,7 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 		cookieName:     cfg.CookieName,
 		cookieDomain:   cfg.CookieDomain,
 		cookieSameSite: cfg.CookieSameSite,
+		cookieSecure:   cfg.CookieSecure,
 		postLoginURL:   cfg.PostLoginURL,
 		postLogoutURL:  cfg.PostLogoutURL,
 		sessionTTL:     cfg.SessionTTL,
