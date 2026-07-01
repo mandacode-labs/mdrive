@@ -3,6 +3,7 @@ package vfs
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
@@ -12,22 +13,54 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
+
+// captureLogs installs a buffer-backed JSON logger as
+// slog.Default for the test duration, then restores the previous
+// default on cleanup. vfs logs flow through slog.Default, so
+// the buffer captures every vfs log line.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	buf := &bytes.Buffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	logx.New(logx.Config{Env: "test", Level: "debug", Format: "json", Writer: buf})
+	return buf
+}
 
 func newLoggedService(t *testing.T) (*Service, *bytes.Buffer) {
 	t.Helper()
-	buf := &bytes.Buffer{}
+	buf := captureLogs(t)
 	svc, _ := newTestServiceWithNode()
-	svc.Logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return svc, buf
 }
 
 func newLoggedServiceAndNode(t *testing.T) (*Service, *node.Service, *bytes.Buffer) {
 	t.Helper()
-	buf := &bytes.Buffer{}
+	buf := captureLogs(t)
 	svc, nodeSvc := newTestServiceWithNode()
-	svc.Logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	return svc, nodeSvc, buf
+}
+
+// findLine returns the first log line whose msg matches msg.
+// Returns nil if no such line is in the buffer. The lines are
+// JSON objects with stable key order; this is the standard
+// test hook for asserting on individual log lines.
+func findLine(t *testing.T, raw, msg string) map[string]any {
+	t.Helper()
+	for _, line := range strings.Split(strings.TrimRight(raw, "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		var m map[string]any
+		require.NoError(t, json.Unmarshal([]byte(line), &m),
+			"log line must be valid JSON: %q", line)
+		if m["msg"] == msg {
+			return m
+		}
+	}
+	return nil
 }
 
 func TestVFSMkdirLogsNoMessage(t *testing.T) {
@@ -57,9 +90,9 @@ func TestVFSMvLogsCompleted(t *testing.T) {
 
 	require.NoError(t, svc.Mv(ctx, "d1", []string{"/src.txt"}, "d1", "/dst.txt"))
 
-	out := buf.String()
-	assert.Contains(t, out, "vfs.mv.completed")
-	assert.Contains(t, out, "tombstoned=0")
+	line := findLine(t, buf.String(), "vfs.mv.completed")
+	require.NotNil(t, line, "expected vfs.mv.completed line in %s", buf.String())
+	assert.Equal(t, float64(0), line["tombstoned"])
 }
 
 func TestVFSMvLogsErrorOnTombstoneFailure(t *testing.T) {
@@ -91,9 +124,9 @@ func TestVFSMvLogsErrorOnTombstoneFailure(t *testing.T) {
 	err = svc.Mv(ctx, "d1", []string{"/f.txt"}, "d1", "/obj")
 	require.Error(t, err)
 
-	out := buf.String()
-	assert.Contains(t, out, "vfs.mv.tombstone_failed")
-	assert.Contains(t, out, "level=ERROR")
+	line := findLine(t, buf.String(), "vfs.mv.tombstone_failed")
+	require.NotNil(t, line, "expected vfs.mv.tombstone_failed line in %s", buf.String())
+	assert.Equal(t, "ERROR", line["level"])
 }
 
 func TestVFSRmLogsCompleted(t *testing.T) {
@@ -111,7 +144,8 @@ func TestVFSRmLogsCompleted(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(ctx, root, "f.txt", f))
 
 	require.NoError(t, svc.Rm(ctx, "d1", []string{"/f.txt"}, false))
-	assert.Contains(t, buf.String(), "vfs.rm.completed")
+	require.NotNil(t, findLine(t, buf.String(), "vfs.rm.completed"),
+		"expected vfs.rm.completed line in %s", buf.String())
 }
 
 func TestVFSRmLogsErrorOnTombstoneFailure(t *testing.T) {
@@ -130,16 +164,17 @@ func TestVFSRmLogsErrorOnTombstoneFailure(t *testing.T) {
 	svc.GarbageRecorder = &fakeGC{err: errors.New("kafka down")}
 	require.Error(t, svc.Rm(ctx, "d1", []string{"/obj"}, false))
 
-	out := buf.String()
-	assert.Contains(t, out, "vfs.rm.tombstone_failed")
-	assert.Contains(t, out, "level=ERROR")
+	line := findLine(t, buf.String(), "vfs.rm.tombstone_failed")
+	require.NotNil(t, line, "expected vfs.rm.tombstone_failed line in %s", buf.String())
+	assert.Equal(t, "ERROR", line["level"])
 }
 
 func TestVFSMountLogsCreated(t *testing.T) {
 	ctx := context.Background()
 	svc, buf := newLoggedService(t)
 	require.NoError(t, svc.Mount(ctx, "d1", "/sub", "d2"))
-	assert.Contains(t, buf.String(), "vfs.mount.created")
+	require.NotNil(t, findLine(t, buf.String(), "vfs.mount.created"),
+		"expected vfs.mount.created line in %s", buf.String())
 }
 
 func TestVFSUnmountLogsCompleted(t *testing.T) {
@@ -156,9 +191,9 @@ func TestVFSUnmountLogsCompleted(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(ctx, root, "m", mount))
 
 	require.NoError(t, svc.Unmount(ctx, "d1", "/m"))
-	out := buf.String()
-	assert.Contains(t, out, "vfs.unmount.completed")
-	assert.Contains(t, out, "source_drive=d2")
+	line := findLine(t, buf.String(), "vfs.unmount.completed")
+	require.NotNil(t, line, "expected vfs.unmount.completed line in %s", buf.String())
+	assert.Equal(t, "d2", line["source_drive"])
 }
 
 type fakeGC struct {

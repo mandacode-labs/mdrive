@@ -15,14 +15,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestLog() (*slog.Logger, *strings.Builder) {
+// newTestLog returns a JSON logger backed by buf and registers it
+// as slog.Default so the middleware's logx calls emit to the
+// same buffer. The previous default is restored on test cleanup.
+func newTestLog(t *testing.T) (*slog.Logger, *strings.Builder) {
+	t.Helper()
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
 	buf := &strings.Builder{}
 	log := slog.New(slog.NewJSONHandler(io.MultiWriter(buf), &slog.HandlerOptions{Level: slog.LevelDebug}))
+	slog.SetDefault(log)
 	return log, buf
 }
 
 func TestRecoverPanicConvertsTo5xx(t *testing.T) {
-	log, _ := newTestLog()
+	_, _ = newTestLog(t)
 
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("boom")
@@ -30,7 +37,7 @@ func TestRecoverPanicConvertsTo5xx(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	recoverPanic(log, panicHandler).ServeHTTP(rec, req)
+	recoverPanic(panicHandler).ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code,
 		"panic surfaces as 503 (KindServiceDegraded), not a raw 500")
@@ -41,7 +48,7 @@ func TestRecoverPanicConvertsTo5xx(t *testing.T) {
 }
 
 func TestRecoverPanicLogsStack(t *testing.T) {
-	log, buf := newTestLog()
+	_, buf := newTestLog(t)
 
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("kaboom")
@@ -49,7 +56,7 @@ func TestRecoverPanicLogsStack(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	recoverPanic(log, panicHandler).ServeHTTP(rec, req)
+	recoverPanic(panicHandler).ServeHTTP(rec, req)
 
 	logs := buf.String()
 	assert.Contains(t, logs, "panic recovered", "log must record the panic")
@@ -58,12 +65,12 @@ func TestRecoverPanicLogsStack(t *testing.T) {
 }
 
 func TestWithRequestLogRecordsStatus(t *testing.T) {
-	log, buf := newTestLog()
+	_, buf := newTestLog(t)
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	})
-	srv := httptest.NewServer(withRequestLog(log, inner))
+	srv := httptest.NewServer(withRequestLog(inner))
 	defer srv.Close()
 
 	resp, _ := http.Get(srv.URL)
@@ -76,12 +83,12 @@ func TestWithRequestLogRecordsStatus(t *testing.T) {
 }
 
 func TestWithRequestLogEscalatesLevelFor5xx(t *testing.T) {
-	log, buf := newTestLog()
+	_, buf := newTestLog(t)
 
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	})
-	srv := httptest.NewServer(withRequestLog(log, inner))
+	srv := httptest.NewServer(withRequestLog(inner))
 	defer srv.Close()
 
 	resp, _ := http.Get(srv.URL)
@@ -130,12 +137,12 @@ func TestRequestIDPropagation(t *testing.T) {
 // TestChainNoLeak verifies that recoverPanic + withRequestLog work
 // together for normal (non-panicking) responses.
 func TestChainNoLeak(t *testing.T) {
-	log, buf := newTestLog()
+	_, buf := newTestLog(t)
 
 	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "ok")
 	})
-	chain := recoverPanic(log, withRequestLog(log, ok))
+	chain := recoverPanic(withRequestLog(ok))
 	srv := httptest.NewServer(chain)
 	defer srv.Close()
 

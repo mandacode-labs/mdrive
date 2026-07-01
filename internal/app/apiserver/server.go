@@ -56,7 +56,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	}
 
 	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		logx.Error(ctx, a.Log, err, "handler error",
+		logx.Error(ctx, err, "handler error",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
 		)
@@ -74,8 +74,8 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	finalHandler = OpenAPIPassthrough(finalHandler)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
-	finalHandler = withRequestLog(a.Log, finalHandler)
-	finalHandler = recoverPanic(a.Log, finalHandler)
+	finalHandler = withRequestLog(finalHandler)
+	finalHandler = recoverPanic(finalHandler)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port),
@@ -97,17 +97,19 @@ func (s *Server) Run() error {
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", s.addr, err)
 	}
-	s.app.Log.Info("starting api server", "addr", s.addr)
+	logx.Info(context.Background(), "api_server.starting",
+		slog.String("addr", s.addr),
+	)
 	go func() {
 		if err := s.http.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			s.app.Log.Error("server error", "err", err)
+			logx.Error(context.Background(), err, "api_server.serve_error")
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGINT)
 	<-quit
-	s.app.Log.Info("received shutdown signal")
+	logx.Info(context.Background(), "api_server.shutdown_signal")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -116,12 +118,12 @@ func (s *Server) Run() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.http.Shutdown(ctx); err != nil {
-		s.app.Log.Error("http shutdown error", "err", err)
+		logx.Error(ctx, err, "api_server.http_shutdown_error")
 	}
 	if err := s.app.Close(); err != nil {
-		s.app.Log.Error("app close error", "err", err)
+		logx.Error(ctx, err, "api_server.app_close_error")
 	}
-	s.app.Log.Info("api server stopped")
+	logx.Info(ctx, "api_server.stopped")
 	return nil
 }
 

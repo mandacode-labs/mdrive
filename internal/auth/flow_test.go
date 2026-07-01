@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,16 +25,11 @@ func newTestKey(t *testing.T) []byte {
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 	return &Service{
-		log:            slog.New(slog.NewTextHandler(discardWriter{}, nil)),
 		encKey:         newTestKey(t),
 		cookieName:     "mdrive_session",
 		cookieSameSite: 0,
 	}
 }
-
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 func TestEncryptDecryptRoundTrip(t *testing.T) {
 	key := newTestKey(t)

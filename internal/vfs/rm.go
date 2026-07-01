@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
@@ -35,7 +36,7 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 	for _, p := range paths {
 		refs, err := s.rmPath(ctx, rootID, p, recursive)
 		if err != nil {
-			s.log().Debug("vfs.rm.failed",
+			logx.Debug(ctx, "vfs.rm.failed",
 				slog.String("drive_id", driveID),
 				slog.String("path", p),
 				slog.String("err", err.Error()),
@@ -49,20 +50,20 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
 			// Logged at error: this leaves orphan S3 objects that
 			// must be reclaimed by the gc orphan-scan job.
-			s.log().Error("vfs.rm.tombstone_failed",
+			logx.Error(ctx, fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err),
+				"vfs.rm.tombstone_failed",
 				slog.String("drive_id", driveID),
 				slog.Int("ref_count", len(allRefs)),
-				slog.String("err", err.Error()),
 			)
 			return fmt.Errorf("rm: post-commit tombstone enqueue failed (nodes already deleted): %w", err)
 		}
-		s.log().Info("vfs.rm.tombstoned",
+		logx.Info(ctx, "vfs.rm.tombstoned",
 			slog.String("drive_id", driveID),
 			slog.Int("ref_count", len(allRefs)),
 		)
 	}
 
-	s.log().Debug("vfs.rm.completed",
+	logx.Debug(ctx, "vfs.rm.completed",
 		slog.String("drive_id", driveID),
 		slog.Int("path_count", len(paths)),
 		slog.Bool("recursive", recursive),
@@ -117,11 +118,11 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 		oc, err := target.ReadObject()
 		switch {
 		case err != nil:
-			s.log().Warn("vfs.rm.read_object_content_failed",
+			logx.Warn(ctx, "vfs.rm.read_object_content_failed",
 				slog.String("err", err.Error()),
 			)
 		case oc.Bucket == "" || oc.Key == "":
-			s.log().Warn("vfs.rm.object_content_empty",
+			logx.Warn(ctx, "vfs.rm.object_content_empty",
 				slog.String("err", "bucket or key empty"),
 			)
 		default:
