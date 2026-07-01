@@ -1256,7 +1256,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = AuthCallbackOperation
 							r.summary = "OIDC callback from IdP (browser flow)"
 							r.operationID = "authCallback"
-							r.operationGroup = ""
+							r.operationGroup = "Auth"
 							r.pathPattern = "/auth/callback"
 							r.args = args
 							r.count = 0
@@ -1293,7 +1293,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								r.name = AuthLoginOperation
 								r.summary = "Initiate OIDC login (browser redirect to IdP)"
 								r.operationID = "authLogin"
-								r.operationGroup = ""
+								r.operationGroup = "Auth"
 								r.pathPattern = "/auth/login"
 								r.args = args
 								r.count = 0
@@ -1318,7 +1318,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								r.name = AuthLogoutOperation
 								r.summary = "Destroy the current session"
 								r.operationID = "authLogout"
-								r.operationGroup = ""
+								r.operationGroup = "Auth"
 								r.pathPattern = "/auth/logout"
 								r.args = args
 								r.count = 0
@@ -1345,7 +1345,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = AuthMeOperation
 							r.summary = "Get the current authenticated user"
 							r.operationID = "authMe"
-							r.operationGroup = ""
+							r.operationGroup = "Auth"
 							r.pathPattern = "/auth/me"
 							r.args = args
 							r.count = 0
@@ -1372,7 +1372,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.name = HealthOperation
 						r.summary = "Health check"
 						r.operationID = "health"
-						r.operationGroup = ""
+						r.operationGroup = "Health"
 						r.pathPattern = "/health"
 						r.args = args
 						r.count = 0
@@ -1409,7 +1409,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = ListDeletedDrivesOperation
 							r.summary = "List soft-deleted drives (admin only)"
 							r.operationID = "listDeletedDrives"
-							r.operationGroup = ""
+							r.operationGroup = "Drive"
 							r.pathPattern = "/v1/admin/drives/deleted"
 							r.args = args
 							r.count = 0
@@ -1433,7 +1433,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = ListDrivesOperation
 							r.summary = "List drives owned by the authenticated user"
 							r.operationID = "listDrives"
-							r.operationGroup = ""
+							r.operationGroup = "Drive"
 							r.pathPattern = "/v1/drives"
 							r.args = args
 							r.count = 0
@@ -1442,7 +1442,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = CreateDriveOperation
 							r.summary = "Create a new drive"
 							r.operationID = "createDrive"
-							r.operationGroup = ""
+							r.operationGroup = "Drive"
 							r.pathPattern = "/v1/drives"
 							r.args = args
 							r.count = 0
@@ -1500,7 +1500,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										r.name = PresignDownloadOperation
 										r.summary = "Get a presigned download URL for an object node"
 										r.operationID = "presignDownload"
-										r.operationGroup = ""
+										r.operationGroup = "Upload"
 										r.pathPattern = "/v1/drives/{driveID}/downloads"
 										r.args = args
 										r.count = 1
@@ -1524,7 +1524,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										r.name = RmOperation
 										r.summary = "Remove files or directories (POSIX unlink/rmdir(2))"
 										r.operationID = "rm"
-										r.operationGroup = ""
+										r.operationGroup = "Fs"
 										r.pathPattern = "/v1/drives/{driveID}/fs"
 										r.args = args
 										r.count = 1
@@ -1561,7 +1561,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = CatOperation
 												r.summary = "Read file contents (POSIX open(O_RDONLY))"
 												r.operationID = "cat"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/cat"
 												r.args = args
 												r.count = 1
@@ -1586,7 +1586,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = HardlinkOperation
 												r.summary = "Create a hard link (POSIX link(2))"
 												r.operationID = "hardlink"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/hardlink"
 												r.args = args
 												r.count = 1
@@ -1610,7 +1610,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = LsOperation
 												r.summary = "List directory contents (POSIX opendir/readdir)"
 												r.operationID = "ls"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/ls"
 												r.args = args
 												r.count = 1
@@ -1635,7 +1635,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = LstatOperation
 													r.summary = "Get file metadata without following symlinks (POSIX lstat(2))"
 													r.operationID = "lstat"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/lstat"
 													r.args = args
 													r.count = 1
@@ -1674,7 +1674,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = MkdirOperation
 													r.summary = "Create a directory (POSIX mkdir(2))"
 													r.operationID = "mkdir"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/mkdir"
 													r.args = args
 													r.count = 1
@@ -1699,7 +1699,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = MountOperation
 													r.summary = "Bind-mount another drive at a path (POSIX mount-like)"
 													r.operationID = "mount"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/mount"
 													r.args = args
 													r.count = 1
@@ -1724,7 +1724,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = MvOperation
 													r.summary = "Move files or directories (POSIX rename(2))"
 													r.operationID = "mv"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/mv"
 													r.args = args
 													r.count = 1
@@ -1751,7 +1751,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = WriteLargeOperation
 												r.summary = "Create an S3-backed object node"
 												r.operationID = "writeLarge"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/object"
 												r.args = args
 												r.count = 1
@@ -1788,7 +1788,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = ReadlinkOperation
 													r.summary = "Read a symbolic link's target (POSIX readlink(2))"
 													r.operationID = "readlink"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/readlink"
 													r.args = args
 													r.count = 1
@@ -1813,7 +1813,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = RealpathOperation
 													r.summary = "Resolve all symlinks and return the canonical (driveID, path) pair (POSIX realpath(3))"
 													r.operationID = "realpath"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/realpath"
 													r.args = args
 													r.count = 1
@@ -1852,7 +1852,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = StatOperation
 													r.summary = "Get file metadata, following symlinks (POSIX stat(2))"
 													r.operationID = "stat"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/stat"
 													r.args = args
 													r.count = 1
@@ -1877,7 +1877,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 													r.name = SymlinkOperation
 													r.summary = "Create a symbolic link (POSIX symlink(2))"
 													r.operationID = "symlink"
-													r.operationGroup = ""
+													r.operationGroup = "Fs"
 													r.pathPattern = "/v1/drives/{driveID}/fs/symlink"
 													r.args = args
 													r.count = 1
@@ -1904,7 +1904,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = TouchOperation
 												r.summary = "Create an empty file (POSIX open(O_CREAT))"
 												r.operationID = "touch"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/touch"
 												r.args = args
 												r.count = 1
@@ -1929,7 +1929,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = UnmountOperation
 												r.summary = "Remove a bind mount (POSIX umount-like)"
 												r.operationID = "unmount"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/unmount"
 												r.args = args
 												r.count = 1
@@ -1954,7 +1954,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = WriteOperation
 												r.summary = "Write inline content to a file"
 												r.operationID = "write"
-												r.operationGroup = ""
+												r.operationGroup = "Fs"
 												r.pathPattern = "/v1/drives/{driveID}/fs/write"
 												r.args = args
 												r.count = 1
@@ -1995,7 +1995,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											r.name = RestoreDriveOperation
 											r.summary = "Restore a soft-deleted drive"
 											r.operationID = "restoreDrive"
-											r.operationGroup = ""
+											r.operationGroup = "Drive"
 											r.pathPattern = "/v1/drives/{driveID}/restore"
 											r.args = args
 											r.count = 1
@@ -2020,7 +2020,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											r.name = DeleteDriveOperation
 											r.summary = "Soft-delete a drive"
 											r.operationID = "deleteDrive"
-											r.operationGroup = ""
+											r.operationGroup = "Drive"
 											r.pathPattern = "/v1/drives/{driveID}/root"
 											r.args = args
 											r.count = 1
@@ -2029,7 +2029,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											r.name = GetDriveOperation
 											r.summary = "Get a drive by ID"
 											r.operationID = "getDrive"
-											r.operationGroup = ""
+											r.operationGroup = "Drive"
 											r.pathPattern = "/v1/drives/{driveID}/root"
 											r.args = args
 											r.count = 1
@@ -2038,7 +2038,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 											r.name = UpdateDriveOperation
 											r.summary = "Update a drive"
 											r.operationID = "updateDrive"
-											r.operationGroup = ""
+											r.operationGroup = "Drive"
 											r.pathPattern = "/v1/drives/{driveID}/root"
 											r.args = args
 											r.count = 1
@@ -2065,7 +2065,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										r.name = GetDriveStorageOperation
 										r.summary = "Get a drive's storage configuration"
 										r.operationID = "getDriveStorage"
-										r.operationGroup = ""
+										r.operationGroup = "Drive"
 										r.pathPattern = "/v1/drives/{driveID}/storage"
 										r.args = args
 										r.count = 1
@@ -2089,7 +2089,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										r.name = InitiateUploadOperation
 										r.summary = "Initiate a presigned upload"
 										r.operationID = "initiateUpload"
-										r.operationGroup = ""
+										r.operationGroup = "Upload"
 										r.pathPattern = "/v1/drives/{driveID}/uploads"
 										r.args = args
 										r.count = 1
@@ -2135,7 +2135,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 												r.name = CompleteUploadOperation
 												r.summary = "Complete a presigned upload and create the object node"
 												r.operationID = "completeUpload"
-												r.operationGroup = ""
+												r.operationGroup = "Upload"
 												r.pathPattern = "/v1/drives/{driveID}/uploads/{uploadId}/complete"
 												r.args = args
 												r.count = 2
@@ -2170,7 +2170,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = GetUserOperation
 							r.summary = "Get current user"
 							r.operationID = "getUser"
-							r.operationGroup = ""
+							r.operationGroup = "User"
 							r.pathPattern = "/v1/users"
 							r.args = args
 							r.count = 0
@@ -2179,7 +2179,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							r.name = UpsertUserOperation
 							r.summary = "Upsert a user from OIDC claims"
 							r.operationID = "upsertUser"
-							r.operationGroup = ""
+							r.operationGroup = "User"
 							r.pathPattern = "/v1/users"
 							r.args = args
 							r.count = 0

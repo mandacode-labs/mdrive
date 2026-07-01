@@ -8,6 +8,22 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	AuthHandler
+	DriveHandler
+	FsHandler
+	HealthHandler
+	UploadHandler
+	UserHandler
+	// NewError creates *ErrorStatusCode from error returned by handler.
+	//
+	// Used for common default response.
+	NewError(ctx context.Context, err error) *ErrorStatusCode
+}
+
+// AuthHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: Auth
+type AuthHandler interface {
 	// AuthCallback implements authCallback operation.
 	//
 	// OIDC redirect target. Handled by the auth Service: exchanges
@@ -41,20 +57,12 @@ type Handler interface {
 	//
 	// GET /auth/me
 	AuthMe(ctx context.Context) (AuthMeRes, error)
-	// Cat implements cat operation.
-	//
-	// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
-	// is not a file.
-	//
-	// GET /v1/drives/{driveID}/fs/cat
-	Cat(ctx context.Context, params CatParams) (CatRes, error)
-	// CompleteUpload implements completeUpload operation.
-	//
-	// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
-	// the parent directory.
-	//
-	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
-	CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
+}
+
+// DriveHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: Drive
+type DriveHandler interface {
 	// CreateDrive implements createDrive operation.
 	//
 	// Create a new drive owned by the authenticated user with the given storage configuration.
@@ -80,31 +88,6 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/storage
 	GetDriveStorage(ctx context.Context, params GetDriveStorageParams) (GetDriveStorageRes, error)
-	// GetUser implements getUser operation.
-	//
-	// Return the user identified by `id`.
-	//
-	// GET /v1/users
-	GetUser(ctx context.Context) (GetUserRes, error)
-	// Hardlink implements hardlink operation.
-	//
-	// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
-	// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
-	//
-	// POST /v1/drives/{driveID}/fs/hardlink
-	Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
-	// Health implements health operation.
-	//
-	// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
-	//
-	// GET /health
-	Health(ctx context.Context) (HealthRes, error)
-	// InitiateUpload implements initiateUpload operation.
-	//
-	// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
-	//
-	// POST /v1/drives/{driveID}/uploads
-	InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
 	// ListDeletedDrives implements listDeletedDrives operation.
 	//
 	// List all soft-deleted drives. Admin only.
@@ -117,6 +100,38 @@ type Handler interface {
 	//
 	// GET /v1/drives
 	ListDrives(ctx context.Context) (ListDrivesRes, error)
+	// RestoreDrive implements restoreDrive operation.
+	//
+	// Restore a soft-deleted drive. Admin only.
+	//
+	// POST /v1/drives/{driveID}/restore
+	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
+	// UpdateDrive implements updateDrive operation.
+	//
+	// Update the drive's name and description. Empty fields are left unchanged.
+	//
+	// PUT /v1/drives/{driveID}/root
+	UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
+}
+
+// FsHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: Fs
+type FsHandler interface {
+	// Cat implements cat operation.
+	//
+	// Read the file at `path`. Returns 404 if missing, 422 if the path is a directory or symlink target
+	// is not a file.
+	//
+	// GET /v1/drives/{driveID}/fs/cat
+	Cat(ctx context.Context, params CatParams) (CatRes, error)
+	// Hardlink implements hardlink operation.
+	//
+	// Create a hardlink to a regular file at `src_path` (POSIX link(2)). Increments the source's nlink.
+	// Source must be a regular file (not a directory, symlink, or mount). Same drive only.
+	//
+	// POST /v1/drives/{driveID}/fs/hardlink
+	Hardlink(ctx context.Context, req OptHardlinkReq, params HardlinkParams) (HardlinkRes, error)
 	// Ls implements ls operation.
 	//
 	// List the contents of a directory. Each entry returns its name, type, and inode id.
@@ -149,12 +164,6 @@ type Handler interface {
 	//
 	// POST /v1/drives/{driveID}/fs/mv
 	Mv(ctx context.Context, req OptMvReq, params MvParams) (MvRes, error)
-	// PresignDownload implements presignDownload operation.
-	//
-	// Generate a presigned GET URL for downloading an existing object.
-	//
-	// GET /v1/drives/{driveID}/downloads
-	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
 	// Readlink implements readlink operation.
 	//
 	// Return the target path of a symlink (POSIX readlink(2)). Returns 422 if the inode is not a symlink.
@@ -167,12 +176,6 @@ type Handler interface {
 	//
 	// GET /v1/drives/{driveID}/fs/realpath
 	Realpath(ctx context.Context, params RealpathParams) (RealpathRes, error)
-	// RestoreDrive implements restoreDrive operation.
-	//
-	// Restore a soft-deleted drive. Admin only.
-	//
-	// POST /v1/drives/{driveID}/restore
-	RestoreDrive(ctx context.Context, params RestoreDriveParams) (RestoreDriveRes, error)
 	// Rm implements rm operation.
 	//
 	// Remove one or more filesystem entries. With `recursive=true`, removes directories and their
@@ -205,18 +208,6 @@ type Handler interface {
 	//
 	// DELETE /v1/drives/{driveID}/fs/unmount
 	Unmount(ctx context.Context, params UnmountParams) (UnmountRes, error)
-	// UpdateDrive implements updateDrive operation.
-	//
-	// Update the drive's name and description. Empty fields are left unchanged.
-	//
-	// PUT /v1/drives/{driveID}/root
-	UpdateDrive(ctx context.Context, req OptDriveUpdate, params UpdateDriveParams) (UpdateDriveRes, error)
-	// UpsertUser implements upsertUser operation.
-	//
-	// Create or update a user record. Admin or self-service depending on `provider`.
-	//
-	// POST /v1/users
-	UpsertUser(ctx context.Context, req OptUpsertUserReq) (UpsertUserRes, error)
 	// Write implements write operation.
 	//
 	// Create or replace the file at `path` with `content`.
@@ -229,10 +220,61 @@ type Handler interface {
 	//
 	// POST /v1/drives/{driveID}/fs/object
 	WriteLarge(ctx context.Context, req OptWriteLargeReq, params WriteLargeParams) (WriteLargeRes, error)
-	// NewError creates *ErrorStatusCode from error returned by handler.
+}
+
+// HealthHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: Health
+type HealthHandler interface {
+	// Health implements health operation.
 	//
-	// Used for common default response.
-	NewError(ctx context.Context, err error) *ErrorStatusCode
+	// Liveness/readiness probe. Returns 200 with `status: ok` when all configured backends respond.
+	//
+	// GET /health
+	Health(ctx context.Context) (HealthRes, error)
+}
+
+// UploadHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: Upload
+type UploadHandler interface {
+	// CompleteUpload implements completeUpload operation.
+	//
+	// Mark the upload as complete. Verifies the S3 object exists, creates the inode, and links it into
+	// the parent directory.
+	//
+	// POST /v1/drives/{driveID}/uploads/{uploadId}/complete
+	CompleteUpload(ctx context.Context, req OptUploadCompleteRequest, params CompleteUploadParams) (CompleteUploadRes, error)
+	// InitiateUpload implements initiateUpload operation.
+	//
+	// Start a presigned S3 upload. Returns the upload id and the URL to PUT the bytes to.
+	//
+	// POST /v1/drives/{driveID}/uploads
+	InitiateUpload(ctx context.Context, req OptPresignRequest, params InitiateUploadParams) (InitiateUploadRes, error)
+	// PresignDownload implements presignDownload operation.
+	//
+	// Generate a presigned GET URL for downloading an existing object.
+	//
+	// GET /v1/drives/{driveID}/downloads
+	PresignDownload(ctx context.Context, params PresignDownloadParams) (PresignDownloadRes, error)
+}
+
+// UserHandler handles operations described by OpenAPI v3 specification.
+//
+// x-ogen-operation-group: User
+type UserHandler interface {
+	// GetUser implements getUser operation.
+	//
+	// Return the user identified by `id`.
+	//
+	// GET /v1/users
+	GetUser(ctx context.Context) (GetUserRes, error)
+	// UpsertUser implements upsertUser operation.
+	//
+	// Create or update a user record. Admin or self-service depending on `provider`.
+	//
+	// POST /v1/users
+	UpsertUser(ctx context.Context, req OptUpsertUserReq) (UpsertUserRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

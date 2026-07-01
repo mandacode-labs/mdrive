@@ -44,7 +44,7 @@ func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationN
 	return ctx, errorx.New(errorx.KindUnauthenticated, "auth: no session for bearer token")
 }
 
-// Middleware bridges cookie-based OIDC sessions to ogen's
+// AuthBridge bridges cookie-based OIDC sessions to ogen's
 // bearer-auth contract. If the request already carries an
 // Authorization header, it is passed through unchanged. Otherwise
 // the session cookie is read, the user is looked up, and a
@@ -52,10 +52,10 @@ func (s *SecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationN
 // Session are attached for downstream handlers.
 //
 // When the cookie is missing, expired, or does not match a known
-// user, Middleware responds 401 directly via writeAuthError
+// user, AuthBridge responds 401 directly via writeAuthError
 // instead of letting the request reach ogen unauthenticated
 // (which used to surface as 500 from NewError's fallback path).
-func (s *Service) Middleware(next http.Handler) http.Handler {
+func (s *Service) AuthBridge(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
 			next.ServeHTTP(w, r)

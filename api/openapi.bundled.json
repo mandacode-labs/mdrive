@@ -52,6 +52,7 @@
   ],
   "paths": {
     "/health": {
+      "x-ogen-operation-group": "Health",
       "get": {
         "operationId": "health",
         "tags": [
@@ -93,6 +94,7 @@
       }
     },
     "/v1/drives": {
+      "x-ogen-operation-group": "Drive",
       "post": {
         "operationId": "createDrive",
         "tags": [
@@ -151,6 +153,7 @@
         ],
         "description": "List drives owned by the authenticated user.\n",
         "summary": "List drives owned by the authenticated user",
+        "x-ogen-operation-group": "Drive",
         "responses": {
           "200": {
             "description": "List of drives",
@@ -182,6 +185,7 @@
       }
     },
     "/v1/drives/{driveID}/root": {
+      "x-ogen-operation-group": "Drive",
       "get": {
         "operationId": "getDrive",
         "tags": [
@@ -339,6 +343,7 @@
       }
     },
     "/v1/drives/{driveID}/restore": {
+      "x-ogen-operation-group": "Drive",
       "post": {
         "operationId": "restoreDrive",
         "tags": [
@@ -393,6 +398,7 @@
       }
     },
     "/v1/admin/drives/deleted": {
+      "x-ogen-operation-group": "Drive",
       "get": {
         "operationId": "listDeletedDrives",
         "tags": [
@@ -400,6 +406,7 @@
         ],
         "description": "List all soft-deleted drives. Admin only.\n",
         "summary": "List soft-deleted drives (admin only)",
+        "x-ogen-operation-group": "Drive",
         "responses": {
           "200": {
             "description": "List of deleted drives",
@@ -434,6 +441,7 @@
       }
     },
     "/v1/drives/{driveID}/storage": {
+      "x-ogen-operation-group": "Drive",
       "get": {
         "operationId": "getDriveStorage",
         "tags": [
@@ -485,6 +493,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/mkdir": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "mkdir",
         "tags": [
@@ -555,6 +564,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/touch": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "touch",
         "tags": [
@@ -625,6 +635,7 @@
       }
     },
     "/v1/drives/{driveID}/fs": {
+      "x-ogen-operation-group": "Fs",
       "delete": {
         "operationId": "rm",
         "tags": [
@@ -701,6 +712,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/mv": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "mv",
         "tags": [
@@ -778,6 +790,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/ls": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "ls",
         "tags": [
@@ -844,6 +857,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/cat": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "cat",
         "tags": [
@@ -909,6 +923,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/write": {
+      "x-ogen-operation-group": "Fs",
       "put": {
         "operationId": "write",
         "tags": [
@@ -983,6 +998,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/symlink": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "symlink",
         "tags": [
@@ -1057,6 +1073,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/hardlink": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "hardlink",
         "tags": [
@@ -1131,6 +1148,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/mount": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "mount",
         "tags": [
@@ -1205,6 +1223,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/unmount": {
+      "x-ogen-operation-group": "Fs",
       "delete": {
         "operationId": "unmount",
         "tags": [
@@ -1266,6 +1285,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/stat": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "stat",
         "tags": [
@@ -1331,6 +1351,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/lstat": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "lstat",
         "tags": [
@@ -1396,6 +1417,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/readlink": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "readlink",
         "tags": [
@@ -1469,6 +1491,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/realpath": {
+      "x-ogen-operation-group": "Fs",
       "get": {
         "operationId": "realpath",
         "tags": [
@@ -1546,6 +1569,7 @@
       }
     },
     "/v1/drives/{driveID}/fs/object": {
+      "x-ogen-operation-group": "Fs",
       "post": {
         "operationId": "writeLarge",
         "tags": [
@@ -1625,6 +1649,7 @@
       }
     },
     "/v1/drives/{driveID}/uploads": {
+      "x-ogen-operation-group": "Upload",
       "post": {
         "operationId": "initiateUpload",
         "tags": [
@@ -1688,6 +1713,7 @@
       }
     },
     "/v1/drives/{driveID}/uploads/{uploadId}/complete": {
+      "x-ogen-operation-group": "Upload",
       "post": {
         "operationId": "completeUpload",
         "tags": [
@@ -1762,6 +1788,7 @@
       }
     },
     "/v1/drives/{driveID}/downloads": {
+      "x-ogen-operation-group": "Upload",
       "get": {
         "operationId": "presignDownload",
         "tags": [
@@ -1824,6 +1851,7 @@
       }
     },
     "/v1/users": {
+      "x-ogen-operation-group": "User",
       "get": {
         "operationId": "getUser",
         "tags": [
@@ -1831,6 +1859,7 @@
         ],
         "description": "Return the user identified by `id`.\n",
         "summary": "Get current user",
+        "x-ogen-operation-group": "User",
         "responses": {
           "200": {
             "description": "User",
@@ -1919,6 +1948,7 @@
       }
     },
     "/auth/login": {
+      "x-ogen-operation-group": "Auth",
       "get": {
         "operationId": "authLogin",
         "tags": [
@@ -1953,6 +1983,7 @@
       }
     },
     "/auth/callback": {
+      "x-ogen-operation-group": "Auth",
       "get": {
         "operationId": "authCallback",
         "tags": [
@@ -2011,6 +2042,7 @@
       }
     },
     "/auth/logout": {
+      "x-ogen-operation-group": "Auth",
       "post": {
         "operationId": "authLogout",
         "tags": [
@@ -2051,6 +2083,7 @@
       }
     },
     "/auth/me": {
+      "x-ogen-operation-group": "Auth",
       "get": {
         "operationId": "authMe",
         "tags": [
@@ -2058,6 +2091,7 @@
         ],
         "description": "Return the current authenticated user (200) or 401 if no session.\n",
         "summary": "Get the current authenticated user",
+        "x-ogen-operation-group": "Auth",
         "responses": {
           "200": {
             "description": "Current user",
