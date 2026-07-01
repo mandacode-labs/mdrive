@@ -161,7 +161,7 @@ func TestWriteErrorEmitsJSON(t *testing.T) {
 
 	var apiErr map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &apiErr))
-	assert.Equal(t, "internal", apiErr["code"])
+	assert.Equal(t, "internal_error", apiErr["code"])
 }
 
 // context round-trip sanity check

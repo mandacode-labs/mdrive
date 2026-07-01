@@ -2,12 +2,11 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/mandacode-labs/mdrive/internal/apierr"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -139,26 +138,19 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, drive
 // default error response path. WithErrorHandler is also wired in
 // server.go, but ogen's new interface method takes priority for
 // default responses — if we returned an empty ErrorStatusCode here,
-// every error would default to 200 OK.
+// NewError converts any error into an ogen ErrorStatusCode so the
+// SecurityHandler error path can produce a real status. The
+// status mapping itself lives in internal/apierr so this and the
+// WithErrorHandler share the exact same logic.
 func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
-	var de errorx.Error
-	if errors.As(err, &de) {
-		switch de.Kind() {
-		case errorx.KindNotFound:
-			return &api.ErrorStatusCode{StatusCode: http.StatusNotFound, Response: api.Error{Code: api.ErrorCodeNotFound, Message: "not found"}}
-		case errorx.KindConflict:
-			return &api.ErrorStatusCode{StatusCode: http.StatusConflict, Response: api.Error{Code: api.ErrorCodeConflict, Message: err.Error()}}
-		case errorx.KindBadRequest:
-			return &api.ErrorStatusCode{StatusCode: http.StatusBadRequest, Response: api.Error{Code: api.ErrorCodeBadRequest, Message: err.Error()}}
-		case errorx.KindForbidden:
-			return &api.ErrorStatusCode{StatusCode: http.StatusForbidden, Response: api.Error{Code: api.ErrorCodeForbidden, Message: "permission denied"}}
-		case errorx.KindUnauthenticated:
-			return &api.ErrorStatusCode{StatusCode: http.StatusUnauthorized, Response: api.Error{Code: api.ErrorCodeUnauthorized, Message: "unauthenticated"}}
-		case errorx.KindServiceDegraded:
-			return &api.ErrorStatusCode{StatusCode: http.StatusServiceUnavailable, Response: api.Error{Code: api.ErrorCodeInternal, Message: err.Error()}}
-		}
+	statusCode, e := apierr.FromError(err)
+	return &api.ErrorStatusCode{
+		StatusCode: statusCode,
+		Response: api.Error{
+			Code:    api.ErrorCode(e.Code),
+			Message: e.Message,
+		},
 	}
-	return &api.ErrorStatusCode{StatusCode: http.StatusInternalServerError, Response: api.Error{Code: api.ErrorCodeInternal, Message: "internal error"}}
 }
 
 // AuthLogin is a stub. The AuthPassthrough middleware routes

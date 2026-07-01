@@ -17,6 +17,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
@@ -130,10 +131,18 @@ func (s *stubUpload) PresignDownload(context.Context, string, string, string, ti
 var _ handler.UploadClient = (*stubUpload)(nil)
 
 func newTestServer(t *testing.T) *httptest.Server {
+	return newTestServerWith(t, testSecurity{})
+}
+
+// newTestServerWith builds a server with the requested
+// SecurityHandler. Use realSecurityHandler{} to exercise the real
+// HandleBearerAuth errorx path; use testSecurity{} for the legacy
+// "always inject a session" mode.
+func newTestServerWith(t *testing.T, sec api.SecurityHandler) *httptest.Server {
 	t.Helper()
 	userSvc := newFakeUserSvc()
 	h := handler.New(&stubFS{}, &stubDrive{}, userSvc, &stubUpload{}, permission.NopAuthorizer{}, "")
-	ogenServer, err := api.NewServer(h, testSecurity{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+	ogenServer, err := api.NewServer(h, sec, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 		apiserver.WriteError(w, err)
 	}))
 	require.NoError(t, err)
@@ -148,6 +157,21 @@ type testSecurity struct{}
 func (testSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
 	sess := &auth.Session{UserID: testUserID}
 	return auth.ContextWithSession(ctx, sess), nil
+}
+
+// realSecurityHandler mirrors the production
+// auth.SecurityHandler.HandleBearerAuth so integration tests
+// exercise the real errorx path. The previous testSecurity always
+// injected a session and never caught the /auth/me 500
+// regression, which is why we now use the real handler in
+// addition to the legacy one.
+type realSecurityHandler struct{}
+
+func (realSecurityHandler) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+	if auth.SessionFromContext(ctx) != nil {
+		return ctx, nil
+	}
+	return ctx, errorx.New(errorx.KindUnauthenticated, "auth: no session for bearer token")
 }
 
 // newFakeUserSvc returns a *user.Service backed by an in-memory
