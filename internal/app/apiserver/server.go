@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -54,7 +55,13 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	}
 
 	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		a.Log.Error("handler error", "method", r.Method, "path", r.URL.Path, "error", err)
+		a.Log.ErrorContext(ctx, "handler error",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.String("request_id", RequestIDFromContext(ctx)),
+			slog.String("error", err.Error()),
+			slog.String("error_type", fmt.Sprintf("%T", err)),
+		)
 		WriteError(w, err)
 	}))
 	if err != nil {
@@ -69,6 +76,8 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	finalHandler = OpenAPIPassthrough(finalHandler)
 	finalHandler = RequestIDMiddleware(finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
+	finalHandler = withRequestLog(a.Log, finalHandler)
+	finalHandler = recoverPanic(a.Log, finalHandler)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port),
