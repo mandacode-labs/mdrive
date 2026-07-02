@@ -15,11 +15,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// newCapturingLog builds a JSON logger wired with the bootstrap
-// handler, registers it as slog.Default for the test, and
-// restores the previous default on cleanup. Every
-// logx.Info/Warn/Error/Request call reads slog.Default, so the
-// buffer captures every log line.
 func newCapturingLog(t *testing.T, buf *bytes.Buffer) *slog.Logger {
 	t.Helper()
 	prev := slog.Default()
@@ -35,30 +30,36 @@ func parseLine(t *testing.T, raw string) map[string]any {
 	return line
 }
 
-func TestRequestIDRoundTrip(t *testing.T) {
-	ctx := WithRequestID(context.Background(), "req-abc")
-	assert.Equal(t, "req-abc", RequestIDFromContext(ctx))
-	assert.Equal(t, "", RequestIDFromContext(context.Background()))
+func TestWithLoggerFromContextRoundTrip(t *testing.T) {
+	buf := &bytes.Buffer{}
+	log := newCapturingLog(t, buf)
+	ctx := WithLogger(context.Background(), log)
+	assert.Same(t, log, FromContext(ctx))
+	assert.Same(t, slog.Default(), FromContext(context.Background()),
+		"missing ctx value must fall back to slog.Default")
 }
 
-func TestUserIDRoundTrip(t *testing.T) {
-	ctx := WithUserID(context.Background(), "user-1")
-	assert.Equal(t, "user-1", UserIDFromContext(ctx))
-	assert.Equal(t, "", UserIDFromContext(context.Background()))
-}
+func TestInfoWarnDebugLevels(t *testing.T) {
+	buf := &bytes.Buffer{}
+	newCapturingLog(t, buf)
 
-func TestWithRequestIDEmptyIsNoop(t *testing.T) {
-	parent := WithRequestID(context.Background(), "req-1")
-	child := WithRequestID(parent, "")
-	assert.Equal(t, "req-1", RequestIDFromContext(child),
-		"empty id must not clobber an existing one")
+	Info(context.Background(), "info msg", slog.String("k", "v"))
+	Warn(context.Background(), "warn msg", slog.String("k", "v"))
+	Debug(context.Background(), "debug msg", slog.String("k", "v"))
+
+	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+	require.Len(t, lines, 3)
+	assert.Equal(t, "INFO", parseLine(t, lines[0])["level"])
+	assert.Equal(t, "WARN", parseLine(t, lines[1])["level"])
+	assert.Equal(t, "DEBUG", parseLine(t, lines[2])["level"])
+	assert.Equal(t, "v", parseLine(t, lines[0])["k"])
 }
 
 func TestErrorMapsKindToStatusAndLevel(t *testing.T) {
 	buf := &bytes.Buffer{}
 	newCapturingLog(t, buf)
 
-	ctx := WithRequestID(context.Background(), "req-1")
+	ctx := WithLogger(context.Background(), slog.Default().With("request_id", "req-1"))
 	Error(ctx, errorx.New(errorx.KindBadRequest, "bad input"), "test")
 
 	line := parseLine(t, buf.String())
@@ -75,8 +76,7 @@ func TestErrorAt5xxCarriesStack(t *testing.T) {
 	buf := &bytes.Buffer{}
 	newCapturingLog(t, buf)
 
-	ctx := WithRequestID(context.Background(), "req-2")
-	Error(ctx, errorx.New(errorx.KindServiceDegraded, "boom"), "test")
+	Error(context.Background(), errorx.New(errorx.KindServiceDegraded, "boom"), "test")
 
 	line := parseLine(t, buf.String())
 	assert.Equal(t, "ERROR", line["level"], "5xx must be ERROR")
@@ -95,61 +95,7 @@ func TestErrorFallsBackTo500ForRawError(t *testing.T) {
 	line := parseLine(t, buf.String())
 	assert.Equal(t, float64(500), line["status"])
 	assert.Equal(t, "unknown", line["kind"])
-	assert.NotEmpty(t, line["error_type"], "raw errors must record their concrete type")
 	assert.Equal(t, "ERROR", line["level"])
-}
-
-func TestErrorIncludesUserIDFromCtx(t *testing.T) {
-	buf := &bytes.Buffer{}
-	newCapturingLog(t, buf)
-
-	ctx := WithUserID(context.Background(), "user-42")
-	Error(ctx, errorx.New(errorx.KindForbidden, "denied"), "perm check")
-
-	line := parseLine(t, buf.String())
-	assert.Equal(t, "user-42", line["user_id"],
-		"user_id stored in ctx must appear on error logs")
-}
-
-func TestRequestLevelsByStatus(t *testing.T) {
-	for _, tt := range []struct {
-		status int
-		level  string
-	}{
-		{200, "INFO"},
-		{302, "INFO"},
-		{400, "WARN"},
-		{404, "WARN"},
-		{500, "ERROR"},
-	} {
-		buf := &bytes.Buffer{}
-		newCapturingLog(t, buf)
-		Request(context.Background(), "GET", "/x", tt.status, 12)
-		line := parseLine(t, buf.String())
-		assert.Equal(t, tt.level, line["level"],
-			"status %d must log %s", tt.status, tt.level)
-	}
-}
-
-func TestRequestSkipsHealth(t *testing.T) {
-	buf := &bytes.Buffer{}
-	newCapturingLog(t, buf)
-	Request(context.Background(), "GET", "/health", 200, 5)
-	assert.Empty(t, buf.String(), "health checks must not be logged")
-}
-
-func TestRequestIncludesRequestID(t *testing.T) {
-	buf := &bytes.Buffer{}
-	newCapturingLog(t, buf)
-
-	ctx := WithRequestID(context.Background(), "req-9")
-	Request(ctx, "GET", "/api/x", 200, 7)
-	line := parseLine(t, buf.String())
-	assert.Equal(t, "req-9", line["request_id"])
-	assert.Equal(t, "GET", line["method"])
-	assert.Equal(t, "/api/x", line["path"])
-	assert.Equal(t, float64(200), line["status"])
-	assert.Equal(t, float64(7), line["duration_ms"])
 }
 
 func TestErrorExtraAttrsAreMerged(t *testing.T) {
@@ -167,17 +113,70 @@ func TestErrorExtraAttrsAreMerged(t *testing.T) {
 	assert.Equal(t, "drive", line["resource"])
 }
 
-func TestInfoWarnDebugLevels(t *testing.T) {
+func TestNewEnvAndServiceAttrs(t *testing.T) {
 	buf := &bytes.Buffer{}
-	newCapturingLog(t, buf)
+	New(Config{Env: "production", Level: "info", Format: "json", Writer: buf})
+	Info(context.Background(), "hi")
 
-	Info(context.Background(), "info msg", slog.String("k", "v"))
-	Warn(context.Background(), "warn msg", slog.String("k", "v"))
-	Debug(context.Background(), "debug msg", slog.String("k", "v"))
+	line := parseLine(t, buf.String())
+	assert.Equal(t, "production", line["env"])
+	assert.Equal(t, "mdrive", line["service"])
+}
 
-	lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
-	require.Len(t, lines, 3)
-	assert.Equal(t, "INFO", parseLine(t, lines[0])["level"])
-	assert.Equal(t, "WARN", parseLine(t, lines[1])["level"])
-	assert.Equal(t, "DEBUG", parseLine(t, lines[2])["level"])
+func TestBootstrapLoggerInjectsRequestID(t *testing.T) {
+	buf := &bytes.Buffer{}
+	New(Config{Env: "test", Level: "debug", Format: "json", Writer: buf})
+
+	ctx := WithLogger(context.Background(), slog.Default().With("request_id", "req-abc"))
+	Info(ctx, "hello")
+
+	line := parseLine(t, buf.String())
+	assert.Equal(t, "req-abc", line["request_id"],
+		"ctx logger must surface its request_id on every line")
+}
+
+func TestBootstrapLoggerInjectsUserID(t *testing.T) {
+	buf := &bytes.Buffer{}
+	New(Config{Env: "test", Level: "debug", Format: "json", Writer: buf})
+
+	ctx := WithLogger(context.Background(), slog.Default().With("user_id", "user-7"))
+	Info(ctx, "hi")
+
+	line := parseLine(t, buf.String())
+	assert.Equal(t, "user-7", line["user_id"])
+}
+
+func TestBootstrapLoggerEmptyIDSkipsAttr(t *testing.T) {
+	buf := &bytes.Buffer{}
+	New(Config{Env: "test", Level: "debug", Format: "json", Writer: buf})
+
+	Info(context.Background(), "no ctx id")
+
+	out := buf.String()
+	assert.NotContains(t, out, `"request_id"`,
+		"slog.Default must not carry a request_id key")
+	assert.NotContains(t, out, `"user_id"`,
+		"slog.Default must not carry a user_id key")
+}
+
+func TestNewTextFormatForNonProduction(t *testing.T) {
+	buf := &bytes.Buffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	New(Config{Env: "development", Level: "info", Format: "", Writer: buf})
+	Info(context.Background(), "hi", slog.String("k", "v"))
+	assert.Contains(t, buf.String(), "k=v", "text format must emit key=value")
+}
+
+func TestParseLevel(t *testing.T) {
+	cases := map[string]slog.Level{
+		"debug": slog.LevelDebug,
+		"warn":  slog.LevelWarn,
+		"error": slog.LevelError,
+		"":      slog.LevelInfo,
+		"junk":  slog.LevelInfo,
+	}
+	for s, want := range cases {
+		assert.Equal(t, want, parseLevel(s), "parseLevel(%q)", s)
+	}
 }

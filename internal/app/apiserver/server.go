@@ -194,12 +194,15 @@ func AuthPassthrough(next http.Handler, auth *auth.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/auth/login":
+			logx.Debug(r.Context(), "apiserver.auth.login")
 			auth.Authenticate(w, r)
 			return
 		case "/auth/callback":
+			logx.Debug(r.Context(), "apiserver.auth.callback")
 			auth.Callback(w, r)
 			return
 		case "/auth/logout":
+			logx.Debug(r.Context(), "apiserver.auth.logout")
 			auth.Logout(w, r)
 			return
 		}

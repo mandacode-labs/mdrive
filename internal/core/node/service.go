@@ -3,11 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Service provides domain-level node operations.
@@ -81,6 +83,10 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 	if err := s.repo.Save(ctx, n); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: save %s", kind))
 	}
+	logx.Debug(ctx, "node.service.create.ok",
+		slog.String("kind", kind),
+		slog.String("id", n.ID().String()),
+	)
 	return n, nil
 }
 

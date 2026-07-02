@@ -2,8 +2,11 @@ package handler
 
 import (
 	"context"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"log/slog"
 	"time"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth"
@@ -51,10 +54,20 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 		override := r.Storage.Value
 		cfg = storageConfigFromAPI(override)
 	}
+	logx.Debug(ctx, "handler.drive.create.enter",
+		slog.String("name", r.Name),
+		slog.Bool("has_storage_override", r.Storage.Set),
+	)
 	d, _, err := h.drive.Create(ctx, h.userID(ctx), r.Name, desc, cfg)
 	if err != nil {
+		logx.Debug(ctx, "handler.drive.create.service_err",
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
+	logx.Debug(ctx, "handler.drive.create.service_ok",
+		slog.Bool("drive_nil", d == nil),
+	)
 	return driveToAPI(d), nil
 }
 
