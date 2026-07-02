@@ -10,7 +10,6 @@ import (
 	entdrive "github.com/mandacode-labs/mdrive/ent/drive"
 	entdrivestorage "github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/internal/crypto"
-	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
@@ -35,12 +34,10 @@ func NewRepository(client *ent.Client, cipher crypto.Cipher) Repository {
 // that need this op to participate in a larger transaction must wrap it
 // in WithTx at the service layer.
 func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error {
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.create.drive.insert.begin",
-			slog.String("id", d.ID()),
-			slog.Int("owner_id_len", len(d.OwnerID())),
-		)
-	}
+	logx.Debug(ctx, "drive.repo.create.drive.insert.begin",
+		slog.String("id", d.ID()),
+		slog.Int("owner_id_len", len(d.OwnerID())),
+	)
 	if _, err := r.client.Drive.Create().
 		SetID(d.ID()).
 		SetPublicID(d.PublicID()).
@@ -50,33 +47,25 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetOwnerID(d.OwnerID()).
 		SetNillableRootNodeID(d.RootNodeID()).
 		Save(ctx); err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.create.drive.insert.err",
-				slog.String("err", err.Error()),
-			)
-		}
+		logx.Debug(ctx, "drive.repo.create.drive.insert.err",
+			slog.String("err", err.Error()),
+		)
 		return errorx.Wrap(err, fmt.Sprintf("drive.repo.create: id_len=%d, owner_id_len=%d, root_set=%t", len(d.ID()), len(d.OwnerID()), d.RootNodeID() != nil))
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.create.drive.insert.ok")
-	}
+	logx.Debug(ctx, "drive.repo.create.drive.insert.ok")
 
 	secretKey, err := r.cipher.Encrypt([]byte(s.SecretKey()))
 	if err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.create.encrypt.err",
-				slog.String("err", err.Error()),
-			)
-		}
+		logx.Debug(ctx, "drive.repo.create.encrypt.err",
+			slog.String("err", err.Error()),
+		)
 		return errorx.Wrap(err, "drive.repo.create.encrypt_secret_key")
 	}
 
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.create.storage.insert.begin",
-			slog.String("drive_id", s.DriveID()),
-			slog.String("bucket", s.Bucket()),
-		)
-	}
+	logx.Debug(ctx, "drive.repo.create.storage.insert.begin",
+		slog.String("drive_id", s.DriveID()),
+		slog.String("bucket", s.Bucket()),
+	)
 	if _, err := r.client.DriveStorage.Create().
 		SetDriveID(s.DriveID()).
 		SetBucket(s.Bucket()).
@@ -86,16 +75,12 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetSecretKey(string(secretKey)).
 		SetUsePathStyle(s.UsePathStyle()).
 		Save(ctx); err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.create.storage.insert.err",
-				slog.String("err", err.Error()),
-			)
-		}
+		logx.Debug(ctx, "drive.repo.create.storage.insert.err",
+			slog.String("err", err.Error()),
+		)
 		return errorx.Wrap(err, fmt.Sprintf("drive.repo.create_storage: drive_id_len=%d, bucket=%s", len(s.DriveID()), s.Bucket()))
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.create.storage.insert.ok")
-	}
+	logx.Debug(ctx, "drive.repo.create.storage.insert.ok")
 	return nil
 }
 
@@ -229,37 +214,25 @@ func (r *entRepository) FindDeletedByOwner(ctx context.Context, ownerID string) 
 
 // WithTx executes fn within a transaction.
 func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.with_tx.begin")
-	}
+	logx.Debug(ctx, "drive.repo.with_tx.begin")
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.with_tx.begin.err", slog.String("err", err.Error()))
-		}
+		logx.Debug(ctx, "drive.repo.with_tx.begin.err", slog.String("err", err.Error()))
 		return errorx.Wrap(err, "drive.repo.with_tx.begin")
 	}
 	txClient := tx.Client()
 	txRepo := &entRepository{client: txClient, cipher: r.cipher}
 	if err := fn(txRepo); err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.with_tx.fn.err", slog.String("err", err.Error()))
-		}
+		logx.Debug(ctx, "drive.repo.with_tx.fn.err", slog.String("err", err.Error()))
 		_ = tx.Rollback()
 		return err
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.with_tx.committing")
-	}
+	logx.Debug(ctx, "drive.repo.with_tx.committing")
 	if err := tx.Commit(); err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "drive.repo.with_tx.commit.err", slog.String("err", err.Error()))
-		}
+		logx.Debug(ctx, "drive.repo.with_tx.commit.err", slog.String("err", err.Error()))
 		return errorx.Wrap(err, "drive.repo.with_tx.commit")
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "drive.repo.with_tx.committed")
-	}
+	logx.Debug(ctx, "drive.repo.with_tx.committed")
 	return nil
 }
 

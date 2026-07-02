@@ -20,7 +20,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
-	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
@@ -195,21 +194,15 @@ func AuthPassthrough(next http.Handler, auth *auth.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/auth/login":
-			if debugx.Trace.Load() {
-				logx.Debug(r.Context(), "apiserver.auth.login")
-			}
+			logx.Debug(r.Context(), "apiserver.auth.login")
 			auth.Authenticate(w, r)
 			return
 		case "/auth/callback":
-			if debugx.Trace.Load() {
-				logx.Debug(r.Context(), "apiserver.auth.callback")
-			}
+			logx.Debug(r.Context(), "apiserver.auth.callback")
 			auth.Callback(w, r)
 			return
 		case "/auth/logout":
-			if debugx.Trace.Load() {
-				logx.Debug(r.Context(), "apiserver.auth.logout")
-			}
+			logx.Debug(r.Context(), "apiserver.auth.logout")
 			auth.Logout(w, r)
 			return
 		}

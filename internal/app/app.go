@@ -18,7 +18,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/app/gc"
-	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -162,7 +161,6 @@ func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, er
 	entClient := ent.NewClient(ent.Driver(drv))
 	if cfg.App.LogLevel == "debug" {
 		entClient = entClient.Debug()
-		debugx.Trace.Store(true)
 	}
 
 	if cfg.App.Env == "development" {

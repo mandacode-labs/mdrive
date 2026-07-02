@@ -11,7 +11,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
-	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -55,26 +54,20 @@ func (h *Handler) CreateDrive(ctx context.Context, req api.OptDriveCreate) (api.
 		override := r.Storage.Value
 		cfg = storageConfigFromAPI(override)
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "handler.drive.create.enter",
-			slog.String("name", r.Name),
-			slog.Bool("has_storage_override", r.Storage.Set),
-		)
-	}
+	logx.Debug(ctx, "handler.drive.create.enter",
+		slog.String("name", r.Name),
+		slog.Bool("has_storage_override", r.Storage.Set),
+	)
 	d, _, err := h.drive.Create(ctx, h.userID(ctx), r.Name, desc, cfg)
 	if err != nil {
-		if debugx.Trace.Load() {
-			logx.Debug(ctx, "handler.drive.create.service_err",
-				slog.String("err", err.Error()),
-			)
-		}
+		logx.Debug(ctx, "handler.drive.create.service_err",
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
-	if debugx.Trace.Load() {
-		logx.Debug(ctx, "handler.drive.create.service_ok",
-			slog.Bool("drive_nil", d == nil),
-		)
-	}
+	logx.Debug(ctx, "handler.drive.create.service_ok",
+		slog.Bool("drive_nil", d == nil),
+	)
 	return driveToAPI(d), nil
 }
 

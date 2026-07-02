@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
@@ -89,22 +88,18 @@ func withRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		if debugx.Trace.Load() {
-			logx.Debug(r.Context(), "apiserver.request.enter",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-			)
-		}
+		logx.Debug(r.Context(), "apiserver.request.enter",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+		)
 		next.ServeHTTP(rec, r)
 		logx.Request(r.Context(), r.Method, r.URL.Path, rec.status, time.Since(start).Milliseconds())
-		if debugx.Trace.Load() {
-			logx.Debug(r.Context(), "apiserver.request.exit",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-				slog.Int("status", rec.status),
-				slog.Int("bytes", rec.bytes),
-			)
-		}
+		logx.Debug(r.Context(), "apiserver.request.exit",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", rec.status),
+			slog.Int("bytes", rec.bytes),
+		)
 	})
 }
 
