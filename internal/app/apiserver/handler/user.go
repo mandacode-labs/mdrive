@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -13,10 +12,10 @@ func userToAPI(u *user.User) *api.User {
 		return nil
 	}
 	return &api.User{
-		ID:        apiopts.OptString(u.ID()),
-		PublicID:  apiopts.OptString(u.PublicID()),
-		Name:      apiopts.OptString(u.Name()),
-		Email:     apiopts.OptStringPtr(u.Email()),
+		ID:        optString(u.ID()),
+		PublicID:  optString(u.PublicID()),
+		Name:      optString(u.Name()),
+		Email:     optStringPtr(u.Email()),
 		CreatedAt: api.OptDateTime{Value: u.CreatedAt(), Set: true},
 		UpdatedAt: api.OptDateTime{Value: u.UpdatedAt(), Set: true},
 	}
