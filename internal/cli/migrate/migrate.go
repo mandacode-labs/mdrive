@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -13,11 +12,9 @@ import (
 	"ariga.io/atlas-go-sdk/atlasexec"
 	"github.com/spf13/cobra"
 
+	"github.com/mandacode-labs/mdrive/internal/app/migrations"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
-
-//go:embed migrations/*.sql migrations/atlas.sum
-var defaultMigrations embed.FS
 
 const defaultAtlasBin = "atlas"
 
@@ -129,13 +126,9 @@ func newApplyCmd() *cobra.Command {
 	return cmd
 }
 
-// apply runs atlas migrate apply against the default embedded migrations.
+// apply runs atlas migrate apply against the embedded migrations.
 func apply(ctx context.Context, databaseURL string) error {
-	migrations, err := fs.Sub(defaultMigrations, "migrations")
-	if err != nil {
-		return errorx.Wrap(err, "migrate: fs sub")
-	}
-	return applyWith(ctx, databaseURL, migrations, defaultAtlasBin)
+	return applyWith(ctx, databaseURL, migrations.FS, defaultAtlasBin)
 }
 
 // applyWith runs atlas migrate apply with the given migrations fs and atlas binary.

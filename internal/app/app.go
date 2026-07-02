@@ -171,10 +171,6 @@ func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, er
 		}
 	}
 
-	if err := verifySchema(ctx, db, cfg.App.Env); err != nil {
-		return nil, nil, err
-	}
-
 	return db, entClient, nil
 }
 
