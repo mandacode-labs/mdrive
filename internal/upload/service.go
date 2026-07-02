@@ -1,6 +1,7 @@
 package upload
 
 import (
+	"fmt"
 	"context"
 	"path"
 	"time"
@@ -105,7 +106,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	_ = userID
 	storage, err := s.StorageLookup.GetStorage(ctx, driveID)
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, "upload: initiate storage lookup (drive_id=%s)", driveID)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: initiate storage lookup (drive_id=%s)", driveID))
 	}
 	bucket := storage.Bucket()
 	if bucket == "" {
@@ -127,13 +128,13 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	}
 	// Write to registry FIRST — if this fails, no presigned URL is issued.
 	if err := s.TokenRegistry.Put(ctx, meta, expiry); err != nil {
-		return PresignInfo{}, errorx.Wrap(err, "upload: initiate registry put (drive_id=%s, upload_id=%s)", driveID, uploadID)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: initiate registry put (drive_id=%s, upload_id=%s)", driveID, uploadID))
 	}
 
 	url, err := s.ObjectStore.GetPresignedUploadURL(ctx, bucket, key, expiry)
 	if err != nil {
 		_ = s.TokenRegistry.Delete(ctx, uploadID)
-		return PresignInfo{}, errorx.Wrap(err, "upload: initiate presign (drive_id=%s, upload_id=%s)", driveID, uploadID)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: initiate presign (drive_id=%s, upload_id=%s)", driveID, uploadID))
 	}
 
 	return PresignInfo{
@@ -157,13 +158,13 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
 	meta, err := s.TokenRegistry.Get(ctx, uploadID)
 	if err != nil {
-		return nil, errorx.Wrap(err, "upload: complete token get (upload_id=%s)", uploadID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete token get (upload_id=%s)", uploadID))
 	}
 	if meta.UserID != userID {
-		return nil, ErrUploadOwnershipMismatch
+		return nil, errorx.New(errorx.KindForbidden, "upload: token does not match user")
 	}
 	if meta.DriveID != driveID {
-		return nil, ErrUploadMismatch
+		return nil, errorx.New(errorx.KindBadRequest, "upload: token does not match drive")
 	}
 	if meta.Size != nil && *meta.Size != contentLength {
 		return nil, errorx.New(errorx.KindBadRequest, "upload: complete size mismatch (expected="+itoa(int64(*meta.Size))+", got="+itoa(contentLength)+")")
@@ -171,19 +172,19 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 
 	exists, err := s.ObjectStore.ObjectExists(ctx, meta.Bucket, meta.Key)
 	if err != nil {
-		return nil, errorx.Wrap(err, "upload: complete object exists check (bucket=%s, key=%s)", meta.Bucket, meta.Key)
+		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete object exists check (bucket=%s, key=%s)", meta.Bucket, meta.Key))
 	}
 	if !exists {
-		return nil, ErrObjectNotUploaded
+		return nil, errorx.New(errorx.KindNotFound, "upload: S3 object was not uploaded")
 	}
 
 	parentID, name, err := s.Path.ResolveParentNodeID(ctx, driveID, meta.Path)
 	if err != nil {
-		return nil, errorx.Wrap(err, "upload: complete resolve parent (path=%s)", meta.Path)
+		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete resolve parent (path=%s)", meta.Path))
 	}
 	parent, err := s.NodeLifecycle.GetByID(ctx, parentID)
 	if err != nil {
-		return nil, errorx.Wrap(err, "upload: complete load parent (parent_id=%s)", parentID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete load parent (parent_id=%s)", parentID))
 	}
 
 	var ct string
@@ -206,12 +207,12 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 	}
 	if lerr := s.NodeLifecycle.Link(ctx, parent, name, n); lerr != nil {
 		if derr := s.NodeLifecycle.Delete(ctx, n.ID()); derr != nil {
-			return nil, errorx.Wrap(err, "upload: complete link (node_id=%s, cleanup_err=%v)", n.ID(), derr)
+			return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete link (node_id=%s, cleanup_err=%v)", n.ID(), derr))
 		}
-		return nil, errorx.Wrap(lerr, "upload: complete link (node_id=%s)", n.ID())
+		return nil, errorx.Wrap(lerr, fmt.Sprintf("upload: complete link (node_id=%s)", n.ID()))
 	}
 	if err := s.TokenRegistry.Delete(ctx, uploadID); err != nil {
-		return n, errorx.Wrap(err, "upload: complete cleanup token (upload_id=%s)", uploadID)
+		return n, errorx.Wrap(err, fmt.Sprintf("upload: complete cleanup token (upload_id=%s)", uploadID))
 	}
 	return n, nil
 }
@@ -222,11 +223,11 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	_ = userID
 	nodeID, err := s.Path.ResolveNodeID(ctx, driveID, filePath)
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, "upload: presign download resolve (path=%s)", filePath)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download resolve (path=%s)", filePath))
 	}
 	n, err := s.NodeLifecycle.GetByID(ctx, nodeID)
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, "upload: presign download load node (node_id=%s)", nodeID)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download load node (node_id=%s)", nodeID))
 	}
 	if !n.IsObject() {
 		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: presign download target is not an object (type="+string(n.Type())+")")
@@ -237,7 +238,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	}
 	url, err := s.ObjectStore.GetPresignedDownloadURL(ctx, oc.Bucket, oc.Key, expiry)
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, "upload: presign download s3 url (bucket=%s, key=%s)", oc.Bucket, oc.Key)
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download s3 url (bucket=%s, key=%s)", oc.Bucket, oc.Key))
 	}
 	return PresignInfo{
 		Method:    "GET",

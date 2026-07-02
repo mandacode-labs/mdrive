@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 	"sync"
 	"testing"
@@ -43,7 +44,7 @@ func (c *countingRepo) Get(_ context.Context, id uuid.UUID) (*node.Node, error) 
 	c.calls[id]++
 	n, ok := c.byID[id]
 	if !ok {
-		return nil, node.ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "")
 	}
 	return n, nil
 }

@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"fmt"
 	"context"
 	"log/slog"
 	"strings"
@@ -48,12 +49,12 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 
 	if len(allRefs) > 0 && s.GarbageRecorder != nil {
 		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
-			logx.Error(ctx, errorx.Wrap(err, "vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs)),
+			logx.Error(ctx, errorx.Wrap(err, fmt.Sprintf("vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs))),
 				"vfs.rm.tombstone_failed",
 				slog.String("drive_id", driveID),
 				slog.Int("ref_count", len(allRefs)),
 			)
-			return errorx.Wrap(err, "vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs))
+			return errorx.Wrap(err, fmt.Sprintf("vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs)))
 		}
 		logx.Info(ctx, "vfs.rm.tombstoned",
 			slog.String("drive_id", driveID),
@@ -76,7 +77,7 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 	r := s.newResolver()
 	out, err := r.resolve(ctx, rootID, path, true)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: rm resolve (path=%s)", path)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve (path=%s)", path))
 	}
 	n := out.Node
 	if n.IsDir() {
@@ -95,14 +96,14 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]GarbageRef, error) {
 	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: rm resolve parent (path=%s)", path)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve parent (path=%s)", path))
 	}
 	if parent == nil || name == "" {
 		return nil, nil
 	}
 	deleted, err := s.NodeClient.Unlink(ctx, parent, name)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: rm unlink (path=%s, name=%s)", path, name)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm unlink (path=%s, name=%s)", path, name))
 	}
 
 	var refs []GarbageRef
@@ -134,7 +135,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 	r := s.newResolver()
 	dc, err := n.ReadDir()
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: rm read dir (path=%s)", path)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm read dir (path=%s)", path))
 	}
 
 	var allRefs []GarbageRef
@@ -147,7 +148,7 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 		if child == nil {
 			child, err = s.NodeClient.GetByID(ctx, e.InodeID)
 			if err != nil {
-				return nil, errorx.Wrap(err, "vfs: rm get child (path=%s, child_id=%s)", childPath, e.InodeID)
+				return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm get child (path=%s, child_id=%s)", childPath, e.InodeID))
 			}
 		}
 		var refs []GarbageRef

@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"fmt"
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -25,7 +26,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	if err != nil {
 		parent, name, perr := r.resolveParent(ctx, rootID, path)
 		if perr != nil {
-			return errorx.Wrap(perr, "vfs: write resolve parent (path=%s)", path)
+			return errorx.Wrap(perr, fmt.Sprintf("vfs: write resolve parent (path=%s)", path))
 		}
 		f, ferr := node.NewFile(content)
 		if ferr != nil {
@@ -38,7 +39,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 		return errorx.New(errorx.KindBadRequest, "vfs: write target is not a file (type="+string(n.Type())+")")
 	}
 	if err := n.WriteFile(content); err != nil {
-		return errorx.Wrap(err, "vfs: write encode content (path=%s)", path)
+		return errorx.Wrap(err, fmt.Sprintf("vfs: write encode content (path=%s)", path))
 	}
 	return s.NodeClient.Save(ctx, n)
 }

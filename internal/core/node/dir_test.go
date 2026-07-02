@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func TestDirectoryAddRemoveEntry(t *testing.T) {
 	assert.Equal(t, NodeTypeFile, entries.Entries[0].Type)
 
 	err = dir.AddEntry("foo.txt", child)
-	assert.ErrorIs(t, err, ErrEntryExists)
+	assertKind(t, err, errorx.KindConflict)
 
 	e, err := dir.Lookup("foo.txt")
 	require.NoError(t, err)
@@ -50,7 +51,7 @@ func TestDirectoryAddRemoveEntry(t *testing.T) {
 	assert.Len(t, entries.Entries, 0)
 
 	err = dir.RemoveEntry("nope")
-	assert.ErrorIs(t, err, ErrEntryNotFound)
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 func TestAddEntryNotDirectory(t *testing.T) {
@@ -61,7 +62,7 @@ func TestAddEntryNotDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	err = file.AddEntry("foo", child)
-	assert.ErrorIs(t, err, ErrNotDirectory)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestAddEntryEmptyName(t *testing.T) {
@@ -72,5 +73,5 @@ func TestAddEntryEmptyName(t *testing.T) {
 	require.NoError(t, err)
 
 	err = dir.AddEntry("", child)
-	assert.ErrorIs(t, err, ErrInvalidName)
+	assertKind(t, err, errorx.KindBadRequest)
 }

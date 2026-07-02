@@ -240,7 +240,7 @@ func (r *userRepoFake) Create(_ context.Context, cmd *user.CreateCommand) (*user
 func (r *userRepoFake) GetByID(_ context.Context, id string) (*user.User, error) {
 	u, ok := r.users[id]
 	if !ok {
-		return nil, user.ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "user: not found")
 	}
 	return u, nil
 }
@@ -250,7 +250,7 @@ func (r *userRepoFake) GetByPublicID(_ context.Context, publicID string) (*user.
 			return u, nil
 		}
 	}
-	return nil, user.ErrNotFound
+	return nil, errorx.New(errorx.KindNotFound, "user: not found")
 }
 func (r *userRepoFake) GetByProviderID(_ context.Context, provider, providerID string) (*user.User, error) {
 	for _, u := range r.users {
@@ -258,7 +258,7 @@ func (r *userRepoFake) GetByProviderID(_ context.Context, provider, providerID s
 			return u, nil
 		}
 	}
-	return nil, user.ErrNotFound
+	return nil, errorx.New(errorx.KindNotFound, "user: not found")
 }
 func (r *userRepoFake) Exist(_ context.Context, id string) (bool, error) {
 	_, ok := r.users[id]

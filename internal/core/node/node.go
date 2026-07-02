@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // NodeType represents the type of a node.
@@ -307,7 +309,7 @@ func (n *Node) IsMount() bool   { return n.kind == NodeTypeMount }
 // marshal the appropriate content type and then call write.
 func (n *Node) write(content Content, size int64) error {
 	if len(content) > MaxContentSize {
-		return ErrContentTooLarge
+		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
 	}
 	n.content = content
 	n.size = size
@@ -322,7 +324,7 @@ func (n *Node) write(content Content, size int64) error {
 // unmarshal the content into a typed structure.
 func (n *Node) read() (Content, error) {
 	if n.content == nil {
-		return nil, ErrNoContent
+		return nil, errorx.New(errorx.KindNotFound, "node: no content")
 	}
 	return n.content, nil
 }

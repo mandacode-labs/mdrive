@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 	"testing"
 
@@ -67,7 +68,7 @@ func TestSymlinkCycle(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.Resolve(ctx, "d1", "/loop")
-	assert.ErrorIs(t, err, node.ErrSymlinkCycle)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 // TestSymlinkChain: a chain of symlinks follows all hops until
@@ -131,8 +132,7 @@ func TestSymlinkDanglingTarget(t *testing.T) {
 
 	// Resolve follows the link and surfaces ErrNotFound.
 	_, err = svc.Resolve(ctx, "d1", "/dangling")
-	assert.ErrorIs(t, err, ErrNotFound,
-		"following a dangling symlink must return ErrNotFound")
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 // TestSymlinkRelativeTarget: a symlink with a relative target is

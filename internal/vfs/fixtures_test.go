@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 	"time"
 
@@ -21,7 +22,7 @@ var _ node.Repository = (*fakeRepo)(nil)
 func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*node.Node, error) {
 	n, ok := r.nodes[id]
 	if !ok {
-		return nil, node.ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "")
 	}
 	c := n.Clone()
 	c.SetStaleRev(n.Revision())
@@ -36,7 +37,7 @@ func (r *fakeRepo) Save(_ context.Context, n *node.Node) error {
 		return nil
 	}
 	if existing.Revision() != n.StaleRev() {
-		return node.ErrRevisionConflict
+		return errorx.New(errorx.KindConflict, "")
 	}
 	r.nodes[n.ID()] = n.Clone()
 	n.SetStaleRev(n.Revision())

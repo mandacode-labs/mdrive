@@ -1,6 +1,7 @@
 package upload
 
 import (
+	"fmt"
 	"context"
 	"errors"
 	"strings"
@@ -46,7 +47,7 @@ func (r *ValkeyRegistry) Put(ctx context.Context, meta PresignMeta, ttl time.Dur
 	key := r.keyFunc(meta.UploadID)
 	resp := r.client.Do(ctx, r.client.B().Set().Key(key).Value(valkey.BinaryString(data)).ExSeconds(int64(ttl.Seconds())).Build())
 	if err := resp.Error(); err != nil {
-		return errorx.Wrap(err, "upload: valkey set (upload_id=%s)", meta.UploadID)
+		return errorx.Wrap(err, fmt.Sprintf("upload: valkey set (upload_id=%s)", meta.UploadID))
 	}
 	return nil
 }
@@ -56,13 +57,13 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 	resp := r.client.Do(ctx, r.client.B().Get().Key(key).Build())
 	if err := resp.Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
-			return PresignMeta{}, ErrNotFound
+			return PresignMeta{}, errorx.New(errorx.KindBadRequest, "upload: token not found")
 		}
-		return PresignMeta{}, errorx.Wrap(err, "upload: valkey get (upload_id=%s)", uploadID)
+		return PresignMeta{}, errorx.Wrap(err, fmt.Sprintf("upload: valkey get (upload_id=%s)", uploadID))
 	}
 	data, err := resp.AsBytes()
 	if err != nil {
-		return PresignMeta{}, errorx.Wrap(err, "upload: valkey as bytes (upload_id=%s)", uploadID)
+		return PresignMeta{}, errorx.Wrap(err, fmt.Sprintf("upload: valkey as bytes (upload_id=%s)", uploadID))
 	}
 	meta, err := DecodePresignMeta(data)
 	if err != nil {
@@ -70,7 +71,7 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 	}
 	if meta.IsExpired() {
 		_ = r.Delete(ctx, uploadID)
-		return PresignMeta{}, ErrNotFound
+		return PresignMeta{}, errorx.New(errorx.KindBadRequest, "upload: token not found")
 	}
 	return meta, nil
 }
@@ -79,7 +80,7 @@ func (r *ValkeyRegistry) Delete(ctx context.Context, uploadID string) error {
 	key := r.keyFunc(uploadID)
 	resp := r.client.Do(ctx, r.client.B().Del().Key(key).Build())
 	if err := resp.Error(); err != nil {
-		return errorx.Wrap(err, "upload: valkey del (upload_id=%s)", uploadID)
+		return errorx.Wrap(err, fmt.Sprintf("upload: valkey del (upload_id=%s)", uploadID))
 	}
 	return nil
 }
@@ -100,11 +101,11 @@ func (r *ValkeyRegistry) Scan(ctx context.Context, fn func(id string) error) err
 	for {
 		resp := r.client.Do(ctx, r.client.B().Scan().Cursor(cursor).Match(prefix+"*").Count(100).Build())
 		if err := resp.Error(); err != nil {
-			return errorx.Wrap(err, "upload: valkey scan (prefix=%s)", prefix)
+			return errorx.Wrap(err, fmt.Sprintf("upload: valkey scan (prefix=%s)", prefix))
 		}
 		arr, err := resp.AsScanEntry()
 		if err != nil {
-			return errorx.Wrap(err, "upload: valkey scan entry (prefix=%s)", prefix)
+			return errorx.Wrap(err, fmt.Sprintf("upload: valkey scan entry (prefix=%s)", prefix))
 		}
 		for _, k := range arr.Elements {
 			id := strings.TrimPrefix(k, prefix)

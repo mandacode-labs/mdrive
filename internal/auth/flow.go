@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"context"
 	"encoding/json"
 	"log/slog"
@@ -208,19 +209,19 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 func (s *Service) consumeStateCookie(w http.ResponseWriter, r *http.Request, state string) (*stateData, error) {
 	c, err := r.Cookie("auth_state")
 	if err != nil {
-		return nil, errorx.WrapSentinel(errStateMissing, err, "auth: consume state cookie missing")
+		return nil, errorx.Wrap(errStateMissing, "auth: consume state cookie missing")
 	}
 	s.setCookie(w, r, "auth_state", "", -1)
 	raw, err := decrypt(c.Value, s.encKey)
 	if err != nil {
-		return nil, errorx.WrapSentinel(errStateDecrypt, err, "auth: consume state cookie decrypt failed")
+		return nil, errorx.Wrap(errStateDecrypt, "auth: consume state cookie decrypt failed")
 	}
 	var sd stateData
 	if err := json.Unmarshal(raw, &sd); err != nil {
-		return nil, errorx.WrapSentinel(errStateCorrupt, err, "auth: consume state cookie corrupt")
+		return nil, errorx.Wrap(errStateCorrupt, "auth: consume state cookie corrupt")
 	}
 	if sd.State == "" || sd.State != state {
-		return nil, errorx.WrapSentinel(errStateMismatch, nil, "auth: consume state cookie mismatch (have=%q want=%q)", sd.State, state)
+		return nil, errorx.Wrap(errStateMismatch, fmt.Sprintf("auth: consume state cookie mismatch (have=%q want=%q)", sd.State, state))
 	}
 	return &sd, nil
 }

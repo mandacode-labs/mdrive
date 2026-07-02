@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestNewSymlink(t *testing.T) {
 
 func TestNewSymlinkEmpty(t *testing.T) {
 	_, err := NewSymlink("")
-	assert.ErrorIs(t, err, ErrInvalidName)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestSymlinkUpdate(t *testing.T) {
@@ -39,5 +40,5 @@ func TestReadlinkRejectsNonSymlink(t *testing.T) {
 	f, err := NewFile("content")
 	require.NoError(t, err)
 	_, err = f.Readlink()
-	assert.ErrorIs(t, err, ErrInvalidType)
+	assertKind(t, err, errorx.KindBadRequest)
 }

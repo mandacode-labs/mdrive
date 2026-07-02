@@ -2,6 +2,7 @@
 package gc
 
 import (
+	"fmt"
 	"context"
 	"log/slog"
 	"time"
@@ -48,7 +49,7 @@ func (t *TombstoneCleaner) Run(ctx context.Context) error {
 
 	groups, err := QueryTombstones(ctx, t.client, defaultProcessLimit)
 	if err != nil {
-		return errorx.Wrap(err, "gc: tombstone query (limit=%d)", defaultProcessLimit)
+		return errorx.Wrap(err, fmt.Sprintf("gc: tombstone query (limit=%d)", defaultProcessLimit))
 	}
 	if len(groups) == 0 {
 		logx.Info(ctx, "gc.tombstones.complete",
@@ -88,7 +89,7 @@ func (t *TombstoneCleaner) processGroup(ctx context.Context, g TombstoneGroup) e
 
 	storage, err := FindStorageByBucket(ctx, t.client, g.Bucket)
 	if err != nil {
-		return errorx.Wrap(err, "gc: tombstone find storage (bucket=%s)", g.Bucket)
+		return errorx.Wrap(err, fmt.Sprintf("gc: tombstone find storage (bucket=%s)", g.Bucket))
 	}
 	client, err := s3.NewClient(ctx, s3.Config{
 		Region:       storage.Region,
@@ -98,10 +99,10 @@ func (t *TombstoneCleaner) processGroup(ctx context.Context, g TombstoneGroup) e
 		UsePathStyle: storage.UsePathStyle,
 	})
 	if err != nil {
-		return errorx.Wrap(err, "gc: tombstone s3 client (bucket=%s, region=%s)", g.Bucket, storage.Region)
+		return errorx.Wrap(err, fmt.Sprintf("gc: tombstone s3 client (bucket=%s, region=%s)", g.Bucket, storage.Region))
 	}
 	if err := client.DeleteObjects(ctx, g.Bucket, g.Keys); err != nil {
-		return errorx.Wrap(err, "gc: tombstone delete objects (bucket=%s, count=%d)", g.Bucket, len(g.Keys))
+		return errorx.Wrap(err, fmt.Sprintf("gc: tombstone delete objects (bucket=%s, count=%d)", g.Bucket, len(g.Keys)))
 	}
 	return nil
 }
@@ -126,7 +127,7 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 	before := time.Now().Add(-p.retention)
 	drives, err := p.driveSvc.ListDeletedForAdmin(ctx, true, before, defaultProcessLimit)
 	if err != nil {
-		return errorx.Wrap(err, "gc: list deleted drives (before=%s, limit=%d)", before.Format(time.RFC3339), defaultProcessLimit)
+		return errorx.Wrap(err, fmt.Sprintf("gc: list deleted drives (before=%s, limit=%d)", before.Format(time.RFC3339), defaultProcessLimit))
 	}
 	for _, d := range drives {
 		if err := p.driveSvc.Purge(ctx, d.ID()); err != nil {
@@ -220,7 +221,7 @@ func (u *UploadExpirer) Run(ctx context.Context) error {
 		return nil
 	})
 	if err != nil {
-		return errorx.Wrap(err, "gc: upload scan (scanned=%d, deleted=%d, s3_errors=%d)", scanned, deleted, s3err)
+		return errorx.Wrap(err, fmt.Sprintf("gc: upload scan (scanned=%d, deleted=%d, s3_errors=%d)", scanned, deleted, s3err))
 	}
 	logx.Info(ctx, "gc.uploads.summary",
 		slog.Int("scanned", scanned),

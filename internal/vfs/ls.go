@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -14,7 +15,7 @@ func (s *Service) Ls(ctx context.Context, driveID, path string) (node.DirContent
 		return node.DirContent{}, err
 	}
 	if !res.Node.IsDir() {
-		return node.DirContent{}, ErrNotDirectory
+		return node.DirContent{}, errorx.New(errorx.KindBadRequest, "vfs: not a directory")
 	}
 	return res.Node.ReadDir()
 }

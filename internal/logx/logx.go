@@ -96,10 +96,10 @@ func Debug(ctx context.Context, msg string, attrs ...slog.Attr) {
 
 // Error logs err using errorx to determine the HTTP status and the
 // log level. msg is the user-facing log message (e.g. "handler
-// error"). The error message itself is always emitted under "err";
-// the kind string and HTTP status come from errorx; the full
-// "outer -> inner" chain under "err_chain" so a single log line
-// shows the propagation path through every Wrap call.
+// error"). The error message itself is always emitted under "err"
+// and again under "err_chain" (errorx.Error() renders the full
+// chain as "outer: inner"); the kind string and HTTP status come
+// from errorx.
 //
 // 5xx errors include a stack trace under "stack" so the operator
 // can locate the source without re-running with -tags=tracing.
@@ -116,7 +116,7 @@ func Error(ctx context.Context, err error, msg string, attrs ...slog.Attr) {
 
 	base := []slog.Attr{
 		slog.String("err", err.Error()),
-		slog.String("err_chain", errorx.Chain(err)),
+		slog.String("err_chain", err.Error()),
 		slog.String("error_type", fmt.Sprintf("%T", err)),
 		slog.String("kind", kind),
 		slog.Int("status", status),

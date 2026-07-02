@@ -22,6 +22,7 @@ func TestKindStatus(t *testing.T) {
 		KindForbidden:       http.StatusForbidden,
 		KindUnauthenticated: http.StatusUnauthorized,
 		KindServiceDegraded: http.StatusServiceUnavailable,
+		KindInternal:        http.StatusInternalServerError,
 		KindUnknown:         http.StatusInternalServerError,
 	}
 	for k, want := range cases {
@@ -30,40 +31,46 @@ func TestKindStatus(t *testing.T) {
 	}
 }
 
+func TestErrorIncludesCause(t *testing.T) {
+	cause := errors.New("connection refused")
+	wrapped := Wrap(cause, "auth: token exchange failed")
+	assert.Equal(t, "auth: token exchange failed: connection refused", wrapped.Error(),
+		"Error() must join cause with ': ' so user-facing surfaces show the full picture")
+}
+
+func TestErrorWithoutCauseReturnsMessage(t *testing.T) {
+	noCause := New(KindBadRequest, "auth: missing state cookie")
+	assert.Equal(t, "auth: missing state cookie", noCause.Error(),
+		"sentinel Error() must return its bare message")
+}
+
 func TestWrapInheritsKindFromSentinel(t *testing.T) {
-	sentinel := New(KindBadRequest, "bad input")
-	wrapped := Wrap(sentinel, "while parsing field X")
-	assert.Equal(t, KindBadRequest, wrapped.Kind(),
+	sentinelInChain := New(KindForbidden, "vfs: cycle detected")
+	wrapped := Wrap(sentinelInChain, "vfs: mount cycle check")
+
+	assert.Equal(t, KindForbidden, wrapped.Kind(),
 		"Wrap must inherit Kind from a wrapped errorx.Error")
-	assert.Equal(t, "while parsing field X", wrapped.Error())
+	assert.Equal(t, "vfs: mount cycle check: vfs: cycle detected", wrapped.Error())
 }
 
-func TestWrapFallsBackToUnknownForPlainError(t *testing.T) {
-	wrapped := Wrap(errors.New("plain"), "context")
-	assert.Equal(t, KindUnknown, wrapped.Kind())
+func TestWrapWithKindOverride(t *testing.T) {
+	plain := errors.New("disk full")
+	// chain has no errorx.Error so Kind would be Unknown, but caller
+	// overrides with KindServiceDegraded.
+	wrapped := Wrap(plain, "drive: write failed", KindServiceDegraded)
+	assert.Equal(t, KindServiceDegraded, wrapped.Kind(),
+		"variadic Kind must override chain inheritance")
 }
 
-func TestWrapUnwrapsCause(t *testing.T) {
-	cause := errors.New("root cause")
-	wrapped := Wrap(cause, "context")
-	assert.Equal(t, cause, errors.Unwrap(wrapped),
-		"Wrap must preserve the original error via errors.Unwrap")
+func TestWrapKindWithoutOverride(t *testing.T) {
+	plain := errors.New("connection refused")
+	wrapped := Wrap(plain, "auth: lookup failed")
+	assert.Equal(t, KindUnknown, wrapped.Kind(),
+		"plain chain without override must produce KindUnknown")
 }
 
 func TestWrapNilReturnsNil(t *testing.T) {
 	assert.Nil(t, Wrap(nil, "msg"))
-}
-
-func TestWrapFormatsArgs(t *testing.T) {
-	wrapped := Wrap(New(KindNotFound, "missing"), "field %s of %d", "name", 7)
-	assert.Equal(t, "field name of 7", wrapped.Error())
-}
-
-func TestErrorsAsRecognizesWrapped(t *testing.T) {
-	wrapped := Wrap(errors.New("plain"), "msg")
-	var de Error
-	assert.True(t, errors.As(wrapped, &de))
-	assert.Equal(t, KindUnknown, de.Kind())
 }
 
 func TestKindOfTraversesChain(t *testing.T) {
@@ -83,36 +90,28 @@ func TestKindOfNilReturnsUnknown(t *testing.T) {
 	assert.Equal(t, KindUnknown, KindOf(nil))
 }
 
-func TestChainRendersOuterToInner(t *testing.T) {
-	cause := errors.New("cause")
-	wrapped := Wrap(cause, "outer")
-	assert.Equal(t, "outer -> cause", Chain(wrapped))
+func TestUnwrapPreservesCause(t *testing.T) {
+	cause := errors.New("root cause")
+	wrapped := Wrap(cause, "context")
+	assert.Equal(t, cause, errors.Unwrap(wrapped),
+		"Wrap must preserve the original error via errors.Unwrap")
 }
 
-func TestChainEmptyForNil(t *testing.T) {
-	assert.Equal(t, "", Chain(nil))
+func TestErrorsAsRecognizesWrapped(t *testing.T) {
+	wrapped := Wrap(errors.New("plain"), "msg", KindBadRequest)
+	var de Error
+	assert.True(t, errors.As(wrapped, &de))
+	assert.Equal(t, KindBadRequest, de.Kind())
 }
 
-func TestChainSingleForUnwrapped(t *testing.T) {
-	assert.Equal(t, "only", Chain(errors.New("only")))
-}
-
-func TestWrapSentinelKeepsKind(t *testing.T) {
-	sentinel := New(KindForbidden, "vfs: cycle detected")
-	err := errors.New("cycle: a -> b -> a")
-	wrapped := WrapSentinel(sentinel, err, "vfs: mount cycle check")
-
-	assert.Equal(t, KindForbidden, wrapped.Kind(),
-		"WrapSentinel must surface the sentinel's kind even when err is a plain error")
-	assert.True(t, errors.Is(wrapped, sentinel),
-		"errors.Is must walk the chain and find the sentinel")
-}
-
-func TestWrapSentinelWithoutErrStillMatches(t *testing.T) {
-	sentinel := New(KindBadRequest, "vfs: no parent")
-	wrapped := WrapSentinel(sentinel, nil, "vfs: validation")
-
-	assert.Equal(t, KindBadRequest, wrapped.Kind())
-	assert.True(t, errors.Is(wrapped, sentinel),
-		"WrapSentinel(err=nil) must still expose the sentinel for errors.Is")
+func TestSentinelStillIdentifiableByKind(t *testing.T) {
+	// Sentinel identity travels through the chain by errorx.Error
+	// type, not by sentinel object identity. Two distinct sentinel
+	// instances with the same kind are NOT equal under errors.Is
+	// because they're separate objects. Callers who need
+	// equivalence should compare via KindOf rather than errors.Is.
+	sentinelInChain := New(KindForbidden, "vfs: cycle detected")
+	wrapped := Wrap(sentinelInChain, "vfs: mount cycle check", KindForbidden)
+	assert.Equal(t, KindForbidden, KindOf(wrapped),
+		"kind must be queryable from the chain without importing the sentinel")
 }

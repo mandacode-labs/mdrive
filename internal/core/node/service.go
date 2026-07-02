@@ -2,7 +2,7 @@ package node
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,10 +76,10 @@ func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node,
 func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
 	n, err := factory()
 	if err != nil {
-		return nil, errorx.Wrap(ErrInvalidReference, "node: create %s factory failed", kind)
+		return nil, errorx.New(errorx.KindBadRequest, fmt.Sprintf("node: create %s factory failed", kind))
 	}
 	if err := s.repo.Save(ctx, n); err != nil {
-		return nil, errorx.Wrap(err, "node: save %s", kind)
+		return nil, errorx.Wrap(err, fmt.Sprintf("node: save %s", kind))
 	}
 	return n, nil
 }
@@ -98,7 +98,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		if err := parent.AddEntry(name, child); err != nil {
-			return errorx.Wrap(err, "node: link add entry (name=%s)", name)
+			return errorx.Wrap(err, fmt.Sprintf("node: link add entry (name=%s)", name))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, "node: link save parent")
@@ -125,7 +125,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		if err := parent.AddEntries(entries); err != nil {
-			return errorx.Wrap(err, "node: bulk link add entries (count=%d)", len(entries))
+			return errorx.Wrap(err, fmt.Sprintf("node: bulk link add entries (count=%d)", len(entries)))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, "node: bulk link save parent")
@@ -139,7 +139,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 			child.ctime = now
 			child.rev = child.rev.Next()
 			if err := tx.repo.Save(ctx, child); err != nil {
-				return errorx.Wrap(err, "node: bulk link save child (name=%s)", name)
+				return errorx.Wrap(err, fmt.Sprintf("node: bulk link save child (name=%s)", name))
 			}
 		}
 		return nil
@@ -157,7 +157,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 	err := s.WithTx(ctx, func(tx *Service) error {
 		dc, err := parent.ReadDir()
 		if err != nil {
-			return errorx.Wrap(err, "node: unlink read dir (name=%s)", name)
+			return errorx.Wrap(err, fmt.Sprintf("node: unlink read dir (name=%s)", name))
 		}
 		var childID uuid.UUID
 		var found bool
@@ -169,20 +169,20 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 			}
 		}
 		if !found {
-			return ErrEntryNotFound
+			return errorx.New(errorx.KindNotFound, "node: entry not found")
 		}
 		if err := parent.RemoveEntry(name); err != nil {
-			return errorx.Wrap(err, "node: unlink remove entry (name=%s)", name)
+			return errorx.Wrap(err, fmt.Sprintf("node: unlink remove entry (name=%s)", name))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
-			return errorx.Wrap(err, "node: unlink save parent (name=%s)", name)
+			return errorx.Wrap(err, fmt.Sprintf("node: unlink save parent (name=%s)", name))
 		}
 		if childID == uuid.Nil {
 			return nil
 		}
 		child, err := tx.GetByID(ctx, childID)
 		if err != nil {
-			return errorx.Wrap(err, "node: unlink get child (name=%s, child_id=%s)", name, childID)
+			return errorx.Wrap(err, fmt.Sprintf("node: unlink get child (name=%s, child_id=%s)", name, childID))
 		}
 		if child.nlink > 1 {
 			child.nlink--
@@ -192,7 +192,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 			return errorx.Wrap(tx.repo.Save(ctx, child), "node: unlink decrement child nlink")
 		}
 		if err := tx.repo.Delete(ctx, childID); err != nil {
-			return errorx.Wrap(err, "node: unlink delete child (child_id=%s)", childID)
+			return errorx.Wrap(err, fmt.Sprintf("node: unlink delete child (child_id=%s)", childID))
 		}
 		deleted = child
 		return nil
@@ -224,10 +224,10 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 	}
 	child, err := s.GetByID(ctx, entry.InodeID)
 	if err != nil {
-		return nil, errorx.Wrap(err, "node: unlink_or_replace get existing (name=%s, inode_id=%s)", name, entry.InodeID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("node: unlink_or_replace get existing (name=%s, inode_id=%s)", name, entry.InodeID))
 	}
 	if child.IsDir() {
-		return nil, ErrIsDirectory
+		return nil, errorx.New(errorx.KindBadRequest, "node: target is a directory")
 	}
 	return s.Unlink(ctx, parent, name)
 }
@@ -253,7 +253,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 	return s.WithTx(ctx, func(tx *Service) error {
 		srcDC, err := srcParent.ReadDir()
 		if err != nil {
-			return errorx.Wrap(err, "move entry read src dir (src_name=%s)", srcName)
+			return errorx.Wrap(err, fmt.Sprintf("move entry read src dir (src_name=%s)", srcName))
 		}
 		var (
 			srcInodeID uuid.UUID
@@ -269,7 +269,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 			}
 		}
 		if !srcFound {
-			return ErrEntryNotFound
+			return errorx.New(errorx.KindNotFound, "node: entry not found")
 		}
 
 		if srcParent.ID() == dstParent.ID() && srcName == dstName {
@@ -283,7 +283,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		)
 		dstDC, err := dstParent.ReadDir()
 		if err != nil {
-			return errorx.Wrap(err, "move entry read dst dir (dst_name=%s)", dstName)
+			return errorx.Wrap(err, fmt.Sprintf("move entry read dst dir (dst_name=%s)", dstName))
 		}
 		for _, e := range dstDC.Entries {
 			if e.Name == dstName {
@@ -299,7 +299,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		}
 
 		if existingInodeKnown && existingType != srcType {
-			return ErrInvalidMoveOverwrite
+			return errorx.New(errorx.KindBadRequest, "node: cannot overwrite entry of different type")
 		}
 
 		newSrcEntries := make([]DirEntry, 0, len(srcDC.Entries)+1)
@@ -362,11 +362,11 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		if existingInodeKnown {
 			overwrite, err := tx.GetByID(ctx, existingInodeID)
 			if err != nil {
-				return errorx.Wrap(err, "move entry load overwrite target (inode_id=%s)", existingInodeID)
+				return errorx.Wrap(err, fmt.Sprintf("move entry load overwrite target (inode_id=%s)", existingInodeID))
 			}
 			if overwrite.nlink <= 1 {
 				if err := tx.repo.Delete(ctx, existingInodeID); err != nil {
-					return errorx.Wrap(err, "move entry delete overwritten inode (inode_id=%s)", existingInodeID)
+					return errorx.Wrap(err, fmt.Sprintf("move entry delete overwritten inode (inode_id=%s)", existingInodeID))
 				}
 			} else {
 				overwrite.nlink--
@@ -384,7 +384,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 	n, err := s.repo.Get(ctx, id)
 	if err != nil {
-		return nil, errorx.Wrap(err, "node: get (id=%s)", id)
+		return nil, errorx.Wrap(err, fmt.Sprintf("node: get (id=%s)", id))
 	}
 	return n, nil
 }
@@ -444,7 +444,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 			planned = append(planned, childPlan{id: id})
 		}
 		if err := parent.RemoveEntries(names); err != nil {
-			return errorx.Wrap(err, "node: bulk unlink remove entries (count=%d)", len(names))
+			return errorx.Wrap(err, fmt.Sprintf("node: bulk unlink remove entries (count=%d)", len(names)))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, "node: bulk unlink save parent")
@@ -453,10 +453,10 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 		for _, p := range planned {
 			child, err := tx.GetByID(ctx, p.id)
 			if err != nil {
-				if errors.Is(err, ErrNotFound) {
+				if errorx.KindOf(err) == errorx.KindNotFound {
 					continue
 				}
-				return errorx.Wrap(err, "node: bulk unlink get child (id=%s)", p.id)
+				return errorx.Wrap(err, fmt.Sprintf("node: bulk unlink get child (id=%s)", p.id))
 			}
 			if child.nlink > 1 {
 				child.nlink--
@@ -468,7 +468,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 				continue
 			}
 			if err := tx.repo.Delete(ctx, p.id); err != nil {
-				return errorx.Wrap(err, "node: bulk unlink delete (id=%s)", p.id)
+				return errorx.Wrap(err, fmt.Sprintf("node: bulk unlink delete (id=%s)", p.id))
 			}
 			deleted = append(deleted, child)
 		}

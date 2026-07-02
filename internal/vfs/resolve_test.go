@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 	"testing"
 	"time"
@@ -121,5 +122,5 @@ func TestResolveMountCycle(t *testing.T) {
 	})
 
 	_, err = svc.Resolve(context.Background(), fix.idA, "/mount/back/mount")
-	assert.ErrorIs(t, err, ErrMountCycle)
+	assertKind(t, err, errorx.KindBadRequest)
 }

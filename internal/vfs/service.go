@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"fmt"
 	"context"
 
 	"github.com/google/uuid"
@@ -166,10 +167,10 @@ func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, er
 func (s *Service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
 	d, err := s.DriveClient.GetByID(ctx, driveID)
 	if err != nil {
-		return uuid.Nil, errorx.Wrap(err, "vfs: get root node (drive_id=%s)", driveID)
+		return uuid.Nil, errorx.Wrap(err, fmt.Sprintf("vfs: get root node (drive_id=%s)", driveID))
 	}
 	if d == nil || d.RootNodeID() == nil {
-		return uuid.Nil, ErrNotFound
+		return uuid.Nil, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	return *d.RootNodeID(), nil
 }

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,14 +26,14 @@ func TestNewObject(t *testing.T) {
 
 func TestNewObjectInvalidRef(t *testing.T) {
 	_, err := NewObject(ObjectContent{Bucket: "", Key: "k"}, 100)
-	assert.ErrorIs(t, err, ErrInvalidReference)
+	assertKind(t, err, errorx.KindBadRequest)
 
 	_, err = NewObject(ObjectContent{Bucket: "b", Key: ""}, 100)
-	assert.ErrorIs(t, err, ErrInvalidReference)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestNewObjectNegativeSize(t *testing.T) {
 	oc := NewObjectContent("b", "k", "text/plain", "")
 	_, err := NewObject(*oc, -1)
-	assert.ErrorIs(t, err, ErrInvalidSize)
+	assertKind(t, err, errorx.KindBadRequest)
 }

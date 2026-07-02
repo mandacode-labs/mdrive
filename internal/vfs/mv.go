@@ -1,6 +1,7 @@
 package vfs
 
 import (
+	"fmt"
 	"context"
 	"log/slog"
 	"time"
@@ -25,7 +26,7 @@ import (
 // Permission is the caller's responsibility.
 func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
-		return ErrCrossDrive
+		return errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 	}
 
 	start := time.Now()
@@ -50,12 +51,12 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 
 	if len(overwriteRefs) > 0 && s.GarbageRecorder != nil {
 		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
-			logx.Error(ctx, errorx.Wrap(err, "vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs)),
+			logx.Error(ctx, errorx.Wrap(err, fmt.Sprintf("vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs))),
 				"vfs.mv.tombstone_failed",
 				slog.String("drive_id", srcDriveID),
 				slog.Int("ref_count", len(overwriteRefs)),
 			)
-			return errorx.Wrap(err, "vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs))
+			return errorx.Wrap(err, fmt.Sprintf("vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs)))
 		}
 		logx.Info(ctx, "vfs.mv.tombstoned",
 			slog.String("drive_id", srcDriveID),
@@ -105,21 +106,21 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	// mount, the move would cross drives, which mv rejects.
 	srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: mv resolve src (src_path=%s)", srcPath)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src (src_path=%s)", srcPath))
 	}
 	if srcOut.Remaining != "" {
-		return nil, ErrCrossDrive
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 	}
 	srcParent, srcName, err := r.resolveParent(ctx, rootID, srcPath)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: mv resolve src parent (src_path=%s)", srcPath)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src parent (src_path=%s)", srcPath))
 	}
 	dstParent, dstName, err := r.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: mv resolve dst parent (dst_path=%s)", dstPath)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve dst parent (dst_path=%s)", dstPath))
 	}
 	if !dstParent.IsDir() {
-		return nil, errorx.Wrap(ErrNotDirectory, "vfs: mv dest (dst_path=%s)", dstPath)
+		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
 	}
 
 	overwriteRefs, err := s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
@@ -149,11 +150,11 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	r := s.newResolver()
 	dstOut, err := r.resolve(ctx, rootID, dstPath, true)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: mv resolve dst (dst_path=%s)", dstPath)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve dst (dst_path=%s)", dstPath))
 	}
 	dstDir := dstOut.Node
 	if !dstDir.IsDir() {
-		return nil, errorx.Wrap(ErrNotDirectory, "vfs: mv dest (dst_path=%s)", dstPath)
+		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
 	}
 
 	type srcInfo struct {
@@ -167,14 +168,14 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	for _, srcPath := range srcPaths {
 		srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 		if err != nil {
-			return nil, errorx.Wrap(err, "vfs: mv batch resolve src (src_path=%s)", srcPath)
+			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv batch resolve src (src_path=%s)", srcPath))
 		}
 		if srcOut.Remaining != "" {
-			return nil, ErrCrossDrive
+			return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 		}
 		sp, sn, err := r.resolveParent(ctx, rootID, srcPath)
 		if err != nil {
-			return nil, errorx.Wrap(err, "vfs: mv batch resolve src parent (src_path=%s)", srcPath)
+			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv batch resolve src parent (src_path=%s)", srcPath))
 		}
 		if _, dup := seen[sn]; dup {
 			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv duplicate source basename "+sn+" in batch")
@@ -242,7 +243,7 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	}
 
 	if err := s.NodeClient.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
-		return nil, errorx.Wrap(err, "vfs: mv move entry (src_name=%s, dst_name=%s)", srcName, dstName)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv move entry (src_name=%s, dst_name=%s)", srcName, dstName))
 	}
 
 	if overwriteRef != nil {

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
 	"testing"
 
@@ -22,11 +23,11 @@ func newFakeRepo() *fakeRepo {
 
 func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*Node, error) {
 	if r.deleted[id] {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "node: not found")
 	}
 	n, ok := r.nodes[id]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "node: not found")
 	}
 	return n, nil
 }
@@ -67,7 +68,7 @@ func TestLinkIncrementsNLink(t *testing.T) {
 
 	// Second link from same parent: must reject (entry already exists), nlink unchanged.
 	err = svc.Link(context.Background(), dir, "a", child)
-	assert.ErrorIs(t, err, ErrEntryExists, "duplicate link in same dir must fail")
+	assertKind(t, err, errorx.KindConflict)
 	assert.Equal(t, uint32(1), child.NLink())
 }
 
@@ -124,7 +125,7 @@ func TestUnlinkLastLinkDeletes(t *testing.T) {
 	assert.NotNil(t, deleted, "nlink=1 -> 0 must return deleted child")
 	assert.Equal(t, child.ID(), deleted.ID())
 	_, err = repo.Get(context.Background(), child.ID())
-	assert.ErrorIs(t, err, ErrNotFound)
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 func TestUnlinkOrReplaceRejectsDirectory(t *testing.T) {
@@ -142,7 +143,7 @@ func TestUnlinkOrReplaceRejectsDirectory(t *testing.T) {
 	require.NoError(t, svc.Link(context.Background(), parent, "d", subdir))
 
 	_, err = svc.UnlinkOrReplace(context.Background(), parent, "d")
-	assert.ErrorIs(t, err, ErrIsDirectory, "directory target must be rejected")
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestUnlinkOrReplaceNoEntry(t *testing.T) {
@@ -203,7 +204,7 @@ func TestBulkLinkRejectsDuplicateName(t *testing.T) {
 	require.NoError(t, repo.Save(context.Background(), second))
 
 	err = svc.BulkLink(context.Background(), dir, map[string]*Node{"a": second})
-	assert.ErrorIs(t, err, ErrEntryExists)
+	assertKind(t, err, errorx.KindConflict)
 	// first was already linked; second must not have been touched.
 	assert.Equal(t, uint32(1), first.NLink())
 	assert.Equal(t, uint32(0), second.NLink())
@@ -231,7 +232,7 @@ func TestBulkUnlinkDropsEntries(t *testing.T) {
 	assert.Len(t, deleted, 2, "a and b were the only refs, must be deleted")
 	for _, d := range deleted {
 		_, err := repo.Get(context.Background(), d.ID())
-		assert.ErrorIs(t, err, ErrNotFound)
+		assertKind(t, err, errorx.KindNotFound)
 	}
 	// c remains.
 	entry, err := dir.Lookup("c")
@@ -273,7 +274,7 @@ func TestBulkUnlinkPartialRefs(t *testing.T) {
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, child.ID(), deleted[0].ID())
 	_, err = repo.Get(context.Background(), child.ID())
-	assert.ErrorIs(t, err, ErrNotFound)
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 func TestMoveEntryRenameWithinDir(t *testing.T) {
@@ -338,7 +339,7 @@ func TestMoveEntryOverwriteFile(t *testing.T) {
 
 	// b's inode should be deleted (nlink was 1, the move decremented by overwrite).
 	_, err = repo.Get(context.Background(), b.ID())
-	assert.ErrorIs(t, err, ErrNotFound, "overwritten inode should be deleted")
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 func TestMoveEntryCrossDir(t *testing.T) {
@@ -392,7 +393,7 @@ func TestMoveEntryRejectsTypeMismatch(t *testing.T) {
 
 	// Cannot overwrite a directory with a file.
 	err = svc.MoveEntry(context.Background(), dir, "file", dir, "sub")
-	assert.ErrorIs(t, err, ErrInvalidMoveOverwrite)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestMoveEntryMissingSource(t *testing.T) {
@@ -404,7 +405,7 @@ func TestMoveEntryMissingSource(t *testing.T) {
 	require.NoError(t, repo.Save(context.Background(), dir))
 
 	err = svc.MoveEntry(context.Background(), dir, "absent", dir, "elsewhere")
-	assert.ErrorIs(t, err, ErrEntryNotFound)
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 // TestWithTxCommitsAtomically verifies the transaction wrapping

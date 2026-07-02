@@ -36,10 +36,10 @@ func (o *ObjectContent) Marshal() ([]byte, error) {
 // NewObject creates a new object node referring to data of the given size in external storage.
 func NewObject(content ObjectContent, size int64) (*Node, error) {
 	if content.Bucket == "" || content.Key == "" {
-		return nil, ErrInvalidReference
+		return nil, errorx.New(errorx.KindBadRequest, "node: invalid object reference")
 	}
 	if size < 0 {
-		return nil, ErrInvalidSize
+		return nil, errorx.New(errorx.KindBadRequest, "node: invalid size")
 	}
 	return newInlineNode(NodeTypeObject, &content, size)
 }
@@ -60,20 +60,20 @@ func (n *Node) ReadObject() (ObjectContent, error) {
 // WriteObject updates the object node's external reference and size.
 func (n *Node) WriteObject(content ObjectContent, size int64) error {
 	if n.kind != NodeTypeObject {
-		return ErrInvalidType
+		return errorx.New(errorx.KindBadRequest, "node: invalid type for operation")
 	}
 	if content.Bucket == "" || content.Key == "" {
-		return ErrInvalidReference
+		return errorx.New(errorx.KindBadRequest, "node: invalid object reference")
 	}
 	if size < 0 {
-		return ErrInvalidSize
+		return errorx.New(errorx.KindBadRequest, "node: invalid size")
 	}
 	data, err := json.Marshal(&content)
 	if err != nil {
 		return errorx.Wrap(err, "node: marshal object content")
 	}
 	if len(data) > MaxContentSize {
-		return ErrContentTooLarge
+		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
 	}
 	return n.write(Content(data), size)
 }
