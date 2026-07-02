@@ -9,7 +9,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/cli/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/cli/gc"
 	"github.com/mandacode-labs/mdrive/internal/cli/migrate"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 var Version = "dev"
@@ -31,12 +30,7 @@ func NewRootCmd() *cobra.Command {
 
 func Execute() {
 	if err := NewRootCmd().Execute(); err != nil {
-		chain := errorx.Chain(err)
-		if chain == "" {
-			fmt.Fprintf(os.Stderr, "mdrive: %v\n", err)
-		} else {
-			fmt.Fprintf(os.Stderr, "mdrive: %s\n", chain)
-		}
+		fmt.Fprintf(os.Stderr, "mdrive: %v\n", err)
 		os.Exit(1)
 	}
 }

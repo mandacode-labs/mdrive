@@ -2,8 +2,8 @@ package vfs
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
@@ -17,20 +17,20 @@ import (
 func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: cat resolve (path=%s)", path)
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: cat resolve (path=%s)", path))
 	}
 	n := res.Node
 	switch {
 	case n.IsFile():
 		raw, err := n.ReadFile()
 		if err != nil {
-			return nil, errorx.Wrap(err, "vfs: cat read file (path=%s)", path)
+			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: cat read file (path=%s)", path))
 		}
 		return []byte(raw), nil
 	case n.IsObject():
-		return nil, node.ErrIsObject
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is an object")
 	case n.IsDir():
-		return nil, node.ErrIsDirectory
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is a directory")
 	default:
 		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: cannot read type="+string(n.Type()))
 	}

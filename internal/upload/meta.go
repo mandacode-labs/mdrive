@@ -22,14 +22,18 @@ type PresignMeta struct {
 
 // Encode serializes PresignMeta to JSON bytes.
 func (m PresignMeta) Encode() ([]byte, error) {
-	return json.Marshal(m)
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return nil, errorx.Wrap(err, "presign_meta.encode failed", errorx.KindInternal)
+	}
+	return bytes, nil
 }
 
 // DecodePresignMeta deserializes JSON bytes into PresignMeta.
 func DecodePresignMeta(data []byte) (PresignMeta, error) {
 	var m PresignMeta
 	if err := json.Unmarshal(data, &m); err != nil {
-		return PresignMeta{}, errorx.Wrap(err, "upload: decode meta (bytes_len=%d)", len(data))
+		return PresignMeta{}, errorx.Wrap(err, "decode_presign_meta failed", errorx.KindInternal)
 	}
 	return m, nil
 }

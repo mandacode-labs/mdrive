@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/ent"
@@ -40,8 +41,7 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetOwnerID(d.OwnerID()).
 		SetNillableRootNodeID(d.RootNodeID()).
 		Save(ctx); err != nil {
-		return errorx.Wrap(err, "drive.repo.create: id_len=%d, owner_id_len=%d, root_set=%t",
-			len(d.ID()), len(d.OwnerID()), d.RootNodeID() != nil)
+		return errorx.Wrap(err, fmt.Sprintf("drive.repo.create: id_len=%d, owner_id_len=%d, root_set=%t", len(d.ID()), len(d.OwnerID()), d.RootNodeID() != nil))
 	}
 
 	secretKey, err := r.cipher.Encrypt([]byte(s.SecretKey()))
@@ -58,8 +58,7 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		SetSecretKey(string(secretKey)).
 		SetUsePathStyle(s.UsePathStyle()).
 		Save(ctx); err != nil {
-		return errorx.Wrap(err, "drive.repo.create_storage: drive_id_len=%d, bucket=%s",
-			len(s.DriveID()), s.Bucket())
+		return errorx.Wrap(err, fmt.Sprintf("drive.repo.create_storage: drive_id_len=%d, bucket=%s", len(s.DriveID()), s.Bucket()))
 	}
 
 	return nil
@@ -93,11 +92,11 @@ func (r *entRepository) GetStorage(ctx context.Context, driveID string) (*Storag
 		if ent.IsNotFound(err) {
 			return nil, nil
 		}
-		return nil, errorx.Wrap(err, "drive.repo.get_storage: drive_id=%s", driveID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.get_storage: drive_id=%s", driveID))
 	}
 	secretKey, err := r.cipher.Decrypt([]byte(s.SecretKey))
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive.repo.get_storage.decrypt: drive_id=%s", driveID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.get_storage.decrypt: drive_id=%s", driveID))
 	}
 	return NewStorage(
 		s.DriveID,
@@ -118,8 +117,7 @@ func (r *entRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 		SetNillableDeletedAt(d.DeletedAt()).
 		Save(ctx)
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive.repo.update: id_len=%d, root_set=%t",
-			len(d.ID()), d.RootNodeID() != nil)
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.update: id_len=%d, root_set=%t", len(d.ID()), d.RootNodeID() != nil))
 	}
 	return driveFromEnt(updated), nil
 }
@@ -129,24 +127,24 @@ func (r *entRepository) SoftDelete(ctx context.Context, id string) error {
 	_, err := r.client.Drive.UpdateOneID(id).
 		SetDeletedAt(now).
 		Save(ctx)
-	return errorx.Wrap(err, "drive.repo.soft_delete: id=%s", id)
+	return errorx.Wrap(err, fmt.Sprintf("drive.repo.soft_delete: id=%s", id))
 }
 
 func (r *entRepository) Restore(ctx context.Context, id string) error {
 	_, err := r.client.Drive.UpdateOneID(id).
 		ClearDeletedAt().
 		Save(ctx)
-	return errorx.Wrap(err, "drive.repo.restore: id=%s", id)
+	return errorx.Wrap(err, fmt.Sprintf("drive.repo.restore: id=%s", id))
 }
 
 func (r *entRepository) Delete(ctx context.Context, id string) error {
 	if _, err := r.client.DriveStorage.Delete().Where(entdrivestorage.DriveIDEQ(id)).Exec(ctx); err != nil {
 		if !ent.IsNotFound(err) {
-			return errorx.Wrap(err, "drive.repo.delete_storage: id=%s", id)
+			return errorx.Wrap(err, fmt.Sprintf("drive.repo.delete_storage: id=%s", id))
 		}
 	}
 	if err := r.client.Drive.DeleteOneID(id).Exec(ctx); err != nil {
-		return errorx.Wrap(err, "drive.repo.delete_drive: id=%s", id)
+		return errorx.Wrap(err, fmt.Sprintf("drive.repo.delete_drive: id=%s", id))
 	}
 	return nil
 }
@@ -154,7 +152,7 @@ func (r *entRepository) Delete(ctx context.Context, id string) error {
 func (r *entRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
 	drives, err := r.client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).Where(entdrive.DeletedAtIsNil()).All(ctx)
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive.repo.find_by_owner: owner_id_len=%d", len(ownerID))
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.find_by_owner: owner_id_len=%d", len(ownerID)))
 	}
 	result := make([]*Drive, len(drives))
 	for i, d := range drives {
@@ -170,7 +168,7 @@ func (r *entRepository) FindDeleted(ctx context.Context, before time.Time, limit
 		Limit(limit).
 		All(ctx)
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive.repo.find_deleted: limit=%d", limit)
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.find_deleted: limit=%d", limit))
 	}
 	result := make([]*Drive, len(drives))
 	for i, d := range drives {
@@ -185,7 +183,7 @@ func (r *entRepository) FindDeletedByOwner(ctx context.Context, ownerID string) 
 		Where(entdrive.DeletedAtNotNil()).
 		All(ctx)
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive.repo.find_deleted_by_owner: owner_id_len=%d", len(ownerID))
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.find_deleted_by_owner: owner_id_len=%d", len(ownerID)))
 	}
 	result := make([]*Drive, len(drives))
 	for i, d := range drives {

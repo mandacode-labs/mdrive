@@ -96,7 +96,7 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 func (s *Server) Run() error {
 	ln, err := net.Listen("tcp", s.addr)
 	if err != nil {
-		return errorx.Wrap(err, "apiserver: listen (addr=%s)", s.addr)
+		return errorx.Wrap(err, fmt.Sprintf("apiserver: listen (addr=%s)", s.addr))
 	}
 	logx.Info(context.Background(), "api_server.starting",
 		slog.String("addr", s.addr),

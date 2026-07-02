@@ -2,6 +2,7 @@ package vfs
 
 import (
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"log/slog"
 	"path"
 	"strings"
@@ -95,7 +96,7 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 	}
 	root, err := r.loadByID(ctx, rootID)
 	if err != nil || root == nil {
-		return resolveOutcome{}, ErrNotFound
+		return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	cur := root
 	parents := []*node.Node{root}
@@ -106,7 +107,7 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 			continue
 		case "..":
 			if len(parents) <= 1 {
-				return resolveOutcome{}, ErrInvalidPath
+				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: invalid path")
 			}
 			parents = parents[:len(parents)-1]
 			cur = parents[len(parents)-1]
@@ -118,11 +119,11 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 			return resolveOutcome{}, err
 		}
 		if de == nil {
-			return resolveOutcome{}, ErrNotFound
+			return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 		}
 		child, err := r.loadByID(ctx, de.InodeID)
 		if err != nil || child == nil {
-			return resolveOutcome{}, ErrNotFound
+			return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 		}
 		if child.IsMount() {
 			rest := joinParts(parts[i+1:])
@@ -134,10 +135,10 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 		// remaining path and recurse from the drive root.
 		if follow && child.IsSymlink() {
 			if len(visited) >= maxSymlinkDepth {
-				return resolveOutcome{}, node.ErrSymlinkCycle
+				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
 			}
 			if _, seen := visited[child.ID()]; seen {
-				return resolveOutcome{}, node.ErrSymlinkCycle
+				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
 			}
 			visited[child.ID()] = struct{}{}
 
@@ -220,7 +221,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 				slog.String("cycle_drive", srcDriveID),
 				slog.String("path", path),
 			)
-			return "", nil, ErrMountCycle
+			return "", nil, errorx.New(errorx.KindBadRequest, "vfs: mount cycle detected")
 		}
 		visited[srcDriveID] = struct{}{}
 		currentDrive = srcDriveID
@@ -231,7 +232,7 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 		slog.Int("max_hops", maxMountHops),
 		slog.String("path", path),
 	)
-	return "", nil, ErrPathTooDeep
+	return "", nil, errorx.New(errorx.KindBadRequest, "vfs: max mount hops exceeded")
 }
 
 // resolveParent returns the parent node and the last path component
@@ -246,7 +247,7 @@ func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string
 	cleaned := cleanPath(p)
 	idx := strings.LastIndex(cleaned, "/")
 	if idx < 0 {
-		return nil, "", ErrInvalidPath
+		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
 	}
 	parentPath := cleaned[:idx]
 	if parentPath == "" {
@@ -254,7 +255,7 @@ func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string
 	}
 	name = cleaned[idx+1:]
 	if name == "" {
-		return nil, "", ErrInvalidPath
+		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
 	}
 	out, err := r.resolve(ctx, rootID, parentPath, true)
 	if err != nil {
@@ -316,7 +317,7 @@ func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (pa
 		return nil, "", err
 	}
 	if !parent.IsDir() {
-		return nil, "", ErrNotDirectory
+		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: not a directory")
 	}
 	return parent, name, nil
 }

@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 func TestMemoryRegistryRoundTrip(t *testing.T) {
@@ -29,7 +31,7 @@ func TestMemoryRegistryRoundTrip(t *testing.T) {
 
 	require.NoError(t, r.Delete(ctx, "u1"))
 	_, err = r.Get(ctx, "u1")
-	assert.ErrorIs(t, err, ErrNotFound)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestMemoryRegistryExpiry(t *testing.T) {
@@ -45,7 +47,7 @@ func TestMemoryRegistryExpiry(t *testing.T) {
 	require.NoError(t, r.Put(ctx, meta, time.Millisecond))
 	time.Sleep(5 * time.Millisecond)
 	_, err := r.Get(ctx, "u1")
-	assert.ErrorIs(t, err, ErrNotFound)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestPresignMetaEncodeDecode(t *testing.T) {

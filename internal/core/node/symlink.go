@@ -25,7 +25,7 @@ func (s *SymlinkContent) Marshal() ([]byte, error) {
 // NewSymlink creates a new symlink node pointing to the given target.
 func NewSymlink(target string) (*Node, error) {
 	if target == "" {
-		return nil, ErrInvalidName
+		return nil, errorx.New(errorx.KindBadRequest, "node: invalid name")
 	}
 	return newInlineNode(NodeTypeSymlink, NewSymlinkContent(target), int64(len(target)))
 }
@@ -35,7 +35,7 @@ func NewSymlink(target string) (*Node, error) {
 // Readlink on a non-symlink node returns ErrInvalidType.
 func (n *Node) Readlink() (string, error) {
 	if n.kind != NodeTypeSymlink {
-		return "", ErrInvalidType
+		return "", errorx.New(errorx.KindBadRequest, "node: invalid type for readlink")
 	}
 	content, err := n.read()
 	if err != nil {
@@ -51,17 +51,17 @@ func (n *Node) Readlink() (string, error) {
 // WriteSymlink updates the symlink's target.
 func (n *Node) WriteSymlink(target string) error {
 	if target == "" {
-		return ErrInvalidName
+		return errorx.New(errorx.KindBadRequest, "node: invalid name")
 	}
 	if n.kind != NodeTypeSymlink {
-		return ErrInvalidType
+		return errorx.New(errorx.KindBadRequest, "node: invalid type for operation")
 	}
 	data, err := json.Marshal(NewSymlinkContent(target))
 	if err != nil {
 		return errorx.Wrap(err, "node: marshal symlink content")
 	}
 	if len(data) > MaxContentSize {
-		return ErrContentTooLarge
+		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
 	}
 	return n.write(Content(data), int64(len(target)))
 }

@@ -2,13 +2,13 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 )
 
 // Service provides domain-level drive operations. Permission
@@ -19,7 +19,7 @@ import (
 // sources it from the session.
 type Service struct {
 	repo                 Repository
-	ownerChecker          OwnerChecker
+	ownerChecker         OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
 }
 
@@ -45,7 +45,7 @@ func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator
 // pass the authenticated user.
 func (s *Service) Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
 	if name == "" {
-		return nil, uuid.Nil, errorx.Wrap(ErrInvalidName, "name is empty")
+		return nil, uuid.Nil, errorx.New(errorx.KindBadRequest, "drive: invalid name (name is empty)")
 	}
 	if actorID == "" {
 		return nil, uuid.Nil, errorx.New(errorx.KindBadRequest, "drive: owner_id is required")
@@ -56,10 +56,10 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 
 	exists, err := s.ownerChecker.Exist(ctx, actorID)
 	if err != nil {
-		return nil, uuid.Nil, errorx.Wrap(err, "drive: owner check failed (actor_id=%s)", actorID)
+		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: owner check failed (actor_id=%s)", actorID), errorx.KindServiceDegraded)
 	}
 	if !exists {
-		return nil, uuid.Nil, errorx.Wrap(ErrOwnerNotFound, "actor_id=%s", actorID)
+		return nil, uuid.Nil, errorx.New(errorx.KindForbidden, "drive: owner not found (actor_id="+actorID+")")
 	}
 
 	id := ulid.Make().String()
@@ -74,25 +74,24 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 
 	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
 	if err != nil {
-		return nil, uuid.Nil, errorx.Wrap(err, "drive: root node creation failed (id=%s)", id)
+		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: root node creation failed (id=%s)", id), errorx.KindServiceDegraded)
 	}
 	d.SetRootNodeID(rootID)
 
 	var updated *Drive
 	err = s.WithTx(ctx, func(tx *Service) error {
 		if err := tx.repo.Create(ctx, d, storage); err != nil {
-			return errorx.Wrap(err, "drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)",
-				len(d.ID()), len(d.OwnerID()), rootID)
+			return errorx.Wrap(err, fmt.Sprintf("drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)", len(d.ID()), len(d.OwnerID()), rootID), errorx.KindServiceDegraded)
 		}
 		u, err := tx.repo.Update(ctx, d)
 		if err != nil {
-			return errorx.Wrap(err, "drive: repo update failed (id_len=%d)", len(d.ID()))
+			return errorx.Wrap(err, fmt.Sprintf("drive: repo update failed (id_len=%d)", len(d.ID())), errorx.KindServiceDegraded)
 		}
 		updated = u
 		return nil
 	})
 	if err != nil {
-		return nil, uuid.Nil, errorx.Wrap(err, "drive: tx failed (id=%s, root_id=%s)", id, rootID)
+		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: tx failed (id=%s, root_id=%s)", id, rootID), errorx.KindServiceDegraded)
 	}
 	return updated, rootID, nil
 }
@@ -106,7 +105,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 		return nil, err
 	}
 	if d == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "drive: not found (id="+id+")")
 	}
 	return d, nil
 }
@@ -118,7 +117,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, e
 		return nil, err
 	}
 	if d == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "drive: not found (public_id="+publicID+")")
 	}
 	return d, nil
 }
@@ -132,7 +131,7 @@ func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, err
 		return nil, err
 	}
 	if st == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "drive: storage not found (drive_id="+driveID+")")
 	}
 	return st, nil
 }
@@ -148,7 +147,7 @@ func (s *Service) Update(ctx context.Context, id string, name, description strin
 		return nil, err
 	}
 	if d == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "drive: not found (id="+id+")")
 	}
 	newName := d.Name()
 	if name != "" {
@@ -183,7 +182,7 @@ func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
 		return nil, err
 	}
 	if d.DeletedAt() == nil {
-		return nil, errorx.New(errorx.KindBadRequest, "drive: not deleted")
+		return nil, errorx.New(errorx.KindBadRequest, "drive: not deleted (id="+id+")")
 	}
 	if err := s.repo.Restore(ctx, id); err != nil {
 		return nil, err
@@ -203,7 +202,7 @@ func (s *Service) Purge(ctx context.Context, id string) error {
 // pattern (see internal/app/apiserver/handler/drive.go).
 func (s *Service) ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*Drive, error) {
 	if !isAdmin {
-		return nil, permission.ErrPermission
+		return nil, errorx.New(errorx.KindForbidden, "permission: denied")
 	}
 	return s.repo.FindDeleted(ctx, before, limit)
 }
@@ -227,10 +226,10 @@ func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 
 func storageCfgValid(cfg *StorageConfig) error {
 	if cfg.Bucket == "" {
-		return ErrInvalidBucket
+		return errorx.New(errorx.KindBadRequest, "drive: storage bucket is required")
 	}
 	if cfg.Region == "" {
-		return ErrInvalidRegion
+		return errorx.New(errorx.KindBadRequest, "drive: storage region is required")
 	}
 	return nil
 }

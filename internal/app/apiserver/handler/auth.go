@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/apierr"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
@@ -21,14 +22,14 @@ var (
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	uid := h.userID(ctx)
 	if uid == "" {
-		return apiErr(ErrUnauthenticated), nil
+		return apiErr(errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")), nil
 	}
 	u, err := h.users.GetByID(ctx, uid)
 	if err != nil {
-		return apiErr(errorx.Wrap(ErrServiceDegraded, "auth: user lookup failed (uid=%s, err=%v)", uid, err)), nil
+		return apiErr(errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("auth: user lookup failed (uid=%s, err=%v)", uid, err))), nil
 	}
 	if u == nil {
-		return apiErr(ErrUserNotFoundLocal), nil
+		return apiErr(errorx.New(errorx.KindNotFound, "auth: user not found")), nil
 	}
 	return userToAPI(u), nil
 }

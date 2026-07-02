@@ -8,6 +8,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -78,7 +79,7 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 
 	p, err := oidc.NewProvider(ctx, cfg.Issuer)
 	if err != nil {
-		return nil, errorx.Wrap(err, "auth: discover provider (issuer=%s)", cfg.Issuer)
+		return nil, errorx.Wrap(err, fmt.Sprintf("auth: discover provider (issuer=%s)", cfg.Issuer))
 	}
 
 	noAuth, err := anonymousPaths(api.Spec)
@@ -110,5 +111,5 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 	}, nil
 }
 
-func (s *Service) PostLoginURL() string { return s.postLoginURL }
+func (s *Service) PostLoginURL() string  { return s.postLoginURL }
 func (s *Service) PostLogoutURL() string { return s.postLogoutURL }

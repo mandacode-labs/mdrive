@@ -2,6 +2,7 @@ package vfs
 
 import (
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 	"time"
 
@@ -92,8 +93,8 @@ func TestResolveCrossDrive(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "shared.txt", fileB))
 
 	svc := NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  fix.driveClient(),
+		NodeClient:  nodeSvc,
+		DriveClient: fix.driveClient(),
 	})
 
 	res, err := svc.Resolve(context.Background(), fix.idA, "/mounts/team/shared.txt")
@@ -116,10 +117,10 @@ func TestResolveMountCycle(t *testing.T) {
 	require.NoError(t, nodeSvc.Link(context.Background(), fix.dB, "back", back))
 
 	svc := NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  fix.driveClient(),
+		NodeClient:  nodeSvc,
+		DriveClient: fix.driveClient(),
 	})
 
 	_, err = svc.Resolve(context.Background(), fix.idA, "/mount/back/mount")
-	assert.ErrorIs(t, err, ErrMountCycle)
+	assertKind(t, err, errorx.KindBadRequest)
 }

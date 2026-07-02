@@ -8,6 +8,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entnode "github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // entRepository is the Ent-backed implementation of Repository.
@@ -25,7 +26,7 @@ func (r *entRepository) Get(ctx context.Context, id uuid.UUID) (*Node, error) {
 	e, err := r.client.Node.Query().Where(entnode.IDEQ(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, ErrNotFound
+			return nil, errorx.New(errorx.KindNotFound, "node: not found")
 		}
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func (r *entRepository) update(ctx context.Context, n *Node, content Content) er
 		return err
 	}
 	if affected == 0 {
-		return ErrRevisionConflict
+		return errorx.New(errorx.KindConflict, "node: revision conflict")
 	}
 	n.staleRev = n.rev
 	return nil
@@ -104,7 +105,7 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	err := r.client.Node.DeleteOneID(id).Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return ErrNotFound
+			return errorx.New(errorx.KindNotFound, "node: not found")
 		}
 		return err
 	}
@@ -142,7 +143,7 @@ func fromEnt(e *ent.Node) *Node {
 	rev := Revision(e.Revision)
 	n := &Node{
 		id:       e.ID,
-		kind: parseNodeType(string(e.Type)),
+		kind:     parseNodeType(string(e.Type)),
 		size:     e.Size,
 		nlink:    e.Nlink,
 		mode:     e.Mode,

@@ -3,19 +3,19 @@
 //
 // It owns three things:
 //
-//   1. Context-scoped correlation. WithRequestID / WithUserID
-//      store IDs in ctx; the bootstrap handler reads them on
-//      every line so a single log entry is enough to correlate
-//      a request, its operator, and its user.
+//  1. Context-scoped correlation. WithRequestID / WithUserID
+//     store IDs in ctx; the bootstrap handler reads them on
+//     every line so a single log entry is enough to correlate
+//     a request, its operator, and its user.
 //
-//   2. Error, which logs an error at the level implied by its
-//      HTTP status (5xx -> ERROR with stack trace, 4xx -> WARN,
-//      else -> INFO). The errorx package owns the status mapping;
-//      logx only reflects it.
+//  2. Error, which logs an error at the level implied by its
+//     HTTP status (5xx -> ERROR with stack trace, 4xx -> WARN,
+//     else -> INFO). The errorx package owns the status mapping;
+//     logx only reflects it.
 //
-//   3. Request, which logs a single HTTP access entry. /health is
-//      excluded by default because k8s probes generate steady
-//      noise that drowns out real traffic in operator dashboards.
+//  3. Request, which logs a single HTTP access entry. /health is
+//     excluded by default because k8s probes generate steady
+//     noise that drowns out real traffic in operator dashboards.
 //
 // Production wires the configured logger as slog.Default at boot
 // via New; every call site that already has a ctx can log via
@@ -96,10 +96,10 @@ func Debug(ctx context.Context, msg string, attrs ...slog.Attr) {
 
 // Error logs err using errorx to determine the HTTP status and the
 // log level. msg is the user-facing log message (e.g. "handler
-// error"). The error message itself is always emitted under "err";
-// the kind string and HTTP status come from errorx; the full
-// "outer -> inner" chain under "err_chain" so a single log line
-// shows the propagation path through every Wrap call.
+// error"). The error message itself is always emitted under "err"
+// and again under "err_chain" (errorx.Error() renders the full
+// chain as "outer: inner"); the kind string and HTTP status come
+// from errorx.
 //
 // 5xx errors include a stack trace under "stack" so the operator
 // can locate the source without re-running with -tags=tracing.
@@ -116,7 +116,7 @@ func Error(ctx context.Context, err error, msg string, attrs ...slog.Attr) {
 
 	base := []slog.Attr{
 		slog.String("err", err.Error()),
-		slog.String("err_chain", errorx.Chain(err)),
+		slog.String("err_chain", err.Error()),
 		slog.String("error_type", fmt.Sprintf("%T", err)),
 		slog.String("kind", kind),
 		slog.Int("status", status),

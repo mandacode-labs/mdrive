@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
@@ -16,10 +17,10 @@ import (
 func newInlineNode(kind NodeType, payload any, size int64) (*Node, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, errorx.Wrap(err, "node: marshal content (kind=%s)", string(kind))
+		return nil, errorx.Wrap(err, fmt.Sprintf("node: marshal content (kind=%s)", string(kind)))
 	}
 	if len(data) > MaxContentSize {
-		return nil, ErrContentTooLarge
+		return nil, errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
 	}
 	n := newNode(kind)
 	if err := n.write(Content(data), size); err != nil {

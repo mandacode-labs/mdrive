@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -73,7 +74,7 @@ func itoa(i int) string {
 func encrypt(plain []byte, key []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", errorx.Wrap(err, "aes: new cipher (key_len=%d)", len(key))
+		return "", errorx.Wrap(err, fmt.Sprintf("aes: new cipher (key_len=%d)", len(key)))
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
@@ -93,7 +94,7 @@ func decrypt(s string, key []byte) ([]byte, error) {
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errorx.Wrap(err, "aes: new cipher (key_len=%d)", len(key))
+		return nil, errorx.Wrap(err, fmt.Sprintf("aes: new cipher (key_len=%d)", len(key)))
 	}
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {

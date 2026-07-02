@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"entgo.io/ent/dialect"
@@ -248,7 +249,7 @@ func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, er
 		Scopes:               cfg.OpenFGA.Scopes,
 	})
 	if err != nil {
-		return nil, errorx.Wrap(err, "openfga: initialize (api_url=%s)", cfg.OpenFGA.APIURL)
+		return nil, errorx.Wrap(err, fmt.Sprintf("openfga: initialize (api_url=%s)", cfg.OpenFGA.APIURL))
 	}
 	return checker, nil
 }
@@ -350,7 +351,7 @@ func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, err
 		UsePathStyle: cfg.UsePathStyle,
 	})
 	if err != nil {
-		return nil, errorx.Wrap(err, "s3: client (region=%s)", cfg.Region)
+		return nil, errorx.Wrap(err, fmt.Sprintf("s3: client (region=%s)", cfg.Region))
 	}
 	logx.Info(ctx, "s3.client.initialized",
 		slog.Any("endpoint", endpoint),
@@ -374,7 +375,7 @@ func newUploadRegistry(ctx context.Context, cfg config.ValkeyConfig) (upload.Tok
 		SelectDB:    cfg.DB,
 	})
 	if err != nil {
-		return nil, errorx.Wrap(err, "valkey: client (db=%d)", cfg.DB)
+		return nil, errorx.Wrap(err, fmt.Sprintf("valkey: client (db=%d)", cfg.DB))
 	}
 	logx.Info(ctx, "valkey.client.initialized",
 		slog.Any("addrs", cfg.Addrs),

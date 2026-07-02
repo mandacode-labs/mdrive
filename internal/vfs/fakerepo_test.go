@@ -2,6 +2,7 @@ package vfs
 
 import (
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,8 +36,7 @@ func TestFakeRepoConflictOnStaleRev(t *testing.T) {
 
 	// The first snapshot, unchanged, is now stale.
 	err = repo.Save(ctx, loaded)
-	assert.ErrorIs(t, err, node.ErrRevisionConflict,
-		"stale save must be rejected to expose concurrency bugs")
+	assertKind(t, err, errorx.KindConflict)
 }
 
 // TestFakeRepo_GetReturnsIsolatedCopy proves that Get hands back a

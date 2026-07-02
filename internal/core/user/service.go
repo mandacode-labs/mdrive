@@ -20,18 +20,18 @@ func NewService(repo Repository) *Service {
 // UpsertFromOIDC creates or updates a user from OIDC claims.
 func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User, error) {
 	if cmd.Provider == "" {
-		return nil, ErrProviderRequired
+		return nil, errorx.New(errorx.KindBadRequest, "user: provider is required")
 	}
 	if cmd.ProviderID == "" {
-		return nil, ErrProviderIDRequired
+		return nil, errorx.New(errorx.KindBadRequest, "user: provider_id is required")
 	}
 	if cmd.Name == "" {
-		return nil, ErrNameRequired
+		return nil, errorx.New(errorx.KindBadRequest, "user: name is required")
 	}
 
 	existing, err := s.repo.GetByProviderID(ctx, cmd.Provider, cmd.ProviderID)
 	if err != nil {
-		return nil, errorx.Wrap(err, "user: upsert lookup (provider=%s, provider_id_len=%d)", cmd.Provider, len(cmd.ProviderID))
+		return nil, errorx.Wrap(err, "user: upsert lookup", errorx.KindServiceDegraded)
 	}
 	if existing != nil {
 		if existing.Name() != cmd.Name || emailDiffers(existing, cmd) {
@@ -42,7 +42,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 			)
 			saved, err := s.repo.Update(ctx, updated)
 			if err != nil {
-				return nil, errorx.Wrap(err, "user: upsert update (id_len=%d)", len(updated.ID()))
+				return nil, errorx.Wrap(err, "user: upsert update", errorx.KindServiceDegraded)
 			}
 			return saved, nil
 		}
@@ -51,7 +51,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 
 	created, err := s.repo.Create(ctx, cmd)
 	if err != nil {
-		return nil, errorx.Wrap(err, "user: upsert create (provider=%s)", cmd.Provider)
+		return nil, errorx.Wrap(err, "user: upsert create", errorx.KindServiceDegraded)
 	}
 	return created, nil
 }
@@ -63,7 +63,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*User, error) {
 		return nil, err
 	}
 	if u == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "user: not found (id="+id+")")
 	}
 	return u, nil
 }
@@ -75,7 +75,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*User, er
 		return nil, err
 	}
 	if u == nil {
-		return nil, ErrNotFound
+		return nil, errorx.New(errorx.KindNotFound, "user: not found (public_id="+publicID+")")
 	}
 	return u, nil
 }

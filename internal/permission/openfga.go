@@ -3,6 +3,7 @@ package permission
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -70,10 +71,6 @@ const (
 	AuthModeNone AuthMode = "none"
 )
 
-var ErrInvalidAuthMode = errorx.New(errorx.KindBadRequest, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
-
-var ErrPermission = errorx.New(errorx.KindForbidden, "permission: denied")
-
 // NopAuthorizer permits every check. Use this explicitly in
 // development and test code where no real backend is wired; the
 // nil-tolerance in Require was removed because a misconfigured
@@ -109,10 +106,10 @@ func Require(ctx context.Context, a Authorizer, userID string, perm Action, obje
 	}
 	allowed, err := a.Check(ctx, userID, perm, objectType, objectID)
 	if err != nil {
-		return errorx.Wrap(err, "permission: check (perm=%s, type=%s, id=%s)", perm, objectType, objectID)
+		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, objectType, objectID))
 	}
 	if !allowed {
-		return errorx.Wrap(ErrPermission, "permission: denied (perm=%s, type=%s, id=%s)", perm, objectType, objectID)
+		return errorx.New(errorx.KindForbidden, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, objectType, objectID))
 	}
 	return nil
 }
@@ -165,11 +162,11 @@ func NewFGAChecker(ctx context.Context, cfg Config) (*FGAChecker, error) {
 		HTTPClient:           &http.Client{Timeout: timeout},
 	})
 	if err != nil {
-		return nil, errorx.Wrap(err, "openfga: create client (api_url=%s)", cfg.APIURL)
+		return nil, errorx.Wrap(err, fmt.Sprintf("openfga: create client (api_url=%s)", cfg.APIURL))
 	}
 
 	if _, err := c.GetStore(ctx).Execute(); err != nil {
-		return nil, errorx.Wrap(err, "openfga: store not found (store_id=%s)", cfg.StoreID)
+		return nil, errorx.Wrap(err, fmt.Sprintf("openfga: store not found (store_id=%s)", cfg.StoreID))
 	}
 
 	if cfg.AuthorizationModelID == "" {
@@ -189,7 +186,7 @@ func NewFGAChecker(ctx context.Context, cfg Config) (*FGAChecker, error) {
 // SDK credentials. Extracted for testability.
 func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, error) {
 	if mode != AuthModeAPIToken && mode != AuthModeClientCredentials && mode != AuthModeNone {
-		return nil, ErrInvalidAuthMode
+		return nil, errorx.New(errorx.KindBadRequest, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 	}
 	switch mode {
 	case AuthModeAPIToken:
@@ -206,7 +203,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 			},
 		})
 		if err != nil {
-			return nil, errorx.Wrap(err, "openfga: credentials (auth_mode=%s)", cfg.AuthMode)
+			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", cfg.AuthMode))
 		}
 		return creds, nil
 	case AuthModeClientCredentials:
@@ -230,7 +227,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 			},
 		})
 		if err != nil {
-			return nil, errorx.Wrap(err, "openfga: credentials (auth_mode=%s)", cfg.AuthMode)
+			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", cfg.AuthMode))
 		}
 		return creds, nil
 	case AuthModeNone:
@@ -239,7 +236,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 		}
 		return nil, nil
 	}
-	return nil, ErrInvalidAuthMode
+	return nil, errorx.New(errorx.KindBadRequest, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 }
 
 // writeModel writes the embedded authorization model and returns the new model ID.

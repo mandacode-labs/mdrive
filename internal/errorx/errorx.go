@@ -1,33 +1,34 @@
 // Package errorx is the single source of truth for typed errors.
 //
-// The Error interface exposes Kind() (semantic category) and Unwrap()
-// (chain). Domain code constructs sentinels with New and grows chains
-// with Wrap. Boundaries (HTTP handlers, CLI entrypoints, cron jobs)
-// inspect errors via errors.As + Kind().Status() to map to wire codes,
-// and rely on logx/Chain to surface the whole story in logs.
+//  1. New(Kind, "fixed: human-readable message") returns an
+//     inline sentinel with that kind and message.
 //
-// Two rules:
+//  2. Wrap(err, "context: ...", kinds...) appends a context
+//     message to an error chain. Kind is taken from the chain
+//     (the first errorx.Error found) unless a Kind override is
+//     passed. Wrap(nil, ...) returns nil so callers can use it
+//     as a one-liner at every return site.
 //
-//  1. Sentinels are domain catalog. Declare them once at package level
-//     with New(Kind, "fixed: human-readable message"). Caller never
-//     modifies the kind or message of a sentinel.
+//  3. KindOf(err) traverses the chain to the first errorx.Error
+//     and returns its Kind (or KindUnknown). Use this instead of
+//     errors.Is: sentinels are inlined at call sites, so chain
+//     identity is by Kind, not by sentinel object.
 //
-//  2. Wrap(err, "context: ...") appends a context message. The kind
-//     is taken from the chain -- the first errorx.Error encountered
-//     while unwrapping. Plain errors contribute no kind, so the chain
-//     reads as KindUnknown for branches that never hit a sentinel.
+// Error() renders the chain as "outer: inner" (Go's fmt %w
+// semantics) so the same call site feeds both user-facing
+// response bodies and server logs.
 package errorx
 
 import (
 	"errors"
 	"fmt"
-	"strings"
 )
 
 type Kind int
 
 const (
 	KindUnknown Kind = iota
+	KindInternal
 	KindNotFound
 	KindConflict
 	KindBadRequest
@@ -50,15 +51,14 @@ func (k Kind) String() string {
 		return "unauthorized"
 	case KindServiceDegraded:
 		return "service_degraded"
+	case KindInternal:
+		return "internal"
 	default:
 		return "unknown"
 	}
 }
 
-// Status returns the canonical HTTP status code for the Kind.
-// Single source of truth for HTTP mapping across the codebase.
-// Use this in error handlers, middleware, and any caller that
-// needs to translate an errorx.Error into an HTTP response.
+// Status returns the HTTP status code corresponding to the error kind.
 func (k Kind) Status() int {
 	switch k {
 	case KindNotFound:
@@ -90,8 +90,14 @@ type errorx struct {
 	cause   error
 }
 
+// Error renders "outer: inner" so a single call covers both
+// HTTP response bodies and log output. The cause is joined with
+// ": " following Go's fmt %w convention.
 func (e *errorx) Error() string {
-	return e.message
+	if e.cause == nil {
+		return e.message
+	}
+	return fmt.Sprintf("%s: %v", e.message, e.cause)
 }
 
 func (e *errorx) Kind() Kind {
@@ -102,9 +108,9 @@ func (e *errorx) Unwrap() error {
 	return e.cause
 }
 
-// New constructs a sentinel error with a fixed kind and message.
-// Domain packages declare sentinels at package level using this;
-// callers extend chains with Wrap but never modify a sentinel.
+// New constructs an error with a fixed kind and message. Use at
+// the point where an error originates (call sites), not as a
+// package-level catalog; for chains use Wrap.
 func New(kind Kind, message string) Error {
 	return &errorx{
 		kind:    kind,
@@ -112,79 +118,40 @@ func New(kind Kind, message string) Error {
 	}
 }
 
-// Wrap appends a context message to an error chain. The kind is
-// taken from the chain: the first errorx.Error encountered while
-// unwrapping. Plain errors (no errorx.Error in the chain) produce
-// KindUnknown, so the boundary can still ask for a status and get
-// a sensible 500.
-//
-// Wrap never modifies the kind of a sentinel it wraps. The
-// context-only message is what caller can and should add.
-//
-// Wrap(nil, ...) returns nil so callers can use it as a one-liner
-// at every return site without nil-guards.
-func Wrap(err error, message string, args ...any) Error {
+// Wrap appends a context message to an error chain. Kind is taken
+// from the chain (the first errorx.Error found by errors.As);
+// pass Kind arguments to override. Wrap(nil, ...) returns nil
+// so callers can use it as a one-liner at every return site.
+func Wrap(err error, message string, kind ...Kind) Error {
 	if err == nil {
 		return nil
 	}
-	kind := KindUnknown
+	k := KindUnknown
 	var de Error
 	if errors.As(err, &de) {
-		kind = de.Kind()
+		k = de.Kind()
+	}
+	if len(kind) > 0 {
+		k = kind[0]
 	}
 	return &errorx{
-		kind:    kind,
-		message: fmt.Sprintf(message, args...),
+		kind:    k,
+		message: message,
 		cause:   err,
 	}
 }
 
-// WrapSentinel attaches a sentinel to a plain error so the chain
-// carries the sentinels kind and callers can errors.Is against it.
-// Use this when a plain error (no errorx.Error in the chain) needs
-// to be tagged with a domain-specific kind for downstream HTTP
-// status mapping and log labels.
-//
-// The sentinel is recorded as the cause so errors.Is(err, sentinel)
-// works on the returned chain. The outer message carries caller-
-// supplied context for logs.
-func WrapSentinel(sentinel Error, err error, message string, args ...any) Error {
-	msg := fmt.Sprintf(message, args...)
-	return &errorx{
-		kind:    sentinel.Kind(),
-		message: msg,
-		cause:   sentinel,
-	}
-}
-
 // KindOf returns the kind of the first errorx.Error in the chain.
-// Returns KindUnknown if no errorx.Error is present.
+// Returns KindUnknown if no errorx.Error is present. Callers use
+// this instead of errors.Is because sentinels are inlined at the
+// point of construction rather than declared as package-level
+// variables, so chain identity is by Kind, not by object.
 func KindOf(err error) Kind {
-	var de Error
 	for err != nil {
-		if errors.As(err, &de) {
+		if de, ok := errors.AsType[Error](err); ok {
 			return de.Kind()
 		}
 		err = errors.Unwrap(err)
 	}
 	return KindUnknown
-}
-
-// Chain returns the error chain as "outer -> inner" so log
-// readers can follow the full call path. Returns "" for nil
-// and the single message for an error with no cause.
-//
-// Chain is what every logx.Error call should emit (or a logger
-// that delegates to it). It's the single primitive that turns
-// the propagation pattern into a useful diagnostic.
-func Chain(err error) string {
-	if err == nil {
-		return ""
-	}
-	var parts []string
-	for err != nil {
-		parts = append(parts, err.Error())
-		err = errors.Unwrap(err)
-	}
-	return strings.Join(parts, " -> ")
 }

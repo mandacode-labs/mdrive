@@ -4,13 +4,13 @@ package ent
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 func TestEntNodeSaveGetRoundtrip(t *testing.T) {
@@ -70,7 +70,7 @@ func TestEntNodeRevisionConflict(t *testing.T) {
 		switch {
 		case r.err == nil:
 			wins++
-		case errors.Is(r.err, node.ErrRevisionConflict):
+		case errorx.KindOf(r.err) == errorx.KindConflict:
 			conflicts++
 		default:
 			t.Errorf("writer %s returned unexpected error: %v", r.who, r.err)
@@ -131,6 +131,6 @@ func TestEntNodeWithTxRollback(t *testing.T) {
 
 	// The dir must not exist after rollback.
 	_, err = repo.Get(ctx, mustParseID(t, dirID))
-	assert.ErrorIs(t, err, node.ErrNotFound,
+	assert.Equal(t, errorx.KindNotFound, errorx.KindOf(err),
 		"rolled-back tx must not leave a row behind")
 }

@@ -44,7 +44,7 @@ func (n *Node) WriteFile(raw string) error {
 		return errorx.Wrap(err, "node: marshal file content")
 	}
 	if len(data) > MaxContentSize {
-		return ErrContentTooLarge
+		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
 	}
 	return n.write(Content(data), int64(len(raw)))
 }

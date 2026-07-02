@@ -12,6 +12,7 @@ import (
 
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // --- Fakes ---
@@ -155,7 +156,7 @@ func TestCompleteUploadOwnershipMismatch(t *testing.T) {
 	}, time.Hour)
 	svc := newTestService(t, reg, nil)
 	_, err := svc.CompleteUpload(context.Background(), "someone-else", "d1", "u1", 100, nil)
-	assert.ErrorIs(t, err, ErrUploadOwnershipMismatch)
+	assertKind(t, err, errorx.KindForbidden)
 }
 
 func TestCompleteUploadDriveMismatch(t *testing.T) {
@@ -171,7 +172,7 @@ func TestCompleteUploadDriveMismatch(t *testing.T) {
 	}, time.Hour)
 	svc := newTestService(t, reg, nil)
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
-	assert.ErrorIs(t, err, ErrUploadMismatch)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestCompleteUploadSizeMismatch(t *testing.T) {
@@ -208,7 +209,7 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 	store := &fakeStore{objectExists: false}
 	svc := newTestService(t, reg, store)
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
-	assert.ErrorIs(t, err, ErrObjectNotUploaded)
+	assertKind(t, err, errorx.KindNotFound)
 }
 
 func TestCompleteUploadHappyPath(t *testing.T) {
@@ -230,5 +231,3 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 	_, err = reg.Get(context.Background(), "u1")
 	assert.Error(t, err)
 }
-
-

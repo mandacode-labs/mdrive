@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
@@ -180,7 +181,7 @@ func applyWith(ctx context.Context, databaseURL string, migrations fs.FS, atlasB
 
 	client, err := atlasexec.NewClient(workDir.Path(), atlasBin)
 	if err != nil {
-		return errorx.Wrap(err, "migrate: atlas client (bin=%s)", atlasBin)
+		return errorx.Wrap(err, fmt.Sprintf("migrate: atlas client (bin=%s)", atlasBin))
 	}
 
 	if _, err := client.MigrateApply(ctx, &atlasexec.MigrateApplyParams{

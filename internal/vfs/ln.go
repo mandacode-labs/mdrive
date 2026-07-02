@@ -57,7 +57,7 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 		return nil, err
 	}
 	if !parent.IsDir() {
-		return nil, ErrNotDirectory
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: not a directory")
 	}
 	if err := s.NodeClient.Link(ctx, parent, name, src); err != nil {
 		return nil, err

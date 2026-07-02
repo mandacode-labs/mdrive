@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/json"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/google/uuid"
@@ -65,7 +66,7 @@ func TestWriteContentTooLarge(t *testing.T) {
 
 	large := make([]byte, MaxContentSize+1)
 	err = n.write(large, int64(len(large)))
-	assert.ErrorIs(t, err, ErrContentTooLarge)
+	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestNewRootNode(t *testing.T) {
