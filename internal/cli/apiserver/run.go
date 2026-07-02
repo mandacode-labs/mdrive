@@ -9,15 +9,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-func NewCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "api-server",
-		Short: "Manage the HTTP API server",
-	}
-	cmd.AddCommand(newRunCmd())
-	return cmd
-}
-
 func newRunCmd() *cobra.Command {
 	var configPath string
 	cmd := &cobra.Command{

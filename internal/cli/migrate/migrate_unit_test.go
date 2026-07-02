@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -73,7 +72,6 @@ func TestDBConfigURL(t *testing.T) {
 			wantErr: errNameRequired,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.cfg.url()
@@ -88,23 +86,6 @@ func TestDBConfigURL(t *testing.T) {
 }
 
 func TestResolveDBConfig(t *testing.T) {
-	// Snapshot env state so the test is hermetic.
-	keys := []string{envHost, envPort, envName, envUser, envPassword, envSSLMode}
-	original := map[string]string{}
-	for _, k := range keys {
-		original[k] = os.Getenv(k)
-		_ = os.Unsetenv(k)
-	}
-	t.Cleanup(func() {
-		for _, k := range keys {
-			if original[k] != "" {
-				_ = os.Setenv(k, original[k])
-			} else {
-				_ = os.Unsetenv(k)
-			}
-		}
-	})
-
 	t.Run("flags only", func(t *testing.T) {
 		c := resolveDBConfig("h", "n", "u", "p", "ssl", 5432)
 		assert.Equal(t, dbConfig{
@@ -114,12 +95,12 @@ func TestResolveDBConfig(t *testing.T) {
 	})
 
 	t.Run("env only", func(t *testing.T) {
-		_ = os.Setenv(envHost, "envhost")
-		_ = os.Setenv(envPort, "5433")
-		_ = os.Setenv(envName, "envname")
-		_ = os.Setenv(envUser, "envuser")
-		_ = os.Setenv(envPassword, "envpass")
-		_ = os.Setenv(envSSLMode, "disable")
+		t.Setenv(envHost, "envhost")
+		t.Setenv(envPort, "5433")
+		t.Setenv(envName, "envname")
+		t.Setenv(envUser, "envuser")
+		t.Setenv(envPassword, "envpass")
+		t.Setenv(envSSLMode, "disable")
 
 		c := resolveDBConfig("", "", "", "", "", 0)
 		assert.Equal(t, dbConfig{
@@ -129,12 +110,12 @@ func TestResolveDBConfig(t *testing.T) {
 	})
 
 	t.Run("flags override env", func(t *testing.T) {
-		_ = os.Setenv(envHost, "envhost")
-		_ = os.Setenv(envPort, "5433")
-		_ = os.Setenv(envName, "envname")
-		_ = os.Setenv(envUser, "envuser")
-		_ = os.Setenv(envPassword, "envpass")
-		_ = os.Setenv(envSSLMode, "disable")
+		t.Setenv(envHost, "envhost")
+		t.Setenv(envPort, "5433")
+		t.Setenv(envName, "envname")
+		t.Setenv(envUser, "envuser")
+		t.Setenv(envPassword, "envpass")
+		t.Setenv(envSSLMode, "disable")
 
 		c := resolveDBConfig("flaghost", "flagname", "flaguser", "flagpass", "require", 1111)
 		assert.Equal(t, dbConfig{
@@ -144,15 +125,8 @@ func TestResolveDBConfig(t *testing.T) {
 	})
 
 	t.Run("invalid port env falls back to zero", func(t *testing.T) {
-		_ = os.Setenv(envPort, "not-a-number")
+		t.Setenv(envPort, "not-a-number")
 		c := resolveDBConfig("", "", "", "", "", 0)
 		assert.Equal(t, 0, c.Port)
 	})
-}
-
-func TestFirstNonEmpty(t *testing.T) {
-	assert.Equal(t, "", firstNonEmpty())
-	assert.Equal(t, "a", firstNonEmpty("", "a", "b"))
-	assert.Equal(t, "a", firstNonEmpty("a", "b"))
-	assert.Equal(t, "b", firstNonEmpty("", "", "b"))
 }
