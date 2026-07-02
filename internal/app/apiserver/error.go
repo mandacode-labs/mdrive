@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/mandacode-labs/mdrive/internal/apierr"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 // FromError maps any error to (HTTP status, api.Error). The actual
-// mapping logic lives in internal/apierr so this package and
-// internal/app/apiserver/handler share a single implementation
-// without creating an import cycle through pkg/api.
+// mapping logic lives in handler.FromError; this wrapper just lifts
+// the result into the pkg/api type so callers in this package
+// (recoverPanic, etc.) can write it directly.
 func FromError(err error) (int, api.Error) {
-	status, e := apierr.FromError(err)
+	status, e := handler.FromError(err)
 	return status, api.Error{
 		Code:    api.ErrorCode(e.Code),
 		Message: e.Message,

@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mandacode-labs/mdrive/internal/apierr"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -143,7 +142,7 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, drive
 // status mapping itself lives in internal/apierr so this and the
 // WithErrorHandler share the exact same logic.
 func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
-	statusCode, e := apierr.FromError(err)
+	statusCode, e := FromError(err)
 	return &api.ErrorStatusCode{
 		StatusCode: statusCode,
 		Response: api.Error{
