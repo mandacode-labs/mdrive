@@ -5,7 +5,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
-	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
@@ -40,6 +39,6 @@ func newRunCmd() *cobra.Command {
 			return srv.Run()
 		},
 	}
-	cliflags.AddConfigFlag(cmd, &configPath)
+	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
 	return cmd
 }

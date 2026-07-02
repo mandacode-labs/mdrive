@@ -8,7 +8,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	gcjobs "github.com/mandacode-labs/mdrive/internal/app/gc"
-	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
@@ -54,7 +53,7 @@ func addJob(parent *cobra.Command, use, short string, factory func(*app.App) gcj
 			return factory(a).Run(cmd.Context())
 		},
 	}
-	cliflags.AddConfigFlag(cmd, &configPath)
+	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
 	for i := 0; i+2 < len(flagSpecs); i += 3 {
 		flag, def, usage := flagSpecs[i], flagSpecs[i+1], flagSpecs[i+2]
 		cmd.Flags().Duration(flag, parseDurationOrZero(def), usage)
