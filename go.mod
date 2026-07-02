@@ -5,6 +5,7 @@ go 1.26.1
 require (
 	ariga.io/atlas-go-sdk v0.7.2
 	entgo.io/ent v0.14.6
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/XSAM/otelsql v0.42.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
