@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mandacode-labs/mdrive/internal/apierr"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -39,7 +38,7 @@ func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 // the error branch (not the *User branch) and ogen emits the
 // correct status code.
 func apiErr(err error) *api.Error {
-	_, e := apierr.FromError(err)
+	_, e := FromError(err)
 	return &api.Error{
 		Code:    api.ErrorCode(e.Code),
 		Message: e.Message,

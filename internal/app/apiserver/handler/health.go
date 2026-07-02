@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -37,5 +36,5 @@ func (h *Handler) Health(ctx context.Context) (api.HealthRes, error) {
 			return nil, errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("health: openfga check failed (err=%v)", err))
 		}
 	}
-	return &api.HealthOK{Status: apiopts.OptString("ok")}, nil
+	return &api.HealthOK{Status: optString("ok")}, nil
 }

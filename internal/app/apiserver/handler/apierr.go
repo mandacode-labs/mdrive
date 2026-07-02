@@ -1,13 +1,4 @@
-// Package apierr provides the canonical mapping from any Go error
-// to an HTTP status code plus the wire-format api.Error body.
-//
-// errorx.Kind is the single source of truth for the status code
-// (see internal/errorx.Kind.Status). This package exists only to
-// peel off ogen's *ogenerrors.SecurityError wrapper, which has no
-// Unwrap method, so errors.As cannot reach the inner errorx.Error
-// directly. Without that peel, missing-session errors from
-// SecurityHandler surface as 503 instead of 401.
-package apierr
+package handler
 
 import (
 	"errors"
@@ -35,8 +26,8 @@ const (
 	codeInternal        Code = "internal_error"
 )
 
-// Error mirrors pkg/api.Error without importing it.
-type Error struct {
+// ErrorBody mirrors pkg/api.Error without importing it.
+type ErrorBody struct {
 	Code    Code
 	Message string
 }
@@ -45,16 +36,16 @@ type Error struct {
 // errorx.Kind drives the status; non-errorx errors default to 500
 // unless wrapped in *ogenerrors.SecurityError, which is treated
 // as 401 (missing/unauthorized credentials).
-func FromError(err error) (int, Error) {
+func FromError(err error) (int, ErrorBody) {
 	if status, code, msg, ok := mapErrorx(err); ok {
-		return status, Error{Code: code, Message: msg}
+		return status, ErrorBody{Code: code, Message: msg}
 	}
 	if sec, ok := err.(*ogenerrors.SecurityError); ok && sec.Err != nil {
 		if status, code, msg, ok2 := mapErrorx(sec.Err); ok2 {
-			return status, Error{Code: code, Message: msg}
+			return status, ErrorBody{Code: code, Message: msg}
 		}
 	}
-	return http.StatusInternalServerError, Error{
+	return http.StatusInternalServerError, ErrorBody{
 		Code:    codeInternal,
 		Message: "internal error",
 	}

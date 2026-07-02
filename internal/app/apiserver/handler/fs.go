@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -102,9 +101,9 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 	entries := make([]api.DirEntry, len(dc.Entries))
 	for i, e := range dc.Entries {
 		entries[i] = api.DirEntry{
-			InodeID: apiopts.OptString(e.InodeID.String()),
-			Name:    apiopts.OptString(e.Name),
-			Type:    apiopts.OptString(e.Type.String()),
+			InodeID: optString(e.InodeID.String()),
+			Name:    optString(e.Name),
+			Type:    optString(e.Type.String()),
 		}
 	}
 	return &api.DirContent{Entries: entries}, nil
@@ -272,14 +271,14 @@ func statToAPI(n *node.Node) *api.NodeStat {
 		Mode:     n.Mode(),
 		Nlink:    n.NLink(),
 		Ino:      n.ID(),
-		UID:      apiopts.OptString(n.UID()),
-		Gid:      apiopts.OptString(n.GID()),
+		UID:      optString(n.UID()),
+		Gid:      optString(n.GID()),
 		Atime:    n.ATime(),
 		Mtime:    n.MTime(),
 		Ctime:    n.CTime(),
 		Crtime:   n.CRTime(),
-		Flags:    apiopts.OptString(n.Flags().String()),
-		Revision: apiopts.OptString(n.Revision().String()),
+		Flags:    optString(n.Flags().String()),
+		Revision: optString(n.Revision().String()),
 	}
 }
 

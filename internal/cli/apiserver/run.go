@@ -5,19 +5,9 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	server "github.com/mandacode-labs/mdrive/internal/app/apiserver"
-	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
-
-func NewCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "api-server",
-		Short: "Manage the HTTP API server",
-	}
-	cmd.AddCommand(newRunCmd())
-	return cmd
-}
 
 func newRunCmd() *cobra.Command {
 	var configPath string
@@ -40,6 +30,6 @@ func newRunCmd() *cobra.Command {
 			return srv.Run()
 		},
 	}
-	cliflags.AddConfigFlag(cmd, &configPath)
+	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
 	return cmd
 }

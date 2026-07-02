@@ -8,34 +8,11 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	gcjobs "github.com/mandacode-labs/mdrive/internal/app/gc"
-	"github.com/mandacode-labs/mdrive/internal/cliflags"
 	"github.com/mandacode-labs/mdrive/internal/config"
 )
 
-// NewCmd creates the `gc` subcommand.
-func NewCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "gc",
-		Short: "Run garbage collection jobs",
-	}
-	addJob(cmd, "tombstones", "Delete S3 objects recorded in gc_tombstones",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewTombstoneCleaner(a.Ent) })
-	addJob(cmd, "purge-drives", "Permanently remove soft-deleted drives older than the retention period",
-		func(a *app.App) gcjobs.Runner { return gcjobs.NewDrivePurger(a.DriveSvc, 0) }, "retention", "0s", "minimum age of deleted drives to purge")
-	addJob(cmd, "expire-uploads", "Remove stale upload registrations",
-		func(a *app.App) gcjobs.Runner {
-			return gcjobs.NewUploadExpirer(a.UploadToken, a.UploadSvc, a.Garbage)
-		})
-	return cmd
-}
-
 // addJob wires a subcommand with the standard config/app lifecycle.
-// The factory is called once the app is built, so failures during
-// app construction (config load, db connect, etc.) surface before
-// the job starts.
-//
-// Extra flagSpecs (name, default, usage) configure additional
-// job-specific flags beyond --config.
+// flagSpecs (name, default, usage) configure job-specific flags.
 func addJob(parent *cobra.Command, use, short string, factory func(*app.App) gcjobs.Runner, flagSpecs ...string) {
 	var configPath string
 	cmd := &cobra.Command{
@@ -54,7 +31,7 @@ func addJob(parent *cobra.Command, use, short string, factory func(*app.App) gcj
 			return factory(a).Run(cmd.Context())
 		},
 	}
-	cliflags.AddConfigFlag(cmd, &configPath)
+	cmd.Flags().StringVarP(&configPath, "config", "c", "config.yaml", "path to config file")
 	for i := 0; i+2 < len(flagSpecs); i += 3 {
 		flag, def, usage := flagSpecs[i], flagSpecs[i+1], flagSpecs[i+2]
 		cmd.Flags().Duration(flag, parseDurationOrZero(def), usage)
