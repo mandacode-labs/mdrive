@@ -1,8 +1,8 @@
 package upload
 
 import (
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"sync"
 	"time"
 )

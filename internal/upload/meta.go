@@ -42,4 +42,3 @@ func DecodePresignMeta(data []byte) (PresignMeta, error) {
 func (m PresignMeta) IsExpired() bool {
 	return time.Now().After(m.ExpiresAt)
 }
-

@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/ent"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	entnode "github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // entRepository is the Ent-backed implementation of Repository.
@@ -143,7 +143,7 @@ func fromEnt(e *ent.Node) *Node {
 	rev := Revision(e.Revision)
 	n := &Node{
 		id:       e.ID,
-		kind: parseNodeType(string(e.Type)),
+		kind:     parseNodeType(string(e.Type)),
 		size:     e.Size,
 		nlink:    e.Nlink,
 		mode:     e.Mode,

@@ -1,9 +1,9 @@
 package permission
 
 import (
-	"fmt"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -70,8 +70,6 @@ const (
 	// AuthModeNone disables authentication (development only).
 	AuthModeNone AuthMode = "none"
 )
-
-
 
 // NopAuthorizer permits every check. Use this explicitly in
 // development and test code where no real backend is wired; the

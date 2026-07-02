@@ -1,8 +1,8 @@
 package vfs
 
 import (
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,7 +102,7 @@ func newTestServiceWithNode() (*Service, *node.Service) {
 	root, _ := nodeSvc.CreateDirectory(context.Background())
 	d := &fakeDrive{rootID: root.ID()}
 	return NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  d,
+		NodeClient:  nodeSvc,
+		DriveClient: d,
 	}), nodeSvc
 }

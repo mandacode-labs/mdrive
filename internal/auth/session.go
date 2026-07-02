@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"fmt"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"

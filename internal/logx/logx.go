@@ -3,19 +3,19 @@
 //
 // It owns three things:
 //
-//   1. Context-scoped correlation. WithRequestID / WithUserID
-//      store IDs in ctx; the bootstrap handler reads them on
-//      every line so a single log entry is enough to correlate
-//      a request, its operator, and its user.
+//  1. Context-scoped correlation. WithRequestID / WithUserID
+//     store IDs in ctx; the bootstrap handler reads them on
+//     every line so a single log entry is enough to correlate
+//     a request, its operator, and its user.
 //
-//   2. Error, which logs an error at the level implied by its
-//      HTTP status (5xx -> ERROR with stack trace, 4xx -> WARN,
-//      else -> INFO). The errorx package owns the status mapping;
-//      logx only reflects it.
+//  2. Error, which logs an error at the level implied by its
+//     HTTP status (5xx -> ERROR with stack trace, 4xx -> WARN,
+//     else -> INFO). The errorx package owns the status mapping;
+//     logx only reflects it.
 //
-//   3. Request, which logs a single HTTP access entry. /health is
-//      excluded by default because k8s probes generate steady
-//      noise that drowns out real traffic in operator dashboards.
+//  3. Request, which logs a single HTTP access entry. /health is
+//     excluded by default because k8s probes generate steady
+//     noise that drowns out real traffic in operator dashboards.
 //
 // Production wires the configured logger as slog.Default at boot
 // via New; every call site that already has a ctx can log via

@@ -1,8 +1,8 @@
 package drive
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +19,7 @@ import (
 // sources it from the session.
 type Service struct {
 	repo                 Repository
-	ownerChecker          OwnerChecker
+	ownerChecker         OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
 }
 

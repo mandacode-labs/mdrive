@@ -1,9 +1,9 @@
 package app
 
 import (
-	"fmt"
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 
 	"entgo.io/ent/dialect"

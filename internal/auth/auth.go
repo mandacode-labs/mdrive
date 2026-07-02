@@ -7,8 +7,8 @@
 package auth
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -111,5 +111,5 @@ func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) 
 	}, nil
 }
 
-func (s *Service) PostLoginURL() string { return s.postLoginURL }
+func (s *Service) PostLoginURL() string  { return s.postLoginURL }
 func (s *Service) PostLogoutURL() string { return s.postLogoutURL }

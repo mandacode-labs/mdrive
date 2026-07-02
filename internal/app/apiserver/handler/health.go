@@ -1,16 +1,15 @@
 package handler
 
 import (
-	"fmt"
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiopts"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
-
 
 type ValkeyScanner interface {
 	Scan(ctx context.Context, fn func(string) error) error

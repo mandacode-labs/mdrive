@@ -1,8 +1,8 @@
 package vfs
 
 import (
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"context"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,8 +20,8 @@ func TestSymlinkFollowAbsoluteTarget(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  &fakeDrive{rootID: root.ID()},
+		NodeClient:  nodeSvc,
+		DriveClient: &fakeDrive{rootID: root.ID()},
 	})
 
 	_, err = svc.Mkdir(ctx, "d1", "/data")
@@ -60,8 +60,8 @@ func TestSymlinkCycle(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  &fakeDrive{rootID: root.ID()},
+		NodeClient:  nodeSvc,
+		DriveClient: &fakeDrive{rootID: root.ID()},
 	})
 
 	_, err = svc.Symlink(ctx, "d1", "/loop", "/loop")
@@ -80,8 +80,8 @@ func TestSymlinkChain(t *testing.T) {
 	root, err := nodeSvc.CreateDirectory(ctx)
 	require.NoError(t, err)
 	svc := NewService(ServiceConfig{
-		NodeClient:   nodeSvc,
-		DriveClient:  &fakeDrive{rootID: root.ID()},
+		NodeClient:  nodeSvc,
+		DriveClient: &fakeDrive{rootID: root.ID()},
 	})
 
 	_, err = svc.Touch(ctx, "d1", "/real.txt")

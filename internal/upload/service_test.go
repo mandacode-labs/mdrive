@@ -231,5 +231,3 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 	_, err = reg.Get(context.Background(), "u1")
 	assert.Error(t, err)
 }
-
-

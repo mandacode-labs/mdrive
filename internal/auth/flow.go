@@ -1,9 +1,9 @@
 package auth
 
 import (
-	"fmt"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"

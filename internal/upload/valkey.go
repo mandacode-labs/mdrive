@@ -1,9 +1,9 @@
 package upload
 
 import (
-	"fmt"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,8 +14,8 @@ import (
 
 // ValkeyRegistry implements TokenRegistry with Valkey (or Redis).
 type ValkeyRegistry struct {
-	client valkey.Client
-	keyFunc  KeyFunc
+	client  valkey.Client
+	keyFunc KeyFunc
 }
 
 // KeyFunc returns the storage key for an uploadID.

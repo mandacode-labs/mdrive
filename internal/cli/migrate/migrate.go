@@ -2,10 +2,10 @@
 package migrate
 
 import (
-	"fmt"
 	"context"
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"os"

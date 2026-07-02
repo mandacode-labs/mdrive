@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )

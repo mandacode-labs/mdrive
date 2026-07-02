@@ -2,8 +2,8 @@
 package gc
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
