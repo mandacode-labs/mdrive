@@ -150,6 +150,47 @@ and a follow-up `GET /v1/drives` should return the new entry.
 This branch only standardizes the logging. The cleanup work that
 belongs with the schema fix is tracked here for context.
 
+### 6.0 `logx` simplification (done in this branch)
+
+`internal/logx/logx.go` was reduced from 262 lines to 117 lines by
+dropping the `With*`/`*FromContext` string-id APIs and the
+`handler{}` auto-inject wrapper in favor of a single ctx-scoped
+`*slog.Logger` (uber-go/zap pattern):
+
+```go
+// logx public surface
+Config
+New(Config) *slog.Logger
+Info(ctx, msg, attrs...)
+Warn(ctx, msg, attrs...)
+Debug(ctx, msg, attrs...)
+Error(ctx, err, msg, attrs...)
+WithLogger(ctx, log) context.Context
+FromContext(ctx) *slog.Logger
+```
+
+The 84 call sites across the codebase do not change — `logx.Info`,
+`logx.Warn`, `logx.Debug`, `logx.Error` now look up the request-scoped
+logger via `FromContext` internally, so request_id / user_id flow
+through every line as before. Middleware (`RequestIDMiddleware`) is
+the only place that derives the request-scoped logger via
+`slog.Default().With("request_id", id, "user_id", uid)` and stuffs
+it into ctx.
+
+`logx.Request` was deleted: HTTP access logging is a middleware
+concern, not a logger concern, so `withRequestLog` now writes the
+single "request" line directly through the ctx logger.
+
+`internal/logx/logx_integration_test.go` was deleted; the obsolete
+test file in `internal/app/logger_test.go` was folded into
+`internal/logx/logx_test.go` and rewritten to exercise the new
+`WithLogger`/`FromContext` surface. `internal/app/logger_test.go` is
+gone.
+
+All exported symbols now have one-line godoc. `go build`,
+`go test`, `go test -tags=integration_ent`, and `golangci-lint run`
+all pass clean.
+
 ### 6.1 `apiopts` integration
 
 The `internal/app/apiopts/optional.go` package is used only by
@@ -184,19 +225,13 @@ stay unchanged so the three call sites
 (`apiserver/error.go`, `apiserver/handler/handler.go`,
 `apiserver/handler/auth.go`) only lose one import line.
 
-### 6.3 `logx` test consolidation
+### 6.3 `logx_integration_test.go` deletion (done in this branch)
 
-`internal/logx/logx_integration_test.go` is named "integration" but
-contains no `//go:build` tag and is just unit tests against
-`logx.New`. The file should be deleted and the nine test functions
-absorbed into `internal/logx/logx_test.go`. Similarly,
-`internal/app/logger_test.go` is a `package app` file whose only
-imports are `logx` and the standard library; the three
-`TestBootstrapLogger*` functions belong in `logx_test.go` and the
-`internal/app/logger_test.go` file should be removed. The
-`errorx`-specific test `TestClassifyRawErrorFallsBackToInternal` is
-deleted in this pass; it will resurface under `errorx` if we ever
-need it there.
+`internal/logx/logx_integration_test.go` was named "integration" but
+contained no `//go:build` tag and was just unit tests against
+`logx.New`. The file is deleted. The `TestClassifyRawErrorFallsBackToInternal`
+that was in it is also dropped — it was a `errorx` test that
+happened to live here.
 
 ### 6.4 Atlas migration for `nodes.mode/uid/gid`
 
