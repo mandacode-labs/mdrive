@@ -343,10 +343,20 @@ func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, e
 // newS3Client builds an upload/s3 client. The same instance is
 // shared by upload.Service (presign + delete) and the gc
 // tombstone cleaner.
+//
+// Static access_key/secret_key are optional: when both are
+// empty we rely on the ambient AWS credential chain (IRSA
+// service-account role, EC2/ECS instance profile, env vars).
+// Boot only fails when the AWS SDK cannot resolve a region.
 func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
-	if cfg.AccessKey == "" || cfg.SecretKey == "" {
+	if cfg.Region == "" {
 		return nil, errorx.New(errorx.KindBadRequest,
-			"storage: access_key and secret_key are required (set storage.existingSecret or storage.access_key / storage.secret_key)")
+			"storage: region is required (set storage.region)")
+	}
+	if cfg.AccessKey == "" && cfg.SecretKey == "" {
+		logx.Info(ctx, "s3.client.using_ambient_credentials",
+			slog.String("note", "no static access_key/secret_key; relying on IRSA / instance profile / env"),
+		)
 	}
 	endpoint := (*string)(nil)
 	if cfg.Endpoint != "" {
