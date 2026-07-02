@@ -24,11 +24,15 @@ import (
 // Notes on types:
 //   - ent fields without explicit ID default to field.Int → bigint.
 //     drive_storage.id and gc_tombstones.id follow that rule.
-//   - ent field.String / field.Enum map to character varying.
+//   - ent field.String / field.Enum with MaxLen(N) maps to
+//     character(N) on PostgreSQL. information_schema reports
+//     this as data_type = "character" (NOT "character varying").
+//     We use the substring "character" so both fixed-length
+//     character(N) and full character varying(N) pass.
 //   - ent mixin.Time maps to timestamp with time zone.
-//   - We use substring match (strings.Contains) so that
-//     "character varying" passes "character" and
-//     "timestamp with time zone" passes "timestamp".
+//     information_schema reports this as data_type =
+//     "timestamp with time zone". The substring "timestamp"
+//     matches both with and without time zone.
 type requiredColumn struct {
 	Table string
 	Name  string
@@ -38,12 +42,12 @@ type requiredColumn struct {
 var requiredColumns = []requiredColumn{
 	// nodes
 	{"nodes", "id", "uuid"},
-	{"nodes", "type", "character varying"},
+	{"nodes", "type", "character"},
 	{"nodes", "size", "bigint"},
 	{"nodes", "nlink", "bigint"},
 	{"nodes", "mode", "bigint"},
-	{"nodes", "uid", "character varying"},
-	{"nodes", "gid", "character varying"},
+	{"nodes", "uid", "character"},
+	{"nodes", "gid", "character"},
 	{"nodes", "content", "bytea"},
 	{"nodes", "atime", "timestamp"},
 	{"nodes", "mtime", "timestamp"},
@@ -55,12 +59,12 @@ var requiredColumns = []requiredColumn{
 	{"nodes", "update_time", "timestamp"},
 
 	// drives
-	{"drives", "id", "character varying"},
-	{"drives", "public_id", "character varying"},
-	{"drives", "name", "character varying"},
-	{"drives", "description", "character varying"},
-	{"drives", "provider", "character varying"},
-	{"drives", "owner_id", "character varying"},
+	{"drives", "id", "character"},
+	{"drives", "public_id", "character"},
+	{"drives", "name", "character"},
+	{"drives", "description", "character"},
+	{"drives", "provider", "character"},
+	{"drives", "owner_id", "character"},
 	{"drives", "root_node_id", "uuid"},
 	{"drives", "deleted_at", "timestamp"},
 	{"drives", "create_time", "timestamp"},
@@ -68,30 +72,30 @@ var requiredColumns = []requiredColumn{
 
 	// drive_storage (id is the auto-int PK from ent, not a uuid)
 	{"drive_storage", "id", "bigint"},
-	{"drive_storage", "drive_id", "character varying"},
-	{"drive_storage", "bucket", "character varying"},
-	{"drive_storage", "endpoint", "character varying"},
-	{"drive_storage", "region", "character varying"},
-	{"drive_storage", "access_key", "character varying"},
-	{"drive_storage", "secret_key", "character varying"},
+	{"drive_storage", "drive_id", "character"},
+	{"drive_storage", "bucket", "character"},
+	{"drive_storage", "endpoint", "character"},
+	{"drive_storage", "region", "character"},
+	{"drive_storage", "access_key", "character"},
+	{"drive_storage", "secret_key", "character"},
 	{"drive_storage", "use_path_style", "boolean"},
 	{"drive_storage", "create_time", "timestamp"},
 	{"drive_storage", "update_time", "timestamp"},
 
 	// users
-	{"users", "id", "character varying"},
-	{"users", "public_id", "character varying"},
-	{"users", "name", "character varying"},
-	{"users", "email", "character varying"},
-	{"users", "provider", "character varying"},
-	{"users", "provider_id", "character varying"},
+	{"users", "id", "character"},
+	{"users", "public_id", "character"},
+	{"users", "name", "character"},
+	{"users", "email", "character"},
+	{"users", "provider", "character"},
+	{"users", "provider_id", "character"},
 	{"users", "create_time", "timestamp"},
 	{"users", "update_time", "timestamp"},
 
 	// gc_tombstones
 	{"gc_tombstones", "id", "bigint"},
-	{"gc_tombstones", "bucket", "character varying"},
-	{"gc_tombstones", "key", "character varying"},
+	{"gc_tombstones", "bucket", "character"},
+	{"gc_tombstones", "key", "character"},
 	{"gc_tombstones", "retries", "bigint"},
 	{"gc_tombstones", "create_time", "timestamp"},
 	{"gc_tombstones", "update_time", "timestamp"},
