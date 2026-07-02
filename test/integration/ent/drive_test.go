@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	corenode "github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/crypto"
 )
 
 func TestEntDriveSoftDeleteAndRestore(t *testing.T) {
@@ -88,4 +90,137 @@ func ulidLike() string {
 		out[i] = hex[int(out[i])%16]
 	}
 	return string(out)
+}
+
+// TestEntDriveCreatePersistsAndListsByOwner reproduces the production
+// handler path: a drive is created through the repository (single
+// non-tx call, like drive.repo.Create inside the WithTx closure),
+// then a separate ListByOwner query must return it. This pins down
+// the contract that an INSERT immediately visible to a follow-up
+// SELECT — the failure mode seen in production where the POST
+// returned a populated drive object but GET /v1/drives returned []
+// indicates the row never reached the table the GET queries.
+func TestEntDriveCreatePersistsAndListsByOwner(t *testing.T) {
+	ctx := context.Background()
+	client := startPostgres(t)
+	repo := drive.NewRepository(client, crypto.NoOp{})
+
+	ownerID := ulidLike()
+	id := ulidLike()
+	now := time.Now()
+	d := drive.NewDrive(id, "pub-"+id, "persist-drive", nil, drive.ProviderS3, ownerID, nil, nil, now, now)
+	storage := drive.NewStorage(id, "bucket", nil, "us-east-1", "ak", "sk", false)
+
+	require.NoError(t, repo.Create(ctx, d, storage),
+		"Create must succeed against a freshly-migrated Postgres")
+
+	got, err := repo.GetByID(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, got, "drive row must be visible to GetByID immediately after Create")
+	assert.Equal(t, id, got.ID())
+	assert.Equal(t, ownerID, got.OwnerID())
+
+	listed, err := repo.FindByOwner(ctx, ownerID)
+	require.NoError(t, err)
+	found := false
+	for _, d := range listed {
+		if d.ID() == id {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found,
+		"FindByOwner must return the drive inserted via Create — "+
+			"production saw POST 200 with a populated body but GET /v1/drives []; "+
+			"this test guards against that gap by exercising the same insert+select path")
+}
+
+// TestEntDriveCreateInsideWithTxPersists reproduces the production
+// service.Create path: drive INSERT and storage INSERT run inside a
+// single WithTx closure. After Commit, the drive must be visible to
+// a follow-up FindByOwner from the same repository. This is the
+// exact code path CreateDrive handler hits via drive.Service.Create.
+func TestEntDriveCreateInsideWithTxPersists(t *testing.T) {
+	ctx := context.Background()
+	client := startPostgres(t)
+	repo := drive.NewRepository(client, crypto.NoOp{})
+
+	ownerID := ulidLike()
+	id := ulidLike()
+	now := time.Now()
+	d := drive.NewDrive(id, "pub-"+id, "tx-drive", nil, drive.ProviderS3, ownerID, nil, nil, now, now)
+	storage := drive.NewStorage(id, "bucket", nil, "us-east-1", "ak", "sk", false)
+
+	require.NoError(t, repo.WithTx(ctx, func(tx drive.Repository) error {
+		return tx.Create(ctx, d, storage)
+	}))
+
+	listed, err := repo.FindByOwner(ctx, ownerID)
+	require.NoError(t, err)
+	require.Len(t, listed, 1,
+		"drive inserted inside a committed WithTx must be visible to FindByOwner")
+	assert.Equal(t, id, listed[0].ID())
+
+	storageGot, err := repo.GetStorage(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, storageGot,
+		"storage row inserted inside the same tx must also be visible")
+	assert.Equal(t, "bucket", storageGot.Bucket())
+}
+
+// TestEntDriveServiceCreateEndToEnd mirrors what the HTTP handler
+// does: build a *drive.Service with a real ent-backed repo and a
+// rootNodeCreator wired to a real node.Service, call Create, then
+// ListByOwner. This catches the regression where the handler
+// returned a populated drive object but the row was missing from
+// the GET /v1/drives query.
+func TestEntDriveServiceCreateEndToEnd(t *testing.T) {
+	ctx := context.Background()
+	client := startPostgres(t)
+	driveRepo := drive.NewRepository(client, crypto.NoOp{})
+	nodeRepo := corenode.NewRepository(client)
+	nodeSvc := corenode.NewService(nodeRepo)
+
+	svc := drive.NewService(driveRepo, alwaysExistOwner{}, rootNodeAdapter{svc: nodeSvc})
+
+	ownerID := ulidLike() // 26-char ULID; owner_id column is character(32)
+	created, _, err := svc.Create(ctx, ownerID, "e2e-drive", "desc", drive.StorageConfig{
+		Bucket:    "bucket",
+		Region:    "us-east-1",
+		AccessKey: "ak",
+		SecretKey: "sk",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, created,
+		"Service.Create must return a non-nil drive on success")
+
+	listed, err := svc.ListByOwner(ctx, ownerID)
+	require.NoError(t, err)
+	require.Len(t, listed, 1,
+		"a drive created via Service.Create must show up in ListByOwner — "+
+			"production symptom: POST 200 with body but GET /v1/drives returned []")
+	assert.Equal(t, created.ID(), listed[0].ID())
+	assert.Equal(t, "e2e-drive", listed[0].Name())
+}
+
+// alwaysExistOwner is a minimal OwnerChecker that always succeeds.
+// Production wires this to user.Service.UpsertFromOIDC; for the
+// integration test we only care that the owner check is green so
+// the tx path runs.
+type alwaysExistOwner struct{}
+
+func (alwaysExistOwner) Exist(_ context.Context, _ string) (bool, error) { return true, nil }
+
+// rootNodeAdapter wires node.Service to the drive.RootDirectoryCreator
+// shape production uses in app.go.
+type rootNodeAdapter struct {
+	svc *corenode.Service
+}
+
+func (a rootNodeAdapter) CreateRootDirectory(ctx context.Context) (uuid.UUID, error) {
+	root, err := a.svc.CreateDirectory(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return root.ID(), nil
 }

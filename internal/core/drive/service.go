@@ -3,12 +3,15 @@ package drive
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
+	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Service provides domain-level drive operations. Permission
@@ -44,6 +47,12 @@ func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator
 // on whose behalf the owner permission is granted; callers must
 // pass the authenticated user.
 func (s *Service) Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
+	if debugx.Trace.Load() {
+		logx.Debug(ctx, "drive.service.create.enter",
+			slog.String("actor_id", actorID),
+			slog.String("name", name),
+		)
+	}
 	if name == "" {
 		return nil, uuid.Nil, errorx.New(errorx.KindBadRequest, "drive: invalid name (name is empty)")
 	}
@@ -61,6 +70,9 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	if !exists {
 		return nil, uuid.Nil, errorx.New(errorx.KindForbidden, "drive: owner not found (actor_id="+actorID+")")
 	}
+	if debugx.Trace.Load() {
+		logx.Debug(ctx, "drive.service.create.owner_ok", slog.String("actor_id", actorID))
+	}
 
 	id := ulid.Make().String()
 	now := time.Now()
@@ -71,27 +83,81 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	d := NewDrive(id, id, name, descriptionPtr, ProviderS3, actorID, nil, nil, now, now)
 	storage := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
+	if debugx.Trace.Load() {
+		logx.Debug(ctx, "drive.service.create.drive_built",
+			slog.String("id", id),
+			slog.Int("owner_id_len", len(actorID)),
+		)
+	}
 
 	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
 	if err != nil {
+		if debugx.Trace.Load() {
+			logx.Debug(ctx, "drive.service.create.root_dir_failed",
+				slog.String("id", id),
+				slog.String("err", err.Error()),
+			)
+		}
 		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: root node creation failed (id=%s)", id), errorx.KindServiceDegraded)
 	}
 	d.SetRootNodeID(rootID)
+	if debugx.Trace.Load() {
+		logx.Debug(ctx, "drive.service.create.root_dir_ok",
+			slog.String("id", id),
+			slog.String("root_id", rootID.String()),
+		)
+	}
 
 	var updated *Drive
 	err = s.WithTx(ctx, func(tx *Service) error {
+		if debugx.Trace.Load() {
+			logx.Debug(ctx, "drive.service.create.tx.enter", slog.String("id", id))
+		}
 		if err := tx.repo.Create(ctx, d, storage); err != nil {
+			if debugx.Trace.Load() {
+				logx.Debug(ctx, "drive.service.create.tx.create_failed",
+					slog.String("id", id),
+					slog.String("err", err.Error()),
+				)
+			}
 			return errorx.Wrap(err, fmt.Sprintf("drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)", len(d.ID()), len(d.OwnerID()), rootID), errorx.KindServiceDegraded)
+		}
+		if debugx.Trace.Load() {
+			logx.Debug(ctx, "drive.service.create.tx.create_ok", slog.String("id", id))
 		}
 		u, err := tx.repo.Update(ctx, d)
 		if err != nil {
+			if debugx.Trace.Load() {
+				logx.Debug(ctx, "drive.service.create.tx.update_failed",
+					slog.String("id", id),
+					slog.String("err", err.Error()),
+				)
+			}
 			return errorx.Wrap(err, fmt.Sprintf("drive: repo update failed (id_len=%d)", len(d.ID())), errorx.KindServiceDegraded)
+		}
+		if debugx.Trace.Load() {
+			logx.Debug(ctx, "drive.service.create.tx.update_ok",
+				slog.String("id", id),
+				slog.Bool("updated_nil", u == nil),
+			)
 		}
 		updated = u
 		return nil
 	})
 	if err != nil {
+		if debugx.Trace.Load() {
+			logx.Debug(ctx, "drive.service.create.tx_failed",
+				slog.String("id", id),
+				slog.String("err", err.Error()),
+			)
+		}
 		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: tx failed (id=%s, root_id=%s)", id, rootID), errorx.KindServiceDegraded)
+	}
+	if debugx.Trace.Load() {
+		logx.Debug(ctx, "drive.service.create.tx_committed",
+			slog.String("id", id),
+			slog.Bool("updated_nil", updated == nil),
+		)
 	}
 	return updated, rootID, nil
 }

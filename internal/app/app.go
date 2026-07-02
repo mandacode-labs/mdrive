@@ -18,6 +18,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/app/gc"
+	"github.com/mandacode-labs/mdrive/internal/debugx"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -159,6 +160,10 @@ func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, er
 
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	entClient := ent.NewClient(ent.Driver(drv))
+	if cfg.App.LogLevel == "debug" {
+		entClient = entClient.Debug()
+		debugx.Trace.Store(true)
+	}
 
 	if cfg.App.Env == "development" {
 		if err := entClient.Schema.Create(ctx); err != nil {
@@ -339,6 +344,10 @@ func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, e
 // shared by upload.Service (presign + delete) and the gc
 // tombstone cleaner.
 func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
+	if cfg.AccessKey == "" || cfg.SecretKey == "" {
+		return nil, errorx.New(errorx.KindBadRequest,
+			"storage: access_key and secret_key are required (set storage.existingSecret or storage.access_key / storage.secret_key)")
+	}
 	endpoint := (*string)(nil)
 	if cfg.Endpoint != "" {
 		endpoint = &cfg.Endpoint
