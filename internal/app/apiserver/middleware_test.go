@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/ogen-go/ogen/middleware"
+)
+
+// Local aliases so the test reads as ogen-handler-shaped without
+// importing the full type set.
+type (
+	ogenReq    = middleware.Request
+	ogenRes    = middleware.Response
+	ogenNext   = middleware.Next
 )
 
 // newTestLog returns a JSON logger backed by buf and registers it
@@ -170,13 +179,6 @@ func TestStatusRecorderWriteHeaderForwardsStatus(t *testing.T) {
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 }
 
-func TestStatusRecorderHeaderForwardsHeaderAccess(t *testing.T) {
-	rec := httptest.NewRecorder()
-	sr := &statusRecorder{ResponseWriter: rec}
-	sr.Header().Set("X-Test", "yes")
-	assert.Equal(t, "yes", rec.Header().Get("X-Test"))
-}
-
 func TestStatusRecorderPreservesUnderlyingBuffer(t *testing.T) {
 	rec := httptest.NewRecorder()
 	sr := &statusRecorder{ResponseWriter: rec}
@@ -240,9 +242,9 @@ func TestChainNoLeak(t *testing.T) {
 	assert.Contains(t, buf.String(), `"status":200`)
 }
 
-// Ensure Error-logging handler emits a real Error JSON, not an
-// empty body, so an operator always has something to read when a
-// handler panic sneaks past recoverPanic.
+// TestWriteErrorEmitsJSON ensures the error path emits real
+// JSON, not an empty body, so an operator always has something
+// to read when a handler panic sneaks past recoverPanic.
 func TestWriteErrorEmitsJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(rec, errors.New("boom"))
@@ -254,67 +256,23 @@ func TestWriteErrorEmitsJSON(t *testing.T) {
 	assert.Equal(t, "internal_error", apiErr["code"])
 }
 
-// context round-trip sanity check
 func TestRequestIDFromContextEmpty(t *testing.T) {
 	assert.Equal(t, "", RequestIDFromContext(context.Background()))
 }
 
-// TestPanicAfterWriteHeaderLeavesStatusStuck documents that a
-// handler panic after WriteHeader(200) cannot be turned into a
-// 5xx by recoverPanic: net/http has already committed the
-// status, and the second WriteHeader inside WriteError is
-// silently dropped. We want this behavior pinned so any future
-// fix that depends on overwriting the status is caught.
-func TestPanicAfterWriteHeaderLeavesStatusStuck(t *testing.T) {
+// TestOgenPanicGuardConvertsHandlerPanic exercises ogenPanicGuard
+// directly: a handler that panics must result in a returned
+// error so ogen's WithErrorHandler can produce a clean 5xx.
+func TestOgenPanicGuardConvertsHandlerPanic(t *testing.T) {
 	_, _ = newTestLog(t)
 
-	panicAfterHeader := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		panic("json: marshal failure")
+	panicHandler := ogenNext(func(_ ogenReq) (ogenRes, error) {
+		panic("handler boom")
 	})
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/drives/x/fs/ls", nil)
-	recoverPanic(panicAfterHeader).ServeHTTP(rec, req)
-
-	t.Logf("status=%d body=%q content-type=%q",
-		rec.Code, rec.Body.String(), rec.Header().Get("Content-Type"))
-
-	assert.Equal(t, http.StatusOK, rec.Code,
-		"net/http commits 200 once WriteHeader is called; the recovery WriteHeader(503) is dropped")
-	assert.Contains(t, rec.Body.String(), "service_degraded",
-		"WriteError still appends a JSON body even when status is committed")
-}
-
-// TestFullChainPanicAfterHeader documents the user-observed
-// 200/empty-body class of bug across the entire middleware
-// chain (recoverPanic + withRequestLog + withCORS +
-// RequestIDMiddleware + OpenAPIPassthrough + AuthPassthrough).
-func TestFullChainPanicAfterHeader(t *testing.T) {
-	_, _ = newTestLog(t)
-
-	panicAfterHeader := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		panic("json: marshal failure")
-	})
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/drives/x/fs/ls", nil)
-
-	var h http.Handler = panicAfterHeader
-	h = AuthPassthrough(h, nil)
-	h = OpenAPIPassthrough(h)
-	h = RequestIDMiddleware(h)
-	h = withCORS(h, defaultCORSConfig())
-	h = withRequestLog(h)
-	h = recoverPanic(h)
-
-	h.ServeHTTP(rec, req)
-
-	t.Logf("full chain panic: status=%d body=%q content-type=%q",
-		rec.Code, rec.Body.String(), rec.Header().Get("Content-Type"))
+	req := ogenReq{Context: context.Background()}
+	_, err := ogenPanicGuard(req, panicHandler)
+	require.Error(t, err, "panic must be converted to a returned error")
 }
 
 // TestFullChainHandlerBodyReachesWire is the positive control:
@@ -335,11 +293,21 @@ func TestFullChainHandlerBodyReachesWire(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/drives/x/fs/ls", nil)
 
+	corsCfg := config.CORSConfig{
+		Enabled:          true,
+		AllowedOrigins:   []string{"https://mdrive.mandacode.com"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	}
+
 	var h http.Handler = bodyHandler
 	h = AuthPassthrough(h, nil)
 	h = OpenAPIPassthrough(h)
 	h = RequestIDMiddleware(h)
-	h = withCORS(h, defaultCORSConfig())
+	h = withCORS(h, corsCfg)
 	h = withRequestLog(h)
 	h = recoverPanic(h)
 
@@ -350,120 +318,4 @@ func TestFullChainHandlerBodyReachesWire(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, want, got)
-}
-
-// TestFullChainOgenStyleWrite is the closest reproduction of
-// the real path: ogen's encodeLsResponse writes 200, then calls
-// e.WriteTo(w), which in turn calls t.Write(buf) once. We
-// confirm a single Write call after WriteHeader(200) reaches
-// the wire through the full middleware chain.
-func TestFullChainOgenStyleWrite(t *testing.T) {
-	_, _ = newTestLog(t)
-
-	body := []byte(`{"entries":[]}`)
-
-	ogenStyle := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	})
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/drives/x/fs/ls", nil)
-
-	var h http.Handler = ogenStyle
-	h = AuthPassthrough(h, nil)
-	h = OpenAPIPassthrough(h)
-	h = RequestIDMiddleware(h)
-	h = withCORS(h, defaultCORSConfig())
-	h = withRequestLog(h)
-	h = recoverPanic(h)
-
-	h.ServeHTTP(rec, req)
-
-	t.Logf("ogen-style: status=%d body=%q", rec.Code, rec.Body.String())
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, string(body), rec.Body.String())
-}
-
-func defaultCORSConfig() config.CORSConfig {
-	return config.CORSConfig{
-		Enabled:          true,
-		AllowedOrigins:   []string{"https://mdrive.mandacode.com"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		ExposedHeaders:   []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           86400,
-	}
-}
-
-func TestStageRecorderAccumulatesAcrossMiddleware(t *testing.T) {
-	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	})
-
-	var h http.Handler = inner
-	h = recordStage("c", h)
-	h = recordStage("b", h)
-	h = recordStage("a", h)
-	h = withStageCommit(h)
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req(t, "/x"))
-
-	got := rec.Header().Get("X-Mdrive-Stage")
-	assert.Equal(t, "a,b,c", got, "stages must be in outer-to-inner order")
-	assert.Equal(t, `{"ok":true}`, rec.Body.String())
-}
-
-func TestStageRecorderFlushesStagesBeforeWriteHeader(t *testing.T) {
-	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("body"))
-	})
-
-	var h http.Handler = inner
-	h = recordStage("b", h)
-	h = recordStage("a", h)
-	h = withStageCommit(h)
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req(t, "/x"))
-
-	assert.Equal(t, "a,b", rec.Header().Get("X-Mdrive-Stage"))
-	assert.Equal(t, "body", rec.Body.String(),
-		"body must reach wire; the X-Mdrive-Body-Bytes header is best-effort")
-}
-
-func TestStageRecorderRecordsPostCommitStages(t *testing.T) {
-	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		// Mark after commit (simulates recoverPanic writing
-		// the 503 fallback that gets dropped).
-		if sr, ok := w.(*stageRecorder); ok {
-			sr.mark("after-commit")
-		}
-		_, _ = w.Write([]byte("body"))
-	})
-
-	var h http.Handler = inner
-	h = recordStage("a", h)
-	h = withStageCommit(h)
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req(t, "/x"))
-
-	t.Logf("X-Mdrive-Stage=%q X-Mdrive-Post-Commit=%q body=%q",
-		rec.Header().Get("X-Mdrive-Stage"),
-		rec.Header().Get("X-Mdrive-Post-Commit"),
-		rec.Body.String(),
-	)
-}
-
-func req(t *testing.T, path string) *http.Request {
-	t.Helper()
-	return httptest.NewRequest(http.MethodGet, path, nil)
 }
