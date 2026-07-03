@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -90,7 +91,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*User, error) {
 	u, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		logx.Debug(ctx, "user.service.get_by_id.err", slog.String("err", err.Error()))
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("user: get by id (id=%s)", id))
 	}
 	if u == nil {
 		logx.Debug(ctx, "user.service.get_by_id.not_found", slog.String("user_id", id))
@@ -106,7 +107,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*User, er
 	u, err := s.repo.GetByPublicID(ctx, publicID)
 	if err != nil {
 		logx.Debug(ctx, "user.service.get_by_public_id.err", slog.String("err", err.Error()))
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("user: get by public id (public_id=%s)", publicID))
 	}
 	if u == nil {
 		logx.Debug(ctx, "user.service.get_by_public_id.not_found", slog.String("public_id", publicID))
@@ -122,12 +123,23 @@ func (s *Service) GetByProviderID(ctx context.Context, provider, providerID stri
 		slog.String("provider", provider),
 		slog.String("provider_id", providerID),
 	)
-	return s.repo.GetByProviderID(ctx, provider, providerID)
+	u, err := s.repo.GetByProviderID(ctx, provider, providerID)
+	if err != nil {
+		return nil, errorx.Wrap(err, fmt.Sprintf("user: get by provider id (provider=%s, provider_id=%s)", provider, providerID))
+	}
+	return u, nil
 }
 
 // Update updates an existing user.
 func (s *Service) Update(ctx context.Context, u *User) (*User, error) {
-	return s.repo.Update(ctx, u)
+	if u == nil {
+		return nil, errorx.New(errorx.KindBadRequest, "user: update requires non-nil user")
+	}
+	saved, err := s.repo.Update(ctx, u)
+	if err != nil {
+		return nil, errorx.Wrap(err, fmt.Sprintf("user: update (id=%s)", u.ID()))
+	}
+	return saved, nil
 }
 
 func emailDiffers(u *User, cmd *CreateCommand) bool {

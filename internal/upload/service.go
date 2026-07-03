@@ -246,12 +246,15 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	if err != nil {
 		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download load node (node_id=%s)", nodeID))
 	}
+	if n == nil {
+		return PresignInfo{}, errorx.New(errorx.KindNotFound, fmt.Sprintf("upload: presign download node not found (node_id=%s)", nodeID))
+	}
 	if !n.IsObject() {
 		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: presign download target is not an object (type="+string(n.Kind())+")")
 	}
 	oc, err := n.ReadObject()
 	if err != nil {
-		return PresignInfo{}, err
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download read object (node_id=%s)", nodeID))
 	}
 	url, err := s.ObjectStore.GetPresignedDownloadURL(ctx, oc.Bucket, oc.Key, expiry)
 	if err != nil {
@@ -269,5 +272,8 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 // never completed. Does not touch the node tree or the upload
 // registry — callers handle those.
 func (s *Service) DeleteObject(ctx context.Context, bucket, key string) error {
-	return s.ObjectStore.DeleteObject(ctx, bucket, key)
+	if err := s.ObjectStore.DeleteObject(ctx, bucket, key); err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("upload: delete object (bucket=%s, key=%s)", bucket, key))
+	}
+	return nil
 }

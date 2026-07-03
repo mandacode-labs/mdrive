@@ -458,13 +458,19 @@ func (s *Service) Save(ctx context.Context, n *Node) error {
 		return errorx.New(errorx.KindBadRequest, "node: save requires non-nil node")
 	}
 	logx.Debug(ctx, "node.service.save.enter", slog.String("id", n.ID().String()))
-	return s.repo.Save(ctx, n)
+	if err := s.repo.Save(ctx, n); err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("node: save (id=%s)", n.ID()))
+	}
+	return nil
 }
 
 // Delete removes a node by its ID.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	logx.Debug(ctx, "node.service.delete.enter", slog.String("id", id.String()))
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("node: delete (id=%s)", id))
+	}
+	return nil
 }
 
 // BulkUnlink removes multiple entries from a single parent in one
