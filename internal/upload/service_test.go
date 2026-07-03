@@ -16,6 +16,13 @@ import (
 )
 
 // --- Fakes ---
+//
+// Fakes live in this package because the upload package's
+// TokenRegistry interface (returned by these methods) closes the
+// import cycle: a mocks/ subdirectory that mocks TokenRegistry
+// would have to import upload to reference the returned
+// upload.PresignMeta, which is the file we're trying to mock
+// from. Keep the fakes here.
 
 type fakeStore struct {
 	presignedURL string
@@ -39,10 +46,7 @@ func (f *fakeStore) ObjectExists(context.Context, string, string) (bool, error) 
 	}
 	return f.objectExists, nil
 }
-
-func (f *fakeStore) DeleteObject(context.Context, string, string) error {
-	return nil
-}
+func (f *fakeStore) DeleteObject(context.Context, string, string) error { return nil }
 
 type fakeDrive struct {
 	storage *coredrive.Storage
@@ -100,7 +104,7 @@ func (f *fakePath) ResolveNodeID(context.Context, string, string) (uuid.UUID, er
 
 // --- Helpers ---
 
-func newTestService(t *testing.T, reg TokenRegistry, store *fakeStore) *Service {
+func newTestService(t *testing.T, reg TokenRegistry, store *fakeStore, drive *fakeDrive) *Service {
 	t.Helper()
 	if reg == nil {
 		reg = NewMemoryRegistry()
@@ -108,7 +112,9 @@ func newTestService(t *testing.T, reg TokenRegistry, store *fakeStore) *Service 
 	if store == nil {
 		store = &fakeStore{presignedURL: "https://s3.example.com/upload", objectExists: true}
 	}
-	drive := &fakeDrive{storage: coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)}
+	if drive == nil {
+		drive = &fakeDrive{storage: coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)}
+	}
 	nodes := newFakeNodes()
 	root, _ := node.NewDirectory()
 	return NewService(Config{
@@ -123,7 +129,7 @@ func newTestService(t *testing.T, reg TokenRegistry, store *fakeStore) *Service 
 // --- Tests ---
 
 func TestInitiateUploadHappyPath(t *testing.T) {
-	svc := newTestService(t, nil, nil)
+	svc := newTestService(t, nil, nil, nil)
 	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
 	require.NoError(t, err)
 	assert.NotEmpty(t, info.UploadID)
@@ -134,12 +140,10 @@ func TestInitiateUploadHappyPath(t *testing.T) {
 func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
 	reg := NewMemoryRegistry()
 	store := &fakeStore{uploadErr: errors.New("presign fail")}
-	svc := newTestService(t, reg, store)
+	svc := newTestService(t, reg, store, nil)
 	_, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
 	assert.Error(t, err)
-	// Token should be deleted.
 	_, getErr := reg.Get(context.Background(), "any-id")
-	// We don't know the id; just ensure registry is empty.
 	_ = getErr
 }
 
@@ -154,7 +158,7 @@ func TestCompleteUploadOwnershipMismatch(t *testing.T) {
 		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
-	svc := newTestService(t, reg, nil)
+	svc := newTestService(t, reg, nil, nil)
 	_, err := svc.CompleteUpload(context.Background(), "someone-else", "d1", "u1", 100, nil)
 	assertKind(t, err, errorx.KindForbidden)
 }
@@ -170,7 +174,7 @@ func TestCompleteUploadDriveMismatch(t *testing.T) {
 		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
-	svc := newTestService(t, reg, nil)
+	svc := newTestService(t, reg, nil, &fakeDrive{getErr: errors.New("not found")})
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	assertKind(t, err, errorx.KindBadRequest)
 }
@@ -189,7 +193,7 @@ func TestCompleteUploadSizeMismatch(t *testing.T) {
 		Size:      &size,
 		ExpiresAt: expiry,
 	}, time.Hour)
-	svc := newTestService(t, reg, nil)
+	svc := newTestService(t, reg, nil, nil)
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 200, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "size mismatch")
@@ -207,7 +211,7 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
 	store := &fakeStore{objectExists: false}
-	svc := newTestService(t, reg, store)
+	svc := newTestService(t, reg, store, nil)
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	assertKind(t, err, errorx.KindNotFound)
 }
@@ -223,11 +227,10 @@ func TestCompleteUploadHappyPath(t *testing.T) {
 		Key:       "k",
 		ExpiresAt: time.Now().Add(time.Hour),
 	}, time.Hour)
-	svc := newTestService(t, reg, nil)
+	svc := newTestService(t, reg, nil, nil)
 	n, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, n)
-	// Token should be deleted.
 	_, err = reg.Get(context.Background(), "u1")
 	assert.Error(t, err)
 }

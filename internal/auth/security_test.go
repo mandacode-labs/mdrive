@@ -12,34 +12,23 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	authMocks "github.com/mandacode-labs/mdrive/internal/auth/mocks"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// stubUserSvc satisfies UserUpserter for the tests below.
-type stubUserSvc struct {
-	byProviderID func(ctx context.Context, provider, providerID string) (*user.User, error)
-}
-
-func (s *stubUserSvc) UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error) {
-	return nil, errors.New("not used")
-}
-
-func (s *stubUserSvc) GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error) {
-	return s.byProviderID(ctx, provider, providerID)
-}
-
 func newSecurityTestService(t *testing.T, users UserUpserter) *Service {
 	t.Helper()
 	return &Service{
-		encKey:         newTestKey(t),
-		cookieName:     "mdrive_session",
-		providerName:   "keycloak",
-		sessionTTL:     24 * time.Hour,
-		users:          users,
+		encKey:       newTestKey(t),
+		cookieName:   "mdrive_session",
+		providerName: "keycloak",
+		sessionTTL:   24 * time.Hour,
+		users:        users,
 	}
 }
 
@@ -76,12 +65,11 @@ func TestHandleBearerAuthPassesWithSession(t *testing.T) {
 }
 
 // TestHandleBearerAuthAllowsHealthAnonymous proves the regression
-// fix for the /health 401 incident: k8s liveness/readiness
-// probes do not carry a session, and the OpenAPI spec marks
-// /health as `security: []`, but ogen 1.22 ignores that override
-// when global security is set. The SecurityHandler therefore
-// short-circuits the health operation so probes reach the
-// handler that returns 200 (or 503 on degraded backends).
+// fix for the /health 401 incident: k8s liveness/readiness probes
+// do not carry a session, and the OpenAPI spec marks /health as
+// `security: []`, but ogen 1.22 ignores that override when global
+// security is set. The SecurityHandler therefore short-circuits
+// the health operation so probes reach the handler that returns 200.
 func TestHandleBearerAuthAllowsHealthAnonymous(t *testing.T) {
 	svc := &Service{}
 	sh := &SecurityHandler{auth: svc}
@@ -95,10 +83,9 @@ func TestHandleBearerAuthAllowsHealthAnonymous(t *testing.T) {
 
 // TestAuthBridgeRejectsMissingCookie verifies AuthBridge now
 // responds 401 directly when the session cookie is absent or
-// invalid. Previously it passed the request through anonymously,
-// which surfaced as 500 from ogen's NewError.
+// invalid.
 func TestAuthBridgeRejectsMissingCookie(t *testing.T) {
-	svc := newSecurityTestService(t, nil)
+	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/anything", nil)
@@ -118,11 +105,7 @@ func TestAuthBridgeRejectsMissingCookie(t *testing.T) {
 // 401 when the session decrypts fine but the user is gone from
 // the DB (cookie outlives the account, etc).
 func TestAuthBridgeRejectsUnknownUser(t *testing.T) {
-	users := &stubUserSvc{
-		byProviderID: func(ctx context.Context, provider, providerID string) (*user.User, error) {
-			return nil, nil // user not found
-		},
-	}
+	users := newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "user not found"))
 	svc := newSecurityTestService(t, users)
 
 	// Plant a valid session cookie so the middleware gets past
@@ -146,12 +129,9 @@ func TestAuthBridgeRejectsUnknownUser(t *testing.T) {
 // TestAuthBridgeAttachesSessionOnSuccess verifies the happy path
 // still sets Authorization and attaches the session to ctx.
 func TestAuthBridgeAttachesSessionOnSuccess(t *testing.T) {
-	users := &stubUserSvc{
-		byProviderID: func(ctx context.Context, provider, providerID string) (*user.User, error) {
-			return user.NewUser("user-1", "pub-1", "Alice", nil, provider, providerID,
-				timeFromUnix(0), timeFromUnix(0)), nil
-		},
-	}
+	u := user.NewUser("user-1", "pub-1", "Alice", nil, "keycloak", "sub-1",
+		timeFromUnix(0), timeFromUnix(0))
+	users := newUserUpserterMock(t, u, nil)
 	svc := newSecurityTestService(t, users)
 
 	w := httptest.NewRecorder()
@@ -175,19 +155,13 @@ func TestAuthBridgeAttachesSessionOnSuccess(t *testing.T) {
 	assert.Equal(t, "Bearer user-1", seenAuth)
 }
 
-// timeFromUnix is a tiny helper so the test does not import time
-// just for one value.
-func timeFromUnix(sec int64) time.Time { return time.Unix(sec, 0) }
-
 // TestAuthBridgeAllowsAnonymousPath proves the regression fix for
 // the /health 401 incident. AuthBridge must consult the spec-derived
-// anonymous set (s.noAuthPaths) before the cookie check, so paths
-// declared `security: []` in the OpenAPI spec are not gated by the
-// session cookie. The set is populated by New() from the embedded
-// api.Spec; here we set it directly to keep the test independent
-// of the bundled spec contents.
+// anonymous set before the cookie check, so paths declared
+// `security: []` in the OpenAPI spec are not gated by the session
+// cookie.
 func TestAuthBridgeAllowsAnonymousPath(t *testing.T) {
-	svc := newSecurityTestService(t, nil)
+	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
 	svc.noAuthPaths = map[string]bool{"/health": true}
 
 	w := httptest.NewRecorder()
@@ -206,10 +180,8 @@ func TestAuthBridgeAllowsAnonymousPath(t *testing.T) {
 
 // TestAuthBridgeRejectsAuthenticatedPath makes sure adding a path
 // to the anonymous set is the ONLY way to make AuthBridge skip it.
-// /v1/drives is authenticated; even with noAuthPaths empty, a
-// missing cookie must produce 401, not pass through.
 func TestAuthBridgeRejectsAuthenticatedPath(t *testing.T) {
-	svc := newSecurityTestService(t, nil)
+	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
 	svc.noAuthPaths = map[string]bool{"/health": true}
 
 	w := httptest.NewRecorder()
@@ -221,3 +193,21 @@ func TestAuthBridgeRejectsAuthenticatedPath(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+// newUserUpserterMock returns a UserUpserterMock whose
+// GetByProviderID returns (user, nil) and whose UpsertFromOIDC is
+// expected but unused. mockery's per-method Maybe() ensures a
+// test that never calls UpsertFromOIDC still passes cleanup.
+func newUserUpserterMock(t *testing.T, u *user.User, getErr error) *authMocks.UserUpserterMock {
+	t.Helper()
+	m := authMocks.NewUserUpserterMock(t)
+	m.EXPECT().GetByProviderID(mock.Anything, mock.Anything, mock.Anything).
+		Return(u, getErr).Maybe()
+	m.EXPECT().UpsertFromOIDC(mock.Anything, mock.Anything).
+		Return(nil, errors.New("not used")).Maybe()
+	return m
+}
+
+// timeFromUnix is a tiny helper so the test does not import time
+// just for one value.
+func timeFromUnix(sec int64) time.Time { return time.Unix(sec, 0) }
