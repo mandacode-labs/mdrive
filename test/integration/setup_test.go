@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
@@ -17,13 +18,29 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/permission"
+	permissionMocks "github.com/mandacode-labs/mdrive/internal/permission/mocks"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 const testUserID = "owner1"
+
+// newAllowAllAuthorizer returns a mock Authorizer that allows
+// every Check, returns an empty ListObjects, and no-ops Grant/Revoke.
+// Replaces permission.NopAuthorizer (removed) without changing
+// test semantics. .Maybe() makes each expectation optional so
+// tests that never touch the permission layer don't fail with
+// "expectation not met".
+func newAllowAllAuthorizer(t *testing.T) *permissionMocks.AuthorizerMock {
+	t.Helper()
+	a := permissionMocks.NewAuthorizerMock(t)
+	a.On("Check", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+	a.On("Grant", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	a.On("Revoke", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	a.On("ListObjects", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]string{}, nil).Maybe()
+	return a
+}
 
 // newTestServer returns an ogen server wired against zero-value
 // stubs for fs/drive/upload and an in-memory user repo. Use it
@@ -44,7 +61,7 @@ func newTestServerWith(t *testing.T, sec api.SecurityHandler) *httptest.Server {
 		zeroDrive{owner: testUserID},
 		newFakeUserSvc(),
 		zeroUpload{},
-		permission.NopAuthorizer{},
+		newAllowAllAuthorizer(t),
 		"",
 	)
 	ogenServer, err := api.NewServer(h, sec, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
@@ -66,7 +83,7 @@ func newTestServerWithAuthBridge(t *testing.T) *httptest.Server {
 		zeroDrive{owner: testUserID},
 		newFakeUserSvc(),
 		zeroUpload{},
-		permission.NopAuthorizer{},
+		newAllowAllAuthorizer(t),
 		"",
 	)
 	authSvc := auth.NewForTest(newFakeUserSvc())

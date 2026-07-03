@@ -11,10 +11,11 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/mandacode-labs/mdrive/internal/permission"
+	permissionMocks "github.com/mandacode-labs/mdrive/internal/permission/mocks"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/valkey-io/valkey-go"
@@ -124,7 +125,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		TxManager:     txMgr,
 	})
 
-	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, "",
+	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, newAllowAllAuthorizer(t), "",
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       "e2e-bucket",
 			Region:       "us-east-1",
@@ -171,6 +172,20 @@ type rootNodeCreator struct {
 
 func (r *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, error) {
 	return r.rootID, nil
+}
+
+// newAllowAllAuthorizer returns a mock Authorizer that allows
+// every Check, returns an empty ListObjects, and no-ops Grant/Revoke.
+// Replaces permission.NopAuthorizer (removed) without changing
+// e2e semantics. .Maybe() keeps each expectation optional.
+func newAllowAllAuthorizer(t *testing.T) *permissionMocks.AuthorizerMock {
+	t.Helper()
+	a := permissionMocks.NewAuthorizerMock(t)
+	a.On("Check", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+	a.On("Grant", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	a.On("Revoke", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	a.On("ListObjects", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]string{}, nil).Maybe()
+	return a
 }
 
 func (e *e2eEnv) authReq(method, path string, body io.Reader) *http.Request {

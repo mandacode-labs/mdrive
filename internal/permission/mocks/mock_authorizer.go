@@ -39,7 +39,7 @@ func (_m *AuthorizerMock) EXPECT() *AuthorizerMock_Expecter {
 }
 
 // Check provides a mock function for the type AuthorizerMock
-func (_mock *AuthorizerMock) Check(ctx context.Context, user string, perm permission.Action, objectType string, objectID string) (bool, error) {
+func (_mock *AuthorizerMock) Check(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType, objectID string) (bool, error) {
 	ret := _mock.Called(ctx, user, perm, objectType, objectID)
 
 	if len(ret) == 0 {
@@ -48,15 +48,15 @@ func (_mock *AuthorizerMock) Check(ctx context.Context, user string, perm permis
 
 	var r0 bool
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, string, string) (bool, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, permission.ObjectType, string) (bool, error)); ok {
 		return returnFunc(ctx, user, perm, objectType, objectID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, string, string) bool); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, permission.ObjectType, string) bool); ok {
 		r0 = returnFunc(ctx, user, perm, objectType, objectID)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Action, string, string) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Action, permission.ObjectType, string) error); ok {
 		r1 = returnFunc(ctx, user, perm, objectType, objectID)
 	} else {
 		r1 = ret.Error(1)
@@ -73,13 +73,13 @@ type AuthorizerMock_Check_Call struct {
 //   - ctx context.Context
 //   - user string
 //   - perm permission.Action
-//   - objectType string
+//   - objectType permission.ObjectType
 //   - objectID string
 func (_e *AuthorizerMock_Expecter) Check(ctx interface{}, user interface{}, perm interface{}, objectType interface{}, objectID interface{}) *AuthorizerMock_Check_Call {
 	return &AuthorizerMock_Check_Call{Call: _e.mock.On("Check", ctx, user, perm, objectType, objectID)}
 }
 
-func (_c *AuthorizerMock_Check_Call) Run(run func(ctx context.Context, user string, perm permission.Action, objectType string, objectID string)) *AuthorizerMock_Check_Call {
+func (_c *AuthorizerMock_Check_Call) Run(run func(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType, objectID string)) *AuthorizerMock_Check_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -93,9 +93,9 @@ func (_c *AuthorizerMock_Check_Call) Run(run func(ctx context.Context, user stri
 		if args[2] != nil {
 			arg2 = args[2].(permission.Action)
 		}
-		var arg3 string
+		var arg3 permission.ObjectType
 		if args[3] != nil {
-			arg3 = args[3].(string)
+			arg3 = args[3].(permission.ObjectType)
 		}
 		var arg4 string
 		if args[4] != nil {
@@ -117,13 +117,13 @@ func (_c *AuthorizerMock_Check_Call) Return(b bool, err error) *AuthorizerMock_C
 	return _c
 }
 
-func (_c *AuthorizerMock_Check_Call) RunAndReturn(run func(ctx context.Context, user string, perm permission.Action, objectType string, objectID string) (bool, error)) *AuthorizerMock_Check_Call {
+func (_c *AuthorizerMock_Check_Call) RunAndReturn(run func(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType, objectID string) (bool, error)) *AuthorizerMock_Check_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Grant provides a mock function for the type AuthorizerMock
-func (_mock *AuthorizerMock) Grant(ctx context.Context, user string, relation string, objectType string, objectID string) error {
+func (_mock *AuthorizerMock) Grant(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string) error {
 	ret := _mock.Called(ctx, user, relation, objectType, objectID)
 
 	if len(ret) == 0 {
@@ -131,7 +131,7 @@ func (_mock *AuthorizerMock) Grant(ctx context.Context, user string, relation st
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, permission.ObjectType, string) error); ok {
 		r0 = returnFunc(ctx, user, relation, objectType, objectID)
 	} else {
 		r0 = ret.Error(0)
@@ -148,13 +148,13 @@ type AuthorizerMock_Grant_Call struct {
 //   - ctx context.Context
 //   - user string
 //   - relation string
-//   - objectType string
+//   - objectType permission.ObjectType
 //   - objectID string
 func (_e *AuthorizerMock_Expecter) Grant(ctx interface{}, user interface{}, relation interface{}, objectType interface{}, objectID interface{}) *AuthorizerMock_Grant_Call {
 	return &AuthorizerMock_Grant_Call{Call: _e.mock.On("Grant", ctx, user, relation, objectType, objectID)}
 }
 
-func (_c *AuthorizerMock_Grant_Call) Run(run func(ctx context.Context, user string, relation string, objectType string, objectID string)) *AuthorizerMock_Grant_Call {
+func (_c *AuthorizerMock_Grant_Call) Run(run func(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string)) *AuthorizerMock_Grant_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -168,9 +168,9 @@ func (_c *AuthorizerMock_Grant_Call) Run(run func(ctx context.Context, user stri
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
+		var arg3 permission.ObjectType
 		if args[3] != nil {
-			arg3 = args[3].(string)
+			arg3 = args[3].(permission.ObjectType)
 		}
 		var arg4 string
 		if args[4] != nil {
@@ -192,13 +192,13 @@ func (_c *AuthorizerMock_Grant_Call) Return(err error) *AuthorizerMock_Grant_Cal
 	return _c
 }
 
-func (_c *AuthorizerMock_Grant_Call) RunAndReturn(run func(ctx context.Context, user string, relation string, objectType string, objectID string) error) *AuthorizerMock_Grant_Call {
+func (_c *AuthorizerMock_Grant_Call) RunAndReturn(run func(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string) error) *AuthorizerMock_Grant_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ListObjects provides a mock function for the type AuthorizerMock
-func (_mock *AuthorizerMock) ListObjects(ctx context.Context, user string, perm permission.Action, objectType string) ([]string, error) {
+func (_mock *AuthorizerMock) ListObjects(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType) ([]string, error) {
 	ret := _mock.Called(ctx, user, perm, objectType)
 
 	if len(ret) == 0 {
@@ -207,17 +207,17 @@ func (_mock *AuthorizerMock) ListObjects(ctx context.Context, user string, perm 
 
 	var r0 []string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, string) ([]string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, permission.ObjectType) ([]string, error)); ok {
 		return returnFunc(ctx, user, perm, objectType)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, string) []string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, permission.Action, permission.ObjectType) []string); ok {
 		r0 = returnFunc(ctx, user, perm, objectType)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Action, string) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, permission.Action, permission.ObjectType) error); ok {
 		r1 = returnFunc(ctx, user, perm, objectType)
 	} else {
 		r1 = ret.Error(1)
@@ -234,12 +234,12 @@ type AuthorizerMock_ListObjects_Call struct {
 //   - ctx context.Context
 //   - user string
 //   - perm permission.Action
-//   - objectType string
+//   - objectType permission.ObjectType
 func (_e *AuthorizerMock_Expecter) ListObjects(ctx interface{}, user interface{}, perm interface{}, objectType interface{}) *AuthorizerMock_ListObjects_Call {
 	return &AuthorizerMock_ListObjects_Call{Call: _e.mock.On("ListObjects", ctx, user, perm, objectType)}
 }
 
-func (_c *AuthorizerMock_ListObjects_Call) Run(run func(ctx context.Context, user string, perm permission.Action, objectType string)) *AuthorizerMock_ListObjects_Call {
+func (_c *AuthorizerMock_ListObjects_Call) Run(run func(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType)) *AuthorizerMock_ListObjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -253,9 +253,9 @@ func (_c *AuthorizerMock_ListObjects_Call) Run(run func(ctx context.Context, use
 		if args[2] != nil {
 			arg2 = args[2].(permission.Action)
 		}
-		var arg3 string
+		var arg3 permission.ObjectType
 		if args[3] != nil {
-			arg3 = args[3].(string)
+			arg3 = args[3].(permission.ObjectType)
 		}
 		run(
 			arg0,
@@ -272,13 +272,13 @@ func (_c *AuthorizerMock_ListObjects_Call) Return(strings []string, err error) *
 	return _c
 }
 
-func (_c *AuthorizerMock_ListObjects_Call) RunAndReturn(run func(ctx context.Context, user string, perm permission.Action, objectType string) ([]string, error)) *AuthorizerMock_ListObjects_Call {
+func (_c *AuthorizerMock_ListObjects_Call) RunAndReturn(run func(ctx context.Context, user string, perm permission.Action, objectType permission.ObjectType) ([]string, error)) *AuthorizerMock_ListObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Revoke provides a mock function for the type AuthorizerMock
-func (_mock *AuthorizerMock) Revoke(ctx context.Context, user string, relation string, objectType string, objectID string) error {
+func (_mock *AuthorizerMock) Revoke(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string) error {
 	ret := _mock.Called(ctx, user, relation, objectType, objectID)
 
 	if len(ret) == 0 {
@@ -286,7 +286,7 @@ func (_mock *AuthorizerMock) Revoke(ctx context.Context, user string, relation s
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, string) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, permission.ObjectType, string) error); ok {
 		r0 = returnFunc(ctx, user, relation, objectType, objectID)
 	} else {
 		r0 = ret.Error(0)
@@ -303,13 +303,13 @@ type AuthorizerMock_Revoke_Call struct {
 //   - ctx context.Context
 //   - user string
 //   - relation string
-//   - objectType string
+//   - objectType permission.ObjectType
 //   - objectID string
 func (_e *AuthorizerMock_Expecter) Revoke(ctx interface{}, user interface{}, relation interface{}, objectType interface{}, objectID interface{}) *AuthorizerMock_Revoke_Call {
 	return &AuthorizerMock_Revoke_Call{Call: _e.mock.On("Revoke", ctx, user, relation, objectType, objectID)}
 }
 
-func (_c *AuthorizerMock_Revoke_Call) Run(run func(ctx context.Context, user string, relation string, objectType string, objectID string)) *AuthorizerMock_Revoke_Call {
+func (_c *AuthorizerMock_Revoke_Call) Run(run func(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string)) *AuthorizerMock_Revoke_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -323,9 +323,9 @@ func (_c *AuthorizerMock_Revoke_Call) Run(run func(ctx context.Context, user str
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 string
+		var arg3 permission.ObjectType
 		if args[3] != nil {
-			arg3 = args[3].(string)
+			arg3 = args[3].(permission.ObjectType)
 		}
 		var arg4 string
 		if args[4] != nil {
@@ -347,7 +347,7 @@ func (_c *AuthorizerMock_Revoke_Call) Return(err error) *AuthorizerMock_Revoke_C
 	return _c
 }
 
-func (_c *AuthorizerMock_Revoke_Call) RunAndReturn(run func(ctx context.Context, user string, relation string, objectType string, objectID string) error) *AuthorizerMock_Revoke_Call {
+func (_c *AuthorizerMock_Revoke_Call) RunAndReturn(run func(ctx context.Context, user string, relation string, objectType permission.ObjectType, objectID string) error) *AuthorizerMock_Revoke_Call {
 	_c.Call.Return(run)
 	return _c
 }

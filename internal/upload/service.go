@@ -65,7 +65,7 @@ type PathResolver interface {
 // resolution) and the S3 store.
 //
 // Permission checks are the caller's responsibility: the handler
-// must call permission.Require on the drive before invoking
+// must call Authorizer.Check on the drive before invoking
 // any of the three methods below.
 type Service struct {
 	TokenRegistry TokenRegistry

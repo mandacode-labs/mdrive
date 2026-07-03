@@ -37,7 +37,7 @@ func (h *Handler) Health(ctx context.Context) (api.HealthRes, error) {
 		}
 	}
 	if h.healthDeps.Authorizer != nil {
-		if _, err := h.healthDeps.Authorizer.Check(ctx, "healthcheck", permission.ActionView, "drive", "_healthcheck"); err != nil {
+		if _, err := h.healthDeps.Authorizer.Check(ctx, "healthcheck", permission.ActionView, permission.ObjectTypeDrive, "_healthcheck"); err != nil {
 			logx.Debug(ctx, "handler.health.fga_err", slog.String("err", err.Error()))
 			return nil, errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("health: openfga check failed (err=%v)", err))
 		}

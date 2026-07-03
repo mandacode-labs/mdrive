@@ -13,46 +13,6 @@ import (
 	"github.com/openfga/go-sdk/credentials"
 )
 
-const (
-	objectTypeDrive = "drive"
-	objectTypeUser  = "user"
-
-	relationOwner  = "owner"
-	relationEditor = "editor"
-	relationViewer = "viewer"
-)
-
-// Action is a typed enum for OpenFGA relation strings. Using a
-// named type catches typos at compile time and lets signatures
-// document intent without losing string compatibility (Action's
-// underlying type is string, so the OpenFGA SDK accepts it via
-// implicit conversion at the boundary).
-type Action string
-
-const (
-	ActionView   Action = "can_view"
-	ActionEdit   Action = "can_edit"
-	ActionDelete Action = "can_delete"
-	ActionManage Action = "can_manage"
-	ActionShare  Action = "can_share"
-)
-
-const (
-	ObjectTypeDrive = objectTypeDrive
-	ObjectTypeUser  = objectTypeUser
-	RelationOwner   = relationOwner
-	RelationEditor  = relationEditor
-	RelationViewer  = relationViewer
-)
-
-// Authorizer grants, revokes, and checks OpenFGA relations.
-type Authorizer interface {
-	Grant(ctx context.Context, user, relation, objectType, objectID string) error
-	Revoke(ctx context.Context, user, relation, objectType, objectID string) error
-	Check(ctx context.Context, user string, perm Action, objectType, objectID string) (bool, error)
-	ListObjects(ctx context.Context, user string, perm Action, objectType string) ([]string, error)
-}
-
 // FGAChecker implements Authorizer using an OpenFGA client.
 type FGAChecker struct {
 	client *client.OpenFgaClient
@@ -62,57 +22,10 @@ type FGAChecker struct {
 type AuthMode string
 
 const (
-	// AuthModeAPIToken uses a static API token (api_token).
-	AuthModeAPIToken AuthMode = "api_token"
-	// AuthModeClientCredentials uses OAuth client credentials flow
-	// (client_id + client_secret + token_issuer + audience).
+	AuthModeAPIToken          AuthMode = "api_token"
 	AuthModeClientCredentials AuthMode = "client_credentials"
-	// AuthModeNone disables authentication (development only).
-	AuthModeNone AuthMode = "none"
+	AuthModeNone              AuthMode = "none"
 )
-
-// NopAuthorizer permits every check. Use this explicitly in
-// development and test code where no real backend is wired; the
-// nil-tolerance in Require was removed because a misconfigured
-// Authorizer silently allowing access is the wrong default for an
-// auth library.
-type NopAuthorizer struct{}
-
-// Check always returns (true, nil).
-func (NopAuthorizer) Check(context.Context, string, Action, string, string) (bool, error) {
-	return true, nil
-}
-
-// ListObjects always returns an empty list.
-func (NopAuthorizer) ListObjects(context.Context, string, Action, string) ([]string, error) {
-	return nil, nil
-}
-
-// Grant is a no-op.
-func (NopAuthorizer) Grant(context.Context, string, string, string, string) error { return nil }
-
-// Revoke is a no-op.
-func (NopAuthorizer) Revoke(context.Context, string, string, string, string) error { return nil }
-
-// Require is the canonical permission check. It returns ErrPermission
-// (wrapped with a hint) if the user lacks the permission, the
-// authorizer's own error if the call failed, or nil on success.
-//
-// Require panics if a is nil. Pass permission.NopAuthorizer
-// explicitly when no real backend is wired.
-func Require(ctx context.Context, a Authorizer, userID string, perm Action, objectType, objectID string) error {
-	if a == nil {
-		panic("permission.Require: Authorizer is nil; use permission.NopAuthorizer for development")
-	}
-	allowed, err := a.Check(ctx, userID, perm, objectType, objectID)
-	if err != nil {
-		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, objectType, objectID))
-	}
-	if !allowed {
-		return errorx.New(errorx.KindForbidden, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, objectType, objectID))
-	}
-	return nil
-}
 
 // Config for FGAChecker.
 type Config struct {
@@ -180,6 +93,56 @@ func NewFGAChecker(ctx context.Context, cfg Config) (*FGAChecker, error) {
 	}
 
 	return &FGAChecker{client: c}, nil
+}
+
+// Grant creates a (user, relation, object) tuple.
+func (c *FGAChecker) Grant(ctx context.Context, user, relation string, objectType ObjectType, objectID string) error {
+	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
+		Writes: []client.ClientTupleKey{{
+			User:     "user:" + user,
+			Relation: relation,
+			Object:   string(objectType) + ":" + objectID,
+		}},
+	}).Execute()
+	return err
+}
+
+// Revoke deletes a (user, relation, object) tuple.
+func (c *FGAChecker) Revoke(ctx context.Context, user, relation string, objectType ObjectType, objectID string) error {
+	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
+		Deletes: []client.ClientTupleKeyWithoutCondition{{
+			User:     "user:" + user,
+			Relation: relation,
+			Object:   string(objectType) + ":" + objectID,
+		}},
+	}).Execute()
+	return err
+}
+
+// Check returns true if the user has the given permission on the object.
+func (c *FGAChecker) Check(ctx context.Context, user string, perm Action, objectType ObjectType, objectID string) (bool, error) {
+	resp, err := c.client.Check(ctx).Body(client.ClientCheckRequest{
+		User:     "user:" + user,
+		Relation: string(perm),
+		Object:   string(objectType) + ":" + objectID,
+	}).Execute()
+	if err != nil {
+		return false, err
+	}
+	return resp.GetAllowed(), nil
+}
+
+// ListObjects returns the IDs of objects of the given type that the user has the given permission on.
+func (c *FGAChecker) ListObjects(ctx context.Context, user string, perm Action, objectType ObjectType) ([]string, error) {
+	resp, err := c.client.ListObjects(ctx).Body(client.ClientListObjectsRequest{
+		User:     "user:" + user,
+		Relation: string(perm),
+		Type:     string(objectType),
+	}).Execute()
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetObjects(), nil
 }
 
 // buildCredentials validates AuthMode and constructs the appropriate
@@ -250,99 +213,6 @@ func writeModel(ctx context.Context, c *client.OpenFgaClient) (string, error) {
 		return "", errorx.Wrap(err, "openfga: write model")
 	}
 	return resp.AuthorizationModelId, nil
-}
-
-// Grant creates a (user, relation, object) tuple.
-func (c *FGAChecker) Grant(ctx context.Context, user, relation, objectType, objectID string) error {
-	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
-		Writes: []client.ClientTupleKey{{
-			User:     userObject(user),
-			Relation: relation,
-			Object:   objectRef(objectType, objectID),
-		}},
-	}).Execute()
-	return err
-}
-
-// Revoke deletes a (user, relation, object) tuple.
-func (c *FGAChecker) Revoke(ctx context.Context, user, relation, objectType, objectID string) error {
-	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
-		Deletes: []client.ClientTupleKeyWithoutCondition{{
-			User:     userObject(user),
-			Relation: relation,
-			Object:   objectRef(objectType, objectID),
-		}},
-	}).Execute()
-	return err
-}
-
-// Check returns true if the user has the given permission on the object.
-func (c *FGAChecker) Check(ctx context.Context, user string, perm Action, objectType, objectID string) (bool, error) {
-	resp, err := c.client.Check(ctx).Body(client.ClientCheckRequest{
-		User:     userObject(user),
-		Relation: string(perm),
-		Object:   objectRef(objectType, objectID),
-	}).Execute()
-	if err != nil {
-		return false, err
-	}
-	return resp.GetAllowed(), nil
-}
-
-// ListObjects returns the IDs of objects of the given type that the user has the given permission on.
-func (c *FGAChecker) ListObjects(ctx context.Context, user string, perm Action, objectType string) ([]string, error) {
-	resp, err := c.client.ListObjects(ctx).Body(client.ClientListObjectsRequest{
-		User:     userObject(user),
-		Relation: string(perm),
-		Type:     objectType,
-	}).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetObjects(), nil
-}
-
-func userObject(userID string) string {
-	return objectTypeUser + ":" + userID
-}
-
-func objectRef(objectType, objectID string) string {
-	return objectType + ":" + objectID
-}
-
-// DriveObjectRef returns the OpenFGA object reference for a drive.
-func DriveObjectRef(driveID string) string {
-	return objectRef(objectTypeDrive, driveID)
-}
-
-// UserObjectRef returns the OpenFGA user reference for a user.
-func UserObjectRef(userID string) string {
-	return userObject(userID)
-}
-
-// GrantOwner grants the owner relation.
-func GrantOwner(ctx context.Context, a Authorizer, userID, driveID string) error {
-	return a.Grant(ctx, userID, relationOwner, objectTypeDrive, driveID)
-}
-
-// GrantEditor grants the editor relation.
-func GrantEditor(ctx context.Context, a Authorizer, userID, driveID string) error {
-	return a.Grant(ctx, userID, relationEditor, objectTypeDrive, driveID)
-}
-
-// GrantViewer grants the viewer relation.
-func GrantViewer(ctx context.Context, a Authorizer, userID, driveID string) error {
-	return a.Grant(ctx, userID, relationViewer, objectTypeDrive, driveID)
-}
-
-// RevokeAllRelations revokes all relations for a user on a drive.
-func RevokeAllRelations(ctx context.Context, a Authorizer, userID, driveID string) error {
-	for _, rel := range []string{relationOwner, relationEditor, relationViewer} {
-		if err := a.Revoke(ctx, userID, rel, objectTypeDrive, driveID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 var _ Authorizer = (*FGAChecker)(nil)
