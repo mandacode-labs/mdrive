@@ -42,9 +42,12 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 }
 
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
-	out, err := s.newResolver().resolve(ctx, rootID, path, true)
+	out, err := newResolver(s.NodeClient).resolvePath(ctx, rootID, path, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve (path=%s)", path))
+	}
+	if out.Node == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: rm target not found (path="+path+")")
 	}
 	n := out.Node
 	if n.IsDir() {
@@ -60,7 +63,10 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 // the child is deleted; if it was an object node, the S3 reference
 // is returned for tombstoning.
 func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
-	r := s.newResolver()
+	if n == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: rm target not found (path="+path+")")
+	}
+	r := newResolver(s.NodeClient)
 	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve parent (path=%s)", path))
@@ -86,6 +92,9 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 }
 
 func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
+	if n == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: rm target not found (path="+path+")")
+	}
 	dc, err := n.ReadDir()
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm read dir (path=%s)", path))
@@ -95,6 +104,9 @@ func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Nod
 		child, err := s.NodeClient.GetByID(ctx, e.InodeID)
 		if err != nil {
 			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm get child (path=%s, child_id=%s)", path, e.InodeID))
+		}
+		if child == nil {
+			return nil, errorx.New(errorx.KindNotFound, "vfs: rm child not found (path="+path+", child_id="+e.InodeID.String()+")")
 		}
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
 		if child.IsDir() {

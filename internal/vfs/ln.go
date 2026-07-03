@@ -2,11 +2,10 @@ package vfs
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Symlink creates a directory entry at linkPath pointing at
@@ -15,34 +14,20 @@ import (
 //
 // Permission is the caller's responsibility.
 func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error) {
-	logx.Debug(ctx, "vfs.symlink.enter",
-		slog.String("drive_id", driveID),
-		slog.String("target", target),
-		slog.String("link_path", linkPath),
-	)
-	parent, name, err := s.requireEditPath(ctx, driveID, linkPath)
+	parent, name, err := s.resolveEditableParent(ctx, driveID, linkPath)
 	if err != nil {
-		logx.Debug(ctx, "vfs.symlink.require_edit_path_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: symlink resolve parent (drive_id=%s, link_path=%s)", driveID, linkPath))
+	}
+	if parent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: symlink parent not found (drive_id="+driveID+", link_path="+linkPath+")")
 	}
 	n, err := node.NewSymlink(target)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: symlink new (drive_id=%s, target=%s)", driveID, target))
 	}
-	if err := s.createAndLink(ctx, n, parent, name); err != nil {
-		logx.Debug(ctx, "vfs.symlink.create_link_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+	if err := s.NodeClient.Link(ctx, parent, name, n); err != nil {
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: symlink link (drive_id=%s, link_path=%s)", driveID, linkPath))
 	}
-	logx.Debug(ctx, "vfs.symlink.ok",
-		slog.String("drive_id", driveID),
-		slog.String("inode_id", n.ID().String()),
-	)
 	return n, nil
 }
 
@@ -58,55 +43,35 @@ func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string)
 //
 // Permission is the caller's responsibility.
 func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error) {
-	logx.Debug(ctx, "vfs.hardlink.enter",
-		slog.String("drive_id", driveID),
-		slog.String("src_path", srcPath),
-		slog.String("link_path", linkPath),
-	)
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
-		logx.Debug(ctx, "vfs.hardlink.root_node_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
 		return nil, err
 	}
-	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, srcPath, true)
+	r := newResolver(s.NodeClient)
+	out, err := r.resolvePath(ctx, rootID, srcPath, true)
 	if err != nil {
-		logx.Debug(ctx, "vfs.hardlink.resolve_src_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: hardlink resolve src (drive_id=%s, src_path=%s)", driveID, srcPath))
+	}
+	if out.Node == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: hardlink src not found (drive_id="+driveID+", src_path="+srcPath+")")
 	}
 	src := out.Node
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
-		logx.Debug(ctx, "vfs.hardlink.unsupported_type",
-			slog.String("drive_id", driveID),
-			slog.String("type", string(src.Kind())),
-		)
 		return nil, ErrHardlinkNotSupported
 	}
 	parent, name, err := r.resolveParent(ctx, rootID, linkPath)
 	if err != nil {
-		logx.Debug(ctx, "vfs.hardlink.resolve_parent_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: hardlink resolve parent (drive_id=%s, link_path=%s)", driveID, linkPath))
+	}
+	if parent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: hardlink parent not found (drive_id="+driveID+", link_path="+linkPath+")")
 	}
 	if !parent.IsDir() {
 		return nil, errorx.New(errorx.KindBadRequest, "vfs: not a directory")
 	}
 	if err := s.NodeClient.Link(ctx, parent, name, src); err != nil {
-		logx.Debug(ctx, "vfs.hardlink.link_err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: hardlink link (drive_id=%s, link_path=%s)", driveID, linkPath))
 	}
-	logx.Debug(ctx, "vfs.hardlink.ok", slog.String("drive_id", driveID))
 	return src, nil
 }
 

@@ -36,22 +36,25 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		return errorx.New(errorx.KindConflict, "vfs: mount source drive is soft-deleted (source_drive="+sourceDriveID+")")
 	}
 
-	parent, name, err := s.requireEditPath(ctx, driveID, mountPath)
+	parent, name, err := s.resolveEditableParent(ctx, driveID, mountPath)
 	if err != nil {
-		return errorx.Wrap(err, fmt.Sprintf("vfs: mount require edit path (drive_id=%s, mount_path=%s)", driveID, mountPath))
+		return errorx.Wrap(err, fmt.Sprintf("vfs: mount resolve parent (drive_id=%s, mount_path=%s)", driveID, mountPath))
+	}
+	if parent == nil {
+		return errorx.New(errorx.KindNotFound, "vfs: mount parent not found (drive_id="+driveID+", mount_path="+mountPath+")")
 	}
 	mount, err := node.NewMount(sourceDriveID)
 	if err != nil {
-		return err
+		return errorx.Wrap(err, fmt.Sprintf("vfs: mount new (drive_id=%s, source_drive=%s)", driveID, sourceDriveID))
 	}
-	if err := s.createAndLink(ctx, mount, parent, name); err != nil {
+	if err := s.NodeClient.Link(ctx, parent, name, mount); err != nil {
 		logx.Debug(ctx, "vfs.mount.failed",
 			slog.String("from_drive", driveID),
 			slog.String("to_drive", sourceDriveID),
 			slog.String("path", mountPath),
 			slog.String("err", err.Error()),
 		)
-		return errorx.Wrap(err, fmt.Sprintf("vfs: mount create and link (drive_id=%s, mount_path=%s)", driveID, mountPath))
+		return errorx.Wrap(err, fmt.Sprintf("vfs: mount link (drive_id=%s, mount_path=%s)", driveID, mountPath))
 	}
 	logx.Info(ctx, "vfs.mount.created",
 		slog.String("from_drive", driveID),
@@ -72,10 +75,13 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	if err != nil {
 		return err
 	}
-	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, mountPath, true)
+	r := newResolver(s.NodeClient)
+	out, err := r.resolvePath(ctx, rootID, mountPath, true)
 	if err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("vfs: unmount resolve (drive_id=%s, mount_path=%s)", driveID, mountPath))
+	}
+	if out.Node == nil {
+		return errorx.New(errorx.KindNotFound, "vfs: unmount target not found (drive_id="+driveID+", mount_path="+mountPath+")")
 	}
 	n := out.Node
 	if !n.IsMount() {
@@ -88,6 +94,9 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	parent, name, err := r.resolveParent(ctx, rootID, mountPath)
 	if err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("vfs: unmount resolve parent (drive_id=%s, mount_path=%s)", driveID, mountPath))
+	}
+	if parent == nil {
+		return errorx.New(errorx.KindNotFound, "vfs: unmount parent not found (drive_id="+driveID+", mount_path="+mountPath+")")
 	}
 	if _, err := s.NodeClient.Unlink(ctx, parent, name); err != nil {
 		logx.Debug(ctx, "vfs.unmount.failed",
