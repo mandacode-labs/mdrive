@@ -9,9 +9,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	driveMocks "github.com/mandacode-labs/mdrive/internal/core/drive/mocks"
 	corenode "github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/crypto"
 )
@@ -181,7 +183,9 @@ func TestEntDriveServiceCreateEndToEnd(t *testing.T) {
 	nodeRepo := corenode.NewRepository(client)
 	nodeSvc := corenode.NewService(nodeRepo)
 
-	svc := drive.NewService(driveRepo, alwaysExistOwner{}, rootNodeAdapter{svc: nodeSvc})
+	owner := driveMocks.NewOwnerCheckerMock(t)
+	owner.EXPECT().Exist(mock.Anything, mock.Anything).Return(true, nil).Maybe()
+	svc := drive.NewService(driveRepo, owner, rootNodeAdapter{svc: nodeSvc})
 
 	ownerID := ulidLike() // 26-char ULID; owner_id column is character(32)
 	created, _, err := svc.Create(ctx, ownerID, "e2e-drive", "desc", drive.StorageConfig{
@@ -203,14 +207,7 @@ func TestEntDriveServiceCreateEndToEnd(t *testing.T) {
 	assert.Equal(t, "e2e-drive", listed[0].Name())
 }
 
-// alwaysExistOwner is a minimal OwnerChecker that always succeeds.
-// Production wires this to user.Service.UpsertFromOIDC; for the
-// integration test we only care that the owner check is green so
-// the tx path runs.
-type alwaysExistOwner struct{}
-
-func (alwaysExistOwner) Exist(_ context.Context, _ string) (bool, error) { return true, nil }
-
+// alwaysExistOwner removed in favor of driveMocks.NewOwnerCheckerMock.
 // rootNodeAdapter wires node.Service to the drive.RootDirectoryCreator
 // shape production uses in app.go.
 type rootNodeAdapter struct {
