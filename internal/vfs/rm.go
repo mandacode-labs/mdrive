@@ -3,79 +3,46 @@ package vfs
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// Rm removes files or directories at the given paths (like `rm [-r] path1 path2 ...`).
-// Each path is removed in its own atomic node operation. Partial-failure
-// semantics are "stop on first error": earlier successful removals stay
-// committed, later ones are skipped. This matches POSIX rm -f.
-//
-// Tombstone records for the deleted S3 objects are enqueued after the
-// node operations commit. If the post-commit enqueue fails, the rm is
-// still reported as successful: the node state is already gone and the
-// user-visible operation succeeded. Orphaned S3 objects can be reclaimed
-// by a future orphan-scan job.
+// Rm removes files or directories at the given paths. Partial-failure
+// semantics are "stop on first error" (POSIX rm -f). Tombstones for
+// deleted S3 objects are enqueued in the same transaction as the
+// node unlinks, so a tombstone failure rolls back the rm.
 //
 // Permission is the caller's responsibility.
 func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
-	rootID, err := s.GetRootNodeID(ctx, driveID)
-	if err != nil {
-		return err
-	}
-
-	start := time.Now()
-	var allRefs []GarbageRef
-	for _, p := range paths {
-		refs, err := s.rmPath(ctx, rootID, p, recursive)
+	return s.tm.WithTx(ctx, func(ctx context.Context) error {
+		rootID, err := s.GetRootNodeID(ctx, driveID)
 		if err != nil {
-			logx.Debug(ctx, "vfs.rm.failed",
-				slog.String("drive_id", driveID),
-				slog.String("path", p),
-				slog.String("err", err.Error()),
-			)
 			return err
 		}
-		allRefs = append(allRefs, refs...)
-	}
-
-	if len(allRefs) > 0 && s.GarbageRecorder != nil {
-		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
-			logx.Error(ctx, errorx.Wrap(err, fmt.Sprintf("vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs))),
-				"vfs.rm.tombstone_failed",
-				slog.String("drive_id", driveID),
-				slog.Int("ref_count", len(allRefs)),
-			)
-			return errorx.Wrap(err, fmt.Sprintf("vfs: rm post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs)))
+		var allRefs []GarbageRef
+		for _, p := range paths {
+			refs, err := s.rmPath(ctx, rootID, p, recursive)
+			if err != nil {
+				return err
+			}
+			allRefs = append(allRefs, refs...)
 		}
-		logx.Info(ctx, "vfs.rm.tombstoned",
-			slog.String("drive_id", driveID),
-			slog.Int("ref_count", len(allRefs)),
-		)
-	}
-
-	logx.Debug(ctx, "vfs.rm.completed",
-		slog.String("drive_id", driveID),
-		slog.Int("path_count", len(paths)),
-		slog.Bool("recursive", recursive),
-		slog.Int("tombstoned", len(allRefs)),
-		slog.Duration("elapsed", time.Since(start)),
-	)
-	return nil
+		if len(allRefs) == 0 || s.GarbageRecorder == nil {
+			return nil
+		}
+		if err := s.GarbageRecorder.RecordGarbage(ctx, allRefs); err != nil {
+			return errorx.Wrap(err, fmt.Sprintf("vfs: rm tombstone enqueue (drive_id=%s, ref_count=%d)", driveID, len(allRefs)))
+		}
+		return nil
+	})
 }
 
-// rmPath resolves the path and dispatches to the appropriate internal handler.
 func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
-	r := s.newResolver()
-	out, err := r.resolve(ctx, rootID, path, true)
+	out, err := s.newResolver().resolve(ctx, rootID, path, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve (path=%s)", path))
 	}
@@ -86,14 +53,14 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}
-	return s.rm(ctx, rootID, n, path, r)
+	return s.rm(ctx, rootID, n, path)
 }
 
-// rm removes a single file node. Returns S3 references that need cleanup.
-// The unlink delegates nlink management to node.Service; when the last
-// hardlink is removed the child is deleted and any object body is
-// returned as GarbageRef for tombstone registration.
-func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string, r *resolver) ([]GarbageRef, error) {
+// rm unlinks a single file node. When the last hardlink is removed
+// the child is deleted; if it was an object node, the S3 reference
+// is returned for tombstoning.
+func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
+	r := s.newResolver()
 	parent, name, err := r.resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve parent (path=%s)", path))
@@ -105,65 +72,46 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm unlink (path=%s, name=%s)", path, name))
 	}
-
-	var refs []GarbageRef
-	target := n
-	if deleted != nil {
-		target = deleted
+	if target := deleted; target != nil {
+		n = target
 	}
-	if target.IsObject() {
-		oc, err := target.ReadObject()
-		switch {
-		case err != nil:
-			logx.Warn(ctx, "vfs.rm.read_object_content_failed",
-				slog.String("err", err.Error()),
-			)
-		case oc.Bucket == "" || oc.Key == "":
-			logx.Warn(ctx, "vfs.rm.object_content_empty",
-				slog.String("err", "bucket or key empty"),
-			)
-		default:
-			refs = append(refs, GarbageRef{Bucket: oc.Bucket, Key: oc.Key})
-		}
+	if !n.IsObject() {
+		return nil, nil
 	}
-	return refs, nil
+	oc, err := n.ReadObject()
+	if err != nil || oc.Bucket == "" || oc.Key == "" {
+		return nil, nil
+	}
+	return []GarbageRef{{Bucket: oc.Bucket, Key: oc.Key}}, nil
 }
 
-// rmRecursive removes a directory and all its children. Returns S3 references
-// from all object nodes discovered during the traversal.
 func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
-	r := s.newResolver()
 	dc, err := n.ReadDir()
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm read dir (path=%s)", path))
 	}
-
 	var allRefs []GarbageRef
 	for _, e := range dc.Entries {
+		child, err := s.NodeClient.GetByID(ctx, e.InodeID)
+		if err != nil {
+			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm get child (path=%s, child_id=%s)", path, e.InodeID))
+		}
 		childPath := strings.TrimRight(path, "/") + "/" + e.Name
-		var child *node.Node
-		if de, err := n.Lookup(e.Name); err == nil && de != nil {
-			child, _ = r.loadByID(ctx, de.InodeID)
-		}
-		if child == nil {
-			child, err = s.NodeClient.GetByID(ctx, e.InodeID)
-			if err != nil {
-				return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm get child (path=%s, child_id=%s)", childPath, e.InodeID))
-			}
-		}
-		var refs []GarbageRef
 		if child.IsDir() {
-			refs, err = s.rmRecursive(ctx, rootID, child, childPath)
-		} else {
-			refs, err = s.rm(ctx, rootID, child, childPath, r)
+			refs, err := s.rmRecursive(ctx, rootID, child, childPath)
+			if err != nil {
+				return nil, err
+			}
+			allRefs = append(allRefs, refs...)
+			continue
 		}
+		refs, err := s.rm(ctx, rootID, child, childPath)
 		if err != nil {
 			return nil, err
 		}
 		allRefs = append(allRefs, refs...)
 	}
-
-	refs, err := s.rm(ctx, rootID, n, path, r)
+	refs, err := s.rm(ctx, rootID, n, path)
 	if err != nil {
 		return nil, err
 	}

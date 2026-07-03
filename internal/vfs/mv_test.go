@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestMv(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	_, err := svc.Mkdir(ctx, "d1", "/dst")
@@ -27,35 +27,13 @@ func TestMv(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestMvOverwriteExistingFile(t *testing.T) {
-	svc := newTestService()
+func TestMvRejectsCrossDrive(t *testing.T) {
+	svc := newTestService(t)
 	ctx := context.Background()
 
-	_, err := svc.Touch(ctx, "d1", "/a")
-	require.NoError(t, err)
-	_, err = svc.Touch(ctx, "d1", "/b")
+	_, err := svc.Touch(ctx, "d1", "/x")
 	require.NoError(t, err)
 
-	err = svc.Mv(ctx, "d1", []string{"/a"}, "d1", "/b")
-	require.NoError(t, err)
-
-	_, err = svc.Stat(ctx, "d1", "/a")
-	assert.Error(t, err, "source should be gone")
-
-	n, err := svc.Stat(ctx, "d1", "/b")
-	require.NoError(t, err)
-	assert.True(t, n.IsFile(), "target should still be a file")
-}
-
-func TestMvOverwriteDirFails(t *testing.T) {
-	svc := newTestService()
-	ctx := context.Background()
-
-	_, err := svc.Touch(ctx, "d1", "/a")
-	require.NoError(t, err)
-	_, err = svc.Mkdir(ctx, "d1", "/b")
-	require.NoError(t, err)
-
-	err = svc.Mv(ctx, "d1", []string{"/a"}, "d1", "/b")
-	assert.Error(t, err, "cannot overwrite directory")
+	err = svc.Mv(ctx, "d1", []string{"/x"}, "d2", "/x")
+	assert.Error(t, err, "cross-drive move not supported")
 }

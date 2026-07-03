@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestWriteAndCat(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	err := svc.Write(ctx, "d1", "/data.txt", "hello world")

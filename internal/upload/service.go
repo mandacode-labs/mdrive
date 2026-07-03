@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,6 +73,12 @@ type Service struct {
 	NodeLifecycle NodeLifecycle
 	ObjectStore   ObjectStore
 	Path          PathResolver
+	tm            TxManager
+}
+
+// TxManager runs a function inside a transaction.
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 // Config groups Service dependencies.
@@ -81,6 +88,7 @@ type Config struct {
 	NodeLifecycle NodeLifecycle
 	ObjectStore   ObjectStore
 	Path          PathResolver
+	TxManager     TxManager
 }
 
 // NewService wires a Service. A nil TokenRegistry defaults to a
@@ -96,6 +104,7 @@ func NewService(cfg Config) *Service {
 		NodeLifecycle: cfg.NodeLifecycle,
 		ObjectStore:   cfg.ObjectStore,
 		Path:          cfg.Path,
+		tm:            cfg.TxManager,
 	}
 }
 
@@ -167,7 +176,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, errorx.New(errorx.KindBadRequest, "upload: token does not match drive")
 	}
 	if meta.Size != nil && *meta.Size != contentLength {
-		return nil, errorx.New(errorx.KindBadRequest, "upload: complete size mismatch (expected="+itoa(int64(*meta.Size))+", got="+itoa(contentLength)+")")
+		return nil, errorx.New(errorx.KindBadRequest, "upload: complete size mismatch (expected="+strconv.FormatInt(*meta.Size, 10)+", got="+strconv.FormatInt(contentLength, 10)+")")
 	}
 
 	exists, err := s.ObjectStore.ObjectExists(ctx, meta.Bucket, meta.Key)
@@ -178,39 +187,47 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, errorx.New(errorx.KindNotFound, "upload: S3 object was not uploaded")
 	}
 
-	parentID, name, err := s.Path.ResolveParentNodeID(ctx, driveID, meta.Path)
-	if err != nil {
-		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete resolve parent (path=%s)", meta.Path))
-	}
-	parent, err := s.NodeLifecycle.GetByID(ctx, parentID)
-	if err != nil {
-		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete load parent (parent_id=%s)", parentID))
-	}
+	var n *node.Node
+	if err := s.tm.WithTx(ctx, func(ctx context.Context) error {
+		parentID, name, err := s.Path.ResolveParentNodeID(ctx, driveID, meta.Path)
+		if err != nil {
+			return errorx.Wrap(err, fmt.Sprintf("upload: complete resolve parent (path=%s)", meta.Path))
+		}
+		parent, err := s.NodeLifecycle.GetByID(ctx, parentID)
+		if err != nil {
+			return errorx.Wrap(err, fmt.Sprintf("upload: complete load parent (parent_id=%s)", parentID))
+		}
 
-	var ct string
-	if meta.ContentType != nil {
-		ct = *meta.ContentType
-	}
-	var cs string
-	if checksum != nil {
-		cs = *checksum
-	}
-	obj := node.ObjectContent{
-		Bucket:   meta.Bucket,
-		Key:      meta.Key,
-		Mime:     ct,
-		Checksum: cs,
-	}
-	n, err := s.NodeLifecycle.CreateObject(ctx, obj, contentLength)
-	if err != nil {
+		var ct string
+		if meta.ContentType != nil {
+			ct = *meta.ContentType
+		}
+		var cs string
+		if checksum != nil {
+			cs = *checksum
+		}
+		obj := node.ObjectContent{
+			Bucket:   meta.Bucket,
+			Key:      meta.Key,
+			Mime:     ct,
+			Checksum: cs,
+		}
+		created, err := s.NodeLifecycle.CreateObject(ctx, obj, contentLength)
+		if err != nil {
+			return err
+		}
+		if lerr := s.NodeLifecycle.Link(ctx, parent, name, created); lerr != nil {
+			if derr := s.NodeLifecycle.Delete(ctx, created.ID()); derr != nil {
+				return errorx.Wrap(lerr, fmt.Sprintf("upload: complete link (node_id=%s, cleanup_err=%v)", created.ID(), derr))
+			}
+			return errorx.Wrap(lerr, fmt.Sprintf("upload: complete link (node_id=%s)", created.ID()))
+		}
+		n = created
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	if lerr := s.NodeLifecycle.Link(ctx, parent, name, n); lerr != nil {
-		if derr := s.NodeLifecycle.Delete(ctx, n.ID()); derr != nil {
-			return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete link (node_id=%s, cleanup_err=%v)", n.ID(), derr))
-		}
-		return nil, errorx.Wrap(lerr, fmt.Sprintf("upload: complete link (node_id=%s)", n.ID()))
-	}
+
 	if err := s.TokenRegistry.Delete(ctx, uploadID); err != nil {
 		return n, errorx.Wrap(err, fmt.Sprintf("upload: complete cleanup token (upload_id=%s)", uploadID))
 	}
@@ -253,27 +270,4 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 // registry — callers handle those.
 func (s *Service) DeleteObject(ctx context.Context, bucket, key string) error {
 	return s.ObjectStore.DeleteObject(ctx, bucket, key)
-}
-
-func itoa(i int64) string {
-	// avoid pulling strconv just for this one site
-	if i == 0 {
-		return "0"
-	}
-	neg := i < 0
-	if neg {
-		i = -i
-	}
-	var b [20]byte
-	pos := len(b)
-	for i > 0 {
-		pos--
-		b[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	if neg {
-		pos--
-		b[pos] = '-'
-	}
-	return string(b[pos:])
 }

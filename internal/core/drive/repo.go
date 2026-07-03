@@ -22,7 +22,6 @@ type Repository interface {
 	FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error)
 	FindDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error)
 	FindDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error)
-	WithTx(ctx context.Context, fn func(Repository) error) error
 }
 
 // OwnerChecker verifies user existence; drive uses it before

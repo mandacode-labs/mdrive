@@ -14,6 +14,7 @@ import (
 	"github.com/valkey-io/valkey-go"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 
 	"github.com/mandacode-labs/mdrive/ent"
@@ -202,27 +203,31 @@ type repositories struct {
 	DriveSvc     *drive.Service
 	UserSvc      *user.Service
 	OwnerChecker drive.OwnerChecker
+	TxMgr        *entx.TxManager
 }
 
 // newRepositories builds the three core domain services. The
 // drive service needs a root creator that wraps node.Service;
 // drive verifies owners via the user.Repository directly.
 func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositories {
+	txMgr := entx.NewTxManager(entClient)
+
 	nodeRepo := node.NewRepository(entClient)
-	nodeSvc := node.NewService(nodeRepo)
+	nodeSvc := node.NewService(nodeRepo, txMgr)
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
 
 	rootCreator := &rootNodeCreator{svc: nodeSvc}
 	driveRepo := drive.NewRepository(entClient, cipher)
-	driveSvc := drive.NewService(driveRepo, userRepo, rootCreator)
+	driveSvc := drive.NewService(driveRepo, userRepo, rootCreator, txMgr)
 
 	return repositories{
 		NodeSvc:      nodeSvc,
 		DriveSvc:     driveSvc,
 		UserSvc:      userSvc,
 		OwnerChecker: userRepo,
+		TxMgr:        txMgr,
 	}
 }
 
@@ -298,6 +303,7 @@ func newVFS(repos repositories, garbage *gc.GarbageRecorder) *vfs.Service {
 		NodeClient:      repos.NodeSvc,
 		DriveClient:     repos.DriveSvc,
 		GarbageRecorder: garbage,
+		TxManager:       repos.TxMgr,
 	})
 }
 
@@ -311,6 +317,7 @@ func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry) *
 		NodeLifecycle: repos.NodeSvc,
 		ObjectStore:   store,
 		Path:          nil, // set below: depends on vfs which depends on Garbage
+		TxManager:     repos.TxMgr,
 	})
 }
 

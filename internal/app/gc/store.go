@@ -7,48 +7,44 @@ import (
 	"github.com/mandacode-labs/mdrive/ent"
 	entdrivestorage "github.com/mandacode-labs/mdrive/ent/drivestorage"
 	entgctombstone "github.com/mandacode-labs/mdrive/ent/gctombstone"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// Tombstone is a single pending S3 deletion that has been written
-// to the gc_tombstones table. The Bucket/Key describe the S3
-// object the gc.TombstoneCleaner job will pass to the S3 client;
-// ID is the database row that records the work to be done.
+// Tombstone is a single pending S3 deletion.
 type Tombstone struct {
 	ID     int
 	Bucket string
 	Key    string
 }
 
-// GarbageRecorder writes tombstone rows for S3 objects whose
-// nodes have been removed. It implements vfs.GarbageRecorder:
-// vfs calls RecordGarbage on every unlink whose target was an
-// object node.
+// GarbageRecorder writes tombstone rows for deleted S3 objects.
+// Implements vfs.GarbageRecorder.
 type GarbageRecorder struct {
 	client *ent.Client
 }
 
-// NewGarbageRecorder returns a vfs.GarbageRecorder backed by the
-// gc_tombstones ent table.
 func NewGarbageRecorder(client *ent.Client) *GarbageRecorder {
 	return &GarbageRecorder{client: client}
 }
 
-// RecordGarbage writes one tombstone row per ref. The writes
-// commit independently of the node transaction that deleted the
-// source nodes; on failure the caller must accept that the S3
-// objects are orphaned (a future orphan-scan job can reclaim
-// them).
+// RecordGarbage writes one tombstone row per ref. When the caller's
+// context carries an entx tx, the inserts run inside that tx so
+// they commit or roll back with the caller's writes.
 func (g *GarbageRecorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
+	client := g.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
 	bulk := make([]*ent.GCTombstoneCreate, len(refs))
 	for i, r := range refs {
-		bulk[i] = g.client.GCTombstone.Create().SetBucket(r.Bucket).SetKey(r.Key)
+		bulk[i] = client.GCTombstone.Create().SetBucket(r.Bucket).SetKey(r.Key)
 	}
-	_, err := g.client.GCTombstone.CreateBulk(bulk...).Save(ctx)
+	_, err := client.GCTombstone.CreateBulk(bulk...).Save(ctx)
 	if err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("gc: tombstone insert (count=%d)", len(refs)))
 	}

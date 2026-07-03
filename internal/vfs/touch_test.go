@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestTouch(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	n, err := svc.Touch(ctx, "d1", "/hello.txt")

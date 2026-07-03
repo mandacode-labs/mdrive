@@ -12,24 +12,24 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// Service provides domain-level node operations.
-// It wraps Repository with validation and convenience, analogous to
-// Linux inode_operations (create, link, unlink, lookup) but without
-// path resolution or permission checks — those belong to vfs.
-//
-// Each multi-step method (Link, Unlink, MoveEntry, BulkLink,
-// BulkUnlink) wraps its writes in WithTx so the underlying repository
-// state is updated atomically. The in-memory *Node pointers passed
-// in may be left in a partially-mutated state if the underlying
-// transaction fails; callers should treat a non-nil error as a
-// signal to re-fetch any node pointer they intend to use again.
-type Service struct {
-	repo Repository
+// TxManager runs a function inside a transaction.
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-// NewService creates a Service.
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+// Service provides domain-level node operations (create, link, unlink,
+// lookup). Path resolution and permission checks live in vfs.
+//
+// Multi-step methods (Link, Unlink, MoveEntry, BulkLink, BulkUnlink)
+// wrap their writes in WithTx; on tx failure, *Node pointers passed
+// in may be partially mutated and must be re-fetched.
+type Service struct {
+	repo Repository
+	tm   TxManager
+}
+
+func NewService(repo Repository, tm TxManager) *Service {
+	return &Service{repo: repo, tm: tm}
 }
 
 // CreateFile creates and persists a file node.
@@ -108,7 +108,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 	if parent == nil || child == nil {
 		return errorx.New(errorx.KindBadRequest, "node: link requires non-nil parent and child")
 	}
-	return s.WithTx(ctx, func(tx *Service) error {
+	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		if err := parent.AddEntry(name, child); err != nil {
 			logx.Debug(ctx, "node.service.link.add_entry_err",
 				slog.String("name", name),
@@ -116,7 +116,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 			)
 			return errorx.Wrap(err, fmt.Sprintf("node: link add entry (name=%s)", name))
 		}
-		if err := tx.repo.Save(ctx, parent); err != nil {
+		if err := s.repo.Save(ctx, parent); err != nil {
 			logx.Debug(ctx, "node.service.link.save_parent_err",
 				slog.String("name", name),
 				slog.String("err", err.Error()),
@@ -127,7 +127,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 		now := time.Now()
 		child.ctime = now
 		child.rev = child.rev.Next()
-		if err := tx.repo.Save(ctx, child); err != nil {
+		if err := s.repo.Save(ctx, child); err != nil {
 			return errorx.Wrap(err, "node: link save child")
 		}
 		logx.Debug(ctx, "node.service.link.ok",
@@ -154,11 +154,11 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 	if len(entries) == 0 {
 		return nil
 	}
-	return s.WithTx(ctx, func(tx *Service) error {
+	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		if err := parent.AddEntries(entries); err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: bulk link add entries (count=%d)", len(entries)))
 		}
-		if err := tx.repo.Save(ctx, parent); err != nil {
+		if err := s.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, "node: bulk link save parent")
 		}
 		now := time.Now()
@@ -169,7 +169,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 			child.nlink++
 			child.ctime = now
 			child.rev = child.rev.Next()
-			if err := tx.repo.Save(ctx, child); err != nil {
+			if err := s.repo.Save(ctx, child); err != nil {
 				return errorx.Wrap(err, fmt.Sprintf("node: bulk link save child (name=%s)", name))
 			}
 		}
@@ -190,7 +190,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
 	}
 	var deleted *Node
-	err := s.WithTx(ctx, func(tx *Service) error {
+	err := s.tm.WithTx(ctx, func(ctx context.Context) error {
 		dc, err := parent.ReadDir()
 		if err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: unlink read dir (name=%s)", name))
@@ -210,13 +210,13 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 		if err := parent.RemoveEntry(name); err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: unlink remove entry (name=%s)", name))
 		}
-		if err := tx.repo.Save(ctx, parent); err != nil {
+		if err := s.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: unlink save parent (name=%s)", name))
 		}
 		if childID == uuid.Nil {
 			return nil
 		}
-		child, err := tx.GetByID(ctx, childID)
+		child, err := s.GetByID(ctx, childID)
 		if err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: unlink get child (name=%s, child_id=%s)", name, childID))
 		}
@@ -225,9 +225,9 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 			now := time.Now()
 			child.ctime = now
 			child.rev = child.rev.Next()
-			return errorx.Wrap(tx.repo.Save(ctx, child), "node: unlink decrement child nlink")
+			return errorx.Wrap(s.repo.Save(ctx, child), "node: unlink decrement child nlink")
 		}
-		if err := tx.repo.Delete(ctx, childID); err != nil {
+		if err := s.repo.Delete(ctx, childID); err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: unlink delete child (child_id=%s)", childID))
 		}
 		deleted = child
@@ -300,7 +300,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 	if srcParent == nil || dstParent == nil {
 		return errorx.New(errorx.KindBadRequest, "node: move entry requires non-nil parents")
 	}
-	err := s.WithTx(ctx, func(tx *Service) error {
+	err := s.tm.WithTx(ctx, func(ctx context.Context) error {
 		srcDC, err := srcParent.ReadDir()
 		if err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("move entry read src dir (src_name=%s)", srcName))
@@ -380,7 +380,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 			if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
 				return errorx.Wrap(err, "move entry write parent")
 			}
-			if err := tx.repo.Save(ctx, srcParent); err != nil {
+			if err := s.repo.Save(ctx, srcParent); err != nil {
 				return errorx.Wrap(err, "move entry save parent")
 			}
 		} else {
@@ -398,30 +398,30 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 			if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
 				return errorx.Wrap(err, "move entry write src dir")
 			}
-			if err := tx.repo.Save(ctx, srcParent); err != nil {
+			if err := s.repo.Save(ctx, srcParent); err != nil {
 				return errorx.Wrap(err, "move entry save src")
 			}
 			if err := dstParent.WriteDir(DirContent{Entries: newDstEntries}); err != nil {
 				return errorx.Wrap(err, "move entry write dst dir")
 			}
-			if err := tx.repo.Save(ctx, dstParent); err != nil {
+			if err := s.repo.Save(ctx, dstParent); err != nil {
 				return errorx.Wrap(err, "move entry save dst")
 			}
 		}
 
 		if existingInodeKnown {
-			overwrite, err := tx.GetByID(ctx, existingInodeID)
+			overwrite, err := s.GetByID(ctx, existingInodeID)
 			if err != nil {
 				return errorx.Wrap(err, fmt.Sprintf("move entry load overwrite target (inode_id=%s)", existingInodeID))
 			}
 			if overwrite.nlink <= 1 {
-				if err := tx.repo.Delete(ctx, existingInodeID); err != nil {
+				if err := s.repo.Delete(ctx, existingInodeID); err != nil {
 					return errorx.Wrap(err, fmt.Sprintf("move entry delete overwritten inode (inode_id=%s)", existingInodeID))
 				}
 			} else {
 				overwrite.nlink--
 				overwrite.rev = overwrite.rev.Next()
-				if err := tx.repo.Save(ctx, overwrite); err != nil {
+				if err := s.repo.Save(ctx, overwrite); err != nil {
 					return errorx.Wrap(err, "move entry save overwritten inode")
 				}
 			}
@@ -485,7 +485,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 		return nil, nil
 	}
 	var deleted []*Node
-	err := s.WithTx(ctx, func(tx *Service) error {
+	err := s.tm.WithTx(ctx, func(ctx context.Context) error {
 		dc, err := parent.ReadDir()
 		if err != nil {
 			return errorx.Wrap(err, "node: bulk unlink read dir")
@@ -513,12 +513,12 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 		if err := parent.RemoveEntries(names); err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("node: bulk unlink remove entries (count=%d)", len(names)))
 		}
-		if err := tx.repo.Save(ctx, parent); err != nil {
+		if err := s.repo.Save(ctx, parent); err != nil {
 			return errorx.Wrap(err, "node: bulk unlink save parent")
 		}
 		now := time.Now()
 		for _, p := range planned {
-			child, err := tx.GetByID(ctx, p.id)
+			child, err := s.GetByID(ctx, p.id)
 			if err != nil {
 				if errorx.KindOf(err) == errorx.KindNotFound {
 					continue
@@ -529,12 +529,12 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 				child.nlink--
 				child.ctime = now
 				child.rev = child.rev.Next()
-				if err := tx.repo.Save(ctx, child); err != nil {
+				if err := s.repo.Save(ctx, child); err != nil {
 					return errorx.Wrap(err, "node: bulk unlink save child nlink decrement")
 				}
 				continue
 			}
-			if err := tx.repo.Delete(ctx, p.id); err != nil {
+			if err := s.repo.Delete(ctx, p.id); err != nil {
 				return errorx.Wrap(err, fmt.Sprintf("node: bulk unlink delete (id=%s)", p.id))
 			}
 			deleted = append(deleted, child)
@@ -549,15 +549,6 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 		slog.Int("deleted_count", len(deleted)),
 	)
 	return deleted, nil
-}
-
-// WithTx executes fn within a transaction. The transaction spans only
-// the node repository; callers needing cross-repository atomicity
-// must coordinate at a higher layer.
-func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
-	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo})
-	})
 }
 
 func uuidOrEmpty(n *Node) string {

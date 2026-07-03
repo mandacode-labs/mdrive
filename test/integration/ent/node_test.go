@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
@@ -90,14 +91,15 @@ func TestEntNodeWithTxCommit(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)
+	tm := entx.NewTxManager(client)
 
 	var dirID string
-	require.NoError(t, repo.WithTx(ctx, func(tx node.Repository) error {
+	require.NoError(t, tm.WithTx(ctx, func(ctx context.Context) error {
 		dir, err := node.NewDirectory()
 		if err != nil {
 			return err
 		}
-		if err := tx.Save(ctx, dir); err != nil {
+		if err := repo.Save(ctx, dir); err != nil {
 			return err
 		}
 		dirID = dir.ID().String()
@@ -113,14 +115,15 @@ func TestEntNodeWithTxRollback(t *testing.T) {
 	ctx := context.Background()
 	client := startPostgres(t)
 	repo := node.NewRepository(client)
+	tm := entx.NewTxManager(client)
 
 	var dirID string
-	err := repo.WithTx(ctx, func(tx node.Repository) error {
+	err := tm.WithTx(ctx, func(ctx context.Context) error {
 		dir, err := node.NewDirectory()
 		if err != nil {
 			return err
 		}
-		if err := tx.Save(ctx, dir); err != nil {
+		if err := repo.Save(ctx, dir); err != nil {
 			return err
 		}
 		dirID = dir.ID().String()

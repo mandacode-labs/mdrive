@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestRm(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	_, err := svc.Touch(ctx, "d1", "/x")
@@ -25,7 +25,7 @@ func TestRm(t *testing.T) {
 }
 
 func TestRmRecursive(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	_, err := svc.Mkdir(ctx, "d1", "/dir")
@@ -43,7 +43,7 @@ func TestRmRecursive(t *testing.T) {
 }
 
 func TestRmDirWithoutRecursive(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	_, err := svc.Mkdir(ctx, "d1", "/dir")

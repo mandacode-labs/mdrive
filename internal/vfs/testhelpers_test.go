@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"testing"

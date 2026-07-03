@@ -27,6 +27,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -88,7 +89,8 @@ func setupE2E(t *testing.T) *e2eEnv {
 	require.NoError(t, err)
 
 	nodeRepo := node.NewRepository(entClient)
-	nodeSvc := node.NewService(nodeRepo)
+	txMgr := entx.NewTxManager(entClient)
+	nodeSvc := node.NewService(nodeRepo, txMgr)
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
@@ -105,12 +107,13 @@ func setupE2E(t *testing.T) *e2eEnv {
 	require.NoError(t, err)
 
 	driveRepo := drive.NewRepository(entClient, nil)
-	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()})
+	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, txMgr)
 
 	fs := vfs.NewService(vfs.ServiceConfig{
 		NodeClient:      nodeSvc,
 		DriveClient:     driveSvc,
 		GarbageRecorder: nil,
+		TxManager:       txMgr,
 	})
 
 	uploadSvcVfs := upload.NewService(upload.Config{
@@ -118,6 +121,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		NodeLifecycle: nodeSvc,
 		ObjectStore:   nil,
 		Path:          fs,
+		TxManager:     txMgr,
 	})
 
 	h := handler.New(fs, driveSvc, userSvc, uploadSvcVfs, permission.NopAuthorizer{}, "",
