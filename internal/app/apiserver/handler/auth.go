@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -20,16 +22,24 @@ var (
 // same errorx.Kind produces the same response as the WithErrorHandler.
 func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 	uid := h.userID(ctx)
+	logx.Debug(ctx, "handler.auth.me.enter", slog.String("user_id", uid))
 	if uid == "" {
+		logx.Debug(ctx, "handler.auth.me.no_session")
 		return apiErr(errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")), nil
 	}
 	u, err := h.users.GetByID(ctx, uid)
 	if err != nil {
+		logx.Debug(ctx, "handler.auth.me.lookup_err",
+			slog.String("user_id", uid),
+			slog.String("err", err.Error()),
+		)
 		return apiErr(errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("auth: user lookup failed (uid=%s, err=%v)", uid, err))), nil
 	}
 	if u == nil {
+		logx.Debug(ctx, "handler.auth.me.not_found", slog.String("user_id", uid))
 		return apiErr(errorx.New(errorx.KindNotFound, "auth: user not found")), nil
 	}
+	logx.Debug(ctx, "handler.auth.me.ok", slog.String("user_id", u.ID()))
 	return userToAPI(u), nil
 }
 

@@ -76,6 +76,7 @@ func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node,
 // newNode() directly and pass it to Link, which inserts the
 // child inside the same transaction as the parent update.
 func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
+	logx.Debug(ctx, "node.service.create.enter", slog.String("kind", kind))
 	n, err := factory()
 	if err != nil {
 		return nil, errorx.New(errorx.KindBadRequest, fmt.Sprintf("node: create %s factory failed", kind))
@@ -99,21 +100,41 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 // (nlink, ctime, rev). On failure, child's state is undefined — callers
 // should discard the pointer.
 func (s *Service) Link(ctx context.Context, parent *Node, name string, child *Node) error {
+	logx.Debug(ctx, "node.service.link.enter",
+		slog.String("parent_id", uuidOrEmpty(parent)),
+		slog.String("name", name),
+		slog.String("child_id", uuidOrEmpty(child)),
+	)
 	if parent == nil || child == nil {
 		return errorx.New(errorx.KindBadRequest, "node: link requires non-nil parent and child")
 	}
 	return s.WithTx(ctx, func(tx *Service) error {
 		if err := parent.AddEntry(name, child); err != nil {
+			logx.Debug(ctx, "node.service.link.add_entry_err",
+				slog.String("name", name),
+				slog.String("err", err.Error()),
+			)
 			return errorx.Wrap(err, fmt.Sprintf("node: link add entry (name=%s)", name))
 		}
 		if err := tx.repo.Save(ctx, parent); err != nil {
+			logx.Debug(ctx, "node.service.link.save_parent_err",
+				slog.String("name", name),
+				slog.String("err", err.Error()),
+			)
 			return errorx.Wrap(err, "node: link save parent")
 		}
 		child.nlink++
 		now := time.Now()
 		child.ctime = now
 		child.rev = child.rev.Next()
-		return errorx.Wrap(tx.repo.Save(ctx, child), "node: link save child")
+		if err := tx.repo.Save(ctx, child); err != nil {
+			return errorx.Wrap(err, "node: link save child")
+		}
+		logx.Debug(ctx, "node.service.link.ok",
+			slog.String("name", name),
+			slog.Uint64("nlink", uint64(child.nlink)),
+		)
+		return nil
 	})
 }
 
@@ -123,6 +144,10 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 // Fails atomically on any conflict (duplicate name, empty name, nil
 // child): the directory is left unchanged.
 func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error {
+	logx.Debug(ctx, "node.service.bulk_link.enter",
+		slog.String("parent_id", uuidOrEmpty(parent)),
+		slog.Int("entry_count", len(entries)),
+	)
 	if parent == nil {
 		return errorx.New(errorx.KindBadRequest, "node: bulk link requires non-nil parent")
 	}
@@ -148,6 +173,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 				return errorx.Wrap(err, fmt.Sprintf("node: bulk link save child (name=%s)", name))
 			}
 		}
+		logx.Debug(ctx, "node.service.bulk_link.ok", slog.Int("entry_count", len(entries)))
 		return nil
 	})
 }
@@ -156,6 +182,10 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 // If nlink reaches zero, the child is deleted. Returns the deleted node
 // (caller may use it for S3 cleanup) or nil if only the link was removed.
 func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node, error) {
+	logx.Debug(ctx, "node.service.unlink.enter",
+		slog.String("parent_id", uuidOrEmpty(parent)),
+		slog.String("name", name),
+	)
 	if parent == nil {
 		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
 	}
@@ -206,6 +236,14 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 	if err != nil {
 		return nil, err
 	}
+	if deleted != nil {
+		logx.Debug(ctx, "node.service.unlink.ok_deleted",
+			slog.String("name", name),
+			slog.String("deleted_id", deleted.ID().String()),
+		)
+	} else {
+		logx.Debug(ctx, "node.service.unlink.ok_link_removed", slog.String("name", name))
+	}
 	return deleted, nil
 }
 
@@ -253,10 +291,16 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 //
 // Returns ErrEntryNotFound if srcName is not in srcParent.
 func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error {
+	logx.Debug(ctx, "node.service.move_entry.enter",
+		slog.String("src_parent_id", uuidOrEmpty(srcParent)),
+		slog.String("src_name", srcName),
+		slog.String("dst_parent_id", uuidOrEmpty(dstParent)),
+		slog.String("dst_name", dstName),
+	)
 	if srcParent == nil || dstParent == nil {
 		return errorx.New(errorx.KindBadRequest, "node: move entry requires non-nil parents")
 	}
-	return s.WithTx(ctx, func(tx *Service) error {
+	err := s.WithTx(ctx, func(tx *Service) error {
 		srcDC, err := srcParent.ReadDir()
 		if err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("move entry read src dir (src_name=%s)", srcName))
@@ -384,14 +428,25 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	logx.Debug(ctx, "node.service.move_entry.ok",
+		slog.String("src_name", srcName),
+		slog.String("dst_name", dstName),
+	)
+	return nil
 }
 
 // GetByID returns a node by its ID.
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
+	logx.Debug(ctx, "node.service.get.enter", slog.String("id", id.String()))
 	n, err := s.repo.Get(ctx, id)
 	if err != nil {
+		logx.Debug(ctx, "node.service.get.err", slog.String("id", id.String()), slog.String("err", err.Error()))
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: get (id=%s)", id))
 	}
+	logx.Debug(ctx, "node.service.get.ok", slog.String("id", id.String()))
 	return n, nil
 }
 
@@ -402,11 +457,13 @@ func (s *Service) Save(ctx context.Context, n *Node) error {
 	if n == nil {
 		return errorx.New(errorx.KindBadRequest, "node: save requires non-nil node")
 	}
+	logx.Debug(ctx, "node.service.save.enter", slog.String("id", n.ID().String()))
 	return s.repo.Save(ctx, n)
 }
 
 // Delete removes a node by its ID.
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	logx.Debug(ctx, "node.service.delete.enter", slog.String("id", id.String()))
 	return s.repo.Delete(ctx, id)
 }
 
@@ -417,6 +474,10 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 //
 // Missing entries are silently ignored (POSIX rm -f semantics).
 func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error) {
+	logx.Debug(ctx, "node.service.bulk_unlink.enter",
+		slog.String("parent_id", uuidOrEmpty(parent)),
+		slog.Int("name_count", len(names)),
+	)
 	if parent == nil {
 		return nil, errorx.New(errorx.KindBadRequest, "node: bulk unlink requires non-nil parent")
 	}
@@ -483,6 +544,10 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 	if err != nil {
 		return nil, err
 	}
+	logx.Debug(ctx, "node.service.bulk_unlink.ok",
+		slog.Int("name_count", len(names)),
+		slog.Int("deleted_count", len(deleted)),
+	)
 	return deleted, nil
 }
 
@@ -493,4 +558,11 @@ func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
 	return s.repo.WithTx(ctx, func(txRepo Repository) error {
 		return fn(&Service{repo: txRepo})
 	})
+}
+
+func uuidOrEmpty(n *Node) string {
+	if n == nil {
+		return ""
+	}
+	return n.ID().String()
 }
