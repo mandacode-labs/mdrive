@@ -78,6 +78,120 @@ func (r *statusRecorder) Unwrap() http.ResponseWriter {
 	return r.ResponseWriter
 }
 
+// stageRecorder records the middleware stages a request has
+// passed through and the byte count of any body written. Stages
+// are accumulated into the X-Mdrive-Stage response header; the
+// body byte count lands in X-Mdrive-Body-Bytes (best-effort:
+// only set if the body is written before WriteHeader commits
+// the response). This is purely for debugging empty-body and
+// 200/stuck-status responses — operators can read the headers
+// and tell exactly which middleware last touched the response.
+//
+// Stages are recorded only if the underlying writer has not yet
+// committed; once WriteHeader has fired, appending to a header
+// is a silent no-op, so later stages are appended to a separate
+// log of "saw post-commit" events instead.
+type stageRecorder struct {
+	http.ResponseWriter
+	stages    []string
+	bodyBytes int
+	committed bool
+	postCommitStages []string
+}
+
+func (r *stageRecorder) Header() http.Header {
+	return r.ResponseWriter.Header()
+}
+
+func (r *stageRecorder) WriteHeader(code int) {
+	if r.committed {
+		return
+	}
+	r.flushStages()
+	r.committed = true
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *stageRecorder) Write(b []byte) (int, error) {
+	if !r.committed {
+		r.flushStages()
+		r.committed = true
+	}
+	n, err := r.ResponseWriter.Write(b)
+	r.bodyBytes += n
+	return n, err
+}
+
+func (r *stageRecorder) writeBodyBytesHeader() {
+	if r.bodyBytes == 0 {
+		return
+	}
+	r.ResponseWriter.Header().Set("X-Mdrive-Body-Bytes", strconv.Itoa(r.bodyBytes))
+}
+
+func (r *stageRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
+func (r *stageRecorder) mark(stage string) {
+	if r.committed {
+		r.postCommitStages = append(r.postCommitStages, stage)
+		return
+	}
+	r.stages = append(r.stages, stage)
+}
+
+func (r *stageRecorder) flushStages() {
+	if len(r.stages) > 0 {
+		r.ResponseWriter.Header().Set("X-Mdrive-Stage", strings.Join(r.stages, ","))
+	}
+	if r.bodyBytes > 0 {
+		r.ResponseWriter.Header().Set("X-Mdrive-Body-Bytes", strconv.Itoa(r.bodyBytes))
+	}
+}
+
+func (r *stageRecorder) commitPostCommitStages() {
+	if len(r.postCommitStages) == 0 {
+		return
+	}
+	header := r.ResponseWriter.Header()
+	existing := header.Get("X-Mdrive-Post-Commit")
+	all := append([]string{}, strings.Split(existing, ",")...)
+	if existing == "" {
+		all = nil
+	}
+	all = append(all, r.postCommitStages...)
+	header.Set("X-Mdrive-Post-Commit", strings.Join(all, ","))
+}
+
+// recordStage appends the given stage name to the
+// X-Mdrive-Stage header on the response. The same stageRecorder
+// instance is reused across nested middleware via type
+// assertion on the http.ResponseWriter.
+func recordStage(stage string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sr, ok := w.(*stageRecorder)
+		if !ok {
+			sr = &stageRecorder{ResponseWriter: w}
+		}
+		sr.mark(stage)
+		next.ServeHTTP(sr, r)
+	})
+}
+
+// withStageCommit ensures that any post-commit stages recorded
+// after WriteHeader land in the X-Mdrive-Post-Commit header. It
+// must sit at the outermost position so it can hook the writer
+// the chain produced.
+func withStageCommit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sr := &stageRecorder{ResponseWriter: w}
+		next.ServeHTTP(sr, r)
+		sr.commitPostCommitStages()
+		sr.writeBodyBytesHeader()
+	})
+}
+
 // withRequestLog logs a single access line per request. /health is
 // excluded so k8s probes don't drown out real traffic. Status
 // decides level: 5xx -> ERROR, 4xx -> WARN, else -> INFO.

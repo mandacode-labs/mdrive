@@ -66,14 +66,20 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 
 	var secured http.Handler = ogenServer
 	if a.Auth != nil {
-		secured = a.Auth.AuthBridge(ogenServer)
+		secured = recordStage("auth-bridge", a.Auth.AuthBridge(ogenServer))
 	}
 	finalHandler := AuthPassthrough(secured, a.Auth)
+	finalHandler = recordStage("auth-passthrough", finalHandler)
 	finalHandler = OpenAPIPassthrough(finalHandler)
+	finalHandler = recordStage("oas", finalHandler)
 	finalHandler = RequestIDMiddleware(finalHandler)
+	finalHandler = recordStage("rid", finalHandler)
 	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
+	finalHandler = recordStage("cors", finalHandler)
 	finalHandler = withRequestLog(finalHandler)
+	finalHandler = recordStage("req-log", finalHandler)
 	finalHandler = recoverPanic(finalHandler)
+	finalHandler = withStageCommit(finalHandler)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port),
