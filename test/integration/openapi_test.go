@@ -29,14 +29,3 @@ func TestOpenAPISpecIsPublic(t *testing.T) {
 	assert.NotEmpty(t, spec["paths"], "spec must include paths")
 	assert.NotEmpty(t, spec["components"], "spec must include schemas")
 }
-
-func TestOpenAPISpecWorksWithoutSession(t *testing.T) {
-	srv := newTestServer(t)
-	defer srv.Close()
-	client := &http.Client{}
-	resp, err := client.Get(srv.URL + "/openapi.json")
-	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
-	assert.Equal(t, http.StatusOK, resp.StatusCode,
-		"/openapi.json must work without a session cookie")
-}

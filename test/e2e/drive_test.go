@@ -29,6 +29,28 @@ func TestE2EDriveLifecycle(t *testing.T) {
 	driveID := created.ID.Value
 	require.NotEmpty(t, driveID)
 
+	// Create must populate root_node_id so subsequent fs ops can
+	// resolve paths against it. A missing root_node_id surfaces
+	// as "vfs: not found" on the first Mkdir — the bug that
+	// initially surfaced production POST /v1/drives returning 200
+	// but no usable drive.
+	require.True(t, created.RootNodeID.Set,
+		"created drive must have root_node_id; without it, Mkdir fails")
+	rootNodeID := created.RootNodeID.Value
+	require.NotEmpty(t, rootNodeID, "root_node_id must be a valid UUID")
+
+	// Mkdir against the freshly-created drive. A 200 here means
+	// the end-to-end path through handler.Create -> service.Create
+	// -> WithTx{create+update} -> ListByOwner -> GetRootNodeID
+	// is consistent.
+	mkdirBody := `{"path":"/e2e-test"}`
+	req = env.authReq("POST", "/v1/drives/"+driveID+"/fs/mkdir", bytes.NewReader([]byte(mkdirBody)))
+	resp, err = env.apiClient.Do(req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode,
+		"Mkdir must succeed after Create; if not, root_node_id is missing or stale")
+
 	// Get drive
 	req = env.authReq("GET", "/v1/drives/"+driveID+"/root", nil)
 	resp, err = env.apiClient.Do(req)
@@ -46,6 +68,8 @@ func TestE2EDriveLifecycle(t *testing.T) {
 	var drives []api.Drive
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&drives))
 	assert.Len(t, drives, 1)
+	assert.True(t, drives[0].RootNodeID.Set,
+		"listed drive must also carry root_node_id")
 
 	// Update drive
 	updateBody := `{"name":"e2e-drive-updated"}`
