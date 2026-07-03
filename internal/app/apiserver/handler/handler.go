@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -130,7 +131,14 @@ func (h *Handler) userID(ctx context.Context) string {
 }
 
 func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
-	return permission.Require(ctx, h.authorizer, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
+	allowed, err := h.authorizer.Check(ctx, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
+	if err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
+	}
+	if !allowed {
+		return errorx.New(errorx.KindForbidden, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
+	}
+	return nil
 }
 
 // NewError converts a domain error to an ErrorStatusCode for ogen's
