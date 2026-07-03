@@ -9,15 +9,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
 	"github.com/mandacode-labs/mdrive/internal/auth"
-	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
@@ -126,60 +123,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 	logx.Info(ctx, "api_server.stopped")
 	return nil
-}
-
-func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
-	if !cfg.Enabled {
-		return next
-	}
-
-	allowedMethods := strings.Join(cfg.AllowedMethods, ", ")
-	allowedHeaders := strings.Join(cfg.AllowedHeaders, ", ")
-	exposedHeaders := strings.Join(cfg.ExposedHeaders, ", ")
-	origins := make(map[string]struct{}, len(cfg.AllowedOrigins))
-	for _, o := range cfg.AllowedOrigins {
-		origins[o] = struct{}{}
-	}
-	allowAll := false
-	if _, ok := origins["*"]; ok {
-		allowAll = true
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" {
-			switch {
-			case allowAll && !cfg.AllowCredentials:
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-			case allowAll && cfg.AllowCredentials:
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-			default:
-				if _, ok := origins[origin]; ok {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-				}
-			}
-			if cfg.AllowCredentials {
-				w.Header().Set("Access-Control-Allow-Credentials", strconv.FormatBool(cfg.AllowCredentials))
-			}
-			if exposedHeaders != "" {
-				w.Header().Set("Access-Control-Expose-Headers", exposedHeaders)
-			}
-		}
-
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
-			if allowedHeaders != "" {
-				w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
-			}
-			if cfg.MaxAge > 0 {
-				w.Header().Set("Access-Control-Max-Age", strconv.Itoa(cfg.MaxAge))
-			}
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }
 
 // AuthPassthrough routes OIDC login/callback/logout to the auth
