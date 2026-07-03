@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Node holds the POSIX-style inode schema.
+// Node holds the inode schema.
 // One row per node; filename and parent are stored in the parent directory's
 // inline DirContent (not in this row), matching Linux where i_parent/i_name
 // are absent from the inode structure.
@@ -18,6 +18,10 @@ import (
 // Drive ownership is implicit: a node belongs to the drive whose root
 // ancestor chain it can be reached from. The drive's root_node_id acts
 // as the entry point, analogous to superblock.s_root in Linux.
+//
+// Permission checks (POSIX mode, uid, gid) are not modeled here:
+// OpenFGA owns access control across drives, and S3 (where applicable)
+// owns per-object ACLs.
 type Node struct {
 	ent.Schema
 }
@@ -44,8 +48,8 @@ func (Node) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 
-		// Node type (file, directory, symlink, object, mount).
-		field.Enum("type").
+		// Node kind (file, directory, symlink, object, mount).
+		field.Enum("kind").
 			Values("file", "directory", "symlink", "object", "mount").
 			Default("file"),
 
@@ -56,21 +60,6 @@ func (Node) Fields() []ent.Field {
 		// Hard-link count (POSIX: fresh inode has nlink=0).
 		field.Uint32("nlink").
 			Default(0),
-
-		// POSIX permission bits and file type (chmod(2) bits | S_IFMT).
-		// Defaults: 0644 files, 0755 directories, 0777 symlinks, 0664 objects.
-		field.Uint32("mode").
-			Default(420), // 0644 (file default)
-
-		// Owning user (POSIX st_uid). Empty when unset.
-		field.String("uid").
-			MaxLen(64).
-			Default(""),
-
-		// Owning primary group (POSIX st_gid). Empty when unset.
-		field.String("gid").
-			MaxLen(64).
-			Default(""),
 
 		// Inline content (JSON-serialized). Max 4 KiB; nil for large files / objects.
 		field.Bytes("content").

@@ -50,6 +50,6 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 	case n.IsDir():
 		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is a directory")
 	default:
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: cannot read type="+string(n.Type()))
+		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: cannot read type="+string(n.Kind()))
 	}
 }

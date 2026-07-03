@@ -793,9 +793,9 @@ func (s *DirEntry) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		if s.Type.Set {
-			e.FieldStart("type")
-			s.Type.Encode(e)
+		if s.Kind.Set {
+			e.FieldStart("kind")
+			s.Kind.Encode(e)
 		}
 	}
 }
@@ -803,7 +803,7 @@ func (s *DirEntry) encodeFields(e *jx.Encoder) {
 var jsonFieldsNameOfDirEntry = [3]string{
 	0: "inodeID",
 	1: "name",
-	2: "type",
+	2: "kind",
 }
 
 // Decode decodes DirEntry from json.
@@ -834,15 +834,15 @@ func (s *DirEntry) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
-		case "type":
+		case "kind":
 			if err := func() error {
-				s.Type.Reset()
-				if err := s.Type.Decode(d); err != nil {
+				s.Kind.Reset()
+				if err := s.Kind.Decode(d); err != nil {
 					return err
 				}
 				return nil
 			}(); err != nil {
-				return errors.Wrap(err, "decode field \"type\"")
+				return errors.Wrap(err, "decode field \"kind\"")
 			}
 		default:
 			return d.Skip()
@@ -4020,28 +4020,12 @@ func (s *NodeStat) encodeFields(e *jx.Encoder) {
 		e.Int64(s.Size)
 	}
 	{
-		e.FieldStart("mode")
-		e.UInt32(s.Mode)
-	}
-	{
 		e.FieldStart("nlink")
 		e.UInt32(s.Nlink)
 	}
 	{
 		e.FieldStart("ino")
 		json.EncodeUUID(e, s.Ino)
-	}
-	{
-		if s.UID.Set {
-			e.FieldStart("uid")
-			s.UID.Encode(e)
-		}
-	}
-	{
-		if s.Gid.Set {
-			e.FieldStart("gid")
-			s.Gid.Encode(e)
-		}
 	}
 	{
 		e.FieldStart("atime")
@@ -4073,20 +4057,17 @@ func (s *NodeStat) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfNodeStat = [13]string{
-	0:  "type",
-	1:  "size",
-	2:  "mode",
-	3:  "nlink",
-	4:  "ino",
-	5:  "uid",
-	6:  "gid",
-	7:  "atime",
-	8:  "mtime",
-	9:  "ctime",
-	10: "crtime",
-	11: "flags",
-	12: "revision",
+var jsonFieldsNameOfNodeStat = [10]string{
+	0: "type",
+	1: "size",
+	2: "nlink",
+	3: "ino",
+	4: "atime",
+	5: "mtime",
+	6: "ctime",
+	7: "crtime",
+	8: "flags",
+	9: "revision",
 }
 
 // Decode decodes NodeStat from json.
@@ -4122,20 +4103,8 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"size\"")
 			}
-		case "mode":
-			requiredBitSet[0] |= 1 << 2
-			if err := func() error {
-				v, err := d.UInt32()
-				s.Mode = uint32(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"mode\"")
-			}
 		case "nlink":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.UInt32()
 				s.Nlink = uint32(v)
@@ -4147,7 +4116,7 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"nlink\"")
 			}
 		case "ino":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
 				s.Ino = v
@@ -4158,28 +4127,8 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"ino\"")
 			}
-		case "uid":
-			if err := func() error {
-				s.UID.Reset()
-				if err := s.UID.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"uid\"")
-			}
-		case "gid":
-			if err := func() error {
-				s.Gid.Reset()
-				if err := s.Gid.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"gid\"")
-			}
 		case "atime":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.Atime = v
@@ -4191,7 +4140,7 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"atime\"")
 			}
 		case "mtime":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.Mtime = v
@@ -4203,7 +4152,7 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"mtime\"")
 			}
 		case "ctime":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.Ctime = v
@@ -4215,7 +4164,7 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"ctime\"")
 			}
 		case "crtime":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.Crtime = v
@@ -4256,8 +4205,8 @@ func (s *NodeStat) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b10011111,
-		0b00000111,
+		0b11111111,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

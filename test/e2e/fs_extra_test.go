@@ -244,11 +244,11 @@ func TestE2EWriteLarge(t *testing.T) {
 	var lsBody struct {
 		Entries []struct {
 			Name string `json:"name"`
-			Type string `json:"type"`
+			Kind string `json:"kind"`
 		} `json:"entries"`
 	}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&lsBody))
 	require.Len(t, lsBody.Entries, 1)
 	assert.Equal(t, "big.bin", lsBody.Entries[0].Name)
-	assert.Equal(t, "object", lsBody.Entries[0].Type)
+	assert.Equal(t, "object", lsBody.Entries[0].Kind)
 }

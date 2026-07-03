@@ -222,7 +222,7 @@ func (*DirContent) lsRes() {}
 type DirEntry struct {
 	InodeID OptString `json:"inodeID"`
 	Name    OptString `json:"name"`
-	Type    OptString `json:"type"`
+	Kind    OptString `json:"kind"`
 }
 
 // GetInodeID returns the value of InodeID.
@@ -235,9 +235,9 @@ func (s *DirEntry) GetName() OptString {
 	return s.Name
 }
 
-// GetType returns the value of Type.
-func (s *DirEntry) GetType() OptString {
-	return s.Type
+// GetKind returns the value of Kind.
+func (s *DirEntry) GetKind() OptString {
+	return s.Kind
 }
 
 // SetInodeID sets the value of InodeID.
@@ -250,9 +250,9 @@ func (s *DirEntry) SetName(val OptString) {
 	s.Name = val
 }
 
-// SetType sets the value of Type.
-func (s *DirEntry) SetType(val OptString) {
-	s.Type = val
+// SetKind sets the value of Kind.
+func (s *DirEntry) SetKind(val OptString) {
+	s.Kind = val
 }
 
 // Ref: #/components/schemas/DownloadResponse
@@ -925,25 +925,17 @@ type MvUnprocessableEntity Error
 
 func (*MvUnprocessableEntity) mvRes() {}
 
-// POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
-// (chmod(2) bits | S_IFMT); ino is the inode id; the four
-// timestamps follow ext4 semantics. nlink is 0 for symlinks
-// and other special nodes.
+// Inode metadata. Permission checks are not modeled here:
+// OpenFGA owns access control across drives, and S3 (where
+// applicable) owns per-object ACLs.
 // Ref: #/components/schemas/NodeStat
 type NodeStat struct {
 	Type string `json:"type"`
 	Size int64  `json:"size"`
-	// POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and
-	// avoid the gosec G115 signed-overflow boundary.
-	Mode uint32 `json:"mode"`
 	// POSIX st_nlink (hardlink count). Unsigned 32-bit to match the internal representation.
 	Nlink uint32 `json:"nlink"`
 	// POSIX st_ino (inode id).
 	Ino uuid.UUID `json:"ino"`
-	// POSIX st_uid (owning user).
-	UID OptString `json:"uid"`
-	// POSIX st_gid (owning group).
-	Gid OptString `json:"gid"`
 	// POSIX st_atime.
 	Atime time.Time `json:"atime"`
 	// POSIX st_mtime.
@@ -968,11 +960,6 @@ func (s *NodeStat) GetSize() int64 {
 	return s.Size
 }
 
-// GetMode returns the value of Mode.
-func (s *NodeStat) GetMode() uint32 {
-	return s.Mode
-}
-
 // GetNlink returns the value of Nlink.
 func (s *NodeStat) GetNlink() uint32 {
 	return s.Nlink
@@ -981,16 +968,6 @@ func (s *NodeStat) GetNlink() uint32 {
 // GetIno returns the value of Ino.
 func (s *NodeStat) GetIno() uuid.UUID {
 	return s.Ino
-}
-
-// GetUID returns the value of UID.
-func (s *NodeStat) GetUID() OptString {
-	return s.UID
-}
-
-// GetGid returns the value of Gid.
-func (s *NodeStat) GetGid() OptString {
-	return s.Gid
 }
 
 // GetAtime returns the value of Atime.
@@ -1033,11 +1010,6 @@ func (s *NodeStat) SetSize(val int64) {
 	s.Size = val
 }
 
-// SetMode sets the value of Mode.
-func (s *NodeStat) SetMode(val uint32) {
-	s.Mode = val
-}
-
 // SetNlink sets the value of Nlink.
 func (s *NodeStat) SetNlink(val uint32) {
 	s.Nlink = val
@@ -1046,16 +1018,6 @@ func (s *NodeStat) SetNlink(val uint32) {
 // SetIno sets the value of Ino.
 func (s *NodeStat) SetIno(val uuid.UUID) {
 	s.Ino = val
-}
-
-// SetUID sets the value of UID.
-func (s *NodeStat) SetUID(val OptString) {
-	s.UID = val
-}
-
-// SetGid sets the value of Gid.
-func (s *NodeStat) SetGid(val OptString) {
-	s.Gid = val
 }
 
 // SetAtime sets the value of Atime.

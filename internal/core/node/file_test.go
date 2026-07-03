@@ -11,7 +11,7 @@ func TestNewFile(t *testing.T) {
 	n, err := NewFile("hello world")
 	require.NoError(t, err)
 
-	assert.Equal(t, NodeTypeFile, n.Type())
+	assert.Equal(t, NodeKindFile, n.Kind())
 	assert.Equal(t, int64(len("hello world")), n.Size())
 	assert.Equal(t, uint32(0), n.NLink())
 	assert.False(t, n.Revision().IsEmpty())

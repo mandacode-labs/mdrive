@@ -9,12 +9,12 @@ import (
 )
 
 // DirEntry follows the Linux struct linux_dirent pattern: an inode reference plus a name.
-// We additionally include the type for ls-style listing (Linux exposes d_type for this).
+// We additionally include the kind for ls-style listing (Linux exposes d_type for this).
 // JSON tags are kept short to minimize inline content size.
 type DirEntry struct {
 	InodeID uuid.UUID `json:"ino"`
 	Name    string    `json:"name"`
-	Type    NodeType  `json:"type"`
+	Kind    NodeKind  `json:"kind"`
 }
 
 // DirContent is the JSON-serialized listing of a directory node.
@@ -49,7 +49,7 @@ func NewDirectory() (*Node, error) {
 	if err != nil {
 		return nil, errorx.Wrap(err, "node: marshal directory content")
 	}
-	n := newNode(NodeTypeDirectory)
+	n := newNode(NodeKindDirectory)
 	if err := n.write(Content(data), 0); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (n *Node) ReadDir() (DirContent, error) {
 
 // WriteDir replaces the directory's content with the given listing.
 func (n *Node) WriteDir(dc DirContent) error {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	data, err := json.Marshal(&dc)
@@ -87,7 +87,7 @@ func (n *Node) WriteDir(dc DirContent) error {
 // AddEntry adds a child entry to the directory.
 // Fails if the entry already exists or the node is not a directory.
 func (n *Node) AddEntry(name string, child *Node) error {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	if name == "" {
@@ -103,7 +103,7 @@ func (n *Node) AddEntry(name string, child *Node) error {
 	dc.Entries = append(dc.Entries, DirEntry{
 		InodeID: child.id,
 		Name:    name,
-		Type:    child.kind,
+		Kind:    child.kind,
 	})
 	return n.WriteDir(dc)
 }
@@ -112,7 +112,7 @@ func (n *Node) AddEntry(name string, child *Node) error {
 // persisting the directory exactly once. Fails atomically: if any name
 // is empty or already present, no entries are added.
 func (n *Node) AddEntries(entries map[string]*Node) error {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	if len(entries) == 0 {
@@ -139,7 +139,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 		dc.Entries = append(dc.Entries, DirEntry{
 			InodeID: child.id,
 			Name:    name,
-			Type:    child.kind,
+			Kind:    child.kind,
 		})
 	}
 	return n.WriteDir(dc)
@@ -147,7 +147,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 
 // RemoveEntry removes a child entry by name.
 func (n *Node) RemoveEntry(name string) error {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	dc, err := n.ReadDir()
@@ -168,7 +168,7 @@ func (n *Node) RemoveEntry(name string) error {
 // semantics) so partial failure is acceptable; the directory is
 // persisted exactly once.
 func (n *Node) RemoveEntries(names []string) error {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	if len(names) == 0 {
@@ -197,7 +197,7 @@ func (n *Node) RemoveEntries(names []string) error {
 
 // Lookup returns the child entry with the given name, or nil if not present.
 func (n *Node) Lookup(name string) (*DirEntry, error) {
-	if n.kind != NodeTypeDirectory {
+	if n.kind != NodeKindDirectory {
 		return nil, errorx.New(errorx.KindBadRequest, "node: not a directory")
 	}
 	dc, err := n.ReadDir()

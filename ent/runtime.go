@@ -132,32 +132,16 @@ func init() {
 	nodeDescNlink := nodeFields[3].Descriptor()
 	// node.DefaultNlink holds the default value on creation for the nlink field.
 	node.DefaultNlink = nodeDescNlink.Default.(uint32)
-	// nodeDescMode is the schema descriptor for mode field.
-	nodeDescMode := nodeFields[4].Descriptor()
-	// node.DefaultMode holds the default value on creation for the mode field.
-	node.DefaultMode = nodeDescMode.Default.(uint32)
-	// nodeDescUID is the schema descriptor for uid field.
-	nodeDescUID := nodeFields[5].Descriptor()
-	// node.DefaultUID holds the default value on creation for the uid field.
-	node.DefaultUID = nodeDescUID.Default.(string)
-	// node.UIDValidator is a validator for the "uid" field. It is called by the builders before save.
-	node.UIDValidator = nodeDescUID.Validators[0].(func(string) error)
-	// nodeDescGid is the schema descriptor for gid field.
-	nodeDescGid := nodeFields[6].Descriptor()
-	// node.DefaultGid holds the default value on creation for the gid field.
-	node.DefaultGid = nodeDescGid.Default.(string)
-	// node.GidValidator is a validator for the "gid" field. It is called by the builders before save.
-	node.GidValidator = nodeDescGid.Validators[0].(func(string) error)
 	// nodeDescContent is the schema descriptor for content field.
-	nodeDescContent := nodeFields[7].Descriptor()
+	nodeDescContent := nodeFields[4].Descriptor()
 	// node.ContentValidator is a validator for the "content" field. It is called by the builders before save.
 	node.ContentValidator = nodeDescContent.Validators[0].(func([]byte) error)
 	// nodeDescFlags is the schema descriptor for flags field.
-	nodeDescFlags := nodeFields[12].Descriptor()
+	nodeDescFlags := nodeFields[9].Descriptor()
 	// node.DefaultFlags holds the default value on creation for the flags field.
 	node.DefaultFlags = nodeDescFlags.Default.(uint32)
 	// nodeDescRevision is the schema descriptor for revision field.
-	nodeDescRevision := nodeFields[13].Descriptor()
+	nodeDescRevision := nodeFields[10].Descriptor()
 	// node.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
 	node.RevisionValidator = nodeDescRevision.Validators[0].(func(string) error)
 	userMixin := schema.User{}.Mixin()

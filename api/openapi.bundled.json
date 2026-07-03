@@ -153,7 +153,6 @@
         ],
         "description": "List drives owned by the authenticated user.\n",
         "summary": "List drives owned by the authenticated user",
-        "x-ogen-operation-group": "Drive",
         "responses": {
           "200": {
             "description": "List of drives",
@@ -406,7 +405,6 @@
         ],
         "description": "List all soft-deleted drives. Admin only.\n",
         "summary": "List soft-deleted drives (admin only)",
-        "x-ogen-operation-group": "Drive",
         "responses": {
           "200": {
             "description": "List of deleted drives",
@@ -1859,7 +1857,6 @@
         ],
         "description": "Return the user identified by `id`.\n",
         "summary": "Get current user",
-        "x-ogen-operation-group": "User",
         "responses": {
           "200": {
             "description": "User",
@@ -2091,7 +2088,6 @@
         ],
         "description": "Return the current authenticated user (200) or 401 if no session.\n",
         "summary": "Get the current authenticated user",
-        "x-ogen-operation-group": "Auth",
         "responses": {
           "200": {
             "description": "Current user",
@@ -2347,7 +2343,7 @@
           "name": {
             "type": "string"
           },
-          "type": {
+          "kind": {
             "type": "string"
           }
         }
@@ -2375,11 +2371,10 @@
       },
       "NodeStat": {
         "type": "object",
-        "description": "POSIX stat(2) / lstat(2) result. Mode is an octal bitmask\n(chmod(2) bits | S_IFMT); ino is the inode id; the four\ntimestamps follow ext4 semantics. nlink is 0 for symlinks\nand other special nodes.\n",
+        "description": "Inode metadata. Permission checks are not modeled here:\nOpenFGA owns access control across drives, and S3 (where\napplicable) owns per-object ACLs.\n",
         "required": [
           "type",
           "size",
-          "mode",
           "nlink",
           "ino",
           "atime",
@@ -2395,11 +2390,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "mode": {
-            "type": "integer",
-            "format": "uint32",
-            "description": "POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and avoid the gosec G115 signed-overflow boundary."
-          },
           "nlink": {
             "type": "integer",
             "format": "uint32",
@@ -2409,14 +2399,6 @@
             "type": "string",
             "format": "uuid",
             "description": "POSIX st_ino (inode id)."
-          },
-          "uid": {
-            "type": "string",
-            "description": "POSIX st_uid (owning user)."
-          },
-          "gid": {
-            "type": "string",
-            "description": "POSIX st_gid (owning group)."
           },
           "atime": {
             "type": "string",

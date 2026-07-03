@@ -155,3 +155,11 @@ func KindOf(err error) Kind {
 	}
 	return KindUnknown
 }
+
+// IsKind reports whether err's chain contains an errorx.Error
+// with the given kind. Use in tests and conditional branches
+// instead of KindOf(err) == k, which is a one-liner the optimizer
+// can't help with when a chain is involved.
+func IsKind(err error, k Kind) bool {
+	return KindOf(err) == k
+}

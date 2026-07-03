@@ -41,7 +41,7 @@ func NewObject(content ObjectContent, size int64) (*Node, error) {
 	if size < 0 {
 		return nil, errorx.New(errorx.KindBadRequest, "node: invalid size")
 	}
-	return newInlineNode(NodeTypeObject, &content, size)
+	return newInlineNode(NodeKindObject, &content, size)
 }
 
 // ReadObject returns the object node's external reference.
@@ -59,7 +59,7 @@ func (n *Node) ReadObject() (ObjectContent, error) {
 
 // WriteObject updates the object node's external reference and size.
 func (n *Node) WriteObject(content ObjectContent, size int64) error {
-	if n.kind != NodeTypeObject {
+	if n.kind != NodeKindObject {
 		return errorx.New(errorx.KindBadRequest, "node: invalid type for operation")
 	}
 	if content.Bucket == "" || content.Key == "" {

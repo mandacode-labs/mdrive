@@ -27,14 +27,14 @@ func NewSymlink(target string) (*Node, error) {
 	if target == "" {
 		return nil, errorx.New(errorx.KindBadRequest, "node: invalid name")
 	}
-	return newInlineNode(NodeTypeSymlink, NewSymlinkContent(target), int64(len(target)))
+	return newInlineNode(NodeKindSymlink, NewSymlinkContent(target), int64(len(target)))
 }
 
 // Readlink returns the symlink's target path (POSIX readlink(2)). The
 // caller must have already verified the node is a symlink; calling
 // Readlink on a non-symlink node returns ErrInvalidType.
 func (n *Node) Readlink() (string, error) {
-	if n.kind != NodeTypeSymlink {
+	if n.kind != NodeKindSymlink {
 		return "", errorx.New(errorx.KindBadRequest, "node: invalid type for readlink")
 	}
 	content, err := n.read()
@@ -53,7 +53,7 @@ func (n *Node) WriteSymlink(target string) error {
 	if target == "" {
 		return errorx.New(errorx.KindBadRequest, "node: invalid name")
 	}
-	if n.kind != NodeTypeSymlink {
+	if n.kind != NodeKindSymlink {
 		return errorx.New(errorx.KindBadRequest, "node: invalid type for operation")
 	}
 	data, err := json.Marshal(NewSymlinkContent(target))
