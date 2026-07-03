@@ -3,8 +3,10 @@ package vfs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Cat returns the inline bytes of a file node. The path is resolved
@@ -15,8 +17,16 @@ import (
 //
 // Permission is the caller's responsibility.
 func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
+	logx.Debug(ctx, "vfs.cat.enter",
+		slog.String("drive_id", driveID),
+		slog.String("path", path),
+	)
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
+		logx.Debug(ctx, "vfs.cat.resolve_err",
+			slog.String("drive_id", driveID),
+			slog.String("err", err.Error()),
+		)
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: cat resolve (path=%s)", path))
 	}
 	n := res.Node
@@ -24,8 +34,16 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 	case n.IsFile():
 		raw, err := n.ReadFile()
 		if err != nil {
+			logx.Debug(ctx, "vfs.cat.read_file_err",
+				slog.String("drive_id", driveID),
+				slog.String("err", err.Error()),
+			)
 			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: cat read file (path=%s)", path))
 		}
+		logx.Debug(ctx, "vfs.cat.ok",
+			slog.String("drive_id", driveID),
+			slog.Int("bytes", len(raw)),
+		)
 		return []byte(raw), nil
 	case n.IsObject():
 		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is an object")

@@ -63,16 +63,19 @@ func findLine(t *testing.T, raw, msg string) map[string]any {
 	return nil
 }
 
-func TestVFSMkdirLogsNoMessage(t *testing.T) {
-	// Sanity: a basic op without multi-step semantics does not
-	// produce a vfs.* log. This guards against accidentally
-	// logging on every op (high signal-to-noise is the goal).
+func TestVFSMkdirLogsEnterOk(t *testing.T) {
+	// Every op now emits a vfs.* debug log on enter/ok at log
+	// level=debug, so the operator can trace any single op in
+	// production by raising log_level. The previous "high signal
+	// to noise" rule no longer applies: signal is the trace, the
+	// cost is one debug log per op, and log_level=info prod does
+	// not see them.
 	ctx := context.Background()
 	svc, buf := newLoggedService(t)
 	_, err := svc.Mkdir(ctx, "d1", "/sub")
 	require.NoError(t, err)
-	assert.False(t, strings.Contains(buf.String(), "vfs.mkdir"),
-		"plain mkdir should not log; signal is reserved for multi-step ops")
+	assert.True(t, strings.Contains(buf.String(), "vfs.mkdir.enter"),
+		"vfs.mkdir.enter must be present at debug level")
 }
 
 func TestVFSMvLogsCompleted(t *testing.T) {
