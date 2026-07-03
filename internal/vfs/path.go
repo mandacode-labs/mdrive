@@ -244,6 +244,9 @@ func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow
 // parent path; cross-drive continuation is the caller's
 // responsibility (e.g. mv constructs both endpoints explicitly).
 func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string) (parent *node.Node, name string, err error) {
+	if p == "" {
+		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+	}
 	cleaned := cleanPath(p)
 	idx := strings.LastIndex(cleaned, "/")
 	if idx < 0 {
@@ -311,6 +314,9 @@ func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (pa
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, "", err
+	}
+	if rootID == uuid.Nil {
+		return nil, "", errorx.New(errorx.KindNotFound, "vfs: drive not found")
 	}
 	parent, name, err = s.newResolver().resolveParent(ctx, rootID, path)
 	if err != nil {

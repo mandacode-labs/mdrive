@@ -18,8 +18,4 @@ type Repository interface {
 
 	// Delete removes the node with the given id.
 	Delete(ctx context.Context, id uuid.UUID) error
-
-	// WithTx executes fn within a transaction. The Repository passed to fn
-	// uses the same transaction for all its operations.
-	WithTx(ctx context.Context, fn func(Repository) error) error
 }

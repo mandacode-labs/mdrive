@@ -3,107 +3,49 @@ package vfs
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// Mv moves sources to dest (like `mv src1 src2 ... dest/`).
-// Same-drive only. The underlying node.Service.MoveEntry is atomic
-// on its own (it wraps its writes in WithTx), so vfs just orchestrates
-// the resolve + move and reports S3 references for any overwritten
-// object that should be tombstoned after commit.
-//
-// Semantics:
-//   - Single source + non-existent destination path: rename.
-//   - Single source + existing-directory destination: move into it.
-//   - Multiple sources: destination must be an existing directory;
-//     each source's basename is used.
+// Mv moves sources to dst (like `mv src1 src2 ... dst/`). Same-drive
+// only. Partial-failure for multi-source is "stop on first error"
+// (POSIX mv). The whole batch runs inside one transaction, so
+// either all sources move or none do; tombstone enqueue rolls back
+// the move on failure.
 //
 // Permission is the caller's responsibility.
 func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
 		return errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 	}
-
-	start := time.Now()
-	var (
-		overwriteRefs []GarbageRef
-		err           error
-	)
-	if len(srcPaths) == 1 {
-		overwriteRefs, err = s.mvOne(ctx, srcDriveID, srcPaths[0], dstPath)
-	} else {
-		overwriteRefs, err = s.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
-	}
-	if err != nil {
-		logx.Debug(ctx, "vfs.mv.failed",
-			slog.String("drive_id", srcDriveID),
-			slog.Int("src_count", len(srcPaths)),
-			slog.String("dst_path", dstPath),
-			slog.String("err", err.Error()),
-		)
-		return err
-	}
-
-	if len(overwriteRefs) > 0 && s.GarbageRecorder != nil {
-		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
-			logx.Error(ctx, errorx.Wrap(err, fmt.Sprintf("vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs))),
-				"vfs.mv.tombstone_failed",
-				slog.String("drive_id", srcDriveID),
-				slog.Int("ref_count", len(overwriteRefs)),
-			)
-			return errorx.Wrap(err, fmt.Sprintf("vfs: mv post-commit tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs)))
+	return s.tm.WithTx(ctx, func(ctx context.Context) error {
+		var overwriteRefs []GarbageRef
+		var err error
+		if len(srcPaths) == 1 {
+			overwriteRefs, err = s.mvOne(ctx, srcDriveID, srcPaths[0], dstPath)
+		} else {
+			overwriteRefs, err = s.mvBatch(ctx, srcDriveID, srcPaths, dstPath)
 		}
-		logx.Info(ctx, "vfs.mv.tombstoned",
-			slog.String("drive_id", srcDriveID),
-			slog.Int("ref_count", len(overwriteRefs)),
-		)
-	}
-
-	logx.Debug(ctx, "vfs.mv.completed",
-		slog.String("drive_id", srcDriveID),
-		slog.Int("src_count", len(srcPaths)),
-		slog.String("dst_path", dstPath),
-		slog.Int("tombstoned", len(overwriteRefs)),
-		slog.Duration("elapsed", time.Since(start)),
-	)
-	return nil
+		if err != nil {
+			return err
+		}
+		if len(overwriteRefs) == 0 || s.GarbageRecorder == nil {
+			return nil
+		}
+		if err := s.GarbageRecorder.RecordGarbage(ctx, overwriteRefs); err != nil {
+			return errorx.Wrap(err, fmt.Sprintf("vfs: mv tombstone enqueue (drive_id=%s, ref_count=%d)", srcDriveID, len(overwriteRefs)))
+		}
+		return nil
+	})
 }
 
-// mvOne moves a single source to dstPath. If the destination's last
-// path component already exists as a file, it is overwritten; if it
-// exists as a directory, the source is moved into it. The source path
-// may traverse mounts but the resolved source must live in driveID
-// (cross-drive moves are still rejected as ErrCrossDrive).
-//
-// Returns GarbageRef slices for any S3 objects that should be
-// tombstoned (target overwritten, nlink hit zero). The caller is
-// responsible for enqueueing them after the node transaction commits.
-//
-// The move is delegated to node.Service.MoveEntry, which preserves
-// the child inode's nlink instead of doing the Unlink + Link pair.
-// The Unlink + Link pair is unsafe for nlink==1 (it deletes the
-// inode) and is also unsafe when combined with concurrent loads
-// (the in-memory child becomes stale across the operation). The
-// high-level MoveEntry sidesteps both issues.
-//
-// A single fresh resolver is used for the resolveParent pair so
-// that when src and dst share a parent directory, the two calls
-// return the same *Node pointer. MoveEntry is responsible for
-// updating both parents atomically; the resolver cache keeps the
-// optimistic-concurrency check in node.Repository.Save consistent.
 func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
 	}
 	r := s.newResolver()
-	// A single resolve call gives us the src node; if it stops at a
-	// mount, the move would cross drives, which mv rejects.
 	srcOut, err := r.resolve(ctx, rootID, srcPath, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src (src_path=%s)", srcPath))
@@ -122,26 +64,9 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if !dstParent.IsDir() {
 		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
 	}
-
-	overwriteRefs, err := s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
-	if err != nil {
-		return nil, err
-	}
-	return overwriteRefs, nil
+	return s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
 }
 
-// mvBatch handles multi-source moves. The destination must resolve to
-// an existing directory; sources are moved in keeping their basenames.
-// All sources must resolve to driveID (cross-drive moves via mount
-// traversal are rejected as ErrCrossDrive).
-//
-// Returns S3 references for any overwritten destination entry whose
-// nlink hit zero; caller enqueues tombstones after the node tx commits.
-//
-// As in mvOne, each move is delegated to MoveEntry so the child
-// inode's nlink is preserved. A single fresh resolver is shared
-// across the resolveParent calls so multiple sources that share
-// a parent directory see the same *Node pointer.
 func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
@@ -190,12 +115,6 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 		}
 	}
 
-	// Each move is its own atomic operation. Partial-failure semantics
-	// for a multi-source batch are "stop on first error": earlier
-	// successful moves stay committed, later ones are skipped. This
-	// matches POSIX mv: a partial batch is not rolled back even when
-	// one source fails. Callers needing all-or-nothing semantics must
-	// stage sources into a temp directory and rename that atomically.
 	var overwriteRefs []GarbageRef
 	for _, si := range sources {
 		refs, err := s.applyMoveEntry(ctx, si.srcParent, si.srcName, dstDir, si.baseName)
@@ -207,55 +126,36 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	return overwriteRefs, nil
 }
 
-// applyMoveEntry wraps node.Service.MoveEntry with vfs-level concerns:
-// detecting when the overwrite target is an S3-backed object (whose
-// bucket+key must be tombstoned for GC) and translating node errors
-// into vfs errors.
+// applyMoveEntry captures the S3 reference of the overwrite target
+// (if any) before MoveEntry removes it, then delegates to
+// node.Service.MoveEntry. The child inode is preserved (no nlink
+// bookkeeping here) — that's MoveEntry's responsibility.
 func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]GarbageRef, error) {
-	// Capture the overwrite target's S3 reference (if any) before
-	// MoveEntry removes it. After the call the inode may be gone
-	// (nlink hit 0), so we need the reference pre-emptively.
-	var overwriteRef *GarbageRef
-	if existing, err := dstParent.Lookup(dstName); err != nil {
-		logx.Debug(ctx, "vfs.mv.lookup_dst_failed",
-			slog.String("err", err.Error()),
-			slog.String("dst_name", dstName),
-		)
-	} else if existing != nil {
-		existingChild, err := s.NodeClient.GetByID(ctx, existing.InodeID)
-		switch {
-		case err != nil:
-			logx.Warn(ctx, "vfs.mv.get_overwrite_target_failed",
-				slog.String("err", err.Error()),
-				slog.String("dst_name", dstName),
-			)
-		case existingChild.IsObject():
-			oc, err := existingChild.ReadObject()
-			if err != nil || oc.Bucket == "" || oc.Key == "" {
-				logx.Warn(ctx, "vfs.mv.read_object_content_failed",
-					slog.String("err", errOrEmpty(err)),
-					slog.String("dst_name", dstName),
-				)
-				break
-			}
-			overwriteRef = &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}
-		}
+	overwriteRef, err := s.captureOverwriteRef(ctx, dstParent, dstName)
+	if err != nil {
+		return nil, err
 	}
-
 	if err := s.NodeClient.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv move entry (src_name=%s, dst_name=%s)", srcName, dstName))
 	}
-
 	if overwriteRef != nil {
 		return []GarbageRef{*overwriteRef}, nil
 	}
 	return nil, nil
 }
 
-// errOrEmpty returns err.Error() when err is non-nil, "" otherwise.
-func errOrEmpty(err error) string {
-	if err == nil {
-		return ""
+func (s *Service) captureOverwriteRef(ctx context.Context, dstParent *node.Node, dstName string) (*GarbageRef, error) {
+	existing, err := dstParent.Lookup(dstName)
+	if err != nil || existing == nil {
+		return nil, nil
 	}
-	return err.Error()
+	child, err := s.NodeClient.GetByID(ctx, existing.InodeID)
+	if err != nil || !child.IsObject() {
+		return nil, nil
+	}
+	oc, err := child.ReadObject()
+	if err != nil || oc.Bucket == "" || oc.Key == "" {
+		return nil, nil
+	}
+	return &GarbageRef{Bucket: oc.Bucket, Key: oc.Key}, nil
 }

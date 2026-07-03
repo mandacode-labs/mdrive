@@ -235,6 +235,12 @@ func (n *Node) ID() uuid.UUID      { return n.id }
 func (n *Node) Type() NodeType     { return n.kind }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
+
+// IncNLink increments the nlink counter by one. Mirrors the
+// behavior of node.Service.Link's hardlink bookkeeping so test
+// fakes (e.g. mock NodeClient callbacks) can keep the field
+// consistent without reaching into unexported state.
+func (n *Node) IncNLink() { n.nlink++ }
 func (n *Node) Mode() uint32       { return n.mode }
 func (n *Node) UID() string        { return n.uid }
 func (n *Node) GID() string        { return n.gid }

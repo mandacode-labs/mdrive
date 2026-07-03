@@ -8,6 +8,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entnode "github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
@@ -39,7 +40,7 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	if n == nil {
 		return errors.New("save: node is nil")
 	}
-	exists, err := r.exists(ctx, n.id)
+	exists, err := r.existsTx(ctx, n.id)
 	if err != nil {
 		return err
 	}
@@ -54,8 +55,25 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	return r.update(ctx, n, content)
 }
 
+func (r *entRepository) existsTx(ctx context.Context, id uuid.UUID) (bool, error) {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	n, err := client.Node.Query().Where(entnode.IDEQ(id)).Exist(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n, nil
+}
+
 func (r *entRepository) insert(ctx context.Context, n *Node, content Content) error {
-	_, err := r.client.Node.Create().
+	client := r.client
+	tx, ok := entx.FromContext(ctx)
+	if ok {
+		client = tx.Client()
+	}
+	_, err := client.Node.Create().
 		SetID(n.id).
 		SetType(entType(n.kind)).
 		SetSize(n.size).
@@ -75,7 +93,12 @@ func (r *entRepository) insert(ctx context.Context, n *Node, content Content) er
 }
 
 func (r *entRepository) update(ctx context.Context, n *Node, content Content) error {
-	affected, err := r.client.Node.Update().
+	client := r.client
+	tx, ok := entx.FromContext(ctx)
+	if ok {
+		client = tx.Client()
+	}
+	affected, err := client.Node.Update().
 		Where(entnode.IDEQ(n.id), entnode.RevisionEQ(string(n.staleRev))).
 		SetType(entType(n.kind)).
 		SetSize(n.size).
@@ -102,7 +125,12 @@ func (r *entRepository) update(ctx context.Context, n *Node, content Content) er
 
 // Delete removes the node with the given id.
 func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	err := r.client.Node.DeleteOneID(id).Exec(ctx)
+	client := r.client
+	tx, ok := entx.FromContext(ctx)
+	if ok {
+		client = tx.Client()
+	}
+	err := client.Node.DeleteOneID(id).Exec(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return errorx.New(errorx.KindNotFound, "node: not found")
@@ -110,29 +138,6 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 	return nil
-}
-
-// WithTx executes fn within a transaction.
-func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
-	tx, err := r.client.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	txClient := tx.Client()
-	txRepo := &entRepository{client: txClient}
-	if err := fn(txRepo); err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
-
-func (r *entRepository) exists(ctx context.Context, id uuid.UUID) (bool, error) {
-	n, err := r.client.Node.Query().Where(entnode.IDEQ(id)).Exist(ctx)
-	if err != nil {
-		return false, err
-	}
-	return n, nil
 }
 
 // fromEnt converts an ent.Node to a domain Node.

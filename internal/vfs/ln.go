@@ -110,4 +110,7 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 	return src, nil
 }
 
+// ErrHardlinkNotSupported is returned when a hardlink source is
+// of a type that POSIX does not allow to be hardlinked
+// (directory, symlink, mount).
 var ErrHardlinkNotSupported = errorx.New(errorx.KindBadRequest, "ln: source node type does not support hardlinks (dir/symlink/mount)")

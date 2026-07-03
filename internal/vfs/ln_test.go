@@ -1,29 +1,20 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-)
 
-// mustRootID returns the root node ID of the vfs test service.
-// Tests that need to link new nodes under the root can use this
-// instead of building their own root.
-func mustRootID(t *testing.T, svc *Service) uuid.UUID {
-	t.Helper()
-	d, err := svc.DriveClient.GetByID(context.Background(), "d1")
-	require.NoError(t, err)
-	id := d.RootNodeID()
-	require.NotNil(t, id)
-	return *id
-}
+	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
+)
 
 func TestSymlink(t *testing.T) {
 	ctx := context.Background()
-	svc := newTestService()
+	svc := newTestService(t)
 
 	link, err := svc.Symlink(ctx, "d1", "/target", "/link")
 	require.NoError(t, err)
@@ -32,15 +23,23 @@ func TestSymlink(t *testing.T) {
 
 func TestHardlink(t *testing.T) {
 	ctx := context.Background()
-	svc, nodeSvc := newTestServiceWithNode()
-	root, err := nodeSvc.GetByID(ctx, mustRootID(t, svc))
-	require.NoError(t, err)
+	root, driveState, repo := setupRoot(t)
+	nodeMock := newMockNodeClient(t, repo)
+	driveMock := newMockDriveClient(t, driveState)
+	garbageMock := newMockGarbageRecorder(t)
+	tmMock := newMockTxManager(t)
+	fullSvc := vfs.NewService(vfs.ServiceConfig{
+		NodeClient:      nodeMock,
+		DriveClient:     driveMock,
+		GarbageRecorder: garbageMock,
+		TxManager:       tmMock,
+	})
 
-	src, err := nodeSvc.CreateFile(ctx, "hello")
+	src, err := node.NewFile("hello")
 	require.NoError(t, err)
-	require.NoError(t, nodeSvc.Link(ctx, root, "src", src))
+	require.NoError(t, nodeMock.Link(ctx, root, "src", src))
 
-	link, err := svc.Hardlink(ctx, "d1", "/src", "/hard")
+	link, err := fullSvc.Hardlink(ctx, "d1", "/src", "/hard")
 	require.NoError(t, err)
 	assert.Equal(t, src.ID(), link.ID(), "hardlink should share the source inode")
 	assert.Equal(t, uint32(2), link.NLink(), "nlink should be incremented")
@@ -48,7 +47,10 @@ func TestHardlink(t *testing.T) {
 
 func TestHardlinkRejectsDirectory(t *testing.T) {
 	ctx := context.Background()
-	svc := newTestService()
+	svc := newTestService(t)
 	_, err := svc.Hardlink(ctx, "d1", "/", "/hard")
-	assert.ErrorIs(t, err, ErrHardlinkNotSupported)
+	assert.ErrorIs(t, err, vfs.ErrHardlinkNotSupported)
 }
+
+// silence unused-import warning when mock is not referenced
+var _ = mock.Anything

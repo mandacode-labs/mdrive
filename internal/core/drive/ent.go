@@ -10,6 +10,7 @@ import (
 	entdrive "github.com/mandacode-labs/mdrive/ent/drive"
 	entdrivestorage "github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/internal/crypto"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
@@ -34,11 +35,16 @@ func NewRepository(client *ent.Client, cipher crypto.Cipher) Repository {
 // that need this op to participate in a larger transaction must wrap it
 // in WithTx at the service layer.
 func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+
 	logx.Debug(ctx, "drive.repo.create.drive.insert.begin",
 		slog.String("id", d.ID()),
 		slog.Int("owner_id_len", len(d.OwnerID())),
 	)
-	if _, err := r.client.Drive.Create().
+	if _, err := client.Drive.Create().
 		SetID(d.ID()).
 		SetPublicID(d.PublicID()).
 		SetName(d.Name()).
@@ -66,7 +72,7 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 		slog.String("drive_id", s.DriveID()),
 		slog.String("bucket", s.Bucket()),
 	)
-	if _, err := r.client.DriveStorage.Create().
+	if _, err := client.DriveStorage.Create().
 		SetDriveID(s.DriveID()).
 		SetBucket(s.Bucket()).
 		SetNillableEndpoint(s.Endpoint()).
@@ -85,7 +91,11 @@ func (r *entRepository) Create(ctx context.Context, d *Drive, s *Storage) error 
 }
 
 func (r *entRepository) GetByID(ctx context.Context, id string) (*Drive, error) {
-	d, err := r.client.Drive.Query().Where(entdrive.IDEQ(id)).Only(ctx)
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	d, err := client.Drive.Query().Where(entdrive.IDEQ(id)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, nil
@@ -96,7 +106,11 @@ func (r *entRepository) GetByID(ctx context.Context, id string) (*Drive, error) 
 }
 
 func (r *entRepository) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
-	d, err := r.client.Drive.Query().Where(entdrive.PublicIDEQ(publicID)).Only(ctx)
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	d, err := client.Drive.Query().Where(entdrive.PublicIDEQ(publicID)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, nil
@@ -107,7 +121,11 @@ func (r *entRepository) GetByPublicID(ctx context.Context, publicID string) (*Dr
 }
 
 func (r *entRepository) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
-	s, err := r.client.DriveStorage.Query().Where(entdrivestorage.DriveIDEQ(driveID)).Only(ctx)
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	s, err := client.DriveStorage.Query().Where(entdrivestorage.DriveIDEQ(driveID)).Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, nil
@@ -130,7 +148,11 @@ func (r *entRepository) GetStorage(ctx context.Context, driveID string) (*Storag
 }
 
 func (r *entRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
-	updated, err := r.client.Drive.UpdateOneID(d.ID()).
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	updated, err := client.Drive.UpdateOneID(d.ID()).
 		SetName(d.Name()).
 		SetNillableDescription(d.Description()).
 		SetNillableRootNodeID(d.RootNodeID()).
@@ -143,34 +165,50 @@ func (r *entRepository) Update(ctx context.Context, d *Drive) (*Drive, error) {
 }
 
 func (r *entRepository) SoftDelete(ctx context.Context, id string) error {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
 	now := time.Now()
-	_, err := r.client.Drive.UpdateOneID(id).
+	_, err := client.Drive.UpdateOneID(id).
 		SetDeletedAt(now).
 		Save(ctx)
 	return errorx.Wrap(err, fmt.Sprintf("drive.repo.soft_delete: id=%s", id))
 }
 
 func (r *entRepository) Restore(ctx context.Context, id string) error {
-	_, err := r.client.Drive.UpdateOneID(id).
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	_, err := client.Drive.UpdateOneID(id).
 		ClearDeletedAt().
 		Save(ctx)
 	return errorx.Wrap(err, fmt.Sprintf("drive.repo.restore: id=%s", id))
 }
 
 func (r *entRepository) Delete(ctx context.Context, id string) error {
-	if _, err := r.client.DriveStorage.Delete().Where(entdrivestorage.DriveIDEQ(id)).Exec(ctx); err != nil {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	if _, err := client.DriveStorage.Delete().Where(entdrivestorage.DriveIDEQ(id)).Exec(ctx); err != nil {
 		if !ent.IsNotFound(err) {
 			return errorx.Wrap(err, fmt.Sprintf("drive.repo.delete_storage: id=%s", id))
 		}
 	}
-	if err := r.client.Drive.DeleteOneID(id).Exec(ctx); err != nil {
+	if err := client.Drive.DeleteOneID(id).Exec(ctx); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("drive.repo.delete_drive: id=%s", id))
 	}
 	return nil
 }
 
 func (r *entRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
-	drives, err := r.client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).Where(entdrive.DeletedAtIsNil()).All(ctx)
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	drives, err := client.Drive.Query().Where(entdrive.OwnerIDEQ(ownerID)).Where(entdrive.DeletedAtIsNil()).All(ctx)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("drive.repo.find_by_owner: owner_id_len=%d", len(ownerID)))
 	}
@@ -182,7 +220,11 @@ func (r *entRepository) FindByOwner(ctx context.Context, ownerID string) ([]*Dri
 }
 
 func (r *entRepository) FindDeleted(ctx context.Context, before time.Time, limit int) ([]*Drive, error) {
-	drives, err := r.client.Drive.Query().
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	drives, err := client.Drive.Query().
 		Where(entdrive.DeletedAtNotNil()).
 		Where(entdrive.DeletedAtLTE(before)).
 		Limit(limit).
@@ -198,7 +240,11 @@ func (r *entRepository) FindDeleted(ctx context.Context, before time.Time, limit
 }
 
 func (r *entRepository) FindDeletedByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
-	drives, err := r.client.Drive.Query().
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	drives, err := client.Drive.Query().
 		Where(entdrive.OwnerIDEQ(ownerID)).
 		Where(entdrive.DeletedAtNotNil()).
 		All(ctx)
@@ -210,30 +256,6 @@ func (r *entRepository) FindDeletedByOwner(ctx context.Context, ownerID string) 
 		result[i] = driveFromEnt(d)
 	}
 	return result, nil
-}
-
-// WithTx executes fn within a transaction.
-func (r *entRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
-	logx.Debug(ctx, "drive.repo.with_tx.begin")
-	tx, err := r.client.Tx(ctx)
-	if err != nil {
-		logx.Debug(ctx, "drive.repo.with_tx.begin.err", slog.String("err", err.Error()))
-		return errorx.Wrap(err, "drive.repo.with_tx.begin")
-	}
-	txClient := tx.Client()
-	txRepo := &entRepository{client: txClient, cipher: r.cipher}
-	if err := fn(txRepo); err != nil {
-		logx.Debug(ctx, "drive.repo.with_tx.fn.err", slog.String("err", err.Error()))
-		_ = tx.Rollback()
-		return err
-	}
-	logx.Debug(ctx, "drive.repo.with_tx.committing")
-	if err := tx.Commit(); err != nil {
-		logx.Debug(ctx, "drive.repo.with_tx.commit.err", slog.String("err", err.Error()))
-		return errorx.Wrap(err, "drive.repo.with_tx.commit")
-	}
-	logx.Debug(ctx, "drive.repo.with_tx.committed")
-	return nil
 }
 
 func driveFromEnt(e *ent.Drive) *Drive {

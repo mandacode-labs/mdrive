@@ -1,4 +1,4 @@
-package vfs
+package vfs_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestMkdir(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	n, err := svc.Mkdir(ctx, "d1", "/foo")
@@ -23,7 +23,7 @@ func TestMkdir(t *testing.T) {
 }
 
 func TestMkdirNested(t *testing.T) {
-	svc := newTestService()
+	svc := newTestService(t)
 	ctx := context.Background()
 
 	_, err := svc.Mkdir(ctx, "d1", "/a")

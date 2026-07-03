@@ -16,6 +16,7 @@ import (
 	driveMocks "github.com/mandacode-labs/mdrive/internal/core/drive/mocks"
 	corenode "github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/crypto"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 )
 
 func TestEntDriveSoftDeleteAndRestore(t *testing.T) {
@@ -153,8 +154,8 @@ func TestEntDriveCreateInsideWithTxPersists(t *testing.T) {
 	d := drive.NewDrive(id, "pub-"+id, "tx-drive", nil, drive.ProviderS3, ownerID, nil, nil, now, now)
 	storage := drive.NewStorage(id, "bucket", nil, "us-east-1", "ak", "sk", false)
 
-	require.NoError(t, repo.WithTx(ctx, func(tx drive.Repository) error {
-		return tx.Create(ctx, d, storage)
+	require.NoError(t, entx.NewTxManager(client).WithTx(ctx, func(ctx context.Context) error {
+		return repo.Create(ctx, d, storage)
 	}))
 
 	listed, err := repo.FindByOwner(ctx, ownerID)
@@ -181,11 +182,11 @@ func TestEntDriveServiceCreateEndToEnd(t *testing.T) {
 	client := startPostgres(t)
 	driveRepo := drive.NewRepository(client, crypto.NoOp{})
 	nodeRepo := corenode.NewRepository(client)
-	nodeSvc := corenode.NewService(nodeRepo)
+	nodeSvc := corenode.NewService(nodeRepo, entx.NewTxManager(client))
 
 	owner := driveMocks.NewOwnerCheckerMock(t)
 	owner.EXPECT().Exist(mock.Anything, mock.Anything).Return(true, nil).Maybe()
-	svc := drive.NewService(driveRepo, owner, rootNodeAdapter{svc: nodeSvc})
+	svc := drive.NewService(driveRepo, owner, rootNodeAdapter{svc: nodeSvc}, entx.NewTxManager(client))
 
 	ownerID := ulidLike() // 26-char ULID; owner_id column is character(32)
 	created, _, err := svc.Create(ctx, ownerID, "e2e-drive", "desc", drive.StorageConfig{

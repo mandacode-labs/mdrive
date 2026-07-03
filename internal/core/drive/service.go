@@ -13,22 +13,23 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// Service provides domain-level drive operations. Permission
-// checks are the caller's responsibility (the handler layer);
-// drive.Service is the pure domain logic. ListDeletedForAdmin
-// still accepts an isAdmin flag — that gate is the *administrative*
-// role, not a per-drive permission check, and the handler
-// sources it from the session.
+// TxManager runs a function inside a transaction.
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+// Service provides domain-level drive operations. Permission checks
+// are the caller's responsibility (the handler layer); this is the
+// pure domain logic.
 type Service struct {
 	repo                 Repository
 	ownerChecker         OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
+	tm                   TxManager
 }
 
-// NewService creates a new Service. Permission checks live in the
-// handler; the service is the pure domain layer.
-func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator) *Service {
-	return &Service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator}
+func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator, tm TxManager) *Service {
+	return &Service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator, tm: tm}
 }
 
 // Create creates a drive and its root directory node. The drive +
@@ -98,9 +99,9 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	)
 
 	var updated *Drive
-	err = s.WithTx(ctx, func(tx *Service) error {
+	err = s.tm.WithTx(ctx, func(ctx context.Context) error {
 		logx.Debug(ctx, "drive.service.create.tx.enter", slog.String("id", id))
-		if err := tx.repo.Create(ctx, d, storage); err != nil {
+		if err := s.repo.Create(ctx, d, storage); err != nil {
 			logx.Debug(ctx, "drive.service.create.tx.create_failed",
 				slog.String("id", id),
 				slog.String("err", err.Error()),
@@ -108,7 +109,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 			return errorx.Wrap(err, fmt.Sprintf("drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)", len(d.ID()), len(d.OwnerID()), rootID), errorx.KindServiceDegraded)
 		}
 		logx.Debug(ctx, "drive.service.create.tx.create_ok", slog.String("id", id))
-		u, err := tx.repo.Update(ctx, d)
+		u, err := s.repo.Update(ctx, d)
 		if err != nil {
 			logx.Debug(ctx, "drive.service.create.tx.update_failed",
 				slog.String("id", id),
@@ -259,10 +260,8 @@ func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, er
 }
 
 // WithTx executes fn within a transaction.
-func (s *Service) WithTx(ctx context.Context, fn func(*Service) error) error {
-	return s.repo.WithTx(ctx, func(txRepo Repository) error {
-		return fn(&Service{repo: txRepo, ownerChecker: s.ownerChecker, rootDirectoryCreator: s.rootDirectoryCreator})
-	})
+func (s *Service) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	return s.tm.WithTx(ctx, fn)
 }
 
 func storageCfgValid(cfg *StorageConfig) error {

@@ -40,40 +40,38 @@ type DriveClient interface {
 }
 
 // GarbageRef points at an external (S3) object that needs cleanup
-// when an inode is removed. vfs only knows that something must
-// eventually delete this object; the actual S3 call is owned by
-// upload.Service, which implements GarbageRecorder.
+// when an inode is removed.
 type GarbageRef struct {
 	Bucket string
 	Key    string
 }
 
-// GarbageRecorder is the consumer-declared interface for marking
-// external objects as garbage. vfs calls it when an inode's nlink
-// hits 0; the implementation (typically upload.Service) writes a
-// tombstone row that the gc.TombstoneCleaner job later drains.
-//
-// A nil GarbageRecorder means vfs will return an error if a
-// tombstone would have been recorded. Production wires a real
-// implementation; tests can leave it nil and only call paths that
-// never produce tombstones.
+// GarbageRecorder records tombstones for deleted S3 objects. A nil
+// GarbageRecorder means vfs skips tombstoning (errors are not
+// raised for missing tombstones in that case).
 type GarbageRecorder interface {
 	RecordGarbage(ctx context.Context, refs []GarbageRef) error
+}
+
+// TxManager runs a function inside a transaction.
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type Service struct {
 	NodeClient      NodeClient
 	DriveClient     DriveClient
 	GarbageRecorder GarbageRecorder
+	tm              TxManager
 }
 
-// ServiceConfig groups the dependencies of NewService. vfs is
-// filesystem-only: it has no user or permission dependencies.
-// Permission checks are the caller's responsibility (handler layer).
+// ServiceConfig groups the dependencies of NewService. Permission
+// checks are the caller's responsibility.
 type ServiceConfig struct {
 	NodeClient      NodeClient
 	DriveClient     DriveClient
 	GarbageRecorder GarbageRecorder
+	TxManager       TxManager
 }
 
 func NewService(cfg ServiceConfig) *Service {
@@ -81,6 +79,7 @@ func NewService(cfg ServiceConfig) *Service {
 		NodeClient:      cfg.NodeClient,
 		DriveClient:     cfg.DriveClient,
 		GarbageRecorder: cfg.GarbageRecorder,
+		tm:              cfg.TxManager,
 	}
 }
 

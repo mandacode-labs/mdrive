@@ -1,144 +1,182 @@
-package node
+package node_test
 
 import (
 	"context"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mandacode-labs/mdrive/internal/core/node"
+	nodeMocks "github.com/mandacode-labs/mdrive/internal/core/node/mocks"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// fakeRepo is a minimal in-memory Repository for testing nlink logic.
-type fakeRepo struct {
-	nodes   map[uuid.UUID]*Node
+// memRepo is an in-memory implementation of node.Repository backed by
+// a closure-captured map. The mock wrapper delegates to it so tests
+// can assert on observable state (nlink, entries, deletions) without
+// depending on internal Node fields.
+type memRepo struct {
+	nodes   map[uuid.UUID]*node.Node
 	deleted map[uuid.UUID]bool
-	saveErr error
 }
 
-func newFakeRepo() *fakeRepo {
-	return &fakeRepo{nodes: map[uuid.UUID]*Node{}, deleted: map[uuid.UUID]bool{}}
-}
-
-func (r *fakeRepo) Get(_ context.Context, id uuid.UUID) (*Node, error) {
-	if r.deleted[id] {
-		return nil, errorx.New(errorx.KindNotFound, "node: not found")
+func newMemRepo() *memRepo {
+	return &memRepo{
+		nodes:   map[uuid.UUID]*node.Node{},
+		deleted: map[uuid.UUID]bool{},
 	}
-	n, ok := r.nodes[id]
-	if !ok {
-		return nil, errorx.New(errorx.KindNotFound, "node: not found")
+}
+
+func (m *memRepo) get(id uuid.UUID) (*node.Node, bool) {
+	if m.deleted[id] {
+		return nil, false
 	}
-	return n, nil
+	n, ok := m.nodes[id]
+	return n, ok
 }
 
-func (r *fakeRepo) Save(_ context.Context, n *Node) error {
-	if r.saveErr != nil {
-		return r.saveErr
-	}
-	r.nodes[n.id] = n
-	return nil
+func (m *memRepo) save(n *node.Node) {
+	m.nodes[n.ID()] = n
 }
 
-func (r *fakeRepo) Delete(_ context.Context, id uuid.UUID) error {
-	r.deleted[id] = true
-	delete(r.nodes, id)
-	return nil
+func (m *memRepo) del(id uuid.UUID) {
+	m.deleted[id] = true
+	delete(m.nodes, id)
 }
 
-func (r *fakeRepo) WithTx(_ context.Context, fn func(Repository) error) error {
-	return fn(r)
+// newMockRepo returns a RepositoryMock whose Get/Save/Delete delegate
+// to the supplied memRepo. Repository assertions are not enforced; the
+// test target is the observable effect on the in-memory state.
+func newMockRepo(t *testing.T, mem *memRepo) *nodeMocks.RepositoryMock {
+	t.Helper()
+	r := nodeMocks.NewRepositoryMock(t)
+	r.EXPECT().Get(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, id uuid.UUID) (*node.Node, error) {
+			if n, ok := mem.get(id); ok {
+				return n, nil
+			}
+			return nil, errorx.New(errorx.KindNotFound, "node: not found")
+		},
+	).Maybe()
+	r.EXPECT().Save(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, n *node.Node) error {
+			mem.save(n)
+			return nil
+		},
+	).Maybe()
+	r.EXPECT().Delete(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, id uuid.UUID) error {
+			mem.del(id)
+			return nil
+		},
+	).Maybe()
+	return r
+}
+
+// nopTxManager returns a TxManagerMock that simply invokes fn(ctx).
+// Use when the service's transactional wrapping is not the test target.
+func nopTxManager(t *testing.T) *nodeMocks.TxManagerMock {
+	t.Helper()
+	m := nodeMocks.NewTxManagerMock(t)
+	m.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, fn func(ctx context.Context) error) error {
+			return fn(ctx)
+		},
+	).Maybe()
+	return m
+}
+
+func newSvc(t *testing.T) (*node.Service, *memRepo) {
+	t.Helper()
+	mem := newMemRepo()
+	repo := newMockRepo(t, mem)
+	svc := node.NewService(repo, nopTxManager(t))
+	return svc, mem
 }
 
 func TestLinkIncrementsNLink(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	child, err := NewFile("hello")
+	child, err := node.NewFile("hello")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), child))
+	mem.save(child)
 	require.Equal(t, uint32(0), child.NLink(), "freshly created node has nlink=0 (POSIX)")
 
 	require.NoError(t, svc.Link(context.Background(), dir, "a", child))
 	assert.Equal(t, uint32(1), child.NLink(), "first Link should set nlink=1")
 
-	// Second link from same parent: must reject (entry already exists), nlink unchanged.
 	err = svc.Link(context.Background(), dir, "a", child)
 	assertKind(t, err, errorx.KindConflict)
 	assert.Equal(t, uint32(1), child.NLink())
 }
 
 func TestUnlinkDecrementsAndDeletes(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	child, err := NewFile("hello")
+	child, err := node.NewFile("hello")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), child))
+	mem.save(child)
 
 	require.NoError(t, svc.Link(context.Background(), dir, "a", child))
 	assert.Equal(t, uint32(1), child.NLink())
 
-	// Add a 2nd hardlink from another parent.
-	dir2, err := NewDirectory()
+	dir2, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir2))
+	mem.save(dir2)
 	require.NoError(t, svc.Link(context.Background(), dir2, "b", child))
 	assert.Equal(t, uint32(2), child.NLink())
 
-	// Unlink only decrements (nlink 2 -> 1), child remains.
 	deleted, err := svc.Unlink(context.Background(), dir, "a")
 	require.NoError(t, err)
 	assert.Nil(t, deleted, "nlink>1 should not delete the child")
 	assert.Equal(t, uint32(1), child.NLink())
-	_, err = repo.Get(context.Background(), child.ID())
-	assert.NoError(t, err, "child must still exist after decrement")
+	_, ok := mem.get(child.ID())
+	assert.True(t, ok, "child must still exist after decrement")
 }
 
 func TestUnlinkLastLinkDeletes(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	child, err := NewFile("hello")
+	child, err := node.NewFile("hello")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), child))
+	mem.save(child)
 
-	// Single Link -> nlink=1.
 	require.NoError(t, svc.Link(context.Background(), dir, "a", child))
 	assert.Equal(t, uint32(1), child.NLink())
 
-	// Unlink the only entry: nlink 1 -> 0, child must be deleted.
 	deleted, err := svc.Unlink(context.Background(), dir, "a")
 	require.NoError(t, err)
 	assert.NotNil(t, deleted, "nlink=1 -> 0 must return deleted child")
 	assert.Equal(t, child.ID(), deleted.ID())
-	_, err = repo.Get(context.Background(), child.ID())
-	assertKind(t, err, errorx.KindNotFound)
+	_, ok := mem.get(child.ID())
+	assert.False(t, ok, "deleted child must be gone")
 }
 
 func TestUnlinkOrReplaceRejectsDirectory(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	parent, err := NewDirectory()
+	parent, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), parent))
+	mem.save(parent)
 
-	subdir, err := NewDirectory()
+	subdir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), subdir))
+	mem.save(subdir)
 
 	require.NoError(t, svc.Link(context.Background(), parent, "d", subdir))
 
@@ -147,12 +185,10 @@ func TestUnlinkOrReplaceRejectsDirectory(t *testing.T) {
 }
 
 func TestUnlinkOrReplaceNoEntry(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, _ := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
 
 	deleted, err := svc.UnlinkOrReplace(context.Background(), dir, "absent")
 	assert.NoError(t, err)
@@ -160,18 +196,17 @@ func TestUnlinkOrReplaceNoEntry(t *testing.T) {
 }
 
 func TestBulkLinkSingleWrite(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	children := map[string]*Node{}
+	children := map[string]*node.Node{}
 	for _, name := range []string{"a", "b", "c"} {
-		c, err := NewFile(name)
+		c, err := node.NewFile(name)
 		require.NoError(t, err)
-		require.NoError(t, repo.Save(context.Background(), c))
+		mem.save(c)
 		children[name] = c
 	}
 
@@ -187,42 +222,39 @@ func TestBulkLinkSingleWrite(t *testing.T) {
 }
 
 func TestBulkLinkRejectsDuplicateName(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	first, err := NewFile("a")
+	first, err := node.NewFile("a")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), first))
+	mem.save(first)
 	require.NoError(t, svc.Link(context.Background(), dir, "a", first))
 
-	second, err := NewFile("a2")
+	second, err := node.NewFile("a2")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), second))
+	mem.save(second)
 
-	err = svc.BulkLink(context.Background(), dir, map[string]*Node{"a": second})
+	err = svc.BulkLink(context.Background(), dir, map[string]*node.Node{"a": second})
 	assertKind(t, err, errorx.KindConflict)
-	// first was already linked; second must not have been touched.
 	assert.Equal(t, uint32(1), first.NLink())
 	assert.Equal(t, uint32(0), second.NLink())
 }
 
 func TestBulkUnlinkDropsEntries(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	children := map[string]*Node{}
+	children := map[string]*node.Node{}
 	for _, name := range []string{"a", "b", "c"} {
-		c, err := NewFile(name)
+		c, err := node.NewFile(name)
 		require.NoError(t, err)
-		require.NoError(t, repo.Save(context.Background(), c))
+		mem.save(c)
 		children[name] = c
 		require.NoError(t, svc.Link(context.Background(), dir, name, c))
 	}
@@ -231,10 +263,9 @@ func TestBulkUnlinkDropsEntries(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, deleted, 2, "a and b were the only refs, must be deleted")
 	for _, d := range deleted {
-		_, err := repo.Get(context.Background(), d.ID())
-		assertKind(t, err, errorx.KindNotFound)
+		_, ok := mem.get(d.ID())
+		assert.False(t, ok, "deleted child must be gone")
 	}
-	// c remains.
 	entry, err := dir.Lookup("c")
 	require.NoError(t, err)
 	require.NotNil(t, entry)
@@ -242,56 +273,50 @@ func TestBulkUnlinkDropsEntries(t *testing.T) {
 }
 
 func TestBulkUnlinkPartialRefs(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	dir2, err := NewDirectory()
+	dir2, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir2))
+	mem.save(dir2)
 
-	child, err := NewFile("shared")
+	child, err := node.NewFile("shared")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), child))
+	mem.save(child)
 	require.NoError(t, svc.Link(context.Background(), dir, "x", child))
 	require.NoError(t, svc.Link(context.Background(), dir2, "x", child))
 	assert.Equal(t, uint32(2), child.NLink())
 
-	// Remove the first hardlink via BulkUnlink: child must remain (nlink=1).
 	deleted, err := svc.BulkUnlink(context.Background(), dir, []string{"x"})
 	require.NoError(t, err)
 	assert.Empty(t, deleted)
 	assert.Equal(t, uint32(1), child.NLink())
-	_, err = repo.Get(context.Background(), child.ID())
-	assert.NoError(t, err)
+	_, ok := mem.get(child.ID())
+	assert.True(t, ok)
 
-	// Remove the second (last) hardlink: child deleted.
 	deleted, err = svc.BulkUnlink(context.Background(), dir2, []string{"x"})
 	require.NoError(t, err)
 	assert.Len(t, deleted, 1)
 	assert.Equal(t, child.ID(), deleted[0].ID())
-	_, err = repo.Get(context.Background(), child.ID())
-	assertKind(t, err, errorx.KindNotFound)
+	_, ok = mem.get(child.ID())
+	assert.False(t, ok)
 }
 
 func TestMoveEntryRenameWithinDir(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	file, err := NewFile("a")
+	file, err := node.NewFile("a")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), file))
+	mem.save(file)
 	require.NoError(t, svc.Link(context.Background(), dir, "a", file))
 
-	// Rename a → b within the same dir. The inode's nlink must stay
-	// at 1 (not bump to 2 like the old Unlink+Link pair would do).
 	require.NoError(t, svc.MoveEntry(context.Background(), dir, "a", dir, "b"))
 
 	entry, err := dir.Lookup("a")
@@ -306,25 +331,22 @@ func TestMoveEntryRenameWithinDir(t *testing.T) {
 }
 
 func TestMoveEntryOverwriteFile(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	a, err := NewFile("a")
+	a, err := node.NewFile("a")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), a))
+	mem.save(a)
 	require.NoError(t, svc.Link(context.Background(), dir, "a", a))
 
-	b, err := NewFile("b")
+	b, err := node.NewFile("b")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), b))
+	mem.save(b)
 	require.NoError(t, svc.Link(context.Background(), dir, "b", b))
 
-	// Mv /a → /b (overwrite). /a is gone, /b's inode is gone, /a's
-	// inode is now at "b" with nlink=1.
 	require.NoError(t, svc.MoveEntry(context.Background(), dir, "a", dir, "b"))
 
 	entry, err := dir.Lookup("a")
@@ -337,29 +359,26 @@ func TestMoveEntryOverwriteFile(t *testing.T) {
 	assert.Equal(t, a.ID(), entry.InodeID, "b's entry should now point at a's inode")
 	assert.Equal(t, uint32(1), a.NLink(), "a's inode nlink unchanged")
 
-	// b's inode should be deleted (nlink was 1, the move decremented by overwrite).
-	_, err = repo.Get(context.Background(), b.ID())
-	assertKind(t, err, errorx.KindNotFound)
+	_, ok := mem.get(b.ID())
+	assert.False(t, ok, "b's inode should be deleted")
 }
 
 func TestMoveEntryCrossDir(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	src, err := NewDirectory()
+	src, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), src))
+	mem.save(src)
 
-	dst, err := NewDirectory()
+	dst, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dst))
+	mem.save(dst)
 
-	a, err := NewFile("a")
+	a, err := node.NewFile("a")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), a))
+	mem.save(a)
 	require.NoError(t, svc.Link(context.Background(), src, "a", a))
 
-	// Mv /a → /dst/x (cross-dir move into a directory).
 	require.NoError(t, svc.MoveEntry(context.Background(), src, "a", dst, "x"))
 
 	entry, err := src.Lookup("a")
@@ -374,61 +393,42 @@ func TestMoveEntryCrossDir(t *testing.T) {
 }
 
 func TestMoveEntryRejectsTypeMismatch(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, mem := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
+	mem.save(dir)
 
-	subdir, err := NewDirectory()
+	subdir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), subdir))
+	mem.save(subdir)
 	require.NoError(t, svc.Link(context.Background(), dir, "sub", subdir))
 
-	file, err := NewFile("file")
+	file, err := node.NewFile("file")
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), file))
+	mem.save(file)
 	require.NoError(t, svc.Link(context.Background(), dir, "file", file))
 
-	// Cannot overwrite a directory with a file.
 	err = svc.MoveEntry(context.Background(), dir, "file", dir, "sub")
 	assertKind(t, err, errorx.KindBadRequest)
 }
 
 func TestMoveEntryMissingSource(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
+	svc, _ := newSvc(t)
 
-	dir, err := NewDirectory()
+	dir, err := node.NewDirectory()
 	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
 
 	err = svc.MoveEntry(context.Background(), dir, "absent", dir, "elsewhere")
 	assertKind(t, err, errorx.KindNotFound)
 }
 
-// TestWithTxCommitsAtomically verifies the transaction wrapping
-// applied to multi-step methods (Link, Unlink, MoveEntry, BulkLink,
-// BulkUnlink). A successful op must leave the repository in the
-// expected state regardless of which intermediate step succeeds.
-func TestWithTxCommitsAtomically(t *testing.T) {
-	repo := newFakeRepo()
-	svc := NewService(repo)
-
-	dir, err := NewDirectory()
-	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), dir))
-
-	child, err := NewFile("hi")
-	require.NoError(t, err)
-	require.NoError(t, repo.Save(context.Background(), child))
-
-	require.NoError(t, svc.Link(context.Background(), dir, "a", child))
-	assert.Equal(t, uint32(1), child.NLink())
-
-	dc, err := dir.ReadDir()
-	require.NoError(t, err)
-	assert.Len(t, dc.Entries, 1)
-	assert.Equal(t, "a", dc.Entries[0].Name)
+func assertKind(t *testing.T, err error, want errorx.Kind) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected error of kind %s, got nil", want)
+	}
+	if errorx.KindOf(err) != want {
+		t.Fatalf("expected kind %s, got %s (err=%v)", want, errorx.KindOf(err), err)
+	}
 }
