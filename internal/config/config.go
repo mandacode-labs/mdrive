@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/spf13/viper"
 )
 
 // Config is the root configuration struct.
@@ -171,8 +171,8 @@ type AuthConfig struct {
 // requires it (Keycloak rejects scope-less requests per
 // RFC 6749 §4.4). Set to "openid" for standard OIDC providers.
 type OpenFGAConfig struct {
-	AuthMode             string `mapstructure:"auth_mode"`
-	APIURL               string `mapstructure:"api_url"`
+	AuthMode             string   `mapstructure:"auth_mode"`
+	APIURL               string   `mapstructure:"api_url"`
 	StoreID              string   `mapstructure:"store_id"`
 	AuthorizationModelID string   `mapstructure:"authorization_model_id"`
 	APIToken             string   `mapstructure:"api_token"`
@@ -311,7 +311,7 @@ func isValidAESKey(s string) bool {
 }
 
 var (
-	errProductionMasterKeyRequired     = errors.New("config: crypto.master_key is required in production")
-	errProductionOpenFGARequired       = errors.New("config: openfga.api_url is required in production")
-	errProductionEncryptionKeySize     = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
+	errProductionMasterKeyRequired = errors.New("config: crypto.master_key is required in production")
+	errProductionOpenFGARequired   = errors.New("config: openfga.api_url is required in production")
+	errProductionEncryptionKeySize = errors.New("config: auth.encryption_key must be 16, 24, or 32 bytes for AES-GCM")
 )

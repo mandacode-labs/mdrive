@@ -261,6 +261,7 @@ auth:
 	assert.Equal(t, []string{"openid", "profile", "roles"}, cfg.Auth.Scopes,
 		"YAML scopes override must replace the default")
 }
+
 // SameSite are wired from the YAML tree (chart values.yaml) into
 // the struct via mapstructure, and that SameSiteMode parses the
 // string into the http.SameSite enum.

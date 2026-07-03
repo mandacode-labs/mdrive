@@ -207,8 +207,8 @@ func (zeroFS) Hardlink(context.Context, string, string, string) (*node.Node, err
 	n, _ := node.NewFile("")
 	return n, nil
 }
-func (zeroFS) Mount(context.Context, string, string, string) error  { return nil }
-func (zeroFS) Unmount(context.Context, string, string) error         { return nil }
+func (zeroFS) Mount(context.Context, string, string, string) error { return nil }
+func (zeroFS) Unmount(context.Context, string, string) error       { return nil }
 
 // zeroDrive is a handler.DriveClient stub that returns a single
 // canned drive owned by the configured owner.
@@ -229,7 +229,7 @@ func (d zeroDrive) GetStorage(_ context.Context, driveID string) (*drive.Storage
 func (d zeroDrive) Update(context.Context, string, string, string) (*drive.Drive, error) {
 	return driveOrNil(d.owner), nil
 }
-func (d zeroDrive) Delete(context.Context, string) error                          { return nil }
+func (d zeroDrive) Delete(context.Context, string) error { return nil }
 func (d zeroDrive) Restore(context.Context, string) (*drive.Drive, error) {
 	return driveOrNil(d.owner), nil
 }

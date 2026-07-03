@@ -98,8 +98,8 @@ func TestE2EMv(t *testing.T) {
 	assert.Equal(t, http.StatusOK, stat("/src/a-renamed.txt"))
 
 	// Move two sources into a directory in a single Mv call.
-// SKIPPED: this regression in the errorx migration needs
-// follow-up — see drive.create fix branch for tracking.
+	// SKIPPED: this regression in the errorx migration needs
+	// follow-up — see drive.create fix branch for tracking.
 	t.Skip("TestE2EMv batch phase regressed; tracked in drive.create fix")
 	_ = mv
 	_ = stat

@@ -57,9 +57,9 @@ func TestBuildCredentials(t *testing.T) {
 			mode: AuthModeClientCredentials,
 		},
 		{
-			name:    "client_credentials_empty_scopes_allowed",
-			cfg:     Config{ClientID: "id", ClientSecret: "s", TokenIssuer: "i", Audience: "a"},
-			mode:    AuthModeClientCredentials,
+			name: "client_credentials_empty_scopes_allowed",
+			cfg:  Config{ClientID: "id", ClientSecret: "s", TokenIssuer: "i", Audience: "a"},
+			mode: AuthModeClientCredentials,
 		},
 		{
 			name:    "client_credentials_missing_secret",

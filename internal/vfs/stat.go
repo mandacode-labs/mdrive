@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 // Stat returns metadata for the file or directory at path. Permission
