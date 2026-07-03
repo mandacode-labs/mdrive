@@ -4,33 +4,37 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
 const requestIDHeader = "X-Request-Id"
 
-// RequestIDMiddleware ensures every request has a request ID
-// echoed in the response header and a ctx logger tagged with
-// it. Inbound X-Request-Id is reused when present; otherwise a
-// new 16-hex-char ID is generated.
+type requestIDKey struct{}
+
+// RequestIDMiddleware ensures every request has a request ID echoed
+// in the response header and a ctx logger tagged with it. Inbound
+// X-Request-Id is reused when present; otherwise a new 16-hex-char
+// ID is generated.
 func RequestIDMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get(requestIDHeader)
 		if id == "" {
-			generated, err := randomHex(8)
-			if err != nil {
+			var b [8]byte
+			if _, err := rand.Read(b[:]); err != nil {
 				http.Error(w, "request id unavailable", http.StatusInternalServerError)
 				return
 			}
-			id = generated
+			id = hex.EncodeToString(b[:])
 		}
 		w.Header().Set(requestIDHeader, id)
 
@@ -46,44 +50,32 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 
 // RequestIDFromContext returns the request ID stored in ctx by
 // RequestIDMiddleware, or "" if none is set.
-func RequestIDFromContext(ctx interface {
-	Deadline() (time.Time, bool)
-	Done() <-chan struct{}
-	Err() error
-	Value(key any) any
-}) string {
+func RequestIDFromContext(ctx context.Context) string {
 	if v, ok := ctx.Value(requestIDKey{}).(string); ok {
 		return v
 	}
 	return ""
 }
 
-type requestIDKey struct{}
-
+// statusRecorder captures the response status code so the access
+// log can report it without inspecting the underlying writer.
+// Pattern matches ogen's own codeRecorder: header is the only
+// authoritative status; bare Write falls through to the wrapped
+// writer, which net/http implicitly turns into WriteHeader(200).
 type statusRecorder struct {
 	http.ResponseWriter
-	status      int
-	bytes       int
-	wroteHeader bool
+	status int
 }
 
 func (r *statusRecorder) WriteHeader(code int) {
-	if r.wroteHeader {
-		return
+	if r.status == 0 {
+		r.status = code
 	}
-	r.status = code
-	r.wroteHeader = true
 	r.ResponseWriter.WriteHeader(code)
 }
 
-func (r *statusRecorder) Write(b []byte) (int, error) {
-	if !r.wroteHeader {
-		r.status = http.StatusOK
-		r.wroteHeader = true
-	}
-	n, err := r.ResponseWriter.Write(b)
-	r.bytes += n
-	return n, err
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
 }
 
 // withRequestLog logs a single access line per request. /health is
@@ -92,40 +84,28 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 func withRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		log := logx.FromContext(r.Context())
-		log.DebugContext(r.Context(), "apiserver.request.enter",
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
+		rec := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(rec, r)
-		if r.URL.Path != "/health" {
-			log.LogAttrs(r.Context(), levelForStatus(rec.status), "request",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-				slog.Int("status", rec.status),
-				slog.Int64("duration_ms", time.Since(start).Milliseconds()),
-			)
+
+		if r.URL.Path == "/health" {
+			return
 		}
-		log.DebugContext(r.Context(), "apiserver.request.exit",
+		status := rec.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		logx.FromContext(r.Context()).LogAttrs(r.Context(), levelForStatus(status), "request",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
-			slog.Int("status", rec.status),
-			slog.Int("bytes", rec.bytes),
+			slog.Int("status", status),
+			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
 		)
 	})
 }
 
-// recoverPanic catches panics raised inside the handler chain
-// and converts them to a 503 response (KindServiceDegraded).
-//
-// The stack trace is always logged as a structured attribute
-// (independent of logx's 5xx policy) so production panics are
-// traceable without re-deriving the stack from the error string.
-// A nested recover guards against a second panic inside the
-// error response path itself: if WriteError also panics (e.g.
-// the client disconnected mid-Encode), the goroutine falls
-// through to a plain-text 500 rather than terminating.
+// recoverPanic converts a panic inside the handler chain to a 503
+// (KindServiceDegraded) response with the stack trace logged as a
+// structured attribute so production panics are traceable.
 func recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -133,33 +113,18 @@ func recoverPanic(next http.Handler) http.Handler {
 			if rec == nil {
 				return
 			}
-			stack := debug.Stack()
-			err := errorx.New(errorx.KindServiceDegraded,
-				fmt.Sprintf("internal panic: %v", rec))
+			err := errorx.New(errorx.KindServiceDegraded, "internal panic")
 			logx.Error(r.Context(), err, "panic recovered",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.String("request_id", RequestIDFromContext(r.Context())),
 				slog.Any("panic_value", rec),
-				slog.String("stack", string(stack)),
+				slog.String("stack", string(debug.Stack())),
 			)
-			defer func() {
-				if rec2 := recover(); rec2 != nil {
-					http.Error(w, "internal error", http.StatusInternalServerError)
-				}
-			}()
 			WriteError(w, err)
 		}()
 		next.ServeHTTP(w, r)
 	})
-}
-
-func randomHex(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
 }
 
 func levelForStatus(status int) slog.Level {
@@ -171,4 +136,61 @@ func levelForStatus(status int) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+// withCORS sets CORS response headers and short-circuits OPTIONS
+// preflights with 204 No Content. When cfg.Enabled is false the
+// handler is a pass-through.
+func withCORS(next http.Handler, cfg config.CORSConfig) http.Handler {
+	if !cfg.Enabled {
+		return next
+	}
+
+	allowedMethods := strings.Join(cfg.AllowedMethods, ", ")
+	allowedHeaders := strings.Join(cfg.AllowedHeaders, ", ")
+	exposedHeaders := strings.Join(cfg.ExposedHeaders, ", ")
+	origins := make(map[string]struct{}, len(cfg.AllowedOrigins))
+	for _, o := range cfg.AllowedOrigins {
+		origins[o] = struct{}{}
+	}
+	allowAll := false
+	if _, ok := origins["*"]; ok {
+		allowAll = true
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			switch {
+			case allowAll && !cfg.AllowCredentials:
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			case allowAll && cfg.AllowCredentials:
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			default:
+				if _, ok := origins[origin]; ok {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+				}
+			}
+			if cfg.AllowCredentials {
+				w.Header().Set("Access-Control-Allow-Credentials", strconv.FormatBool(cfg.AllowCredentials))
+			}
+			if exposedHeaders != "" {
+				w.Header().Set("Access-Control-Expose-Headers", exposedHeaders)
+			}
+		}
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
+			if allowedHeaders != "" {
+				w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
+			}
+			if cfg.MaxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", strconv.Itoa(cfg.MaxAge))
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

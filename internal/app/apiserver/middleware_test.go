@@ -98,6 +98,40 @@ func TestWithRequestLogEscalatesLevelFor5xx(t *testing.T) {
 	assert.Contains(t, logs, `"level":"ERROR"`, "5xx must log at ERROR")
 }
 
+func TestWithRequestLogDefaultsTo200OnBareWrite(t *testing.T) {
+	_, buf := newTestLog(t)
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("hi"))
+	})
+	srv := httptest.NewServer(withRequestLog(inner))
+	defer srv.Close()
+
+	resp, _ := http.Get(srv.URL)
+	_ = resp.Body.Close()
+
+	logs := buf.String()
+	assert.Contains(t, logs, `"status":200`,
+		"bare Write implies 200; access log must default missing status to 200")
+}
+
+func TestWithRequestLogSkipsHealth(t *testing.T) {
+	_, buf := newTestLog(t)
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(withRequestLog(inner))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/health")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+
+	assert.NotContains(t, buf.String(), `"path":"/health"`,
+		"/health must be excluded from access log")
+}
+
 func TestStatusRecorderCapturesExplicitHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 	sr := &statusRecorder{ResponseWriter: rec}
@@ -105,12 +139,13 @@ func TestStatusRecorderCapturesExplicitHeader(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, sr.status)
 }
 
-func TestStatusRecorderDefaultsTo200OnBareWrite(t *testing.T) {
+func TestStatusRecorderUnwraps(t *testing.T) {
 	rec := httptest.NewRecorder()
 	sr := &statusRecorder{ResponseWriter: rec}
-	_, err := sr.Write([]byte("hi"))
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, sr.status, "bare Write implies 200")
+	var w http.ResponseWriter = sr
+	if u, ok := w.(interface{ Unwrap() http.ResponseWriter }); !ok || u.Unwrap() != rec {
+		t.Fatalf("statusRecorder must implement Unwrap for http.ResponseController")
+	}
 }
 
 func TestRequestIDPropagation(t *testing.T) {

@@ -127,7 +127,7 @@ func (c *FGAChecker) Check(ctx context.Context, user string, perm Action, object
 		Object:   string(objectType) + ":" + objectID,
 	}).Execute()
 	if err != nil {
-		return false, err
+		return false, errorx.Wrap(err, fmt.Sprintf("openfga: check (user=%s, perm=%s, type=%s, id=%s)", user, perm, objectType, objectID))
 	}
 	return resp.GetAllowed(), nil
 }
