@@ -34,7 +34,7 @@ func (f *FileContent) UnmarshalJSON(data []byte) error {
 
 // NewFile creates a new file node with the given raw text content.
 func NewFile(raw string) (*Node, error) {
-	return newInlineNode(NodeTypeFile, NewFileContent(raw), int64(len(raw)))
+	return newInlineNode(NodeKindFile, NewFileContent(raw), int64(len(raw)))
 }
 
 // WriteFile replaces the file node's content with the given raw text.

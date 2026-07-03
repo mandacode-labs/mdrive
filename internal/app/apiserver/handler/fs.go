@@ -160,7 +160,7 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 		entries[i] = api.DirEntry{
 			InodeID: optString(e.InodeID.String()),
 			Name:    optString(e.Name),
-			Type:    optString(e.Type.String()),
+			Kind:    optString(e.Kind.String()),
 		}
 	}
 	logx.Debug(ctx, "handler.fs.ls.ok",
@@ -452,13 +452,10 @@ func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.
 
 func statToAPI(n *node.Node) *api.NodeStat {
 	return &api.NodeStat{
-		Type:     n.Type().String(),
+		Type:     n.Kind().String(),
 		Size:     n.Size(),
-		Mode:     n.Mode(),
 		Nlink:    n.NLink(),
 		Ino:      n.ID(),
-		UID:      optString(n.UID()),
-		Gid:      optString(n.GID()),
 		Atime:    n.ATime(),
 		Mtime:    n.MTime(),
 		Ctime:    n.CTime(),

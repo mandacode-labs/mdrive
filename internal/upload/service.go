@@ -247,7 +247,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download load node (node_id=%s)", nodeID))
 	}
 	if !n.IsObject() {
-		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: presign download target is not an object (type="+string(n.Type())+")")
+		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: presign download target is not an object (type="+string(n.Kind())+")")
 	}
 	oc, err := n.ReadObject()
 	if err != nil {

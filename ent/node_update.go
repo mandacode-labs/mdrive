@@ -34,16 +34,16 @@ func (_u *NodeUpdate) SetUpdateTime(v time.Time) *NodeUpdate {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *NodeUpdate) SetType(v node.Type) *NodeUpdate {
-	_u.mutation.SetType(v)
+// SetKind sets the "kind" field.
+func (_u *NodeUpdate) SetKind(v node.Kind) *NodeUpdate {
+	_u.mutation.SetKind(v)
 	return _u
 }
 
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableType(v *node.Type) *NodeUpdate {
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableKind(v *node.Kind) *NodeUpdate {
 	if v != nil {
-		_u.SetType(*v)
+		_u.SetKind(*v)
 	}
 	return _u
 }
@@ -87,55 +87,6 @@ func (_u *NodeUpdate) SetNillableNlink(v *uint32) *NodeUpdate {
 // AddNlink adds value to the "nlink" field.
 func (_u *NodeUpdate) AddNlink(v int32) *NodeUpdate {
 	_u.mutation.AddNlink(v)
-	return _u
-}
-
-// SetMode sets the "mode" field.
-func (_u *NodeUpdate) SetMode(v uint32) *NodeUpdate {
-	_u.mutation.ResetMode()
-	_u.mutation.SetMode(v)
-	return _u
-}
-
-// SetNillableMode sets the "mode" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableMode(v *uint32) *NodeUpdate {
-	if v != nil {
-		_u.SetMode(*v)
-	}
-	return _u
-}
-
-// AddMode adds value to the "mode" field.
-func (_u *NodeUpdate) AddMode(v int32) *NodeUpdate {
-	_u.mutation.AddMode(v)
-	return _u
-}
-
-// SetUID sets the "uid" field.
-func (_u *NodeUpdate) SetUID(v string) *NodeUpdate {
-	_u.mutation.SetUID(v)
-	return _u
-}
-
-// SetNillableUID sets the "uid" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableUID(v *string) *NodeUpdate {
-	if v != nil {
-		_u.SetUID(*v)
-	}
-	return _u
-}
-
-// SetGid sets the "gid" field.
-func (_u *NodeUpdate) SetGid(v string) *NodeUpdate {
-	_u.mutation.SetGid(v)
-	return _u
-}
-
-// SetNillableGid sets the "gid" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableGid(v *string) *NodeUpdate {
-	if v != nil {
-		_u.SetGid(*v)
-	}
 	return _u
 }
 
@@ -285,19 +236,9 @@ func (_u *NodeUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NodeUpdate) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := node.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.UID(); ok {
-		if err := node.UIDValidator(v); err != nil {
-			return &ValidationError{Name: "uid", err: fmt.Errorf(`ent: validator failed for field "Node.uid": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Gid(); ok {
-		if err := node.GidValidator(v); err != nil {
-			return &ValidationError{Name: "gid", err: fmt.Errorf(`ent: validator failed for field "Node.gid": %w`, err)}
+	if v, ok := _u.mutation.Kind(); ok {
+		if err := node.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "Node.kind": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Content(); ok {
@@ -328,8 +269,8 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(node.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(node.FieldType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Kind(); ok {
+		_spec.SetField(node.FieldKind, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)
@@ -342,18 +283,6 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedNlink(); ok {
 		_spec.AddField(node.FieldNlink, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.Mode(); ok {
-		_spec.SetField(node.FieldMode, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.AddedMode(); ok {
-		_spec.AddField(node.FieldMode, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.UID(); ok {
-		_spec.SetField(node.FieldUID, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Gid(); ok {
-		_spec.SetField(node.FieldGid, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Content(); ok {
 		_spec.SetField(node.FieldContent, field.TypeBytes, value)
@@ -408,16 +337,16 @@ func (_u *NodeUpdateOne) SetUpdateTime(v time.Time) *NodeUpdateOne {
 	return _u
 }
 
-// SetType sets the "type" field.
-func (_u *NodeUpdateOne) SetType(v node.Type) *NodeUpdateOne {
-	_u.mutation.SetType(v)
+// SetKind sets the "kind" field.
+func (_u *NodeUpdateOne) SetKind(v node.Kind) *NodeUpdateOne {
+	_u.mutation.SetKind(v)
 	return _u
 }
 
-// SetNillableType sets the "type" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableType(v *node.Type) *NodeUpdateOne {
+// SetNillableKind sets the "kind" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableKind(v *node.Kind) *NodeUpdateOne {
 	if v != nil {
-		_u.SetType(*v)
+		_u.SetKind(*v)
 	}
 	return _u
 }
@@ -461,55 +390,6 @@ func (_u *NodeUpdateOne) SetNillableNlink(v *uint32) *NodeUpdateOne {
 // AddNlink adds value to the "nlink" field.
 func (_u *NodeUpdateOne) AddNlink(v int32) *NodeUpdateOne {
 	_u.mutation.AddNlink(v)
-	return _u
-}
-
-// SetMode sets the "mode" field.
-func (_u *NodeUpdateOne) SetMode(v uint32) *NodeUpdateOne {
-	_u.mutation.ResetMode()
-	_u.mutation.SetMode(v)
-	return _u
-}
-
-// SetNillableMode sets the "mode" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableMode(v *uint32) *NodeUpdateOne {
-	if v != nil {
-		_u.SetMode(*v)
-	}
-	return _u
-}
-
-// AddMode adds value to the "mode" field.
-func (_u *NodeUpdateOne) AddMode(v int32) *NodeUpdateOne {
-	_u.mutation.AddMode(v)
-	return _u
-}
-
-// SetUID sets the "uid" field.
-func (_u *NodeUpdateOne) SetUID(v string) *NodeUpdateOne {
-	_u.mutation.SetUID(v)
-	return _u
-}
-
-// SetNillableUID sets the "uid" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableUID(v *string) *NodeUpdateOne {
-	if v != nil {
-		_u.SetUID(*v)
-	}
-	return _u
-}
-
-// SetGid sets the "gid" field.
-func (_u *NodeUpdateOne) SetGid(v string) *NodeUpdateOne {
-	_u.mutation.SetGid(v)
-	return _u
-}
-
-// SetNillableGid sets the "gid" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableGid(v *string) *NodeUpdateOne {
-	if v != nil {
-		_u.SetGid(*v)
-	}
 	return _u
 }
 
@@ -672,19 +552,9 @@ func (_u *NodeUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *NodeUpdateOne) check() error {
-	if v, ok := _u.mutation.GetType(); ok {
-		if err := node.TypeValidator(v); err != nil {
-			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Node.type": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.UID(); ok {
-		if err := node.UIDValidator(v); err != nil {
-			return &ValidationError{Name: "uid", err: fmt.Errorf(`ent: validator failed for field "Node.uid": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Gid(); ok {
-		if err := node.GidValidator(v); err != nil {
-			return &ValidationError{Name: "gid", err: fmt.Errorf(`ent: validator failed for field "Node.gid": %w`, err)}
+	if v, ok := _u.mutation.Kind(); ok {
+		if err := node.KindValidator(v); err != nil {
+			return &ValidationError{Name: "kind", err: fmt.Errorf(`ent: validator failed for field "Node.kind": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Content(); ok {
@@ -732,8 +602,8 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(node.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.GetType(); ok {
-		_spec.SetField(node.FieldType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Kind(); ok {
+		_spec.SetField(node.FieldKind, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.Size(); ok {
 		_spec.SetField(node.FieldSize, field.TypeInt64, value)
@@ -746,18 +616,6 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	}
 	if value, ok := _u.mutation.AddedNlink(); ok {
 		_spec.AddField(node.FieldNlink, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.Mode(); ok {
-		_spec.SetField(node.FieldMode, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.AddedMode(); ok {
-		_spec.AddField(node.FieldMode, field.TypeUint32, value)
-	}
-	if value, ok := _u.mutation.UID(); ok {
-		_spec.SetField(node.FieldUID, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Gid(); ok {
-		_spec.SetField(node.FieldGid, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Content(); ok {
 		_spec.SetField(node.FieldContent, field.TypeBytes, value)

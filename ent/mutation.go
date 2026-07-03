@@ -2245,15 +2245,11 @@ type NodeMutation struct {
 	id            *uuid.UUID
 	create_time   *time.Time
 	update_time   *time.Time
-	_type         *node.Type
+	kind          *node.Kind
 	size          *int64
 	addsize       *int64
 	nlink         *uint32
 	addnlink      *int32
-	mode          *uint32
-	addmode       *int32
-	uid           *string
-	gid           *string
 	content       *[]byte
 	atime         *time.Time
 	mtime         *time.Time
@@ -2444,40 +2440,40 @@ func (m *NodeMutation) ResetUpdateTime() {
 	m.update_time = nil
 }
 
-// SetType sets the "type" field.
-func (m *NodeMutation) SetType(n node.Type) {
-	m._type = &n
+// SetKind sets the "kind" field.
+func (m *NodeMutation) SetKind(n node.Kind) {
+	m.kind = &n
 }
 
-// GetType returns the value of the "type" field in the mutation.
-func (m *NodeMutation) GetType() (r node.Type, exists bool) {
-	v := m._type
+// Kind returns the value of the "kind" field in the mutation.
+func (m *NodeMutation) Kind() (r node.Kind, exists bool) {
+	v := m.kind
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldType returns the old "type" field's value of the Node entity.
+// OldKind returns the old "kind" field's value of the Node entity.
 // If the Node object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldType(ctx context.Context) (v node.Type, err error) {
+func (m *NodeMutation) OldKind(ctx context.Context) (v node.Kind, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldType is only allowed on UpdateOne operations")
+		return v, errors.New("OldKind is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldType requires an ID field in the mutation")
+		return v, errors.New("OldKind requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldType: %w", err)
+		return v, fmt.Errorf("querying old value for OldKind: %w", err)
 	}
-	return oldValue.Type, nil
+	return oldValue.Kind, nil
 }
 
-// ResetType resets all changes to the "type" field.
-func (m *NodeMutation) ResetType() {
-	m._type = nil
+// ResetKind resets all changes to the "kind" field.
+func (m *NodeMutation) ResetKind() {
+	m.kind = nil
 }
 
 // SetSize sets the "size" field.
@@ -2590,134 +2586,6 @@ func (m *NodeMutation) AddedNlink() (r int32, exists bool) {
 func (m *NodeMutation) ResetNlink() {
 	m.nlink = nil
 	m.addnlink = nil
-}
-
-// SetMode sets the "mode" field.
-func (m *NodeMutation) SetMode(u uint32) {
-	m.mode = &u
-	m.addmode = nil
-}
-
-// Mode returns the value of the "mode" field in the mutation.
-func (m *NodeMutation) Mode() (r uint32, exists bool) {
-	v := m.mode
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMode returns the old "mode" field's value of the Node entity.
-// If the Node object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldMode(ctx context.Context) (v uint32, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMode is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMode requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMode: %w", err)
-	}
-	return oldValue.Mode, nil
-}
-
-// AddMode adds u to the "mode" field.
-func (m *NodeMutation) AddMode(u int32) {
-	if m.addmode != nil {
-		*m.addmode += u
-	} else {
-		m.addmode = &u
-	}
-}
-
-// AddedMode returns the value that was added to the "mode" field in this mutation.
-func (m *NodeMutation) AddedMode() (r int32, exists bool) {
-	v := m.addmode
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetMode resets all changes to the "mode" field.
-func (m *NodeMutation) ResetMode() {
-	m.mode = nil
-	m.addmode = nil
-}
-
-// SetUID sets the "uid" field.
-func (m *NodeMutation) SetUID(s string) {
-	m.uid = &s
-}
-
-// UID returns the value of the "uid" field in the mutation.
-func (m *NodeMutation) UID() (r string, exists bool) {
-	v := m.uid
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldUID returns the old "uid" field's value of the Node entity.
-// If the Node object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldUID(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUID: %w", err)
-	}
-	return oldValue.UID, nil
-}
-
-// ResetUID resets all changes to the "uid" field.
-func (m *NodeMutation) ResetUID() {
-	m.uid = nil
-}
-
-// SetGid sets the "gid" field.
-func (m *NodeMutation) SetGid(s string) {
-	m.gid = &s
-}
-
-// Gid returns the value of the "gid" field in the mutation.
-func (m *NodeMutation) Gid() (r string, exists bool) {
-	v := m.gid
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldGid returns the old "gid" field's value of the Node entity.
-// If the Node object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldGid(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldGid is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldGid requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldGid: %w", err)
-	}
-	return oldValue.Gid, nil
-}
-
-// ResetGid resets all changes to the "gid" field.
-func (m *NodeMutation) ResetGid() {
-	m.gid = nil
 }
 
 // SetContent sets the "content" field.
@@ -3039,30 +2907,21 @@ func (m *NodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 12)
 	if m.create_time != nil {
 		fields = append(fields, node.FieldCreateTime)
 	}
 	if m.update_time != nil {
 		fields = append(fields, node.FieldUpdateTime)
 	}
-	if m._type != nil {
-		fields = append(fields, node.FieldType)
+	if m.kind != nil {
+		fields = append(fields, node.FieldKind)
 	}
 	if m.size != nil {
 		fields = append(fields, node.FieldSize)
 	}
 	if m.nlink != nil {
 		fields = append(fields, node.FieldNlink)
-	}
-	if m.mode != nil {
-		fields = append(fields, node.FieldMode)
-	}
-	if m.uid != nil {
-		fields = append(fields, node.FieldUID)
-	}
-	if m.gid != nil {
-		fields = append(fields, node.FieldGid)
 	}
 	if m.content != nil {
 		fields = append(fields, node.FieldContent)
@@ -3097,18 +2956,12 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.CreateTime()
 	case node.FieldUpdateTime:
 		return m.UpdateTime()
-	case node.FieldType:
-		return m.GetType()
+	case node.FieldKind:
+		return m.Kind()
 	case node.FieldSize:
 		return m.Size()
 	case node.FieldNlink:
 		return m.Nlink()
-	case node.FieldMode:
-		return m.Mode()
-	case node.FieldUID:
-		return m.UID()
-	case node.FieldGid:
-		return m.Gid()
 	case node.FieldContent:
 		return m.Content()
 	case node.FieldAtime:
@@ -3136,18 +2989,12 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreateTime(ctx)
 	case node.FieldUpdateTime:
 		return m.OldUpdateTime(ctx)
-	case node.FieldType:
-		return m.OldType(ctx)
+	case node.FieldKind:
+		return m.OldKind(ctx)
 	case node.FieldSize:
 		return m.OldSize(ctx)
 	case node.FieldNlink:
 		return m.OldNlink(ctx)
-	case node.FieldMode:
-		return m.OldMode(ctx)
-	case node.FieldUID:
-		return m.OldUID(ctx)
-	case node.FieldGid:
-		return m.OldGid(ctx)
 	case node.FieldContent:
 		return m.OldContent(ctx)
 	case node.FieldAtime:
@@ -3185,12 +3032,12 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdateTime(v)
 		return nil
-	case node.FieldType:
-		v, ok := value.(node.Type)
+	case node.FieldKind:
+		v, ok := value.(node.Kind)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetType(v)
+		m.SetKind(v)
 		return nil
 	case node.FieldSize:
 		v, ok := value.(int64)
@@ -3205,27 +3052,6 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNlink(v)
-		return nil
-	case node.FieldMode:
-		v, ok := value.(uint32)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMode(v)
-		return nil
-	case node.FieldUID:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUID(v)
-		return nil
-	case node.FieldGid:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetGid(v)
 		return nil
 	case node.FieldContent:
 		v, ok := value.([]byte)
@@ -3290,9 +3116,6 @@ func (m *NodeMutation) AddedFields() []string {
 	if m.addnlink != nil {
 		fields = append(fields, node.FieldNlink)
 	}
-	if m.addmode != nil {
-		fields = append(fields, node.FieldMode)
-	}
 	if m.addflags != nil {
 		fields = append(fields, node.FieldFlags)
 	}
@@ -3308,8 +3131,6 @@ func (m *NodeMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSize()
 	case node.FieldNlink:
 		return m.AddedNlink()
-	case node.FieldMode:
-		return m.AddedMode()
 	case node.FieldFlags:
 		return m.AddedFlags()
 	}
@@ -3334,13 +3155,6 @@ func (m *NodeMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddNlink(v)
-		return nil
-	case node.FieldMode:
-		v, ok := value.(int32)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddMode(v)
 		return nil
 	case node.FieldFlags:
 		v, ok := value.(int32)
@@ -3391,23 +3205,14 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldUpdateTime:
 		m.ResetUpdateTime()
 		return nil
-	case node.FieldType:
-		m.ResetType()
+	case node.FieldKind:
+		m.ResetKind()
 		return nil
 	case node.FieldSize:
 		m.ResetSize()
 		return nil
 	case node.FieldNlink:
 		m.ResetNlink()
-		return nil
-	case node.FieldMode:
-		m.ResetMode()
-		return nil
-	case node.FieldUID:
-		m.ResetUID()
-		return nil
-	case node.FieldGid:
-		m.ResetGid()
 		return nil
 	case node.FieldContent:
 		m.ResetContent()

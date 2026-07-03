@@ -26,7 +26,7 @@ func TestEntNodeSaveGetRoundtrip(t *testing.T) {
 	got, err := repo.Get(ctx, dir.ID())
 	require.NoError(t, err)
 	assert.Equal(t, dir.ID(), got.ID())
-	assert.Equal(t, node.NodeTypeDirectory, got.Type())
+	assert.Equal(t, node.NodeKindDirectory, got.Kind())
 	assert.Equal(t, uint32(0), got.NLink(), "fresh inode has nlink=0")
 }
 
@@ -51,8 +51,8 @@ func TestEntNodeRevisionConflict(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, a.Revision(), b.Revision(), "fresh reads should agree")
 
-	a.SetMode(0o600)
-	b.SetMode(0o700)
+	require.NoError(t, a.WriteFile("a-wins"))
+	require.NoError(t, b.WriteFile("b-wins"))
 
 	// Run the two saves concurrently. errgroup waits for both
 	// and surfaces the first non-nil error, but here we want
@@ -71,7 +71,7 @@ func TestEntNodeRevisionConflict(t *testing.T) {
 		switch {
 		case r.err == nil:
 			wins++
-		case errorx.KindOf(r.err) == errorx.KindConflict:
+		case errorx.IsKind(r.err, errorx.KindConflict):
 			conflicts++
 		default:
 			t.Errorf("writer %s returned unexpected error: %v", r.who, r.err)
@@ -80,11 +80,13 @@ func TestEntNodeRevisionConflict(t *testing.T) {
 	assert.Equal(t, 1, wins, "exactly one writer must win")
 	assert.Equal(t, 1, conflicts, "exactly one writer must see ErrRevisionConflict")
 
-	// The winner's mutation is the one reflected in the DB.
+	// The winner's content is the one reflected in the DB.
 	final, err := repo.Get(ctx, dir.ID())
 	require.NoError(t, err)
-	assert.True(t, final.Mode() == a.Mode() || final.Mode() == b.Mode(),
-		"the persisted mode must equal the winner's mode (0o600 or 0o700), got %#o", final.Mode())
+	got, err := final.ReadFile()
+	require.NoError(t, err)
+	assert.True(t, got == "a-wins" || got == "b-wins",
+		"the persisted content must equal the winner's, got %q", got)
 }
 
 func TestEntNodeWithTxCommit(t *testing.T) {
@@ -108,7 +110,7 @@ func TestEntNodeWithTxCommit(t *testing.T) {
 
 	got, err := repo.Get(ctx, mustParseID(t, dirID))
 	require.NoError(t, err)
-	assert.Equal(t, node.NodeTypeDirectory, got.Type())
+	assert.Equal(t, node.NodeKindDirectory, got.Kind())
 }
 
 func TestEntNodeWithTxRollback(t *testing.T) {

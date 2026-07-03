@@ -17,12 +17,10 @@ type entRepository struct {
 	client *ent.Client
 }
 
-// NewRepository creates a new Ent-backed Repository.
 func NewRepository(client *ent.Client) Repository {
 	return &entRepository{client: client}
 }
 
-// Get returns the node with the given id, or ErrNotFound if it does not exist.
 func (r *entRepository) Get(ctx context.Context, id uuid.UUID) (*Node, error) {
 	e, err := r.client.Node.Query().Where(entnode.IDEQ(id)).Only(ctx)
 	if err != nil {
@@ -46,11 +44,7 @@ func (r *entRepository) Save(ctx context.Context, n *Node) error {
 	}
 	content := n.content
 	if !exists {
-		if err := r.insert(ctx, n, content); err != nil {
-			return err
-		}
-		n.staleRev = n.rev
-		return nil
+		return r.insert(ctx, n, content)
 	}
 	return r.update(ctx, n, content)
 }
@@ -69,18 +63,14 @@ func (r *entRepository) existsTx(ctx context.Context, id uuid.UUID) (bool, error
 
 func (r *entRepository) insert(ctx context.Context, n *Node, content Content) error {
 	client := r.client
-	tx, ok := entx.FromContext(ctx)
-	if ok {
+	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
 	_, err := client.Node.Create().
 		SetID(n.id).
-		SetType(entType(n.kind)).
+		SetKind(entKind(n.kind)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
-		SetMode(n.mode).
-		SetUID(n.uid).
-		SetGid(n.gid).
 		SetAtime(n.atime).
 		SetMtime(n.mtime).
 		SetCtime(n.ctime).
@@ -89,23 +79,22 @@ func (r *entRepository) insert(ctx context.Context, n *Node, content Content) er
 		SetRevision(string(n.rev)).
 		SetContent(content).
 		Save(ctx)
+	if err == nil {
+		n.staleRev = n.rev
+	}
 	return err
 }
 
 func (r *entRepository) update(ctx context.Context, n *Node, content Content) error {
 	client := r.client
-	tx, ok := entx.FromContext(ctx)
-	if ok {
+	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
 	affected, err := client.Node.Update().
 		Where(entnode.IDEQ(n.id), entnode.RevisionEQ(string(n.staleRev))).
-		SetType(entType(n.kind)).
+		SetKind(entKind(n.kind)).
 		SetSize(n.size).
 		SetNlink(n.nlink).
-		SetMode(n.mode).
-		SetUID(n.uid).
-		SetGid(n.gid).
 		SetAtime(n.atime).
 		SetMtime(n.mtime).
 		SetCtime(n.ctime).
@@ -123,11 +112,9 @@ func (r *entRepository) update(ctx context.Context, n *Node, content Content) er
 	return nil
 }
 
-// Delete removes the node with the given id.
 func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	client := r.client
-	tx, ok := entx.FromContext(ctx)
-	if ok {
+	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
 	err := client.Node.DeleteOneID(id).Exec(ctx)
@@ -140,7 +127,6 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// fromEnt converts an ent.Node to a domain Node.
 func fromEnt(e *ent.Node) *Node {
 	if e == nil {
 		return nil
@@ -148,12 +134,9 @@ func fromEnt(e *ent.Node) *Node {
 	rev := Revision(e.Revision)
 	n := &Node{
 		id:       e.ID,
-		kind:     parseNodeType(string(e.Type)),
+		kind:     parseNodeKind(string(e.Kind)),
 		size:     e.Size,
 		nlink:    e.Nlink,
-		mode:     e.Mode,
-		uid:      e.UID,
-		gid:      e.Gid,
 		atime:    e.Atime,
 		mtime:    e.Mtime,
 		ctime:    e.Ctime,
@@ -170,36 +153,36 @@ func fromEnt(e *ent.Node) *Node {
 	return n
 }
 
-func parseNodeType(s string) NodeType {
+func parseNodeKind(s string) NodeKind {
 	switch s {
 	case "file":
-		return NodeTypeFile
+		return NodeKindFile
 	case "directory":
-		return NodeTypeDirectory
+		return NodeKindDirectory
 	case "symlink":
-		return NodeTypeSymlink
+		return NodeKindSymlink
 	case "object":
-		return NodeTypeObject
+		return NodeKindObject
 	case "mount":
-		return NodeTypeMount
+		return NodeKindMount
 	default:
-		return NodeType(0)
+		return NodeKind(0)
 	}
 }
 
-func entType(nt NodeType) entnode.Type {
-	switch nt {
-	case NodeTypeFile:
-		return entnode.TypeFile
-	case NodeTypeDirectory:
-		return entnode.TypeDirectory
-	case NodeTypeSymlink:
-		return entnode.TypeSymlink
-	case NodeTypeObject:
-		return entnode.TypeObject
-	case NodeTypeMount:
-		return entnode.TypeMount
+func entKind(k NodeKind) entnode.Kind {
+	switch k {
+	case NodeKindFile:
+		return entnode.KindFile
+	case NodeKindDirectory:
+		return entnode.KindDirectory
+	case NodeKindSymlink:
+		return entnode.KindSymlink
+	case NodeKindObject:
+		return entnode.KindObject
+	case NodeKindMount:
+		return entnode.KindMount
 	default:
-		return entnode.TypeFile
+		return entnode.KindFile
 	}
 }

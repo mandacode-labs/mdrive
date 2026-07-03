@@ -307,13 +307,13 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		}
 		var (
 			srcInodeID uuid.UUID
-			srcType    NodeType
+			srcType    NodeKind
 			srcFound   bool
 		)
 		for _, e := range srcDC.Entries {
 			if e.Name == srcName {
 				srcInodeID = e.InodeID
-				srcType = e.Type
+				srcType = e.Kind
 				srcFound = true
 				break
 			}
@@ -328,7 +328,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 
 		var (
 			existingInodeID    uuid.UUID
-			existingType       NodeType
+			existingType       NodeKind
 			existingInodeKnown bool
 		)
 		dstDC, err := dstParent.ReadDir()
@@ -338,7 +338,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		for _, e := range dstDC.Entries {
 			if e.Name == dstName {
 				existingInodeID = e.InodeID
-				existingType = e.Type
+				existingType = e.Kind
 				existingInodeKnown = true
 				break
 			}
@@ -362,7 +362,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 				newSrcEntries = append(newSrcEntries, DirEntry{
 					InodeID: srcInodeID,
 					Name:    dstName,
-					Type:    srcType,
+					Kind:    srcType,
 				})
 				dstEntryReplaced = true
 				continue
@@ -373,7 +373,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 			newSrcEntries = append(newSrcEntries, DirEntry{
 				InodeID: srcInodeID,
 				Name:    dstName,
-				Type:    srcType,
+				Kind:    srcType,
 			})
 		}
 		if srcParent.ID() == dstParent.ID() {
@@ -393,7 +393,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 			newDstEntries = append(newDstEntries, DirEntry{
 				InodeID: srcInodeID,
 				Name:    dstName,
-				Type:    srcType,
+				Kind:    srcType,
 			})
 			if err := srcParent.WriteDir(DirContent{Entries: newSrcEntries}); err != nil {
 				return errorx.Wrap(err, "move entry write src dir")

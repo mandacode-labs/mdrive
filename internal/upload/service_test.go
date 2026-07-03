@@ -67,16 +67,6 @@ func newTestService(t *testing.T, reg upload.TokenRegistry) *upload.Service {
 	})
 }
 
-func assertKind(t *testing.T, err error, want errorx.Kind) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("expected error of kind %s, got nil", want)
-	}
-	if errorx.KindOf(err) != want {
-		t.Fatalf("expected kind %s, got %s (err=%v)", want, errorx.KindOf(err), err)
-	}
-}
-
 func TestInitiateUploadHappyPath(t *testing.T) {
 	svc := newTestService(t, nil)
 	info, err := svc.InitiateUpload(context.Background(), "u1", "d1", "/test.bin", nil, nil, time.Hour)
@@ -144,7 +134,7 @@ func TestCompleteUploadOwnershipMismatch(t *testing.T) {
 	}, time.Hour)
 	svc := newTestService(t, reg)
 	_, err := svc.CompleteUpload(context.Background(), "someone-else", "d1", "u1", 100, nil)
-	assertKind(t, err, errorx.KindForbidden)
+	assert.True(t, errorx.IsKind(err, errorx.KindForbidden))
 }
 
 func TestCompleteUploadSizeMismatch(t *testing.T) {
@@ -214,7 +204,7 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 		TxManager:     tm,
 	})
 	_, err := svc.CompleteUpload(context.Background(), "user", "d1", "u1", 100, nil)
-	assertKind(t, err, errorx.KindNotFound)
+	assert.True(t, errorx.IsKind(err, errorx.KindNotFound))
 }
 
 func TestCompleteUploadHappyPath(t *testing.T) {

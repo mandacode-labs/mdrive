@@ -84,7 +84,7 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 	if src.IsDir() || src.IsMount() || src.IsSymlink() {
 		logx.Debug(ctx, "vfs.hardlink.unsupported_type",
 			slog.String("drive_id", driveID),
-			slog.String("type", string(src.Type())),
+			slog.String("type", string(src.Kind())),
 		)
 		return nil, ErrHardlinkNotSupported
 	}

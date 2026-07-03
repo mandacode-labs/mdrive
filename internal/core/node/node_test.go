@@ -14,14 +14,15 @@ func TestDirContentJSONTags(t *testing.T) {
 	u := uuidFromString(t, "550e8400-e29b-41d4-a716-446655440000")
 	dc := DirContent{
 		Entries: []DirEntry{
-			{InodeID: u, Name: "x", Type: NodeTypeFile},
+			{InodeID: u, Name: "x", Kind: NodeKindFile},
 		},
 	}
 	data, err := json.Marshal(dc)
 	require.NoError(t, err)
 
 	assert.True(t, contains(data, []byte(`"ino":`)))
-	assert.False(t, contains(data, []byte(`"inode_id"`)))
+	assert.True(t, contains(data, []byte(`"kind":`)))
+	assert.False(t, contains(data, []byte(`"type":`)))
 	assert.True(t, contains(data, []byte(`"items":`)))
 }
 
@@ -66,12 +67,12 @@ func TestWriteContentTooLarge(t *testing.T) {
 
 	large := make([]byte, MaxContentSize+1)
 	err = n.write(large, int64(len(large)))
-	assertKind(t, err, errorx.KindBadRequest)
+	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
 }
 
 func TestNewRootNode(t *testing.T) {
 	n := NewRootNode()
-	assert.Equal(t, NodeTypeDirectory, n.Type())
+	assert.Equal(t, NodeKindDirectory, n.Kind())
 }
 
 func TestRevision(t *testing.T) {

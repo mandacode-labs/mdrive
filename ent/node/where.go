@@ -75,21 +75,6 @@ func Nlink(v uint32) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldNlink, v))
 }
 
-// Mode applies equality check predicate on the "mode" field. It's identical to ModeEQ.
-func Mode(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldMode, v))
-}
-
-// UID applies equality check predicate on the "uid" field. It's identical to UIDEQ.
-func UID(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldUID, v))
-}
-
-// Gid applies equality check predicate on the "gid" field. It's identical to GidEQ.
-func Gid(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldGid, v))
-}
-
 // Content applies equality check predicate on the "content" field. It's identical to ContentEQ.
 func Content(v []byte) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldContent, v))
@@ -205,24 +190,24 @@ func UpdateTimeLTE(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldUpdateTime, v))
 }
 
-// TypeEQ applies the EQ predicate on the "type" field.
-func TypeEQ(v Type) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldType, v))
+// KindEQ applies the EQ predicate on the "kind" field.
+func KindEQ(v Kind) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldKind, v))
 }
 
-// TypeNEQ applies the NEQ predicate on the "type" field.
-func TypeNEQ(v Type) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldType, v))
+// KindNEQ applies the NEQ predicate on the "kind" field.
+func KindNEQ(v Kind) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldKind, v))
 }
 
-// TypeIn applies the In predicate on the "type" field.
-func TypeIn(vs ...Type) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldType, vs...))
+// KindIn applies the In predicate on the "kind" field.
+func KindIn(vs ...Kind) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldKind, vs...))
 }
 
-// TypeNotIn applies the NotIn predicate on the "type" field.
-func TypeNotIn(vs ...Type) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldType, vs...))
+// KindNotIn applies the NotIn predicate on the "kind" field.
+func KindNotIn(vs ...Kind) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldKind, vs...))
 }
 
 // SizeEQ applies the EQ predicate on the "size" field.
@@ -303,176 +288,6 @@ func NlinkLT(v uint32) predicate.Node {
 // NlinkLTE applies the LTE predicate on the "nlink" field.
 func NlinkLTE(v uint32) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldNlink, v))
-}
-
-// ModeEQ applies the EQ predicate on the "mode" field.
-func ModeEQ(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldMode, v))
-}
-
-// ModeNEQ applies the NEQ predicate on the "mode" field.
-func ModeNEQ(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldMode, v))
-}
-
-// ModeIn applies the In predicate on the "mode" field.
-func ModeIn(vs ...uint32) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldMode, vs...))
-}
-
-// ModeNotIn applies the NotIn predicate on the "mode" field.
-func ModeNotIn(vs ...uint32) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldMode, vs...))
-}
-
-// ModeGT applies the GT predicate on the "mode" field.
-func ModeGT(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldMode, v))
-}
-
-// ModeGTE applies the GTE predicate on the "mode" field.
-func ModeGTE(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldMode, v))
-}
-
-// ModeLT applies the LT predicate on the "mode" field.
-func ModeLT(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldMode, v))
-}
-
-// ModeLTE applies the LTE predicate on the "mode" field.
-func ModeLTE(v uint32) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldMode, v))
-}
-
-// UIDEQ applies the EQ predicate on the "uid" field.
-func UIDEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldUID, v))
-}
-
-// UIDNEQ applies the NEQ predicate on the "uid" field.
-func UIDNEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldUID, v))
-}
-
-// UIDIn applies the In predicate on the "uid" field.
-func UIDIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldUID, vs...))
-}
-
-// UIDNotIn applies the NotIn predicate on the "uid" field.
-func UIDNotIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldUID, vs...))
-}
-
-// UIDGT applies the GT predicate on the "uid" field.
-func UIDGT(v string) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldUID, v))
-}
-
-// UIDGTE applies the GTE predicate on the "uid" field.
-func UIDGTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldUID, v))
-}
-
-// UIDLT applies the LT predicate on the "uid" field.
-func UIDLT(v string) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldUID, v))
-}
-
-// UIDLTE applies the LTE predicate on the "uid" field.
-func UIDLTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldUID, v))
-}
-
-// UIDContains applies the Contains predicate on the "uid" field.
-func UIDContains(v string) predicate.Node {
-	return predicate.Node(sql.FieldContains(FieldUID, v))
-}
-
-// UIDHasPrefix applies the HasPrefix predicate on the "uid" field.
-func UIDHasPrefix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasPrefix(FieldUID, v))
-}
-
-// UIDHasSuffix applies the HasSuffix predicate on the "uid" field.
-func UIDHasSuffix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasSuffix(FieldUID, v))
-}
-
-// UIDEqualFold applies the EqualFold predicate on the "uid" field.
-func UIDEqualFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldEqualFold(FieldUID, v))
-}
-
-// UIDContainsFold applies the ContainsFold predicate on the "uid" field.
-func UIDContainsFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldContainsFold(FieldUID, v))
-}
-
-// GidEQ applies the EQ predicate on the "gid" field.
-func GidEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldGid, v))
-}
-
-// GidNEQ applies the NEQ predicate on the "gid" field.
-func GidNEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldGid, v))
-}
-
-// GidIn applies the In predicate on the "gid" field.
-func GidIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldGid, vs...))
-}
-
-// GidNotIn applies the NotIn predicate on the "gid" field.
-func GidNotIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldGid, vs...))
-}
-
-// GidGT applies the GT predicate on the "gid" field.
-func GidGT(v string) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldGid, v))
-}
-
-// GidGTE applies the GTE predicate on the "gid" field.
-func GidGTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldGid, v))
-}
-
-// GidLT applies the LT predicate on the "gid" field.
-func GidLT(v string) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldGid, v))
-}
-
-// GidLTE applies the LTE predicate on the "gid" field.
-func GidLTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldGid, v))
-}
-
-// GidContains applies the Contains predicate on the "gid" field.
-func GidContains(v string) predicate.Node {
-	return predicate.Node(sql.FieldContains(FieldGid, v))
-}
-
-// GidHasPrefix applies the HasPrefix predicate on the "gid" field.
-func GidHasPrefix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasPrefix(FieldGid, v))
-}
-
-// GidHasSuffix applies the HasSuffix predicate on the "gid" field.
-func GidHasSuffix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasSuffix(FieldGid, v))
-}
-
-// GidEqualFold applies the EqualFold predicate on the "gid" field.
-func GidEqualFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldEqualFold(FieldGid, v))
-}
-
-// GidContainsFold applies the ContainsFold predicate on the "gid" field.
-func GidContainsFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldContainsFold(FieldGid, v))
 }
 
 // ContentEQ applies the EQ predicate on the "content" field.

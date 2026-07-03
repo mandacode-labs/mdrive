@@ -34,7 +34,7 @@ func NewMount(sourceDriveID string) (*Node, error) {
 	if sourceDriveID == "" {
 		return nil, ErrInvalidMountReference
 	}
-	return newInlineNode(NodeTypeMount, NewMountContent(sourceDriveID), 0)
+	return newInlineNode(NodeKindMount, NewMountContent(sourceDriveID), 0)
 }
 
 // ReadMount returns the source drive id this mount points to.

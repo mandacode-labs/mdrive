@@ -10,36 +10,33 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// NodeType represents the type of a node.
-type NodeType uint8
+// NodeKind classifies a node by storage shape, not by access
+// permissions (those are managed via OpenFGA).
+type NodeKind uint8
 
 const (
-	NodeTypeFile      NodeType = 0
-	NodeTypeDirectory NodeType = 1
-	NodeTypeSymlink   NodeType = 2
-	NodeTypeObject    NodeType = 3
-	NodeTypeMount     NodeType = 4
+	NodeKindFile      NodeKind = 0
+	NodeKindDirectory NodeKind = 1
+	NodeKindSymlink   NodeKind = 2
+	NodeKindObject    NodeKind = 3
+	NodeKindMount     NodeKind = 4
 )
 
-func (nt NodeType) String() string {
-	switch nt {
-	case NodeTypeFile:
+func (k NodeKind) String() string {
+	switch k {
+	case NodeKindFile:
 		return "file"
-	case NodeTypeDirectory:
+	case NodeKindDirectory:
 		return "directory"
-	case NodeTypeSymlink:
+	case NodeKindSymlink:
 		return "symlink"
-	case NodeTypeObject:
+	case NodeKindObject:
 		return "object"
-	case NodeTypeMount:
+	case NodeKindMount:
 		return "mount"
 	default:
 		return "unknown"
 	}
-}
-
-func (nt NodeType) Equals(other NodeType) bool {
-	return nt == other
 }
 
 // Flags is a bitmask of node-level flags (ext2-style i_flags).
@@ -143,28 +140,20 @@ const MaxContentSize = 4096
 func (c Content) Size() int    { return len(c) }
 func (c Content) Data() []byte { return c }
 
-// Node is the POSIX-style inode abstraction.
-// A node holds metadata and (for small items) inline content. The node does NOT know its
-// drive, parent, or name — those live in the drive (root_node_id) and parent directory
-// (DirContent), exactly as in Unix where i_parent and i_name are absent from the inode.
+// Node is the in-memory inode abstraction. A node holds metadata
+// and (for small items) inline content. The node does NOT know its
+// drive, parent, or name — those live in the drive (root_node_id)
+// and parent directory (DirContent), exactly as in Unix where
+// i_parent and i_name are absent from the inode.
 //
-// S3 data state is NOT tracked here. For object nodes, the actual S3 data
-// existence is checked lazily on read (HEAD to S3). If the S3 object is
-// missing, the read returns ErrNoContent (or the caller maps it to 404).
+// Permission checks are not modeled here. OpenFGA owns access
+// control across drives, and S3 (where applicable) owns per-object
+// ACLs.
 type Node struct {
-	id    uuid.UUID
-	kind  NodeType
-	size  int64
-	nlink uint32
-	// mode holds the POSIX permission bits and file type
-	// (chmod(2) bits | S_IFMT). Defaults: 0644 for files, 0755 for
-	// directories, 0777 for symlinks, 0664 for S3 objects.
-	mode uint32
-	// uid/gid identify the owning user and primary group. Defaults
-	// to "" (unset) since the system does not currently model
-	// per-user file ownership.
-	uid     string
-	gid     string
+	id      uuid.UUID
+	kind    NodeKind
+	size    int64
+	nlink   uint32
 	content Content
 	atime   time.Time
 	mtime   time.Time
@@ -185,16 +174,13 @@ type Node struct {
 // nlink starts at 0 (POSIX semantics): a freshly created inode has no hardlinks.
 // The first successful Link sets nlink to 1; further Links increment; Unlink
 // decrements and triggers deletion at nlink==0.
-func newNode(kind NodeType) *Node {
+func newNode(kind NodeKind) *Node {
 	now := time.Now()
 	return &Node{
 		id:      uuid.New(),
 		kind:    kind,
 		size:    0,
 		nlink:   0,
-		mode:    defaultMode(kind),
-		uid:     "",
-		gid:     "",
 		content: nil,
 		atime:   now,
 		mtime:   now,
@@ -205,34 +191,15 @@ func newNode(kind NodeType) *Node {
 	}
 }
 
-// defaultMode returns the POSIX permission bits applied to a
-// freshly created node, matching the convention of a touch(1) or
-// mkdir(1) invocation: regular files are user-writable, directories
-// are user-writable and world-readable, symlinks are world-readable
-// (their target's permissions govern access), and S3-backed objects
-// default to group-writable.
-func defaultMode(kind NodeType) uint32 {
-	switch kind {
-	case NodeTypeDirectory:
-		return 0o755
-	case NodeTypeSymlink:
-		return 0o777
-	case NodeTypeObject:
-		return 0o664
-	default:
-		return 0o644
-	}
-}
-
 // NewRootNode creates a new root directory node for a drive.
 // Public because root nodes have no parent. The drive package records
 // this node's ID as drive.root_node_id after creation.
 func NewRootNode() *Node {
-	return newNode(NodeTypeDirectory)
+	return newNode(NodeKindDirectory)
 }
 
 func (n *Node) ID() uuid.UUID  { return n.id }
-func (n *Node) Type() NodeType { return n.kind }
+func (n *Node) Kind() NodeKind { return n.kind }
 func (n *Node) Size() int64    { return n.size }
 func (n *Node) NLink() uint32  { return n.nlink }
 
@@ -241,36 +208,12 @@ func (n *Node) NLink() uint32  { return n.nlink }
 // fakes (e.g. mock NodeClient callbacks) can keep the field
 // consistent without reaching into unexported state.
 func (n *Node) IncNLink()          { n.nlink++ }
-func (n *Node) Mode() uint32       { return n.mode }
-func (n *Node) UID() string        { return n.uid }
-func (n *Node) GID() string        { return n.gid }
 func (n *Node) ATime() time.Time   { return n.atime }
 func (n *Node) MTime() time.Time   { return n.mtime }
 func (n *Node) CTime() time.Time   { return n.ctime }
 func (n *Node) CRTime() time.Time  { return n.crtime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
-
-// SetMode updates the permission bits and bumps ctime.
-func (n *Node) SetMode(mode uint32) {
-	n.mode = mode
-	n.ctime = time.Now()
-	n.rev = n.rev.Next()
-}
-
-// SetUID updates the owning user and bumps ctime.
-func (n *Node) SetUID(uid string) {
-	n.uid = uid
-	n.ctime = time.Now()
-	n.rev = n.rev.Next()
-}
-
-// SetGID updates the owning group and bumps ctime.
-func (n *Node) SetGID(gid string) {
-	n.gid = gid
-	n.ctime = time.Now()
-	n.rev = n.rev.Next()
-}
 
 // StaleRev returns the revision that was current when the node was
 // loaded from the repository. The repository uses it to detect concurrent
@@ -304,11 +247,11 @@ func (n *Node) Clone() *Node {
 // by external callers. Type-specific Read methods are the public API.
 func (n *Node) Content() Content { return n.content }
 
-func (n *Node) IsDir() bool     { return n.kind == NodeTypeDirectory }
-func (n *Node) IsFile() bool    { return n.kind == NodeTypeFile }
-func (n *Node) IsSymlink() bool { return n.kind == NodeTypeSymlink }
-func (n *Node) IsObject() bool  { return n.kind == NodeTypeObject }
-func (n *Node) IsMount() bool   { return n.kind == NodeTypeMount }
+func (n *Node) IsDir() bool     { return n.kind == NodeKindDirectory }
+func (n *Node) IsFile() bool    { return n.kind == NodeKindFile }
+func (n *Node) IsSymlink() bool { return n.kind == NodeKindSymlink }
+func (n *Node) IsObject() bool  { return n.kind == NodeKindObject }
+func (n *Node) IsMount() bool   { return n.kind == NodeKindMount }
 
 // write replaces the node's content and updates mtime/ctime/rev.
 // Private: type-specific Write methods in file.go / dir.go / symlink.go / object.go

@@ -13,7 +13,7 @@ DirEntry:
       type: string
     name:
       type: string
-    type:
+    kind:
       type: string
 
 ObjectContent:
@@ -32,21 +32,16 @@ ObjectContent:
 NodeStat:
   type: object
   description: |
-    POSIX stat(2) / lstat(2) result. Mode is an octal bitmask
-    (chmod(2) bits | S_IFMT); ino is the inode id; the four
-    timestamps follow ext4 semantics. nlink is 0 for symlinks
-    and other special nodes.
-  required: [type, size, mode, nlink, ino, atime, mtime, ctime, crtime]
+    Inode metadata. Permission checks are not modeled here:
+    OpenFGA owns access control across drives, and S3 (where
+    applicable) owns per-object ACLs.
+  required: [type, size, nlink, ino, atime, mtime, ctime, crtime]
   properties:
     type:
       type: string
     size:
       type: integer
       format: int64
-    mode:
-      type: integer
-      format: uint32
-      description: POSIX permission bits and file type (chmod(2) bits | S_IFMT). Unsigned 32-bit to match st_mode and avoid the gosec G115 signed-overflow boundary.
     nlink:
       type: integer
       format: uint32
@@ -55,12 +50,6 @@ NodeStat:
       type: string
       format: uuid
       description: POSIX st_ino (inode id).
-    uid:
-      type: string
-      description: POSIX st_uid (owning user).
-    gid:
-      type: string
-      description: POSIX st_gid (owning group).
     atime:
       type: string
       format: date-time

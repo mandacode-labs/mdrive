@@ -13,7 +13,7 @@ func TestNewObject(t *testing.T) {
 	n, err := NewObject(*oc, 1024)
 	require.NoError(t, err)
 
-	assert.Equal(t, NodeTypeObject, n.Type())
+	assert.Equal(t, NodeKindObject, n.Kind())
 	assert.Equal(t, int64(1024), n.Size())
 
 	got, err := n.ReadObject()
@@ -26,14 +26,14 @@ func TestNewObject(t *testing.T) {
 
 func TestNewObjectInvalidRef(t *testing.T) {
 	_, err := NewObject(ObjectContent{Bucket: "", Key: "k"}, 100)
-	assertKind(t, err, errorx.KindBadRequest)
+	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
 
 	_, err = NewObject(ObjectContent{Bucket: "b", Key: ""}, 100)
-	assertKind(t, err, errorx.KindBadRequest)
+	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
 }
 
 func TestNewObjectNegativeSize(t *testing.T) {
 	oc := NewObjectContent("b", "k", "text/plain", "")
 	_, err := NewObject(*oc, -1)
-	assertKind(t, err, errorx.KindBadRequest)
+	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
 }
