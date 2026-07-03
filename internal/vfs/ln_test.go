@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -12,15 +11,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
-
-func mustRootID(t *testing.T, svc *vfs.Service) uuid.UUID {
-	t.Helper()
-	d, err := svc.DriveClient.GetByID(context.Background(), "d1")
-	require.NoError(t, err)
-	id := d.RootNodeID()
-	require.NotNil(t, id)
-	return *id
-}
 
 func TestSymlink(t *testing.T) {
 	ctx := context.Background()

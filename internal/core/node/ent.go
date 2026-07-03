@@ -140,14 +140,6 @@ func (r *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *entRepository) exists(ctx context.Context, id uuid.UUID) (bool, error) {
-	n, err := r.client.Node.Query().Where(entnode.IDEQ(id)).Exist(ctx)
-	if err != nil {
-		return false, err
-	}
-	return n, nil
-}
-
 // fromEnt converts an ent.Node to a domain Node.
 func fromEnt(e *ent.Node) *Node {
 	if e == nil {

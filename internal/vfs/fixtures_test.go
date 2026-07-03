@@ -217,18 +217,3 @@ func newTestServiceWithNode(t *testing.T) (*vfs.Service, *node.Service) {
 		TxManager:       tmMock,
 	}), nil
 }
-
-func newTestServiceWithRecorder(t *testing.T) (*vfs.Service, *vfsMocks.GarbageRecorderMock) {
-	t.Helper()
-	_, driveState, repo := setupRoot(t)
-	nodeMock := newMockNodeClient(t, repo)
-	driveMock := newMockDriveClient(t, driveState)
-	garbageMock := newMockGarbageRecorder(t)
-	tmMock := newMockTxManager(t)
-	return vfs.NewService(vfs.ServiceConfig{
-		NodeClient:      nodeMock,
-		DriveClient:     driveMock,
-		GarbageRecorder: garbageMock,
-		TxManager:       tmMock,
-	}), garbageMock
-}
