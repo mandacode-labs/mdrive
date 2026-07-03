@@ -15,6 +15,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
+	"github.com/ogen-go/ogen/middleware"
 )
 
 const requestIDHeader = "X-Request-Id"
@@ -51,17 +52,20 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 // RequestIDFromContext returns the request ID stored in ctx by
 // RequestIDMiddleware, or "" if none is set.
 func RequestIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
 	if v, ok := ctx.Value(requestIDKey{}).(string); ok {
 		return v
 	}
 	return ""
 }
 
-// statusRecorder captures the response status code so the access
-// log can report it without inspecting the underlying writer.
-// Pattern matches ogen's own codeRecorder: header is the only
-// authoritative status; bare Write falls through to the wrapped
-// writer, which net/http implicitly turns into WriteHeader(200).
+// statusRecorder captures the response status so the access log
+// can report it. Pattern matches ogen's own codeRecorder: header
+// is the only authoritative status; bare Write falls through to
+// the wrapped writer, which net/http implicitly turns into
+// WriteHeader(200).
 type statusRecorder struct {
 	http.ResponseWriter
 	status int
@@ -76,6 +80,34 @@ func (r *statusRecorder) WriteHeader(code int) {
 
 func (r *statusRecorder) Unwrap() http.ResponseWriter {
 	return r.ResponseWriter
+}
+
+// ogenPanicGuard is an ogen-level middleware that converts a
+// handler panic into a KindServiceDegraded error. ogen then
+// routes the error through WithErrorHandler, producing a proper
+// 5xx JSON response — unlike the HTTP-level recoverPanic, which
+// is limited to appending a body once status is already
+// committed.
+//
+// Together the two form defense in depth: ogenPanicGuard handles
+// handler panic with a clean status code, while recoverPanic
+// (HTTP-level) catches anything that escapes ogen, including
+// response-encoder panics and middleware-pipeline panics.
+func ogenPanicGuard(req middleware.Request, next middleware.Next) (resp middleware.Response, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			stack := debug.Stack()
+			logx.Error(req.Context, errorx.New(errorx.KindServiceDegraded, "handler panic"),
+				"ogen handler panic",
+				slog.String("operation", req.OperationName),
+				slog.String("request_id", RequestIDFromContext(req.Context)),
+				slog.Any("panic_value", rec),
+				slog.String("stack", string(stack)),
+			)
+			err = errorx.New(errorx.KindServiceDegraded, "handler panic")
+		}
+	}()
+	return next(req)
 }
 
 // withRequestLog logs a single access line per request. /health is
@@ -103,9 +135,11 @@ func withRequestLog(next http.Handler) http.Handler {
 	})
 }
 
-// recoverPanic converts a panic inside the handler chain to a 503
-// (KindServiceDegraded) response with the stack trace logged as a
-// structured attribute so production panics are traceable.
+// recoverPanic catches any panic that escaped ogenPanicGuard:
+// response-encoder panics, middleware-pipeline panics. Status
+// cannot be overwritten once committed, so the recovery body
+// rides the original status — but the panic is still logged with
+// its stack.
 func recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {

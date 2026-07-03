@@ -53,13 +53,16 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		securityHandler = a.Security
 	}
 
-	ogenServer, err := api.NewServer(h, securityHandler, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		logx.Error(ctx, err, "handler error",
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-		WriteError(w, err)
-	}))
+	ogenServer, err := api.NewServer(h, securityHandler,
+		api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
+			logx.Error(ctx, err, "handler error",
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+			)
+			WriteError(w, err)
+		}),
+		api.WithMiddleware(ogenPanicGuard),
+	)
 	if err != nil {
 		return nil, errorx.Wrap(err, "apiserver: create ogen server")
 	}

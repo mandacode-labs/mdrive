@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mandacode-labs/mdrive/internal/config"
+	"github.com/ogen-go/ogen/middleware"
+)
+
+// Local aliases so the test reads as ogen-handler-shaped without
+// importing the full type set.
+type (
+	ogenReq    = middleware.Request
+	ogenRes    = middleware.Response
+	ogenNext   = middleware.Next
 )
 
 // newTestLog returns a JSON logger backed by buf and registers it
@@ -148,6 +160,44 @@ func TestStatusRecorderUnwraps(t *testing.T) {
 	}
 }
 
+func TestStatusRecorderWritePassthrough(t *testing.T) {
+	rec := httptest.NewRecorder()
+	sr := &statusRecorder{ResponseWriter: rec}
+
+	body := []byte(`{"x":1}`)
+	n, err := sr.Write(body)
+	assert.NoError(t, err)
+	assert.Equal(t, len(body), n)
+	assert.Equal(t, string(body), rec.Body.String())
+}
+
+func TestStatusRecorderWriteHeaderForwardsStatus(t *testing.T) {
+	rec := httptest.NewRecorder()
+	sr := &statusRecorder{ResponseWriter: rec}
+	sr.WriteHeader(http.StatusTeapot)
+	assert.Equal(t, http.StatusTeapot, sr.status)
+	assert.Equal(t, http.StatusTeapot, rec.Code)
+}
+
+func TestStatusRecorderPreservesUnderlyingBuffer(t *testing.T) {
+	rec := httptest.NewRecorder()
+	sr := &statusRecorder{ResponseWriter: rec}
+
+	sr.Header().Set("Content-Type", "application/json")
+	sr.WriteHeader(http.StatusOK)
+
+	parts := [][]byte{
+		[]byte(`{"entri`),
+		[]byte(`es":[]}`),
+	}
+	for _, p := range parts {
+		_, _ = sr.Write(p)
+	}
+
+	got := rec.Body.String()
+	assert.Equal(t, string(bytes.Join(parts, nil)), got)
+}
+
 func TestRequestIDPropagation(t *testing.T) {
 	h := RequestIDMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := RequestIDFromContext(r.Context())
@@ -192,9 +242,9 @@ func TestChainNoLeak(t *testing.T) {
 	assert.Contains(t, buf.String(), `"status":200`)
 }
 
-// Ensure Error-logging handler emits a real Error JSON, not an
-// empty body, so an operator always has something to read when a
-// handler panic sneaks past recoverPanic.
+// TestWriteErrorEmitsJSON ensures the error path emits real
+// JSON, not an empty body, so an operator always has something
+// to read when a handler panic sneaks past recoverPanic.
 func TestWriteErrorEmitsJSON(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(rec, errors.New("boom"))
@@ -206,7 +256,66 @@ func TestWriteErrorEmitsJSON(t *testing.T) {
 	assert.Equal(t, "internal_error", apiErr["code"])
 }
 
-// context round-trip sanity check
 func TestRequestIDFromContextEmpty(t *testing.T) {
 	assert.Equal(t, "", RequestIDFromContext(context.Background()))
+}
+
+// TestOgenPanicGuardConvertsHandlerPanic exercises ogenPanicGuard
+// directly: a handler that panics must result in a returned
+// error so ogen's WithErrorHandler can produce a clean 5xx.
+func TestOgenPanicGuardConvertsHandlerPanic(t *testing.T) {
+	_, _ = newTestLog(t)
+
+	panicHandler := ogenNext(func(_ ogenReq) (ogenRes, error) {
+		panic("handler boom")
+	})
+
+	req := ogenReq{Context: context.Background()}
+	_, err := ogenPanicGuard(req, panicHandler)
+	require.Error(t, err, "panic must be converted to a returned error")
+}
+
+// TestFullChainHandlerBodyReachesWire is the positive control:
+// a handler that writes a body must result in the body being
+// readable on the wire. If this fails, the empty body is a
+// middleware/recorder issue.
+func TestFullChainHandlerBodyReachesWire(t *testing.T) {
+	_, _ = newTestLog(t)
+
+	want := `{"entries":[]}`
+
+	bodyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, want)
+	})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/drives/x/fs/ls", nil)
+
+	corsCfg := config.CORSConfig{
+		Enabled:          true,
+		AllowedOrigins:   []string{"https://mdrive.mandacode.com"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	}
+
+	var h http.Handler = bodyHandler
+	h = AuthPassthrough(h, nil)
+	h = OpenAPIPassthrough(h)
+	h = RequestIDMiddleware(h)
+	h = withCORS(h, corsCfg)
+	h = withRequestLog(h)
+	h = recoverPanic(h)
+
+	h.ServeHTTP(rec, req)
+
+	got := rec.Body.String()
+	t.Logf("positive control: status=%d body=%q", rec.Code, got)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, want, got)
 }
