@@ -24,6 +24,11 @@ func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.Mkd
 		slog.String("path", r.Path),
 	)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.fs.mkdir.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("path", r.Path),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	if _, err := h.fs.Mkdir(ctx, params.DriveID, r.Path); err != nil {
