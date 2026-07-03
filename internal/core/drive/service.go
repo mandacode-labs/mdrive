@@ -144,7 +144,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get by id (id=%s)", id))
 	}
 	if d == nil {
 		return nil, errorx.New(errorx.KindNotFound, "drive: not found (id="+id+")")
@@ -156,7 +156,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
 	d, err := s.repo.GetByPublicID(ctx, publicID)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get by public id (public_id=%s)", publicID))
 	}
 	if d == nil {
 		return nil, errorx.New(errorx.KindNotFound, "drive: not found (public_id="+publicID+")")
@@ -170,7 +170,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, e
 func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
 	st, err := s.repo.GetStorage(ctx, driveID)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get storage (drive_id=%s)", driveID))
 	}
 	if st == nil {
 		return nil, errorx.New(errorx.KindNotFound, "drive: storage not found (drive_id="+driveID+")")
@@ -186,7 +186,7 @@ func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, err
 func (s *Service) Update(ctx context.Context, id string, name, description string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: update lookup (id=%s)", id))
 	}
 	if d == nil {
 		return nil, errorx.New(errorx.KindNotFound, "drive: not found (id="+id+")")
@@ -204,7 +204,11 @@ func (s *Service) Update(ctx context.Context, id string, name, description strin
 		d.Provider(), d.OwnerID(), d.RootNodeID(), d.DeletedAt(),
 		d.CreatedAt(), time.Now(),
 	)
-	return s.repo.Update(ctx, updated)
+	saved, err := s.repo.Update(ctx, updated)
+	if err != nil {
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: update (id=%s)", id))
+	}
+	return saved, nil
 }
 
 // Delete soft-deletes a drive. Permission is the caller's
@@ -213,7 +217,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if _, err := s.GetByID(ctx, id); err != nil {
 		return err
 	}
-	return s.repo.SoftDelete(ctx, id)
+	if err := s.repo.SoftDelete(ctx, id); err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("drive: soft delete (id=%s)", id))
+	}
+	return nil
 }
 
 // Restore reactivates a soft-deleted drive. Permission is the
@@ -227,14 +234,17 @@ func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
 		return nil, errorx.New(errorx.KindBadRequest, "drive: not deleted (id="+id+")")
 	}
 	if err := s.repo.Restore(ctx, id); err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("drive: restore (id=%s)", id))
 	}
 	return s.GetByID(ctx, id)
 }
 
 // Purge permanently removes a soft-deleted drive and its storage record.
 func (s *Service) Purge(ctx context.Context, id string) error {
-	return s.repo.Delete(ctx, id)
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return errorx.Wrap(err, fmt.Sprintf("drive: purge (id=%s)", id))
+	}
+	return nil
 }
 
 // ListDeletedForAdmin returns drives soft-deleted before the given

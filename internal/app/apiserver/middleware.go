@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/auth"
@@ -115,8 +116,16 @@ func withRequestLog(next http.Handler) http.Handler {
 	})
 }
 
-// recoverPanic catches panics raised inside the handler chain and
-// converts them to a 500 response.
+// recoverPanic catches panics raised inside the handler chain
+// and converts them to a 503 response (KindServiceDegraded).
+//
+// The stack trace is always logged as a structured attribute
+// (independent of logx's 5xx policy) so production panics are
+// traceable without re-deriving the stack from the error string.
+// A nested recover guards against a second panic inside the
+// error response path itself: if WriteError also panics (e.g.
+// the client disconnected mid-Encode), the goroutine falls
+// through to a plain-text 500 rather than terminating.
 func recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -124,12 +133,21 @@ func recoverPanic(next http.Handler) http.Handler {
 			if rec == nil {
 				return
 			}
+			stack := debug.Stack()
 			err := errorx.New(errorx.KindServiceDegraded,
 				fmt.Sprintf("internal panic: %v", rec))
 			logx.Error(r.Context(), err, "panic recovered",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
+				slog.String("request_id", RequestIDFromContext(r.Context())),
+				slog.Any("panic_value", rec),
+				slog.String("stack", string(stack)),
 			)
+			defer func() {
+				if rec2 := recover(); rec2 != nil {
+					http.Error(w, "internal error", http.StatusInternalServerError)
+				}
+			}()
 			WriteError(w, err)
 		}()
 		next.ServeHTTP(w, r)

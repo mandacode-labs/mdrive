@@ -2,24 +2,24 @@ package vfs
 
 import (
 	"context"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"log/slog"
 	"path"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
+	"log/slog"
 )
 
 // resolver walks the node tree from a drive root to resolve Unix
 // paths. Each resolver instance has its own cache that memoizes
-// GetByID loads within the instance, so multiple resolves of the
-// same UUID return the same in-memory *Node pointer. This pointer
-// identity is required for the optimistic-concurrency check in
-// node.Repository.Save (staleRev) to behave consistently within
-// one operation.
+// GetByID loads within the instance, so multiple resolves of
+// the same UUID return the same in-memory *Node pointer. This
+// pointer identity is required for the optimistic-concurrency
+// check in node.Repository.Save (staleRev) to behave consistently
+// within one operation.
 //
 // Resolvers are NOT safe to share across operations: the cache
 // grows without bounds and stale entries may bleed into a
@@ -49,11 +49,11 @@ func (r *resolver) loadByID(ctx context.Context, id uuid.UUID) (*node.Node, erro
 	return n, nil
 }
 
-// resolveOutcome is the result of a single-drive path lookup. When
+// walkResult is the result of a single-drive path lookup. When
 // the path crosses a mount node, Remaining holds the path components
 // that follow it; the caller (Service.Resolve) uses this to follow
 // the mount into the source drive.
-type resolveOutcome struct {
+type walkResult struct {
 	Node      *node.Node
 	Remaining string
 }
@@ -63,10 +63,10 @@ type resolveOutcome struct {
 // exhausted, matching POSIX ELOOP.
 const maxSymlinkDepth = 40
 
-// resolve walks from root to the node at the given absolute path,
-// following symlinks per POSIX when follow is true (Linux stat(2)
-// semantics). When follow is false, the resolution stops at the
-// first symlink and returns it (Linux lstat(2) semantics).
+// resolvePath walks from root to the node at the given absolute
+// path, following symlinks per POSIX when follow is true (Linux
+// stat(2) semantics). When follow is false, the resolution stops
+// at the first symlink and returns it (Linux lstat(2) semantics).
 //
 // Supports "." and "..". Stops at the first mount node: the mount
 // itself is returned and Remaining contains the rest of the path
@@ -77,26 +77,29 @@ const maxSymlinkDepth = 40
 //
 // Relative symlinks resolve relative to their parent directory;
 // absolute targets restart resolution from the drive root.
-func (r *resolver) resolve(ctx context.Context, rootID uuid.UUID, p string, follow bool) (resolveOutcome, error) {
-	return r.resolveInner(ctx, rootID, p, follow, make(map[uuid.UUID]struct{}))
+func (r *resolver) resolvePath(ctx context.Context, rootID uuid.UUID, p string, follow bool) (walkResult, error) {
+	return r.resolvePathInner(ctx, rootID, p, follow, make(map[uuid.UUID]struct{}))
 }
 
-// resolveInner does the actual walk. It is split out from resolve
-// so the symlink-follow branch can recurse (cheap Go call, not
-// a Go-statement-cost loop iteration) when a target needs to be
-// spliced into the remaining path.
-func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string, follow bool, visited map[uuid.UUID]struct{}) (resolveOutcome, error) {
+// resolvePathInner does the actual walk. It is split out from
+// resolvePath so the symlink-follow branch can recurse (cheap Go
+// call, not a Go-statement-cost loop iteration) when a target
+// needs to be spliced into the remaining path.
+func (r *resolver) resolvePathInner(ctx context.Context, rootID uuid.UUID, p string, follow bool, visited map[uuid.UUID]struct{}) (walkResult, error) {
 	cleaned := cleanPath(p)
 	if cleaned == "" || cleaned == "/" {
 		n, err := r.loadByID(ctx, rootID)
 		if err != nil {
-			return resolveOutcome{}, err
+			return walkResult{}, err
 		}
-		return resolveOutcome{Node: n}, nil
+		if n == nil {
+			return walkResult{}, errorx.New(errorx.KindNotFound, "vfs: not found")
+		}
+		return walkResult{Node: n}, nil
 	}
 	root, err := r.loadByID(ctx, rootID)
 	if err != nil || root == nil {
-		return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
+		return walkResult{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	cur := root
 	parents := []*node.Node{root}
@@ -107,7 +110,7 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 			continue
 		case "..":
 			if len(parents) <= 1 {
-				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: invalid path")
 			}
 			parents = parents[:len(parents)-1]
 			cur = parents[len(parents)-1]
@@ -116,18 +119,18 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 
 		de, err := cur.Lookup(part)
 		if err != nil {
-			return resolveOutcome{}, err
+			return walkResult{}, err
 		}
 		if de == nil {
-			return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
+			return walkResult{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 		}
 		child, err := r.loadByID(ctx, de.InodeID)
 		if err != nil || child == nil {
-			return resolveOutcome{}, errorx.New(errorx.KindNotFound, "vfs: not found")
+			return walkResult{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 		}
 		if child.IsMount() {
 			rest := joinParts(parts[i+1:])
-			return resolveOutcome{Node: child, Remaining: rest}, nil
+			return walkResult{Node: child, Remaining: rest}, nil
 		}
 
 		// Symlink follow: if the child we just resolved is a
@@ -135,16 +138,16 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 		// remaining path and recurse from the drive root.
 		if follow && child.IsSymlink() {
 			if len(visited) >= maxSymlinkDepth {
-				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
+				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
 			}
 			if _, seen := visited[child.ID()]; seen {
-				return resolveOutcome{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
+				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
 			}
 			visited[child.ID()] = struct{}{}
 
 			target, err := child.Readlink()
 			if err != nil {
-				return resolveOutcome{}, err
+				return walkResult{}, err
 			}
 			suffix := joinParts(parts[i+1:])
 			var joined string
@@ -166,37 +169,41 @@ func (r *resolver) resolveInner(ctx context.Context, rootID uuid.UUID, p string,
 					joined = path.Clean(parentPath + "/" + target + "/" + suffix)
 				}
 			}
-			return r.resolveInner(ctx, rootID, joined, follow, visited)
+			return r.resolvePathInner(ctx, rootID, joined, follow, visited)
 		}
 
 		parents = append(parents, child)
 		cur = child
 	}
-	return resolveOutcome{Node: cur}, nil
+	return walkResult{Node: cur}, nil
 }
 
-// resolveCross walks from root to the node at the given absolute path,
-// transparently following mount nodes along the way. Returns the
-// drive the final node lives in (which may differ from driveID if
-// mounts were crossed) and the node itself. Cycles in the mount
-// graph are detected via a visited set; maxMountHops is a safety net
-// against pathological graphs.
+// resolveWithMounts walks from root to the node at the given
+// absolute path, transparently following mount nodes along the
+// way. Returns the drive the final node lives in (which may
+// differ from driveID if mounts were crossed) and the node
+// itself. Cycles in the mount graph are detected via a visited
+// set; maxMountHops is a safety net against pathological
+// graphs.
 //
 // Each hop uses a fresh resolver so the cache for one mount
 // traversal does not leak across hops.
-func (s *Service) resolveCross(ctx context.Context, driveID, path string, follow bool) (driveIDOut string, n *node.Node, err error) {
+func (s *Service) resolveWithMounts(ctx context.Context, driveID, path string, follow bool) (driveIDOut string, n *node.Node, err error) {
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
 	for hop := 1; hop <= maxMountHops; hop++ {
-		r := s.newResolver()
+		r := newResolver(s.NodeClient)
 		rootID, err := s.GetRootNodeID(ctx, currentDrive)
 		if err != nil {
 			return "", nil, err
 		}
-		out, err := r.resolve(ctx, rootID, currentPath, follow)
+		out, err := r.resolvePath(ctx, rootID, currentPath, follow)
 		if err != nil {
 			return "", nil, err
+		}
+		if out.Node == nil {
+			return "", nil, errorx.New(errorx.KindNotFound, "vfs: not found")
 		}
 		if out.Remaining == "" {
 			if hop > 1 {
@@ -260,9 +267,12 @@ func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string
 	if name == "" {
 		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
 	}
-	out, err := r.resolve(ctx, rootID, parentPath, true)
+	out, err := r.resolvePath(ctx, rootID, parentPath, true)
 	if err != nil {
 		return nil, "", err
+	}
+	if out.Node == nil {
+		return nil, "", errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	return out.Node, name, nil
 }
@@ -304,13 +314,13 @@ func cleanPath(p string) string {
 	return cleaned
 }
 
-// requireEditPath resolves the path's parent directory and verifies
-// it is a directory. Returns ErrNotDirectory if the parent is not
-// a directory.
+// resolveEditableParent resolves the path's parent directory and
+// verifies it is a directory. Returns ErrNotDirectory if the
+// parent is not a directory.
 //
 // Permission is the caller's responsibility: vfs does not check
 // edit permission.
-func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
+func (s *Service) resolveEditableParent(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, "", err
@@ -318,20 +328,15 @@ func (s *Service) requireEditPath(ctx context.Context, driveID, path string) (pa
 	if rootID == uuid.Nil {
 		return nil, "", errorx.New(errorx.KindNotFound, "vfs: drive not found")
 	}
-	parent, name, err = s.newResolver().resolveParent(ctx, rootID, path)
+	parent, name, err = newResolver(s.NodeClient).resolveParent(ctx, rootID, path)
 	if err != nil {
 		return nil, "", err
+	}
+	if parent == nil {
+		return nil, "", errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	if !parent.IsDir() {
 		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: not a directory")
 	}
 	return parent, name, nil
-}
-
-// createAndLink creates (or saves) child as a new entry at
-// parent/name. Both the child row and the parent's directory
-// entry land in the same transaction, so a partial failure
-// cannot leave a child row that no directory refers to.
-func (s *Service) createAndLink(ctx context.Context, child, parent *node.Node, name string) error {
-	return s.NodeClient.Link(ctx, parent, name, child)
 }

@@ -83,14 +83,6 @@ func NewService(cfg ServiceConfig) *Service {
 	}
 }
 
-// newResolver returns a fresh resolver backed by the Service's
-// NodeClient. The cache is shared across calls within the same
-// operation (multiple resolves of the same UUID return the same
-// *Node pointer).
-func (s *Service) newResolver() *resolver {
-	return newResolver(s.NodeClient)
-}
-
 type Resolved struct {
 	DriveID string
 	Node    *node.Node
@@ -105,9 +97,12 @@ const maxMountHops = 32
 // resolution. Callers that need a permission check should use
 // Resolve and then check against Resolved.DriveID.
 func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
-	drive, n, err := s.resolveCross(ctx, driveID, path, true)
+	drive, n, err := s.resolveWithMounts(ctx, driveID, path, true)
 	if err != nil {
 		return Resolved{}, err
+	}
+	if n == nil {
+		return Resolved{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	return Resolved{DriveID: drive, Node: n}, nil
 }
@@ -128,14 +123,17 @@ type PartialResolution struct {
 // caller can both check permission and then re-resolve the rest of
 // the path within the source drive. Symlinks are followed.
 func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error) {
-	r := s.newResolver()
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return PartialResolution{}, err
 	}
-	out, err := r.resolve(ctx, rootID, path, true)
+	r := newResolver(s.NodeClient)
+	out, err := r.resolvePath(ctx, rootID, path, true)
 	if err != nil {
 		return PartialResolution{}, err
+	}
+	if out.Node == nil {
+		return PartialResolution{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	if out.Node.IsMount() {
 		srcDriveID, err := out.Node.ReadMount()
@@ -153,9 +151,12 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 // skipped. Used by callers that need the resolved node itself
 // (e.g. the readlink handler).
 func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, error) {
-	d, n, err := s.resolveCross(ctx, driveID, path, false)
+	d, n, err := s.resolveWithMounts(ctx, driveID, path, false)
 	if err != nil {
 		return Resolved{}, err
+	}
+	if n == nil {
+		return Resolved{}, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	return Resolved{DriveID: d, Node: n}, nil
 }
@@ -183,7 +184,14 @@ func (s *Service) ResolveParentNodeID(ctx context.Context, driveID, path string)
 	if err != nil {
 		return uuid.Nil, "", err
 	}
-	return s.resolveParentInDrive(ctx, rootID, path)
+	parent, name, err := newResolver(s.NodeClient).resolveParent(ctx, rootID, path)
+	if err != nil {
+		return uuid.Nil, "", err
+	}
+	if parent == nil {
+		return uuid.Nil, "", errorx.New(errorx.KindNotFound, "vfs: not found")
+	}
+	return parent.ID(), name, nil
 }
 
 // ResolveNodeID resolves a path to its node ID within a drive.
@@ -194,21 +202,12 @@ func (s *Service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid
 	if err != nil {
 		return uuid.Nil, err
 	}
-	out, err := s.newResolver().resolve(ctx, rootID, path, true)
+	out, err := newResolver(s.NodeClient).resolvePath(ctx, rootID, path, true)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return out.Node.ID(), nil
-}
-
-// resolveParentInDrive resolves a path's parent and leaf within a
-// drive whose root node ID is already known. Internal helper to
-// avoid the (rootNodeID + newResolver) preamble duplication
-// between ResolveParentNodeID and other callers.
-func (s *Service) resolveParentInDrive(ctx context.Context, rootID uuid.UUID, path string) (uuid.UUID, string, error) {
-	parent, name, err := s.newResolver().resolveParent(ctx, rootID, path)
-	if err != nil {
-		return uuid.Nil, "", err
+	if out.Node == nil {
+		return uuid.Nil, errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
-	return parent.ID(), name, nil
+	return out.Node.ID(), nil
 }

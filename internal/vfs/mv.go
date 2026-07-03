@@ -45,21 +45,30 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	if err != nil {
 		return nil, err
 	}
-	r := s.newResolver()
-	srcOut, err := r.resolve(ctx, rootID, srcPath, true)
+	r := newResolver(s.NodeClient)
+	srcOut, err := r.resolvePath(ctx, rootID, srcPath, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src (src_path=%s)", srcPath))
 	}
 	if srcOut.Remaining != "" {
 		return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 	}
+	if srcOut.Node == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv src not found (src_path="+srcPath+")")
+	}
 	srcParent, srcName, err := r.resolveParent(ctx, rootID, srcPath)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src parent (src_path=%s)", srcPath))
 	}
+	if srcParent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv src parent not found (src_path="+srcPath+")")
+	}
 	dstParent, dstName, err := r.resolveParent(ctx, rootID, dstPath)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve dst parent (dst_path=%s)", dstPath))
+	}
+	if dstParent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv dst parent not found (dst_path="+dstPath+")")
 	}
 	if !dstParent.IsDir() {
 		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
@@ -72,10 +81,13 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	if err != nil {
 		return nil, err
 	}
-	r := s.newResolver()
-	dstOut, err := r.resolve(ctx, rootID, dstPath, true)
+	r := newResolver(s.NodeClient)
+	dstOut, err := r.resolvePath(ctx, rootID, dstPath, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve dst (dst_path=%s)", dstPath))
+	}
+	if dstOut.Node == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv dst not found (dst_path="+dstPath+")")
 	}
 	dstDir := dstOut.Node
 	if !dstDir.IsDir() {
@@ -91,16 +103,22 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	sources := make([]srcInfo, 0, len(srcPaths))
 	seen := make(map[string]struct{}, len(srcPaths))
 	for _, srcPath := range srcPaths {
-		srcOut, err := r.resolve(ctx, rootID, srcPath, true)
+		srcOut, err := r.resolvePath(ctx, rootID, srcPath, true)
 		if err != nil {
 			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv batch resolve src (src_path=%s)", srcPath))
 		}
 		if srcOut.Remaining != "" {
 			return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
 		}
+		if srcOut.Node == nil {
+			return nil, errorx.New(errorx.KindNotFound, "vfs: mv batch src not found (src_path="+srcPath+")")
+		}
 		sp, sn, err := r.resolveParent(ctx, rootID, srcPath)
 		if err != nil {
 			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv batch resolve src parent (src_path=%s)", srcPath))
+		}
+		if sp == nil {
+			return nil, errorx.New(errorx.KindNotFound, "vfs: mv batch src parent not found (src_path="+srcPath+")")
 		}
 		if _, dup := seen[sn]; dup {
 			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv duplicate source basename "+sn+" in batch")
@@ -131,9 +149,15 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 // node.Service.MoveEntry. The child inode is preserved (no nlink
 // bookkeeping here) — that's MoveEntry's responsibility.
 func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]GarbageRef, error) {
+	if srcParent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv src parent not found (src_name="+srcName+")")
+	}
+	if dstParent == nil {
+		return nil, errorx.New(errorx.KindNotFound, "vfs: mv dst parent not found (dst_name="+dstName+")")
+	}
 	overwriteRef, err := s.captureOverwriteRef(ctx, dstParent, dstName)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv capture overwrite ref (dst_name=%s)", dstName))
 	}
 	if err := s.NodeClient.MoveEntry(ctx, srcParent, srcName, dstParent, dstName); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv move entry (src_name=%s, dst_name=%s)", srcName, dstName))
@@ -145,12 +169,15 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 }
 
 func (s *Service) captureOverwriteRef(ctx context.Context, dstParent *node.Node, dstName string) (*GarbageRef, error) {
+	if dstParent == nil {
+		return nil, nil
+	}
 	existing, err := dstParent.Lookup(dstName)
 	if err != nil || existing == nil {
 		return nil, nil
 	}
 	child, err := s.NodeClient.GetByID(ctx, existing.InodeID)
-	if err != nil || !child.IsObject() {
+	if err != nil || child == nil || !child.IsObject() {
 		return nil, nil
 	}
 	oc, err := child.ReadObject()
