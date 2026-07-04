@@ -151,6 +151,7 @@ func (c Content) Data() []byte { return c }
 // ACLs.
 type Node struct {
 	id      uuid.UUID
+	did     string // Drive ID
 	kind    NodeKind
 	size    int64
 	nlink   uint32
@@ -174,10 +175,11 @@ type Node struct {
 // nlink starts at 0 (POSIX semantics): a freshly created inode has no hardlinks.
 // The first successful Link sets nlink to 1; further Links increment; Unlink
 // decrements and triggers deletion at nlink==0.
-func newNode(kind NodeKind) *Node {
+func newNode(did string, kind NodeKind) *Node {
 	now := time.Now()
 	return &Node{
 		id:      uuid.New(),
+		did:     did,
 		kind:    kind,
 		size:    0,
 		nlink:   0,
@@ -194,8 +196,8 @@ func newNode(kind NodeKind) *Node {
 // NewRootNode creates a new root directory node for a drive.
 // Public because root nodes have no parent. The drive package records
 // this node's ID as drive.root_node_id after creation.
-func NewRootNode() *Node {
-	return newNode(NodeKindDirectory)
+func NewRootNode(did string) *Node {
+	return newNode(did, NodeKindDirectory)
 }
 
 func (n *Node) ID() uuid.UUID  { return n.id }

@@ -44,12 +44,12 @@ func (d *DirContent) findEntry(name string) *DirEntry {
 }
 
 // NewDirectory creates a new empty directory node.
-func NewDirectory() (*Node, error) {
+func NewDirectory(did string) (*Node, error) {
 	data, err := json.Marshal(NewDirContent(nil))
 	if err != nil {
 		return nil, errorx.Wrap(err, "node: marshal directory content")
 	}
-	n := newNode(NodeKindDirectory)
+	n := newNode(did, NodeKindDirectory)
 	if err := n.write(Content(data), 0); err != nil {
 		return nil, err
 	}

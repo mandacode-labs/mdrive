@@ -30,11 +30,11 @@ func (m *MountContent) Marshal() ([]byte, error) {
 // The mount node starts with nlink=0 (it has no hardlinks of its own;
 // the mount is purely a directory entry, so it is never hardlinked
 // away independently).
-func NewMount(sourceDriveID string) (*Node, error) {
+func NewMount(did string, sourceDriveID string) (*Node, error) {
 	if sourceDriveID == "" {
 		return nil, ErrInvalidMountReference
 	}
-	return newInlineNode(NodeKindMount, NewMountContent(sourceDriveID), 0)
+	return newInlineNode(did, NodeKindMount, NewMountContent(sourceDriveID), 0)
 }
 
 // ReadMount returns the source drive id this mount points to.

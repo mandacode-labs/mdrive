@@ -14,7 +14,7 @@ import (
 // marshaling + size check + node construction removes the
 // repeated 5-line pattern that the type-specific New* functions
 // would otherwise duplicate.
-func newInlineNode(kind NodeKind, payload any, size int64) (*Node, error) {
+func newInlineNode(did string, kind NodeKind, payload any, size int64) (*Node, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: marshal content (kind=%s)", string(kind)))
@@ -22,7 +22,7 @@ func newInlineNode(kind NodeKind, payload any, size int64) (*Node, error) {
 	if len(data) > MaxContentSize {
 		return nil, errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")
 	}
-	n := newNode(kind)
+	n := newNode(did, kind)
 	if err := n.write(Content(data), size); err != nil {
 		return nil, err
 	}
