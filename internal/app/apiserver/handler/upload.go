@@ -17,6 +17,12 @@ func (h *Handler) InitiateUpload(ctx context.Context, req api.OptPresignRequest,
 		slog.String("path", req.Value.Path),
 	)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.upload.initiate.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("path", req.Value.Path),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	r := req.Value
@@ -60,6 +66,12 @@ func (h *Handler) CompleteUpload(ctx context.Context, req api.OptUploadCompleteR
 		slog.String("upload_id", params.UploadId),
 	)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.upload.complete.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("upload_id", params.UploadId),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	r := req.Value
@@ -93,6 +105,12 @@ func (h *Handler) PresignDownload(ctx context.Context, params api.PresignDownloa
 		slog.String("path", params.Path),
 	)
 	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.upload.presign_download.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("path", params.Path),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	info, err := h.upload.PresignDownload(ctx, h.userID(ctx), params.DriveID, params.Path, h.presignTTL)

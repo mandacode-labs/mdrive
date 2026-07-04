@@ -12,9 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/cors"
+
 	"github.com/mandacode-labs/mdrive/internal/app"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
-	"github.com/mandacode-labs/mdrive/internal/auth"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/middleware"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/spec"
+	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
@@ -54,29 +58,13 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 	}
 
 	ogenServer, err := api.NewServer(h, securityHandler,
-		api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-			logx.Error(ctx, err, "handler error",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-			)
-			WriteError(w, err)
-		}),
-		api.WithMiddleware(ogenPanicGuard),
+		api.WithMiddleware(middleware.ErrorMiddleware(), middleware.PanicMiddleware()),
 	)
 	if err != nil {
 		return nil, errorx.Wrap(err, "apiserver: create ogen server")
 	}
 
-	var secured http.Handler = ogenServer
-	if a.Auth != nil {
-		secured = a.Auth.AuthBridge(ogenServer)
-	}
-	finalHandler := AuthPassthrough(secured, a.Auth)
-	finalHandler = OpenAPIPassthrough(finalHandler)
-	finalHandler = RequestIDMiddleware(finalHandler)
-	finalHandler = withCORS(finalHandler, a.Config.HTTP.CORS)
-	finalHandler = withRequestLog(finalHandler)
-	finalHandler = recoverPanic(finalHandler)
+	finalHandler := buildChain(a, ogenServer)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", a.Config.HTTP.Host, a.Config.HTTP.Port),
@@ -91,6 +79,44 @@ func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, up
 		http: srv,
 		addr: srv.Addr,
 	}, nil
+}
+
+// buildChain assembles path-specific mounts and cross-cutting
+// middleware. From outermost to innermost: CSRF, CORS, http.ServeMux
+// (OIDC flow, /openapi.json, ogen).
+func buildChain(a *app.App, ogenServer http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	if a.Auth != nil {
+		mux.Handle("/auth/login", authHandler(a.Auth.Authenticate, "login"))
+		mux.Handle("/auth/callback", authHandler(a.Auth.Callback, "callback"))
+		mux.Handle("/auth/logout", authHandler(a.Auth.Logout, "logout"))
+	}
+	mux.Handle("/openapi.json", spec.Handler())
+	mux.Handle("/", ogenServer)
+
+	csrf := middleware.CSRFMiddleware(middleware.CSRFConfig{
+		AllowedOrigins: a.Config.HTTP.CORS.AllowedOrigins,
+	})(mux)
+
+	return newCORS(a.Config.HTTP.CORS).Handler(csrf)
+}
+
+func newCORS(cfg config.CORSConfig) *cors.Cors {
+	return cors.New(cors.Options{
+		AllowedOrigins:   cfg.AllowedOrigins,
+		AllowedMethods:   cfg.AllowedMethods,
+		AllowedHeaders:   cfg.AllowedHeaders,
+		ExposedHeaders:   cfg.ExposedHeaders,
+		AllowCredentials: cfg.AllowCredentials,
+		MaxAge:           cfg.MaxAge,
+	})
+}
+
+func authHandler(fn func(http.ResponseWriter, *http.Request), flow string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logx.Debug(r.Context(), "apiserver.auth."+flow)
+		fn(w, r)
+	})
 }
 
 func (s *Server) Run() error {
@@ -119,39 +145,11 @@ func (s *Server) Run() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.http.Shutdown(ctx); err != nil {
-		logx.Error(ctx, err, "api_server.http_shutdown_error")
+		logx.Error(ctx, err, "apiserver.http_shutdown_error")
 	}
 	if err := s.app.Close(); err != nil {
-		logx.Error(ctx, err, "api_server.app_close_error")
+		logx.Error(ctx, err, "apiserver.app_close_error")
 	}
 	logx.Info(ctx, "api_server.stopped")
 	return nil
-}
-
-// AuthPassthrough routes OIDC login/callback/logout to the auth
-// Service and forwards everything else to next. Mounted in the
-// middleware chain BEFORE the ogen server so ogen never sees the
-// auth-flow paths. When auth is not configured, the request is
-// forwarded as-is.
-func AuthPassthrough(next http.Handler, auth *auth.Service) http.Handler {
-	if auth == nil {
-		return next
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/auth/login":
-			logx.Debug(r.Context(), "apiserver.auth.login")
-			auth.Authenticate(w, r)
-			return
-		case "/auth/callback":
-			logx.Debug(r.Context(), "apiserver.auth.callback")
-			auth.Callback(w, r)
-			return
-		case "/auth/logout":
-			logx.Debug(r.Context(), "apiserver.auth.logout")
-			auth.Logout(w, r)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }

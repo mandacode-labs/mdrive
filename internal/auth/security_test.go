@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -32,166 +30,101 @@ func newSecurityTestService(t *testing.T, users UserUpserter) *Service {
 	}
 }
 
-// TestHandleBearerAuthReturnsErrorx proves the regression fix:
-// when the request has no session, HandleBearerAuth returns an
+// TestHandleCookieAuthRejectsEmptyAPIKey proves the regression fix:
+// when the cookie value is empty, HandleCookieAuth returns an
 // errorx.KindUnauthenticated error, which ogen maps to 401 (not 500).
-func TestHandleBearerAuthReturnsErrorx(t *testing.T) {
+func TestHandleCookieAuthRejectsEmptyAPIKey(t *testing.T) {
 	svc := &Service{}
-	sh := &SecurityHandler{auth: svc}
 
 	ctx := context.Background()
-	_, err := sh.HandleBearerAuth(ctx, "authMe", api.BearerAuth{Token: "ignored"})
+	_, err := svc.HandleCookieAuth(ctx, api.AuthMeOperation, api.CookieAuth{APIKey: ""})
 	require.Error(t, err)
 
 	var de errorx.Error
 	require.True(t, errors.As(err, &de),
-		"HandleBearerAuth must return an errorx.Error")
+		"HandleCookieAuth must return an errorx.Error")
 	assert.Equal(t, errorx.KindUnauthenticated, de.Kind())
 	assert.Equal(t, http.StatusUnauthorized, de.Kind().Status())
 }
 
-// TestHandleBearerAuthPassesWithSession verifies the happy path is
-// untouched by the errorx change.
-func TestHandleBearerAuthPassesWithSession(t *testing.T) {
-	svc := &Service{}
-	sh := &SecurityHandler{auth: svc}
-
-	sess := &Session{ID: "sub-123", UserID: "01HXYZ"}
-	ctx := ContextWithSession(context.Background(), sess)
-
-	out, err := sh.HandleBearerAuth(ctx, "authMe", api.BearerAuth{Token: "ignored"})
-	require.NoError(t, err)
-	assert.Equal(t, ctx, out, "ctx must be returned unchanged")
-}
-
-// TestHandleBearerAuthAllowsHealthAnonymous proves the regression
-// fix for the /health 401 incident: k8s liveness/readiness probes
-// do not carry a session, and the OpenAPI spec marks /health as
-// `security: []`, but ogen 1.22 ignores that override when global
-// security is set. The SecurityHandler therefore short-circuits
-// the health operation so probes reach the handler that returns 200.
-func TestHandleBearerAuthAllowsHealthAnonymous(t *testing.T) {
-	svc := &Service{}
-	sh := &SecurityHandler{auth: svc}
-
-	ctx := context.Background() // no session
-	out, err := sh.HandleBearerAuth(ctx, api.HealthOperation, api.BearerAuth{Token: "ignored"})
-	require.NoError(t, err,
-		"health operation must not require a session")
-	assert.Equal(t, ctx, out, "ctx must be returned unchanged")
-}
-
-// TestAuthBridgeRejectsMissingCookie verifies AuthBridge now
-// responds 401 directly when the session cookie is absent or
-// invalid.
-func TestAuthBridgeRejectsMissingCookie(t *testing.T) {
+// TestHandleCookieAuthRejectsInvalidCookie verifies that a malformed
+// cookie payload (decryption fails) returns 401, not 500.
+func TestHandleCookieAuthRejectsInvalidCookie(t *testing.T) {
 	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
+
+	ctx := context.Background()
+	_, err := svc.HandleCookieAuth(ctx, api.AuthMeOperation, api.CookieAuth{APIKey: "not-a-real-encrypted-cookie"})
+	require.Error(t, err)
+
+	var de errorx.Error
+	require.True(t, errors.As(err, &de),
+		"HandleCookieAuth must return an errorx.Error")
+	assert.Equal(t, errorx.KindUnauthenticated, de.Kind())
+}
+
+// TestHandleCookieAuthAttachesSessionOnSuccess verifies the happy path
+// resolves the user from the cookie's subject claim and attaches a
+// Session to ctx.
+func TestHandleCookieAuthAttachesSessionOnSuccess(t *testing.T) {
+	u := user.NewUser("user-1", "pub-1", "Alice", nil, "keycloak", "sub-1",
+		timeFromUnix(0), timeFromUnix(0))
+	svc := newSecurityTestService(t, newUserUpserterMock(t, u, nil))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/anything", nil)
+	sd := sessionData{Subject: "sub-1", UserID: "user-1", Provider: "keycloak", ExpiresAt: time.Now().Add(time.Hour)}
+	raw, _ := json.Marshal(sd)
+	enc, _ := encrypt(raw, svc.encKey)
+	r.AddCookie(&http.Cookie{Name: svc.cookieName, Value: enc})
 
-	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Fatal("next should not be called when session is invalid")
-	})).ServeHTTP(w, r)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code,
-		"missing cookie must produce 401, not 500")
-	body, _ := io.ReadAll(w.Body)
-	assert.Contains(t, strings.TrimSpace(string(body)), "missing or invalid session cookie",
-		"body must include the error reason")
+	ctx := context.Background()
+	out, err := svc.HandleCookieAuth(ctx, api.AuthMeOperation, api.CookieAuth{APIKey: enc})
+	require.NoError(t, err)
+	sess := SessionFromContext(out)
+	require.NotNil(t, sess, "Session must be attached to ctx")
+	assert.Equal(t, "user-1", sess.UserID)
+	assert.Equal(t, "keycloak", sess.Provider)
+	_ = w
+	_ = r
 }
 
-// TestAuthBridgeRejectsUnknownUser verifies AuthBridge responds
-// 401 when the session decrypts fine but the user is gone from
-// the DB (cookie outlives the account, etc).
-func TestAuthBridgeRejectsUnknownUser(t *testing.T) {
+// TestHandleCookieAuthRejectsExpiredCookie verifies that an expired
+// session cookie returns 401, not 500. The expired-cookie path is
+// distinct from a malformed-cookie path because both produce
+// different errorx frames; the middleware should treat them
+// uniformly.
+func TestHandleCookieAuthRejectsExpiredCookie(t *testing.T) {
+	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
+
+	sd := sessionData{Subject: "sub-1", Provider: "keycloak", ExpiresAt: time.Now().Add(-time.Hour)}
+	raw, _ := json.Marshal(sd)
+	enc, _ := encrypt(raw, svc.encKey)
+
+	_, err := svc.HandleCookieAuth(context.Background(), api.AuthMeOperation, api.CookieAuth{APIKey: enc})
+	require.Error(t, err)
+
+	var de errorx.Error
+	require.True(t, errors.As(err, &de))
+	assert.Equal(t, errorx.KindUnauthenticated, de.Kind(),
+		"expired cookie must surface as unauthenticated")
+}
+
+// TestHandleCookieAuthRejectsUnknownUser verifies that a valid cookie
+// for a user that no longer exists in the DB returns 401.
+func TestHandleCookieAuthRejectsUnknownUser(t *testing.T) {
 	users := newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "user not found"))
 	svc := newSecurityTestService(t, users)
 
-	// Plant a valid session cookie so the middleware gets past
-	// the cookie-read step and into the user lookup.
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/anything", nil)
-	sd := stateData{State: "matching", Verifier: "v"}
+	sd := sessionData{Subject: "sub-1", Provider: "keycloak", ExpiresAt: time.Now().Add(time.Hour)}
 	raw, _ := json.Marshal(sd)
 	enc, _ := encrypt(raw, svc.encKey)
-	r.AddCookie(&http.Cookie{Name: svc.cookieName, Value: enc})
 
-	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Fatal("next should not be called when user is missing")
-	})).ServeHTTP(w, r)
+	_, err := svc.HandleCookieAuth(context.Background(), api.AuthMeOperation, api.CookieAuth{APIKey: enc})
+	require.Error(t, err)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	body, _ := io.ReadAll(w.Body)
-	assert.Contains(t, strings.TrimSpace(string(body)), "user not found")
-}
-
-// TestAuthBridgeAttachesSessionOnSuccess verifies the happy path
-// still sets Authorization and attaches the session to ctx.
-func TestAuthBridgeAttachesSessionOnSuccess(t *testing.T) {
-	u := user.NewUser("user-1", "pub-1", "Alice", nil, "keycloak", "sub-1",
-		timeFromUnix(0), timeFromUnix(0))
-	users := newUserUpserterMock(t, u, nil)
-	svc := newSecurityTestService(t, users)
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/anything", nil)
-	sd := stateData{State: "matching", Verifier: "v"}
-	raw, _ := json.Marshal(sd)
-	enc, _ := encrypt(raw, svc.encKey)
-	r.AddCookie(&http.Cookie{Name: svc.cookieName, Value: enc})
-
-	var seenSess *Session
-	var seenAuth string
-	svc.AuthBridge(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seenSess = SessionFromContext(r.Context())
-		seenAuth = r.Header.Get("Authorization")
-		w.WriteHeader(http.StatusOK)
-	})).ServeHTTP(w, r)
-
-	require.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, seenSess, "SessionFromContext must return non-nil")
-	assert.Equal(t, "user-1", seenSess.UserID)
-	assert.Equal(t, "Bearer user-1", seenAuth)
-}
-
-// TestAuthBridgeAllowsAnonymousPath proves the regression fix for
-// the /health 401 incident. AuthBridge must consult the spec-derived
-// anonymous set before the cookie check, so paths declared
-// `security: []` in the OpenAPI spec are not gated by the session
-// cookie.
-func TestAuthBridgeAllowsAnonymousPath(t *testing.T) {
-	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
-	svc.noAuthPaths = map[string]bool{"/health": true}
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/health", nil)
-
-	called := false
-	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		called = true
-	})).ServeHTTP(w, r)
-
-	assert.True(t, called,
-		"next must be called for an anonymous path with no cookie")
-	assert.NotEqual(t, http.StatusUnauthorized, w.Code,
-		"anonymous paths must not produce 401")
-}
-
-// TestAuthBridgeRejectsAuthenticatedPath makes sure adding a path
-// to the anonymous set is the ONLY way to make AuthBridge skip it.
-func TestAuthBridgeRejectsAuthenticatedPath(t *testing.T) {
-	svc := newSecurityTestService(t, newUserUpserterMock(t, nil, errorx.New(errorx.KindNotFound, "")))
-	svc.noAuthPaths = map[string]bool{"/health": true}
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/v1/drives", nil)
-
-	svc.AuthBridge(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Fatal("next should not be called for authenticated path without cookie")
-	})).ServeHTTP(w, r)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	var de errorx.Error
+	require.True(t, errors.As(err, &de))
+	assert.Equal(t, errorx.KindUnauthenticated, de.Kind())
 }
 
 // newUserUpserterMock returns a UserUpserterMock whose

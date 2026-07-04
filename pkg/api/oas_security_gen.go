@@ -13,8 +13,8 @@ import (
 
 // SecurityHandler is handler for security parameters.
 type SecurityHandler interface {
-	// HandleBearerAuth handles bearerAuth security.
-	HandleBearerAuth(ctx context.Context, operationName OperationName, t BearerAuth) (context.Context, error)
+	// HandleCookieAuth handles cookieAuth security.
+	HandleCookieAuth(ctx context.Context, operationName OperationName, t CookieAuth) (context.Context, error)
 }
 
 func findAuthorization(h http.Header, prefix string) (string, bool) {
@@ -32,8 +32,8 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 	return "", false
 }
 
-// operationRolesBearerAuth is a private map storing roles per operation.
-var operationRolesBearerAuth = map[string][]string{
+// operationRolesCookieAuth is a private map storing roles per operation.
+var operationRolesCookieAuth = map[string][]string{
 	AuthMeOperation:            []string{},
 	CatOperation:               []string{},
 	CompleteUploadOperation:    []string{},
@@ -66,18 +66,18 @@ var operationRolesBearerAuth = map[string][]string{
 	WriteLargeOperation:        []string{},
 }
 
-// GetRolesForBearerAuth returns the required roles for the given operation.
+// GetRolesForCookieAuth returns the required roles for the given operation.
 //
 // This is useful for authorization scenarios where you need to know which roles
 // are required for an operation.
 //
 // Example:
 //
-//	requiredRoles := GetRolesForBearerAuth(AddPetOperation)
+//	requiredRoles := GetRolesForCookieAuth(AddPetOperation)
 //
 // Returns nil if the operation has no role requirements or if the operation is unknown.
-func GetRolesForBearerAuth(operation string) []string {
-	roles, ok := operationRolesBearerAuth[operation]
+func GetRolesForCookieAuth(operation string) []string {
+	roles, ok := operationRolesCookieAuth[operation]
 	if !ok {
 		return nil
 	}
@@ -87,15 +87,21 @@ func GetRolesForBearerAuth(operation string) []string {
 	return result
 }
 
-func (s *Server) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
-	var t BearerAuth
-	token, ok := findAuthorization(req.Header, "Bearer")
-	if !ok {
+func (s *Server) securityCookieAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {
+	var t CookieAuth
+	const parameterName = "mdrive_session"
+	var value string
+	switch cookie, err := req.Cookie(parameterName); {
+	case err == nil: // if NO error
+		value = cookie.Value
+	case errors.Is(err, http.ErrNoCookie):
 		return ctx, false, nil
+	default:
+		return nil, false, errors.Wrap(err, "get cookie value")
 	}
-	t.Token = token
-	t.Roles = operationRolesBearerAuth[operationName]
-	rctx, err := s.sec.HandleBearerAuth(ctx, operationName, t)
+	t.APIKey = value
+	t.Roles = operationRolesCookieAuth[operationName]
+	rctx, err := s.sec.HandleCookieAuth(ctx, operationName, t)
 	if errors.Is(err, ogenerrors.ErrSkipServerSecurity) {
 		return nil, false, nil
 	} else if err != nil {
@@ -106,15 +112,18 @@ func (s *Server) securityBearerAuth(ctx context.Context, operationName Operation
 
 // SecuritySource is provider of security values (tokens, passwords, etc.).
 type SecuritySource interface {
-	// BearerAuth provides bearerAuth security value.
-	BearerAuth(ctx context.Context, operationName OperationName) (BearerAuth, error)
+	// CookieAuth provides cookieAuth security value.
+	CookieAuth(ctx context.Context, operationName OperationName) (CookieAuth, error)
 }
 
-func (s *Client) securityBearerAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
-	t, err := s.sec.BearerAuth(ctx, operationName)
+func (s *Client) securityCookieAuth(ctx context.Context, operationName OperationName, req *http.Request) error {
+	t, err := s.sec.CookieAuth(ctx, operationName)
 	if err != nil {
-		return errors.Wrap(err, "security source \"BearerAuth\"")
+		return errors.Wrap(err, "security source \"CookieAuth\"")
 	}
-	req.Header.Set("Authorization", "Bearer "+t.Token)
+	req.AddCookie(&http.Cookie{
+		Name:  "mdrive_session",
+		Value: t.APIKey,
+	})
 	return nil
 }

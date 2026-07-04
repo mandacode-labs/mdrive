@@ -11,8 +11,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/middleware"
+	apiserverSpec "github.com/mandacode-labs/mdrive/internal/app/apiserver/spec"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -51,9 +52,8 @@ func newTestServer(t *testing.T) *httptest.Server {
 }
 
 // newTestServerWith builds a server with a caller-chosen
-// SecurityHandler. realSecurityHandler{} exercises the real
-// auth.HandleBearerAuth path so regressions in unauth
-// propagation (see /auth/me 500 incident) are caught.
+// SecurityHandler. The production error/panic middleware is
+// always wired in so tests exercise the same error path as prod.
 func newTestServerWith(t *testing.T, sec api.SecurityHandler) *httptest.Server {
 	t.Helper()
 	h := handler.New(
@@ -64,18 +64,20 @@ func newTestServerWith(t *testing.T, sec api.SecurityHandler) *httptest.Server {
 		newAllowAllAuthorizer(t),
 		"",
 	)
-	ogenServer, err := api.NewServer(h, sec, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		apiserver.WriteError(w, err)
-	}))
+	ogenServer, err := api.NewServer(h, sec,
+		api.WithMiddleware(middleware.ErrorMiddleware(), middleware.PanicMiddleware()),
+	)
 	require.NoError(t, err)
-	return httptest.NewServer(apiserver.OpenAPIPassthrough(ogenServer))
+	mux := http.NewServeMux()
+	mux.Handle("/openapi.json", apiserverSpecHandler())
+	mux.Handle("/", ogenServer)
+	return httptest.NewServer(mux)
 }
 
 // newTestServerWithAuthBridge exercises the production middleware
-// chain: OpenAPIPassthrough wraps auth.Service.AuthBridge, which
-// wraps the ogen server. auth.NewForTest populates the
-// anonymous-path set from the embedded OpenAPI spec so /health
-// stays 200 even with the real security handler in front of it.
+// chain: openapi.Handler() on /openapi.json and ogen server on
+// everything else. The real SecurityHandler is wired up so /health
+// stays anonymous by virtue of OpenAPI's `security: []`.
 func newTestServerWithAuthBridge(t *testing.T) *httptest.Server {
 	t.Helper()
 	h := handler.New(
@@ -86,37 +88,44 @@ func newTestServerWithAuthBridge(t *testing.T) *httptest.Server {
 		newAllowAllAuthorizer(t),
 		"",
 	)
-	authSvc := auth.NewForTest(newFakeUserSvc())
-	ogenServer, err := api.NewServer(h, realSecurityHandler{}, api.WithErrorHandler(func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-		apiserver.WriteError(w, err)
-	}))
+	ogenServer, err := api.NewServer(h, realSecurityHandler{},
+		api.WithMiddleware(middleware.ErrorMiddleware(), middleware.PanicMiddleware()),
+	)
 	require.NoError(t, err)
-	chain := authSvc.AuthBridge(ogenServer)
-	return httptest.NewServer(apiserver.OpenAPIPassthrough(chain))
+	mux := http.NewServeMux()
+	mux.Handle("/openapi.json", apiserverSpecHandler())
+	mux.Handle("/", ogenServer)
+	return httptest.NewServer(mux)
 }
+
+// apiserverSpecHandler is a thin wrapper around spec.Handler so
+// the test files do not have to import the spec package directly.
+// Keeping the import surface narrow here makes it easier to swap
+// the spec source in tests later.
+func apiserverSpecHandler() http.Handler { return apiserverSpec.Handler() }
 
 // testSecurity injects a session for the test user on every
 // request. Used by tests that just need a session, not by tests
 // of auth itself.
 type testSecurity struct{}
 
-func (testSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+func (testSecurity) HandleCookieAuth(ctx context.Context, _ api.OperationName, _ api.CookieAuth) (context.Context, error) {
 	return auth.ContextWithSession(ctx, &auth.Session{UserID: testUserID}), nil
 }
 
-// realSecurityHandler mirrors the production auth.HandleBearerAuth
+// realSecurityHandler mirrors the production auth.HandleCookieAuth
 // so unauth propagation regressions are caught. /health stays
 // anonymous — k8s probes do not carry a session.
 type realSecurityHandler struct{}
 
-func (realSecurityHandler) HandleBearerAuth(ctx context.Context, op api.OperationName, _ api.BearerAuth) (context.Context, error) {
+func (realSecurityHandler) HandleCookieAuth(ctx context.Context, op api.OperationName, _ api.CookieAuth) (context.Context, error) {
 	if op == api.HealthOperation {
 		return ctx, nil
 	}
 	if auth.SessionFromContext(ctx) != nil {
 		return ctx, nil
 	}
-	return ctx, errorx.New(errorx.KindUnauthenticated, "auth: no session for bearer token")
+	return ctx, errorx.New(errorx.KindUnauthenticated, "auth: no session cookie")
 }
 
 // newFakeUserSvc returns a *user.Service backed by an in-memory

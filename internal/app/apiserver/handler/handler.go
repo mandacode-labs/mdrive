@@ -2,11 +2,14 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ogen-go/ogen/ogenerrors"
 
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/middleware"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/config"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
@@ -18,8 +21,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
-
-type Error = errorx.Error
 
 // FSClient is the consumer-declared interface for filesystem
 // operations on a vfs service. vfs is filesystem-only: it does
@@ -133,7 +134,7 @@ func (h *Handler) userID(ctx context.Context) string {
 func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
 	allowed, err := h.authorizer.Check(ctx, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 	if err != nil {
-		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
+		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID), errorx.KindServiceDegraded)
 	}
 	if !allowed {
 		return errorx.New(errorx.KindForbidden, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
@@ -141,21 +142,33 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, drive
 	return nil
 }
 
-// NewError converts a domain error to an ErrorStatusCode for ogen's
-// default error response path. WithErrorHandler is also wired in
-// server.go, but ogen's new interface method takes priority for
-// default responses — if we returned an empty ErrorStatusCode here,
-// NewError converts any error into an ogen ErrorStatusCode so the
-// SecurityHandler error path can produce a real status. The
-// status mapping itself lives in internal/apierr so this and the
-// WithErrorHandler share the exact same logic.
+// NewError is the ogen WithErrorHandler fallback. Reached for
+// errors that bypass the middleware chain — currently the
+// SecurityError path. Unwraps to the inner errorx when present
+// so the status reflects the kind; otherwise falls back to
+// SecurityError.Code() (401).
 func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
-	statusCode, e := FromError(err)
+	var sec *ogenerrors.SecurityError
+	if errors.As(err, &sec) {
+		if sec.Err != nil {
+			var de errorx.Error
+			if errors.As(sec.Err, &de) {
+				return middleware.KindToCode(sec.Err)
+			}
+		}
+		return &api.ErrorStatusCode{
+			StatusCode: sec.Code(),
+			Response: api.Error{
+				Code:    api.ErrorCodeInternal,
+				Message: err.Error(),
+			},
+		}
+	}
 	return &api.ErrorStatusCode{
-		StatusCode: statusCode,
+		StatusCode: 500,
 		Response: api.Error{
-			Code:    api.ErrorCode(e.Code),
-			Message: e.Message,
+			Code:    api.ErrorCodeInternal,
+			Message: err.Error(),
 		},
 	}
 }

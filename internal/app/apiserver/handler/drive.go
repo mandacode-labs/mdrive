@@ -99,6 +99,11 @@ func storageConfigFromAPI(s api.StorageConfig) coredrive.StorageConfig {
 
 func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.GetDriveRes, error) {
 	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.drive.get.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	d, err := h.drive.GetByID(ctx, params.DriveID)
@@ -110,6 +115,11 @@ func (h *Handler) GetDrive(ctx context.Context, params api.GetDriveParams) (api.
 
 func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, params api.UpdateDriveParams) (api.UpdateDriveRes, error) {
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.drive.update.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	r := req.Value
@@ -129,6 +139,11 @@ func (h *Handler) UpdateDrive(ctx context.Context, req api.OptDriveUpdate, param
 
 func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams) (api.DeleteDriveRes, error) {
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.drive.delete.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	if err := h.drive.Delete(ctx, params.DriveID); err != nil {
@@ -166,6 +181,11 @@ func (h *Handler) ListDeletedDrives(ctx context.Context) (api.ListDeletedDrivesR
 
 func (h *Handler) GetDriveStorage(ctx context.Context, params api.GetDriveStorageParams) (api.GetDriveStorageRes, error) {
 	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
+		logx.Debug(ctx, "handler.drive.storage.perm_denied",
+			slog.String("drive_id", params.DriveID),
+			slog.String("error_kind", errorx.KindOf(err).String()),
+			slog.String("err", err.Error()),
+		)
 		return nil, err
 	}
 	s, err := h.drive.GetStorage(ctx, params.DriveID)

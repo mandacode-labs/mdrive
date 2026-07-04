@@ -83,31 +83,6 @@ func (s *AuthLogoutFound) SetSetCookie(val string) {
 	s.SetCookie = val
 }
 
-type BearerAuth struct {
-	Token string
-	Roles []string
-}
-
-// GetToken returns the value of Token.
-func (s *BearerAuth) GetToken() string {
-	return s.Token
-}
-
-// GetRoles returns the value of Roles.
-func (s *BearerAuth) GetRoles() []string {
-	return s.Roles
-}
-
-// SetToken sets the value of Token.
-func (s *BearerAuth) SetToken(val string) {
-	s.Token = val
-}
-
-// SetRoles sets the value of Roles.
-func (s *BearerAuth) SetRoles(val []string) {
-	s.Roles = val
-}
-
 type CatBadRequest Error
 
 func (*CatBadRequest) catRes() {}
@@ -163,6 +138,31 @@ func (*CompleteUploadUnauthorized) completeUploadRes() {}
 type CompleteUploadUnprocessableEntity Error
 
 func (*CompleteUploadUnprocessableEntity) completeUploadRes() {}
+
+type CookieAuth struct {
+	APIKey string
+	Roles  []string
+}
+
+// GetAPIKey returns the value of APIKey.
+func (s *CookieAuth) GetAPIKey() string {
+	return s.APIKey
+}
+
+// GetRoles returns the value of Roles.
+func (s *CookieAuth) GetRoles() []string {
+	return s.Roles
+}
+
+// SetAPIKey sets the value of APIKey.
+func (s *CookieAuth) SetAPIKey(val string) {
+	s.APIKey = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *CookieAuth) SetRoles(val []string) {
+	s.Roles = val
+}
 
 type CreateDriveBadRequest Error
 

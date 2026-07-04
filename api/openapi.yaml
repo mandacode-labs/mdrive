@@ -11,7 +11,7 @@ servers:
     description: Production server
 
 security:
-  - bearerAuth: []
+  - cookieAuth: []
 
 tags:
   - name: health
@@ -152,10 +152,10 @@ paths:
 
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: mdrive_session
 
   responses:
     BadRequest:
