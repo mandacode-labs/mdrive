@@ -60,12 +60,12 @@ func TestErrorMapsKindToStatusAndLevel(t *testing.T) {
 	newCapturingLog(t, buf)
 
 	ctx := WithLogger(context.Background(), slog.Default().With("request_id", "req-1"))
-	Error(ctx, errorx.New(errorx.KindBadRequest, "bad input"), "test")
+	Error(ctx, errorx.New(errorx.KindInvalidArgument, "bad input"), "test")
 
 	line := parseLine(t, buf.String())
 	assert.Equal(t, "WARN", line["level"], "4xx must be WARN")
 	assert.Equal(t, float64(400), line["status"])
-	assert.Equal(t, "bad_request", line["kind"])
+	assert.Equal(t, "invalid_argument", line["kind"])
 	assert.Equal(t, "req-1", line["request_id"])
 	assert.Equal(t, "bad input", line["err"])
 	_, hasStack := line["stack"]
@@ -76,7 +76,7 @@ func TestErrorAt5xxCarriesStack(t *testing.T) {
 	buf := &bytes.Buffer{}
 	newCapturingLog(t, buf)
 
-	Error(context.Background(), errorx.New(errorx.KindServiceDegraded, "boom"), "test")
+	Error(context.Background(), errorx.New(errorx.KindUnavailable, "boom"), "test")
 
 	line := parseLine(t, buf.String())
 	assert.Equal(t, "ERROR", line["level"], "5xx must be ERROR")
@@ -103,7 +103,7 @@ func TestErrorExtraAttrsAreMerged(t *testing.T) {
 	newCapturingLog(t, buf)
 
 	Error(context.Background(),
-		errorx.New(errorx.KindForbidden, "denied"),
+		errorx.New(errorx.KindPermissionDenied, "denied"),
 		"perm check",
 		slog.String("user_id", "u1"),
 		slog.String("resource", "drive"),

@@ -74,7 +74,7 @@ func TestAuthMeReturnsErrOnDBError(t *testing.T) {
 
 	res, err := h.AuthMe(authUserIDContext("user-1"))
 	require.Nil(t, res)
-	requireAuthMeErrKind(t, err, errorx.KindServiceDegraded)
+	requireAuthMeErrKind(t, err, errorx.KindUnavailable)
 }
 
 func TestAuthMeReturnsErrOnMissingUser(t *testing.T) {

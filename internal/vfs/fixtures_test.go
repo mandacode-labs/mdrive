@@ -114,7 +114,7 @@ func newMockNodeClient(t *testing.T, mem *memNodeRepo) *vfsMocks.NodeClientMock 
 			// If dst already has the entry, do not overwrite; the
 			// real node.Service.MoveEntry handles overwrite separately.
 			if existing, _ := dst.Lookup(dstName); existing != nil {
-				return errorx.New(errorx.KindConflict, "node: entry already exists")
+				return errorx.New(errorx.KindAlreadyExists, "node: entry already exists")
 			}
 			if err := src.RemoveEntry(srcName); err != nil {
 				return err

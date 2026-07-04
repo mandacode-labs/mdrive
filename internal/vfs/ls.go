@@ -19,7 +19,7 @@ func (s *Service) Ls(ctx context.Context, driveID, path string) (node.DirContent
 		return node.DirContent{}, errorx.New(errorx.KindNotFound, "vfs: ls: not found (path="+path+")")
 	}
 	if !res.Node.IsDir() {
-		return node.DirContent{}, errorx.New(errorx.KindBadRequest, "vfs: not a directory")
+		return node.DirContent{}, errorx.New(errorx.KindFailedPrecondition, "vfs: not a directory")
 	}
 	dc, err := res.Node.ReadDir()
 	if err != nil {

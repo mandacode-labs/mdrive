@@ -55,7 +55,7 @@ func (s *Service) readSessionCookieFromValue(value string) (*sessionData, error)
 		return nil, err
 	}
 	if data.IsExpired() {
-		return nil, errorx.New(errorx.KindBadRequest, "session: expired")
+		return nil, errorx.New(errorx.KindInvalidArgument, "session: expired")
 	}
 	return &data, nil
 }

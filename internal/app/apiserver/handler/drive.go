@@ -154,7 +154,7 @@ func (h *Handler) DeleteDrive(ctx context.Context, params api.DeleteDriveParams)
 
 func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParams) (api.RestoreDriveRes, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, errorx.New(errorx.KindForbidden, "permission: denied")
+		return nil, errorx.New(errorx.KindPermissionDenied, "permission: denied")
 	}
 	d, err := h.drive.Restore(ctx, params.DriveID)
 	if err != nil {
@@ -165,7 +165,7 @@ func (h *Handler) RestoreDrive(ctx context.Context, params api.RestoreDriveParam
 
 func (h *Handler) ListDeletedDrives(ctx context.Context) (api.ListDeletedDrivesRes, error) {
 	if !auth.IsAdmin(ctx) {
-		return nil, errorx.New(errorx.KindForbidden, "permission: denied")
+		return nil, errorx.New(errorx.KindPermissionDenied, "permission: denied")
 	}
 	drives, err := h.drive.ListDeletedForAdmin(ctx, true, time.Now(), 1000)
 	if err != nil {

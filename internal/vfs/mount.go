@@ -23,7 +23,7 @@ import (
 // source exists and is accessible).
 func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
 	if driveID == sourceDriveID {
-		return errorx.New(errorx.KindBadRequest, "vfs: mount self-cycle (drive_id="+driveID+")")
+		return errorx.New(errorx.KindInvalidArgument, "vfs: mount self-cycle (drive_id="+driveID+")")
 	}
 	src, err := s.DriveClient.GetByID(ctx, sourceDriveID)
 	if err != nil {
@@ -33,7 +33,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 		return errorx.New(errorx.KindNotFound, "vfs: mount source drive has no root (source_drive="+sourceDriveID+")")
 	}
 	if src.DeletedAt() != nil {
-		return errorx.New(errorx.KindConflict, "vfs: mount source drive is soft-deleted (source_drive="+sourceDriveID+")")
+		return errorx.New(errorx.KindFailedPrecondition, "vfs: mount source drive is soft-deleted (source_drive="+sourceDriveID+")")
 	}
 
 	parent, name, err := s.resolveEditableParent(ctx, driveID, mountPath)
@@ -85,7 +85,7 @@ func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error 
 	}
 	n := out.Node
 	if !n.IsMount() {
-		return errorx.New(errorx.KindBadRequest, "vfs: unmount target is not a mount (drive_id="+driveID+", mount_path="+mountPath+")")
+		return errorx.New(errorx.KindFailedPrecondition, "vfs: unmount target is not a mount (drive_id="+driveID+", mount_path="+mountPath+")")
 	}
 	srcDrive, err := n.ReadMount()
 	if err != nil {

@@ -293,7 +293,7 @@ func (c *Config) Validate(env string) error {
 			return errProductionOpenFGARequired
 		}
 		if c.OpenFGA.AuthMode == "client_credentials" && c.OpenFGA.ClientID == "" {
-			return errorx.New(errorx.KindBadRequest, "config: openfga.client_id is required in production when auth_mode=client_credentials")
+			return errorx.New(errorx.KindInvalidArgument, "config: openfga.client_id is required in production when auth_mode=client_credentials")
 		}
 		if c.Auth.EncryptionKey != "" && !isValidAESKey(c.Auth.EncryptionKey) {
 			return errProductionEncryptionKeySize

@@ -134,7 +134,7 @@ func TestCompleteUploadOwnershipMismatch(t *testing.T) {
 	}, time.Hour)
 	svc := newTestService(t, reg)
 	_, err := svc.CompleteUpload(context.Background(), "someone-else", "d1", "u1", 100, nil)
-	assert.True(t, errorx.IsKind(err, errorx.KindForbidden))
+	assert.True(t, errorx.IsKind(err, errorx.KindPermissionDenied))
 }
 
 func TestCompleteUploadSizeMismatch(t *testing.T) {

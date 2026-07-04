@@ -71,7 +71,7 @@ func TestEntNodeRevisionConflict(t *testing.T) {
 		switch {
 		case r.err == nil:
 			wins++
-		case errorx.IsKind(r.err, errorx.KindConflict):
+		case errorx.IsKind(r.err, errorx.KindAlreadyExists):
 			conflicts++
 		default:
 			t.Errorf("writer %s returned unexpected error: %v", r.who, r.err)

@@ -4,8 +4,31 @@ Error:
   properties:
     code:
       type: string
-      description: Machine-readable error code
-      enum: [not_found, conflict, bad_request, forbidden, unauthorized, internal, revision_conflict]
+      description: |
+        Machine-readable error code. gRPC-style short identifier;
+        see https://grpc.io/docs/guides/status-codes/. The kind
+        and original error text are included in `message`.
+      enum:
+        - canceled
+        - invalid_argument
+        - deadline_exceeded
+        - not_found
+        - already_exists
+        - permission_denied
+        - resource_exhausted
+        - failed_precondition
+        - aborted
+        - out_of_range
+        - unimplemented
+        - internal
+        - unavailable
+        - data_loss
+        - unauthenticated
+        - unknown
+        - revision_conflict
     message:
       type: string
-      description: Human-readable error message
+      description: |
+        Human-readable error message. Format is
+        "<code>: <original error text>" so operators can diagnose
+        without parsing the body.

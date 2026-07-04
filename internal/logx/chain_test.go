@@ -35,9 +35,9 @@ func TestErrorChain(t *testing.T) {
 		},
 		{
 			name:       "kind override on plain cause",
-			err:        errorx.Wrap(errors.New("disk full"), "drive: write failed", errorx.KindServiceDegraded),
+			err:        errorx.Wrap(errors.New("disk full"), "drive: write failed", errorx.KindUnavailable),
 			wantInErr:  "drive: write failed: disk full",
-			wantKind:   "service_degraded",
+			wantKind:   "unavailable",
 			wantStatus: 503,
 		},
 	}

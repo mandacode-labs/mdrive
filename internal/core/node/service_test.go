@@ -113,7 +113,7 @@ func TestLinkIncrementsNLink(t *testing.T) {
 	assert.Equal(t, uint32(1), child.NLink(), "first Link should set nlink=1")
 
 	err = svc.Link(context.Background(), dir, "a", child)
-	assert.True(t, errorx.IsKind(err, errorx.KindConflict))
+	assert.True(t, errorx.IsKind(err, errorx.KindAlreadyExists))
 	assert.Equal(t, uint32(1), child.NLink())
 }
 
@@ -181,7 +181,7 @@ func TestUnlinkOrReplaceRejectsDirectory(t *testing.T) {
 	require.NoError(t, svc.Link(context.Background(), parent, "d", subdir))
 
 	_, err = svc.UnlinkOrReplace(context.Background(), parent, "d")
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindFailedPrecondition))
 }
 
 func TestUnlinkOrReplaceNoEntry(t *testing.T) {
@@ -238,7 +238,7 @@ func TestBulkLinkRejectsDuplicateName(t *testing.T) {
 	mem.save(second)
 
 	err = svc.BulkLink(context.Background(), dir, map[string]*node.Node{"a": second})
-	assert.True(t, errorx.IsKind(err, errorx.KindConflict))
+	assert.True(t, errorx.IsKind(err, errorx.KindAlreadyExists))
 	assert.Equal(t, uint32(1), first.NLink())
 	assert.Equal(t, uint32(0), second.NLink())
 }
@@ -410,7 +410,7 @@ func TestMoveEntryRejectsTypeMismatch(t *testing.T) {
 	require.NoError(t, svc.Link(context.Background(), dir, "file", file))
 
 	err = svc.MoveEntry(context.Background(), dir, "file", dir, "sub")
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindFailedPrecondition))
 }
 
 func TestMoveEntryMissingSource(t *testing.T) {

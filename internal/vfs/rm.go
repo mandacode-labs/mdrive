@@ -52,7 +52,7 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 	n := out.Node
 	if n.IsDir() {
 		if !recursive {
-			return nil, errorx.New(errorx.KindBadRequest, "vfs: rm target is a directory (path="+path+", use -r)")
+			return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: rm target is a directory (path="+path+", use -r)")
 		}
 		return s.rmRecursive(ctx, rootID, n, path)
 	}

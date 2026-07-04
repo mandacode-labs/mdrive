@@ -2216,20 +2216,30 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "Machine-readable error code",
+            "description": "Machine-readable error code. gRPC-style short identifier;\nsee https://grpc.io/docs/guides/status-codes/. The kind\nand original error text are included in `message`.\n",
             "enum": [
+              "canceled",
+              "invalid_argument",
+              "deadline_exceeded",
               "not_found",
-              "conflict",
-              "bad_request",
-              "forbidden",
-              "unauthorized",
+              "already_exists",
+              "permission_denied",
+              "resource_exhausted",
+              "failed_precondition",
+              "aborted",
+              "out_of_range",
+              "unimplemented",
               "internal",
+              "unavailable",
+              "data_loss",
+              "unauthenticated",
+              "unknown",
               "revision_conflict"
             ]
           },
           "message": {
             "type": "string",
-            "description": "Human-readable error message"
+            "description": "Human-readable error message. Format is\n\"<code>: <original error text>\" so operators can diagnose\nwithout parsing the body.\n"
           }
         }
       },

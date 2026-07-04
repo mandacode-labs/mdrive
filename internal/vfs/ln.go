@@ -67,7 +67,7 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 		return nil, errorx.New(errorx.KindNotFound, "vfs: hardlink parent not found (drive_id="+driveID+", link_path="+linkPath+")")
 	}
 	if !parent.IsDir() {
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: not a directory")
+		return nil, errorx.New(errorx.KindInvalidArgument, "vfs: not a directory")
 	}
 	if err := s.NodeClient.Link(ctx, parent, name, src); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: hardlink link (drive_id=%s, link_path=%s)", driveID, linkPath))
@@ -78,4 +78,4 @@ func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath strin
 // ErrHardlinkNotSupported is returned when a hardlink source is
 // of a type that POSIX does not allow to be hardlinked
 // (directory, symlink, mount).
-var ErrHardlinkNotSupported = errorx.New(errorx.KindBadRequest, "ln: source node type does not support hardlinks (dir/symlink/mount)")
+var ErrHardlinkNotSupported = errorx.New(errorx.KindInvalidArgument, "ln: source node type does not support hardlinks (dir/symlink/mount)")

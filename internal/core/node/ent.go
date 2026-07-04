@@ -106,7 +106,7 @@ func (r *entRepository) update(ctx context.Context, n *Node, content Content) er
 		return err
 	}
 	if affected == 0 {
-		return errorx.New(errorx.KindConflict, "node: revision conflict")
+		return errorx.New(errorx.KindRevisionConflict, "node: revision conflict")
 	}
 	n.staleRev = n.rev
 	return nil

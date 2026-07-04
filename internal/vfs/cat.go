@@ -31,10 +31,10 @@ func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error)
 		}
 		return []byte(raw), nil
 	case n.IsObject():
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is an object")
+		return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: cat: target is an object (use download endpoint)")
 	case n.IsDir():
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: target is a directory")
+		return nil, errorx.New(errorx.KindInvalidArgument, "vfs: cat: target is a directory")
 	default:
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: cat: cannot read type="+string(n.Kind()))
+		return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: cat: cannot read type="+string(n.Kind()))
 	}
 }

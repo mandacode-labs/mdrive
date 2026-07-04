@@ -134,10 +134,10 @@ func (h *Handler) userID(ctx context.Context) string {
 func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, driveID string) error {
 	allowed, err := h.authorizer.Check(ctx, h.userID(ctx), perm, permission.ObjectTypeDrive, driveID)
 	if err != nil {
-		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID), errorx.KindServiceDegraded)
+		return errorx.Wrap(err, fmt.Sprintf("permission: check (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID), errorx.KindUnavailable)
 	}
 	if !allowed {
-		return errorx.New(errorx.KindForbidden, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
+		return errorx.New(errorx.KindPermissionDenied, fmt.Sprintf("permission: denied (perm=%s, type=%s, id=%s)", perm, permission.ObjectTypeDrive, driveID))
 	}
 	return nil
 }
@@ -146,7 +146,7 @@ func (h *Handler) requirePerm(ctx context.Context, perm permission.Action, drive
 // errors that bypass the middleware chain — currently the
 // SecurityError path. Unwraps to the inner errorx when present
 // so the status reflects the kind; otherwise falls back to
-// SecurityError.Code() (401).
+// SecurityError.Code() (401) and an unauthenticated code.
 func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
 	var sec *ogenerrors.SecurityError
 	if errors.As(err, &sec) {
@@ -159,7 +159,7 @@ func (h *Handler) NewError(_ context.Context, err error) *api.ErrorStatusCode {
 		return &api.ErrorStatusCode{
 			StatusCode: sec.Code(),
 			Response: api.Error{
-				Code:    api.ErrorCodeInternal,
+				Code:    api.ErrorCodeUnauthenticated,
 				Message: err.Error(),
 			},
 		}

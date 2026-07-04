@@ -79,7 +79,7 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 	logx.Debug(ctx, "node.service.create.enter", slog.String("kind", kind))
 	n, err := factory()
 	if err != nil {
-		return nil, errorx.New(errorx.KindBadRequest, fmt.Sprintf("node: create %s factory failed", kind))
+		return nil, errorx.New(errorx.KindInternal, fmt.Sprintf("node: create %s factory failed", kind))
 	}
 	if err := s.repo.Save(ctx, n); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: save %s", kind))
@@ -106,7 +106,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 		slog.String("child_id", uuidOrEmpty(child)),
 	)
 	if parent == nil || child == nil {
-		return errorx.New(errorx.KindBadRequest, "node: link requires non-nil parent and child")
+		return errorx.New(errorx.KindInvalidArgument, "node: link requires non-nil parent and child")
 	}
 	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		if err := parent.AddEntry(name, child); err != nil {
@@ -149,7 +149,7 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 		slog.Int("entry_count", len(entries)),
 	)
 	if parent == nil {
-		return errorx.New(errorx.KindBadRequest, "node: bulk link requires non-nil parent")
+		return errorx.New(errorx.KindInvalidArgument, "node: bulk link requires non-nil parent")
 	}
 	if len(entries) == 0 {
 		return nil
@@ -187,7 +187,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 		slog.String("name", name),
 	)
 	if parent == nil {
-		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
+		return nil, errorx.New(errorx.KindInvalidArgument, "node: unlink requires non-nil parent")
 	}
 	var deleted *Node
 	err := s.tm.WithTx(ctx, func(ctx context.Context) error {
@@ -257,7 +257,7 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 // Returns the deleted child (caller may use it for S3 cleanup) or nil.
 func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string) (*Node, error) {
 	if parent == nil {
-		return nil, errorx.New(errorx.KindBadRequest, "node: unlink requires non-nil parent")
+		return nil, errorx.New(errorx.KindInvalidArgument, "node: unlink requires non-nil parent")
 	}
 	entry, err := parent.Lookup(name)
 	if err != nil {
@@ -271,7 +271,7 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: unlink_or_replace get existing (name=%s, inode_id=%s)", name, entry.InodeID))
 	}
 	if child.IsDir() {
-		return nil, errorx.New(errorx.KindBadRequest, "node: target is a directory")
+		return nil, errorx.New(errorx.KindFailedPrecondition, "node: target is a directory")
 	}
 	return s.Unlink(ctx, parent, name)
 }
@@ -298,7 +298,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		slog.String("dst_name", dstName),
 	)
 	if srcParent == nil || dstParent == nil {
-		return errorx.New(errorx.KindBadRequest, "node: move entry requires non-nil parents")
+		return errorx.New(errorx.KindInvalidArgument, "node: move entry requires non-nil parents")
 	}
 	err := s.tm.WithTx(ctx, func(ctx context.Context) error {
 		srcDC, err := srcParent.ReadDir()
@@ -349,7 +349,7 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 		}
 
 		if existingInodeKnown && existingType != srcType {
-			return errorx.New(errorx.KindBadRequest, "node: cannot overwrite entry of different type")
+			return errorx.New(errorx.KindFailedPrecondition, "node: cannot overwrite entry of different type")
 		}
 
 		newSrcEntries := make([]DirEntry, 0, len(srcDC.Entries)+1)
@@ -455,7 +455,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
 // update (for an existing one) based on the node's staleRev.
 func (s *Service) Save(ctx context.Context, n *Node) error {
 	if n == nil {
-		return errorx.New(errorx.KindBadRequest, "node: save requires non-nil node")
+		return errorx.New(errorx.KindInvalidArgument, "node: save requires non-nil node")
 	}
 	logx.Debug(ctx, "node.service.save.enter", slog.String("id", n.ID().String()))
 	if err := s.repo.Save(ctx, n); err != nil {
@@ -485,7 +485,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 		slog.Int("name_count", len(names)),
 	)
 	if parent == nil {
-		return nil, errorx.New(errorx.KindBadRequest, "node: bulk unlink requires non-nil parent")
+		return nil, errorx.New(errorx.KindInvalidArgument, "node: bulk unlink requires non-nil parent")
 	}
 	if len(names) == 0 {
 		return nil, nil

@@ -67,7 +67,7 @@ func TestWriteContentTooLarge(t *testing.T) {
 
 	large := make([]byte, MaxContentSize+1)
 	err = n.write(large, int64(len(large)))
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestNewRootNode(t *testing.T) {

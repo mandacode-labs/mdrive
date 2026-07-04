@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -23,7 +24,7 @@ import (
 // We exercise the production middleware chain (ErrorMiddleware
 // + NewError) against an in-memory mock authorizer that always
 // returns a non-errorx error. requirePerm must wrap it as
-// KindServiceDegraded, and the wire response must be 503.
+// KindUnavailable, and the wire response must be 503.
 func TestPermissionCheckTransportErrorReturns5xx(t *testing.T) {
 	authz := permissionMocks.NewAuthorizerMock(t)
 	authz.On("Check", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
@@ -62,6 +63,10 @@ func TestPermissionCheckTransportErrorReturns5xx(t *testing.T) {
 
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode,
 		"transport-level permission check failure must surface as 503 (got %d)", resp.StatusCode)
+
+	var body api.Error
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assertWireCode(t, body, api.ErrorCodeUnavailable, "transport err must surface as wire code 'unavailable'")
 }
 
 // TestPermissionDeniedReturns403 covers the negative path: an
@@ -104,4 +109,14 @@ func TestPermissionDeniedReturns403(t *testing.T) {
 
 	require.Equal(t, http.StatusForbidden, resp.StatusCode,
 		"permission denial must surface as 403 (got %d)", resp.StatusCode)
+
+	var body api.Error
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assertWireCode(t, body, api.ErrorCodePermissionDenied, "permission denied must surface as wire code 'permission_denied'")
+}
+
+func assertWireCode(t *testing.T, body api.Error, want api.ErrorCode, msg string) {
+	t.Helper()
+	require.Equal(t, want, body.Code, msg+": wire code")
+	require.NotEmpty(t, body.Message, msg+": message must carry diagnostic detail")
 }

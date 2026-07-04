@@ -13,27 +13,59 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
+// kindToCode is the single mapping from errorx.Kind to the
+// machine-readable api.ErrorCode wire value. errorx stays
+// API-agnostic; this table lives in the API middleware so
+// the same Kind can be reused over non-HTTP transports.
+//
+// Mirrors the gRPC code set https://grpc.io/docs/guides/status-codes/
+// with one mdrive-specific extension (revision_conflict).
+var kindToCode = map[errorx.Kind]api.ErrorCode{
+	errorx.KindCanceled:           api.ErrorCodeCanceled,
+	errorx.KindInvalidArgument:    api.ErrorCodeInvalidArgument,
+	errorx.KindDeadlineExceeded:   api.ErrorCodeDeadlineExceeded,
+	errorx.KindNotFound:           api.ErrorCodeNotFound,
+	errorx.KindAlreadyExists:      api.ErrorCodeAlreadyExists,
+	errorx.KindPermissionDenied:   api.ErrorCodePermissionDenied,
+	errorx.KindResourceExhausted:  api.ErrorCodeResourceExhausted,
+	errorx.KindFailedPrecondition: api.ErrorCodeFailedPrecondition,
+	errorx.KindAborted:            api.ErrorCodeAborted,
+	errorx.KindOutOfRange:         api.ErrorCodeOutOfRange,
+	errorx.KindUnimplemented:      api.ErrorCodeUnimplemented,
+	errorx.KindInternal:           api.ErrorCodeInternal,
+	errorx.KindUnavailable:        api.ErrorCodeUnavailable,
+	errorx.KindDataLoss:           api.ErrorCodeDataLoss,
+	errorx.KindUnauthenticated:    api.ErrorCodeUnauthenticated,
+	errorx.KindRevisionConflict:   api.ErrorCodeRevisionConflict,
+}
+
 // KindToCode walks the error chain, finds the first errorx.Error,
-// and produces an *api.ErrorStatusCode. The wire `code` is always
-// `internal`; the kind and original message live in `message` so
-// clients can branch on them without depending on a closed enum.
-// Non-errorx errors collapse to 500. Exported so the ogen
-// WithErrorHandler fallback (handler.NewError) can reuse the
-// same logic for the SecurityError path that bypasses the chain.
+// and produces an *api.ErrorStatusCode. The wire `code` is the
+// gRPC-style short identifier for the kind; the original message
+// is preserved in `message` so operators can diagnose. Non-errorx
+// errors collapse to KindInternal → 500 / "internal".
+//
+// Exported so the ogen WithErrorHandler fallback (handler.NewError)
+// can reuse the same logic for the SecurityError path that
+// bypasses the chain.
 func KindToCode(err error) *api.ErrorStatusCode {
 	if err == nil {
 		return nil
 	}
-	var de errorx.Error
 	kind := errorx.KindOf(err)
+	code, ok := kindToCode[kind]
+	if !ok {
+		code = api.ErrorCodeInternal
+	}
 	msg := err.Error()
+	var de errorx.Error
 	if errors.As(err, &de) {
 		msg = fmt.Sprintf("%s: %s", de.Kind(), de.Error())
 	}
 	return &api.ErrorStatusCode{
 		StatusCode: kind.Status(),
 		Response: api.Error{
-			Code:    api.ErrorCodeInternal,
+			Code:    code,
 			Message: msg,
 		},
 	}
@@ -71,13 +103,13 @@ func PanicMiddleware() middleware.Middleware {
 				return
 			}
 			logx.Error(req.Context,
-				errorx.New(errorx.KindServiceDegraded, "middleware: handler panic"),
+				errorx.New(errorx.KindUnavailable, "middleware: handler panic"),
 				"apiserver.panic_recovered",
 				slog.String("operation", req.OperationName),
 				slog.Any("panic_value", r),
 				slog.String("stack", string(debug.Stack())),
 			)
-			err = KindToCode(errorx.New(errorx.KindServiceDegraded, "internal panic"))
+			err = KindToCode(errorx.New(errorx.KindUnavailable, "internal panic"))
 		}()
 		return next(req)
 	}

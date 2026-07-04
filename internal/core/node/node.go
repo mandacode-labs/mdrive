@@ -258,7 +258,7 @@ func (n *Node) IsMount() bool   { return n.kind == NodeKindMount }
 // marshal the appropriate content type and then call write.
 func (n *Node) write(content Content, size int64) error {
 	if len(content) > MaxContentSize {
-		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
+		return errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")
 	}
 	n.content = content
 	n.size = size

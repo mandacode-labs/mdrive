@@ -12,7 +12,7 @@ import (
 
 var (
 	ErrUnauthenticated   = errorx.New(errorx.KindUnauthenticated, "auth: not authenticated")
-	ErrServiceDegraded   = errorx.New(errorx.KindServiceDegraded, "auth: upstream failure")
+	ErrServiceDegraded   = errorx.New(errorx.KindUnavailable, "auth: upstream failure")
 	ErrUserNotFoundLocal = errorx.New(errorx.KindNotFound, "auth: user not found")
 )
 
@@ -33,7 +33,7 @@ func (h *Handler) AuthMe(ctx context.Context) (api.AuthMeRes, error) {
 			slog.String("user_id", uid),
 			slog.String("err", err.Error()),
 		)
-		return nil, errorx.Wrap(err, fmt.Sprintf("auth: user lookup failed (uid=%s)", uid), errorx.KindServiceDegraded)
+		return nil, errorx.Wrap(err, fmt.Sprintf("auth: user lookup failed (uid=%s)", uid), errorx.KindUnavailable)
 	}
 	if u == nil {
 		logx.Debug(ctx, "handler.auth.me.not_found", slog.String("user_id", uid))

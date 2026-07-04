@@ -37,7 +37,7 @@ func TestDirectoryAddRemoveEntry(t *testing.T) {
 	assert.Equal(t, NodeKindFile, entries.Entries[0].Kind)
 
 	err = dir.AddEntry("foo.txt", child)
-	assert.True(t, errorx.IsKind(err, errorx.KindConflict))
+	assert.True(t, errorx.IsKind(err, errorx.KindAlreadyExists))
 
 	e, err := dir.Lookup("foo.txt")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestAddEntryNotDirectory(t *testing.T) {
 	require.NoError(t, err)
 
 	err = file.AddEntry("foo", child)
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestAddEntryEmptyName(t *testing.T) {
@@ -73,5 +73,5 @@ func TestAddEntryEmptyName(t *testing.T) {
 	require.NoError(t, err)
 
 	err = dir.AddEntry("", child)
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }

@@ -16,14 +16,14 @@ func TestNewHasCorrectKind(t *testing.T) {
 
 func TestKindStatus(t *testing.T) {
 	cases := map[Kind]int{
-		KindNotFound:        http.StatusNotFound,
-		KindConflict:        http.StatusConflict,
-		KindBadRequest:      http.StatusBadRequest,
-		KindForbidden:       http.StatusForbidden,
-		KindUnauthenticated: http.StatusUnauthorized,
-		KindServiceDegraded: http.StatusServiceUnavailable,
-		KindInternal:        http.StatusInternalServerError,
-		KindUnknown:         http.StatusInternalServerError,
+		KindNotFound:         http.StatusNotFound,
+		KindAlreadyExists:    http.StatusConflict,
+		KindInvalidArgument:  http.StatusBadRequest,
+		KindPermissionDenied: http.StatusForbidden,
+		KindUnauthenticated:  http.StatusUnauthorized,
+		KindUnavailable:      http.StatusServiceUnavailable,
+		KindInternal:         http.StatusInternalServerError,
+		KindUnknown:          http.StatusInternalServerError,
 	}
 	for k, want := range cases {
 		assert.Equal(t, want, k.Status(),
@@ -39,16 +39,16 @@ func TestErrorIncludesCause(t *testing.T) {
 }
 
 func TestErrorWithoutCauseReturnsMessage(t *testing.T) {
-	noCause := New(KindBadRequest, "auth: missing state cookie")
+	noCause := New(KindInvalidArgument, "auth: missing state cookie")
 	assert.Equal(t, "auth: missing state cookie", noCause.Error(),
 		"sentinel Error() must return its bare message")
 }
 
 func TestWrapInheritsKindFromSentinel(t *testing.T) {
-	sentinelInChain := New(KindForbidden, "vfs: cycle detected")
+	sentinelInChain := New(KindPermissionDenied, "vfs: cycle detected")
 	wrapped := Wrap(sentinelInChain, "vfs: mount cycle check")
 
-	assert.Equal(t, KindForbidden, wrapped.Kind(),
+	assert.Equal(t, KindPermissionDenied, wrapped.Kind(),
 		"Wrap must inherit Kind from a wrapped errorx.Error")
 	assert.Equal(t, "vfs: mount cycle check: vfs: cycle detected", wrapped.Error())
 }
@@ -56,9 +56,9 @@ func TestWrapInheritsKindFromSentinel(t *testing.T) {
 func TestWrapWithKindOverride(t *testing.T) {
 	plain := errors.New("disk full")
 	// chain has no errorx.Error so Kind would be Unknown, but caller
-	// overrides with KindServiceDegraded.
-	wrapped := Wrap(plain, "drive: write failed", KindServiceDegraded)
-	assert.Equal(t, KindServiceDegraded, wrapped.Kind(),
+	// overrides with KindUnavailable.
+	wrapped := Wrap(plain, "drive: write failed", KindUnavailable)
+	assert.Equal(t, KindUnavailable, wrapped.Kind(),
 		"variadic Kind must override chain inheritance")
 }
 
@@ -74,10 +74,10 @@ func TestWrapNilReturnsNil(t *testing.T) {
 }
 
 func TestKindOfTraversesChain(t *testing.T) {
-	leaf := New(KindServiceDegraded, "downstream broken")
+	leaf := New(KindUnavailable, "downstream broken")
 	mid := Wrap(leaf, "while sending event")
 	outer := Wrap(mid, "during request")
-	assert.Equal(t, KindServiceDegraded, KindOf(outer))
+	assert.Equal(t, KindUnavailable, KindOf(outer))
 }
 
 func TestKindOfReturnsUnknownForPlainChain(t *testing.T) {
@@ -98,10 +98,10 @@ func TestUnwrapPreservesCause(t *testing.T) {
 }
 
 func TestErrorsAsRecognizesWrapped(t *testing.T) {
-	wrapped := Wrap(errors.New("plain"), "msg", KindBadRequest)
+	wrapped := Wrap(errors.New("plain"), "msg", KindInvalidArgument)
 	var de Error
 	assert.True(t, errors.As(wrapped, &de))
-	assert.Equal(t, KindBadRequest, de.Kind())
+	assert.Equal(t, KindInvalidArgument, de.Kind())
 }
 
 func TestSentinelStillIdentifiableByKind(t *testing.T) {
@@ -110,8 +110,8 @@ func TestSentinelStillIdentifiableByKind(t *testing.T) {
 	// instances with the same kind are NOT equal under errors.Is
 	// because they're separate objects. Callers who need
 	// equivalence should compare via KindOf rather than errors.Is.
-	sentinelInChain := New(KindForbidden, "vfs: cycle detected")
-	wrapped := Wrap(sentinelInChain, "vfs: mount cycle check", KindForbidden)
-	assert.Equal(t, KindForbidden, KindOf(wrapped),
+	sentinelInChain := New(KindPermissionDenied, "vfs: cycle detected")
+	wrapped := Wrap(sentinelInChain, "vfs: mount cycle check", KindPermissionDenied)
+	assert.Equal(t, KindPermissionDenied, KindOf(wrapped),
 		"kind must be queryable from the chain without importing the sentinel")
 }
