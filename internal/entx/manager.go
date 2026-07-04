@@ -7,12 +7,16 @@ import (
 
 type txKey struct{}
 
-type TxManager struct {
+type TxManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+type txManager struct {
 	client *ent.Client
 }
 
 // WithTx implements [TxManager].
-func (t *TxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+func (t *txManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(*ent.Tx); ok {
 		// Already in a transaction, just call the function with the existing context.
 		return fn(ctx)
@@ -36,8 +40,8 @@ func (t *TxManager) WithTx(ctx context.Context, fn func(ctx context.Context) err
 	return tx.Commit()
 }
 
-func NewTxManager(client *ent.Client) *TxManager {
-	return &TxManager{client: client}
+func NewTxManager(client *ent.Client) TxManager {
+	return &txManager{client: client}
 }
 
 // FromContext retrieves the ent.Tx from the context, if present.

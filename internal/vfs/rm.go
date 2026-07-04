@@ -17,7 +17,7 @@ import (
 // node unlinks, so a tombstone failure rolls back the rm.
 //
 // Permission is the caller's responsibility.
-func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
+func (s *service) Rm(ctx context.Context, driveID string, paths []string, recursive bool) error {
 	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		rootID, err := s.GetRootNodeID(ctx, driveID)
 		if err != nil {
@@ -41,7 +41,7 @@ func (s *Service) Rm(ctx context.Context, driveID string, paths []string, recurs
 	})
 }
 
-func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
+func (s *service) rmPath(ctx context.Context, rootID uuid.UUID, path string, recursive bool) ([]GarbageRef, error) {
 	out, err := newResolver(s.NodeClient).resolvePath(ctx, rootID, path, true)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: rm resolve (path=%s)", path))
@@ -62,7 +62,7 @@ func (s *Service) rmPath(ctx context.Context, rootID uuid.UUID, path string, rec
 // rm unlinks a single file node. When the last hardlink is removed
 // the child is deleted; if it was an object node, the S3 reference
 // is returned for tombstoning.
-func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
+func (s *service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
 	if n == nil {
 		return nil, errorx.New(errorx.KindNotFound, "vfs: rm target not found (path="+path+")")
 	}
@@ -91,7 +91,7 @@ func (s *Service) rm(ctx context.Context, rootID uuid.UUID, n *node.Node, path s
 	return []GarbageRef{{Bucket: oc.Bucket, Key: oc.Key}}, nil
 }
 
-func (s *Service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
+func (s *service) rmRecursive(ctx context.Context, rootID uuid.UUID, n *node.Node, path string) ([]GarbageRef, error) {
 	if n == nil {
 		return nil, errorx.New(errorx.KindNotFound, "vfs: rm target not found (path="+path+")")
 	}

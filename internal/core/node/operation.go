@@ -8,75 +8,77 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// Service provides domain-level node operations (create, link, unlink,
-// lookup). Path resolution and permission checks live in vfs.
+// NodeOperation is the public contract of the node domain. In Linux
+// terms it is the equivalent of inode_operations / file_operations:
+// the per-inode actions (create, link, unlink, move, save, delete,
+// lookup) composed into a single interface. Path resolution and
+// permission checks live in vfs.
 //
 // Multi-step methods (Link, Unlink, MoveEntry, BulkLink, BulkUnlink)
 // wrap their writes in WithTx; on tx failure, *Node pointers passed
 // in may be partially mutated and must be re-fetched.
-type Service struct {
+type NodeOperation interface {
+	CreateFile(ctx context.Context, content string) (*Node, error)
+	Touch(ctx context.Context) (*Node, error)
+	CreateDirectory(ctx context.Context) (*Node, error)
+	CreateSymlink(ctx context.Context, target string) (*Node, error)
+	CreateObject(ctx context.Context, content ObjectContent, size int64) (*Node, error)
+	CreateMount(ctx context.Context, sourceDriveID string) (*Node, error)
+	Link(ctx context.Context, parent *Node, name string, child *Node) error
+	BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error
+	Unlink(ctx context.Context, parent *Node, name string) (*Node, error)
+	UnlinkOrReplace(ctx context.Context, parent *Node, name string) (*Node, error)
+	MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Node, error)
+	Save(ctx context.Context, n *Node) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error)
+}
+
+// nodeOperation is the only implementation of NodeOperation.
+type nodeOperation struct {
 	repo Repository
-	tm   TxManager
+	tm   entx.TxManager
 }
 
-func NewService(repo Repository, tm TxManager) *Service {
-	return &Service{repo: repo, tm: tm}
+// NewNodeOperation wires the node domain.
+func NewNodeOperation(repo Repository, tm entx.TxManager) NodeOperation {
+	return &nodeOperation{repo: repo, tm: tm}
 }
 
-// CreateFile creates and persists a file node.
-func (s *Service) CreateFile(ctx context.Context, content string) (*Node, error) {
+var _ NodeOperation = (*nodeOperation)(nil)
+
+func (s *nodeOperation) CreateFile(ctx context.Context, content string) (*Node, error) {
 	return s.create(ctx, "file", func() (*Node, error) { return NewFile(content) })
 }
 
-// Touch creates and persists an empty file node, mirroring `touch path`.
-// It is a thin convenience over CreateFile with content=""; both return
-// a node with an empty FileContent and no further invariants.
-func (s *Service) Touch(ctx context.Context) (*Node, error) {
+func (s *nodeOperation) Touch(ctx context.Context) (*Node, error) {
 	return s.CreateFile(ctx, "")
 }
 
-// CreateDirectory creates and persists a directory node.
-func (s *Service) CreateDirectory(ctx context.Context) (*Node, error) {
+func (s *nodeOperation) CreateDirectory(ctx context.Context) (*Node, error) {
 	return s.create(ctx, "directory", NewDirectory)
 }
 
-// CreateSymlink creates and persists a symlink node.
-func (s *Service) CreateSymlink(ctx context.Context, target string) (*Node, error) {
+func (s *nodeOperation) CreateSymlink(ctx context.Context, target string) (*Node, error) {
 	return s.create(ctx, "symlink", func() (*Node, error) { return NewSymlink(target) })
 }
 
-// CreateObject creates and persists an object (S3-backed) node.
-func (s *Service) CreateObject(ctx context.Context, content ObjectContent, size int64) (*Node, error) {
+func (s *nodeOperation) CreateObject(ctx context.Context, content ObjectContent, size int64) (*Node, error) {
 	return s.create(ctx, "object", func() (*Node, error) { return NewObject(content, size) })
 }
 
-// CreateMount creates a mount node pointing to sourceDriveID's root and
-// persists it.
-func (s *Service) CreateMount(ctx context.Context, sourceDriveID string) (*Node, error) {
+func (s *nodeOperation) CreateMount(ctx context.Context, sourceDriveID string) (*Node, error) {
 	return s.create(ctx, "mount", func() (*Node, error) { return NewMount(sourceDriveID) })
 }
 
-// create is the shared persistence step for all Create* methods:
-// construct a Node with the type-specific factory, then Save it.
-// Centralizing the Save + error wrapping removes the five-line
-// "NewX, fmt.Errorf, repo.Save, fmt.Errorf" pattern that would
-// otherwise be repeated for each node type.
-//
-// Callers that need atomic create+link (i.e. so a partial failure
-// cannot leave an orphan node) must construct the node via
-// newNode() directly and pass it to Link, which inserts the
-// child inside the same transaction as the parent update.
-func (s *Service) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
-	logx.Debug(ctx, "node.service.create.enter", slog.String("kind", kind))
+func (s *nodeOperation) create(ctx context.Context, kind string, factory func() (*Node, error)) (*Node, error) {
+	logx.Debug(ctx, "node.op.create.enter", slog.String("kind", kind))
 	n, err := factory()
 	if err != nil {
 		return nil, errorx.New(errorx.KindInternal, fmt.Sprintf("node: create %s factory failed", kind))
@@ -84,23 +86,15 @@ func (s *Service) create(ctx context.Context, kind string, factory func() (*Node
 	if err := s.repo.Save(ctx, n); err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: save %s", kind))
 	}
-	logx.Debug(ctx, "node.service.create.ok",
+	logx.Debug(ctx, "node.op.create.ok",
 		slog.String("kind", kind),
 		slog.String("id", n.ID().String()),
 	)
 	return n, nil
 }
 
-// Link adds a child entry to parent and persists the parent.
-// Increments child's nlink (POSIX hardlink semantics). A fresh child
-// (nlink==0 from newNode) gets nlink=1 after its first Link; subsequent
-// Links add to the count.
-//
-// On success, child is mutated in place to reflect the new state
-// (nlink, ctime, rev). On failure, child's state is undefined — callers
-// should discard the pointer.
-func (s *Service) Link(ctx context.Context, parent *Node, name string, child *Node) error {
-	logx.Debug(ctx, "node.service.link.enter",
+func (s *nodeOperation) Link(ctx context.Context, parent *Node, name string, child *Node) error {
+	logx.Debug(ctx, "node.op.link.enter",
 		slog.String("parent_id", uuidOrEmpty(parent)),
 		slog.String("name", name),
 		slog.String("child_id", uuidOrEmpty(child)),
@@ -110,14 +104,14 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 	}
 	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		if err := parent.AddEntry(name, child); err != nil {
-			logx.Debug(ctx, "node.service.link.add_entry_err",
+			logx.Debug(ctx, "node.op.link.add_entry_err",
 				slog.String("name", name),
 				slog.String("err", err.Error()),
 			)
 			return errorx.Wrap(err, fmt.Sprintf("node: link add entry (name=%s)", name))
 		}
 		if err := s.repo.Save(ctx, parent); err != nil {
-			logx.Debug(ctx, "node.service.link.save_parent_err",
+			logx.Debug(ctx, "node.op.link.save_parent_err",
 				slog.String("name", name),
 				slog.String("err", err.Error()),
 			)
@@ -130,7 +124,7 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 		if err := s.repo.Save(ctx, child); err != nil {
 			return errorx.Wrap(err, "node: link save child")
 		}
-		logx.Debug(ctx, "node.service.link.ok",
+		logx.Debug(ctx, "node.op.link.ok",
 			slog.String("name", name),
 			slog.Uint64("nlink", uint64(child.nlink)),
 		)
@@ -138,13 +132,8 @@ func (s *Service) Link(ctx context.Context, parent *Node, name string, child *No
 	})
 }
 
-// BulkLink adds multiple child entries to a single parent in one
-// directory write plus one nlink bump per child. The parent is saved
-// once; each child is then saved (with nlink++ and revision bump).
-// Fails atomically on any conflict (duplicate name, empty name, nil
-// child): the directory is left unchanged.
-func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error {
-	logx.Debug(ctx, "node.service.bulk_link.enter",
+func (s *nodeOperation) BulkLink(ctx context.Context, parent *Node, entries map[string]*Node) error {
+	logx.Debug(ctx, "node.op.bulk_link.enter",
 		slog.String("parent_id", uuidOrEmpty(parent)),
 		slog.Int("entry_count", len(entries)),
 	)
@@ -173,16 +162,13 @@ func (s *Service) BulkLink(ctx context.Context, parent *Node, entries map[string
 				return errorx.Wrap(err, fmt.Sprintf("node: bulk link save child (name=%s)", name))
 			}
 		}
-		logx.Debug(ctx, "node.service.bulk_link.ok", slog.Int("entry_count", len(entries)))
+		logx.Debug(ctx, "node.op.bulk_link.ok", slog.Int("entry_count", len(entries)))
 		return nil
 	})
 }
 
-// Unlink removes a child entry from parent and decrements child's nlink.
-// If nlink reaches zero, the child is deleted. Returns the deleted node
-// (caller may use it for S3 cleanup) or nil if only the link was removed.
-func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node, error) {
-	logx.Debug(ctx, "node.service.unlink.enter",
+func (s *nodeOperation) Unlink(ctx context.Context, parent *Node, name string) (*Node, error) {
+	logx.Debug(ctx, "node.op.unlink.enter",
 		slog.String("parent_id", uuidOrEmpty(parent)),
 		slog.String("name", name),
 	)
@@ -237,25 +223,17 @@ func (s *Service) Unlink(ctx context.Context, parent *Node, name string) (*Node,
 		return nil, err
 	}
 	if deleted != nil {
-		logx.Debug(ctx, "node.service.unlink.ok_deleted",
+		logx.Debug(ctx, "node.op.unlink.ok_deleted",
 			slog.String("name", name),
 			slog.String("deleted_id", deleted.ID().String()),
 		)
 	} else {
-		logx.Debug(ctx, "node.service.unlink.ok_link_removed", slog.String("name", name))
+		logx.Debug(ctx, "node.op.unlink.ok_link_removed", slog.String("name", name))
 	}
 	return deleted, nil
 }
 
-// UnlinkOrReplace removes a child entry from parent if one exists at name,
-// and, if a child node was present, decrements its nlink (deleting at 0).
-// If no entry exists, returns (nil, nil) — the operation is a no-op, suitable
-// for overwrite semantics where absence is the success case.
-// If the existing target is a directory, returns ErrIsDirectory (POSIX:
-// cannot overwrite a directory with a non-directory).
-//
-// Returns the deleted child (caller may use it for S3 cleanup) or nil.
-func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string) (*Node, error) {
+func (s *nodeOperation) UnlinkOrReplace(ctx context.Context, parent *Node, name string) (*Node, error) {
 	if parent == nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "node: unlink requires non-nil parent")
 	}
@@ -276,22 +254,8 @@ func (s *Service) UnlinkOrReplace(ctx context.Context, parent *Node, name string
 	return s.Unlink(ctx, parent, name)
 }
 
-// MoveEntry atomically moves a directory entry from srcParent/srcName
-// to dstParent/dstName. The child inode is preserved with its nlink
-// unchanged: a move renames the entry, it does not add a new link.
-// This is the POSIX rename semantics and avoids the nlink==1
-// "delete then re-link" hazard of the Unlink+Link pair, which would
-// otherwise drop and recreate the inode.
-//
-// If dstParent/dstName already points to a different inode, that
-// inode is overwritten: its directory entry is removed and its
-// nlink is decremented (or the inode is deleted if nlink hits 0).
-// Type mismatch between src and overwrite-target is rejected
-// (POSIX: cannot overwrite a directory with a non-directory).
-//
-// Returns ErrEntryNotFound if srcName is not in srcParent.
-func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error {
-	logx.Debug(ctx, "node.service.move_entry.enter",
+func (s *nodeOperation) MoveEntry(ctx context.Context, srcParent *Node, srcName string, dstParent *Node, dstName string) error {
+	logx.Debug(ctx, "node.op.move_entry.enter",
 		slog.String("src_parent_id", uuidOrEmpty(srcParent)),
 		slog.String("src_name", srcName),
 		slog.String("dst_parent_id", uuidOrEmpty(dstParent)),
@@ -431,56 +395,45 @@ func (s *Service) MoveEntry(ctx context.Context, srcParent *Node, srcName string
 	if err != nil {
 		return err
 	}
-	logx.Debug(ctx, "node.service.move_entry.ok",
+	logx.Debug(ctx, "node.op.move_entry.ok",
 		slog.String("src_name", srcName),
 		slog.String("dst_name", dstName),
 	)
 	return nil
 }
 
-// GetByID returns a node by its ID.
-func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
-	logx.Debug(ctx, "node.service.get.enter", slog.String("id", id.String()))
+func (s *nodeOperation) GetByID(ctx context.Context, id uuid.UUID) (*Node, error) {
+	logx.Debug(ctx, "node.op.get.enter", slog.String("id", id.String()))
 	n, err := s.repo.Get(ctx, id)
 	if err != nil {
-		logx.Debug(ctx, "node.service.get.err", slog.String("id", id.String()), slog.String("err", err.Error()))
+		logx.Debug(ctx, "node.op.get.err", slog.String("id", id.String()), slog.String("err", err.Error()))
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: get (id=%s)", id))
 	}
-	logx.Debug(ctx, "node.service.get.ok", slog.String("id", id.String()))
+	logx.Debug(ctx, "node.op.get.ok", slog.String("id", id.String()))
 	return n, nil
 }
 
-// Save persists a node after its content has been mutated. The
-// repository's Save handles both insert (for a fresh inode) and
-// update (for an existing one) based on the node's staleRev.
-func (s *Service) Save(ctx context.Context, n *Node) error {
+func (s *nodeOperation) Save(ctx context.Context, n *Node) error {
 	if n == nil {
 		return errorx.New(errorx.KindInvalidArgument, "node: save requires non-nil node")
 	}
-	logx.Debug(ctx, "node.service.save.enter", slog.String("id", n.ID().String()))
+	logx.Debug(ctx, "node.op.save.enter", slog.String("id", n.ID().String()))
 	if err := s.repo.Save(ctx, n); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("node: save (id=%s)", n.ID()))
 	}
 	return nil
 }
 
-// Delete removes a node by its ID.
-func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	logx.Debug(ctx, "node.service.delete.enter", slog.String("id", id.String()))
+func (s *nodeOperation) Delete(ctx context.Context, id uuid.UUID) error {
+	logx.Debug(ctx, "node.op.delete.enter", slog.String("id", id.String()))
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("node: delete (id=%s)", id))
 	}
 	return nil
 }
 
-// BulkUnlink removes multiple entries from a single parent in one
-// directory write. For each removed child, nlink is decremented and
-// the child is deleted if nlink reaches zero. Returns the deleted
-// children (so callers can enqueue S3 tombstones).
-//
-// Missing entries are silently ignored (POSIX rm -f semantics).
-func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error) {
-	logx.Debug(ctx, "node.service.bulk_unlink.enter",
+func (s *nodeOperation) BulkUnlink(ctx context.Context, parent *Node, names []string) ([]*Node, error) {
+	logx.Debug(ctx, "node.op.bulk_unlink.enter",
 		slog.String("parent_id", uuidOrEmpty(parent)),
 		slog.Int("name_count", len(names)),
 	)
@@ -550,7 +503,7 @@ func (s *Service) BulkUnlink(ctx context.Context, parent *Node, names []string) 
 	if err != nil {
 		return nil, err
 	}
-	logx.Debug(ctx, "node.service.bulk_unlink.ok",
+	logx.Debug(ctx, "node.op.bulk_unlink.ok",
 		slog.Int("name_count", len(names)),
 		slog.Int("deleted_count", len(deleted)),
 	)

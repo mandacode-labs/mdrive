@@ -10,7 +10,7 @@ import (
 
 // Touch creates an empty file at path (like `touch /path`).
 // Permission is the caller's responsibility.
-func (s *Service) Touch(ctx context.Context, driveID, path string) (*node.Node, error) {
+func (s *service) Touch(ctx context.Context, driveID, path string) (*node.Node, error) {
 	parent, name, err := s.resolveEditableParent(ctx, driveID, path)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: touch resolve parent (drive_id=%s, path=%s)", driveID, path))

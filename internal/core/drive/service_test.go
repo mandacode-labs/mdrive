@@ -13,11 +13,12 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	driveMocks "github.com/mandacode-labs/mdrive/internal/core/drive/mocks"
+	entxMocks "github.com/mandacode-labs/mdrive/internal/entx/mocks"
 )
 
-func newTxManagerMock(t *testing.T) *driveMocks.TxManagerMock {
+func newTxManagerMock(t *testing.T) *entxMocks.TxManagerMock {
 	t.Helper()
-	m := driveMocks.NewTxManagerMock(t)
+	m := entxMocks.NewTxManagerMock(t)
 	m.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
 		func(ctx context.Context, fn func(ctx context.Context) error) error {
 			return fn(ctx)

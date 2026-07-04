@@ -19,12 +19,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/user"
 )
 
-// UserUpserter is the slice of user.Service the auth package needs.
-type UserUpserter interface {
-	UpsertFromOIDC(ctx context.Context, cmd *user.CreateCommand) (*user.User, error)
-	GetByProviderID(ctx context.Context, provider, providerID string) (*user.User, error)
-}
-
 // Config wires the auth service. EncryptionKey must be exactly 16,
 // 24, or 32 bytes for AES-GCM (validated at startup by config.Validate).
 type Config struct {
@@ -50,7 +44,7 @@ type Service struct {
 	verifier       *oidc.IDTokenVerifier
 	oauth2Cfg      oauth2.Config
 	encKey         []byte
-	users          UserUpserter
+	users          user.Service
 	providerName   string
 	cookieName     string
 	cookieDomain   string
@@ -64,7 +58,7 @@ type Service struct {
 // New discovers the IdP via OIDC discovery and returns a ready
 // Service. Returns an error if the issuer's discovery document
 // cannot be reached.
-func New(ctx context.Context, cfg Config, users UserUpserter) (*Service, error) {
+func New(ctx context.Context, cfg Config, users user.Service) (*Service, error) {
 	if len(cfg.Scopes) == 0 {
 		cfg.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	}

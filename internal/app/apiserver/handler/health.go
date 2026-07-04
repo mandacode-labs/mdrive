@@ -9,16 +9,13 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-type ValkeyScanner interface {
-	Scan(ctx context.Context, fn func(string) error) error
-}
-
 type HealthDeps struct {
 	DB         *sql.DB
-	Valkey     ValkeyScanner
+	Valkey     upload.TokenScanner
 	Authorizer permission.Authorizer
 }
 

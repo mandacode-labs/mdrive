@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/mandacode-labs/mdrive/internal/core/user"
+)
 
 // NewForTest returns a Service with the parts HandleCookieAuth needs
 // (encryption key, cookie name, user lookup) but with no OIDC
@@ -10,7 +14,7 @@ import "time"
 // Calling Authenticate / Callback / Logout on a service returned by
 // this function will panic; those paths need a real provider and
 // verifier, which only auth.New supplies.
-func NewForTest(users UserUpserter) *Service {
+func NewForTest(users user.Service) *Service {
 	return &Service{
 		encKey:       make([]byte, 32),
 		users:        users,

@@ -10,7 +10,7 @@ import (
 
 // Ls lists the entries in a directory (like `ls /dir`). Permission
 // is the caller's responsibility.
-func (s *Service) Ls(ctx context.Context, driveID, path string) (node.DirContent, error) {
+func (s *service) Ls(ctx context.Context, driveID, path string) (node.DirContent, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
 		return node.DirContent{}, errorx.Wrap(err, fmt.Sprintf("vfs: ls resolve (path=%s)", path))

@@ -9,45 +9,50 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+// Service is the public contract of the drive domain: drive CRUD,
+// soft-delete lifecycle, list queries, and storage lookup.
+// Callers depend on this single interface; the unexported service
+// struct is the only implementation.
+//
+// Permission checks are the caller's responsibility (the handler
+// layer); this is the pure domain logic.
+type Service interface {
+	Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error)
+	GetByID(ctx context.Context, id string) (*Drive, error)
+	GetByPublicID(ctx context.Context, publicID string) (*Drive, error)
+	GetStorage(ctx context.Context, driveID string) (*Storage, error)
+	Update(ctx context.Context, id string, name, description string) (*Drive, error)
+	Delete(ctx context.Context, id string) error
+	Restore(ctx context.Context, id string) (*Drive, error)
+	Purge(ctx context.Context, id string) error
+	ListByOwner(ctx context.Context, actorID string) ([]*Drive, error)
+	ListDeletedByOwner(ctx context.Context, actorID string) ([]*Drive, error)
+	ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*Drive, error)
+	WithTx(ctx context.Context, fn func(context.Context) error) error
 }
 
-// Service provides domain-level drive operations. Permission checks
-// are the caller's responsibility (the handler layer); this is the
-// pure domain logic.
-type Service struct {
+// service is the only implementation of Service.
+type service struct {
 	repo                 Repository
 	ownerChecker         OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
-	tm                   TxManager
+	tm                   entx.TxManager
 }
 
-func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator, tm TxManager) *Service {
-	return &Service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator, tm: tm}
+// NewService wires the drive domain.
+func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator, tm entx.TxManager) Service {
+	return &service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator, tm: tm}
 }
 
-// Create creates a drive and its root directory node. The drive +
-// storage rows and the drive's root-node update run inside a single
-// repository transaction so partial failure cannot leave a drive
-// record pointing at a non-existent root ID.
-//
-// The root node itself is created by an external RootDirectoryCreator
-// (typically the node.Service wired by the CLI). That step spans
-// repositories, so it cannot participate in this tx. The orphan-
-// cleanup path (gc/cli) covers any root node that ends up without
-// a matching drive row.
-//
-// actorID is both the owner of the new drive and the principal
-// on whose behalf the owner permission is granted; callers must
-// pass the authenticated user.
-func (s *Service) Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
-	logx.Debug(ctx, "drive.service.create.enter",
+var _ Service = (*service)(nil)
+
+func (s *service) Create(ctx context.Context, actorID string, name, description string, cfg StorageConfig) (*Drive, uuid.UUID, error) {
+	logx.Debug(ctx, "drive.svc.create.enter",
 		slog.String("actor_id", actorID),
 		slog.String("name", name),
 	)
@@ -68,7 +73,7 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	if !exists {
 		return nil, uuid.Nil, errorx.New(errorx.KindPermissionDenied, "drive: owner not found (actor_id="+actorID+")")
 	}
-	logx.Debug(ctx, "drive.service.create.owner_ok", slog.String("actor_id", actorID))
+	logx.Debug(ctx, "drive.svc.create.owner_ok", slog.String("actor_id", actorID))
 
 	id := ulid.Make().String()
 	now := time.Now()
@@ -79,45 +84,45 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 	d := NewDrive(id, id, name, descriptionPtr, ProviderS3, actorID, nil, nil, now, now)
 	storage := NewStorage(id, cfg.Bucket, cfg.Endpoint, cfg.Region,
 		cfg.AccessKey, cfg.SecretKey, cfg.UsePathStyle)
-	logx.Debug(ctx, "drive.service.create.drive_built",
+	logx.Debug(ctx, "drive.svc.create.drive_built",
 		slog.String("id", id),
 		slog.Int("owner_id_len", len(actorID)),
 	)
 
 	rootID, err := s.rootDirectoryCreator.CreateRootDirectory(ctx)
 	if err != nil {
-		logx.Debug(ctx, "drive.service.create.root_dir_failed",
+		logx.Debug(ctx, "drive.svc.create.root_dir_failed",
 			slog.String("id", id),
 			slog.String("err", err.Error()),
 		)
 		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: root node creation failed (id=%s)", id), errorx.KindUnavailable)
 	}
 	d.SetRootNodeID(rootID)
-	logx.Debug(ctx, "drive.service.create.root_dir_ok",
+	logx.Debug(ctx, "drive.svc.create.root_dir_ok",
 		slog.String("id", id),
 		slog.String("root_id", rootID.String()),
 	)
 
 	var updated *Drive
 	err = s.tm.WithTx(ctx, func(ctx context.Context) error {
-		logx.Debug(ctx, "drive.service.create.tx.enter", slog.String("id", id))
+		logx.Debug(ctx, "drive.svc.create.tx.enter", slog.String("id", id))
 		if err := s.repo.Create(ctx, d, storage); err != nil {
-			logx.Debug(ctx, "drive.service.create.tx.create_failed",
+			logx.Debug(ctx, "drive.svc.create.tx.create_failed",
 				slog.String("id", id),
 				slog.String("err", err.Error()),
 			)
 			return errorx.Wrap(err, fmt.Sprintf("drive: repo create failed (id_len=%d, owner_id_len=%d, root_id=%s)", len(d.ID()), len(d.OwnerID()), rootID), errorx.KindUnavailable)
 		}
-		logx.Debug(ctx, "drive.service.create.tx.create_ok", slog.String("id", id))
+		logx.Debug(ctx, "drive.svc.create.tx.create_ok", slog.String("id", id))
 		u, err := s.repo.Update(ctx, d)
 		if err != nil {
-			logx.Debug(ctx, "drive.service.create.tx.update_failed",
+			logx.Debug(ctx, "drive.svc.create.tx.update_failed",
 				slog.String("id", id),
 				slog.String("err", err.Error()),
 			)
 			return errorx.Wrap(err, fmt.Sprintf("drive: repo update failed (id_len=%d)", len(d.ID())), errorx.KindUnavailable)
 		}
-		logx.Debug(ctx, "drive.service.create.tx.update_ok",
+		logx.Debug(ctx, "drive.svc.create.tx.update_ok",
 			slog.String("id", id),
 			slog.Bool("updated_nil", u == nil),
 		)
@@ -125,23 +130,20 @@ func (s *Service) Create(ctx context.Context, actorID string, name, description 
 		return nil
 	})
 	if err != nil {
-		logx.Debug(ctx, "drive.service.create.tx_failed",
+		logx.Debug(ctx, "drive.svc.create.tx_failed",
 			slog.String("id", id),
 			slog.String("err", err.Error()),
 		)
 		return nil, uuid.Nil, errorx.Wrap(err, fmt.Sprintf("drive: tx failed (id=%s, root_id=%s)", id, rootID), errorx.KindUnavailable)
 	}
-	logx.Debug(ctx, "drive.service.create.tx_committed",
+	logx.Debug(ctx, "drive.svc.create.tx_committed",
 		slog.String("id", id),
 		slog.Bool("updated_nil", updated == nil),
 	)
 	return updated, rootID, nil
 }
 
-// GetByID returns a drive by its private ID. Permission is the
-// caller's responsibility; the handler gates on view before
-// reaching this method.
-func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
+func (s *service) GetByID(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get by id (id=%s)", id))
@@ -152,8 +154,7 @@ func (s *Service) GetByID(ctx context.Context, id string) (*Drive, error) {
 	return d, nil
 }
 
-// GetByPublicID returns a drive by its public ID.
-func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
+func (s *service) GetByPublicID(ctx context.Context, publicID string) (*Drive, error) {
 	d, err := s.repo.GetByPublicID(ctx, publicID)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get by public id (public_id=%s)", publicID))
@@ -164,10 +165,7 @@ func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*Drive, e
 	return d, nil
 }
 
-// GetStorage returns the storage configuration for a drive.
-// The handler gates this call with requirePerm; the service
-// itself does not check ownership.
-func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
+func (s *service) GetStorage(ctx context.Context, driveID string) (*Storage, error) {
 	st, err := s.repo.GetStorage(ctx, driveID)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("drive: get storage (drive_id=%s)", driveID))
@@ -178,12 +176,7 @@ func (s *Service) GetStorage(ctx context.Context, driveID string) (*Storage, err
 	return st, nil
 }
 
-// Update updates mutable drive fields. Permission is the
-// caller's responsibility; the handler gates on edit.
-//
-// Empty name or description means "leave unchanged"; pass an
-// explicit value to override.
-func (s *Service) Update(ctx context.Context, id string, name, description string) (*Drive, error) {
+func (s *service) Update(ctx context.Context, id string, name, description string) (*Drive, error) {
 	d, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("drive: update lookup (id=%s)", id))
@@ -211,9 +204,7 @@ func (s *Service) Update(ctx context.Context, id string, name, description strin
 	return saved, nil
 }
 
-// Delete soft-deletes a drive. Permission is the caller's
-// responsibility; the handler gates on delete.
-func (s *Service) Delete(ctx context.Context, id string) error {
+func (s *service) Delete(ctx context.Context, id string) error {
 	if _, err := s.GetByID(ctx, id); err != nil {
 		return err
 	}
@@ -223,9 +214,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// Restore reactivates a soft-deleted drive. Permission is the
-// caller's responsibility; the handler gates on manage + admin.
-func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
+func (s *service) Restore(ctx context.Context, id string) (*Drive, error) {
 	d, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -239,38 +228,29 @@ func (s *Service) Restore(ctx context.Context, id string) (*Drive, error) {
 	return s.GetByID(ctx, id)
 }
 
-// Purge permanently removes a soft-deleted drive and its storage record.
-func (s *Service) Purge(ctx context.Context, id string) error {
+func (s *service) Purge(ctx context.Context, id string) error {
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("drive: purge (id=%s)", id))
 	}
 	return nil
 }
 
-// ListDeletedForAdmin returns drives soft-deleted before the given
-// time, limited. Admin-only; the service trusts isAdmin.
-//
-// Handler callers should use the higher-level ListDeletedDrives
-// pattern (see internal/app/apiserver/handler/drive.go).
-func (s *Service) ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*Drive, error) {
+func (s *service) ListDeletedForAdmin(ctx context.Context, isAdmin bool, before time.Time, limit int) ([]*Drive, error) {
 	if !isAdmin {
 		return nil, errorx.New(errorx.KindPermissionDenied, "permission: denied")
 	}
 	return s.repo.FindDeleted(ctx, before, limit)
 }
 
-// ListDeletedByOwner returns soft-deleted drives for a specific owner.
-func (s *Service) ListDeletedByOwner(ctx context.Context, actorID string) ([]*Drive, error) {
+func (s *service) ListDeletedByOwner(ctx context.Context, actorID string) ([]*Drive, error) {
 	return s.repo.FindDeletedByOwner(ctx, actorID)
 }
 
-// ListByOwner returns all drives owned by actorID.
-func (s *Service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, error) {
+func (s *service) ListByOwner(ctx context.Context, actorID string) ([]*Drive, error) {
 	return s.repo.FindByOwner(ctx, actorID)
 }
 
-// WithTx executes fn within a transaction.
-func (s *Service) WithTx(ctx context.Context, fn func(context.Context) error) error {
+func (s *service) WithTx(ctx context.Context, fn func(context.Context) error) error {
 	return s.tm.WithTx(ctx, fn)
 }
 

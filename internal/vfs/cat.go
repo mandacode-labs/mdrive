@@ -14,7 +14,7 @@ import (
 // the download/presign flow owned by upload.Service.
 //
 // Permission is the caller's responsibility.
-func (s *Service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
+func (s *service) Cat(ctx context.Context, driveID, path string) ([]byte, error) {
 	res, err := s.Resolve(ctx, driveID, path)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: cat resolve (path=%s)", path))

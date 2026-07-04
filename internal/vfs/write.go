@@ -16,7 +16,7 @@ import (
 // same transaction as the parent's directory update. The
 // overwrite branch goes through Node.Save, whose UPDATE is
 // committed atomically.
-func (s *Service) Write(ctx context.Context, driveID, path, content string) error {
+func (s *service) Write(ctx context.Context, driveID, path, content string) error {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 
 // WriteLarge creates an object (S3-backed) node at path.
 // Permission is the caller's responsibility.
-func (s *Service) WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error {
+func (s *service) WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error {
 	parent, name, err := s.resolveEditableParent(ctx, driveID, path)
 	if err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("vfs: write_large resolve parent (drive_id=%s, path=%s)", driveID, path))

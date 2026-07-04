@@ -10,19 +10,32 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
 
-// Service provides domain-level user operations.
-type Service struct {
+// Service is the public contract of the user domain: CRUD on the
+// user record plus the OIDC upsert path. Callers depend on this
+// single interface; the unexported service struct is the only
+// implementation.
+type Service interface {
+	UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User, error)
+	GetByID(ctx context.Context, id string) (*User, error)
+	GetByPublicID(ctx context.Context, publicID string) (*User, error)
+	GetByProviderID(ctx context.Context, provider, providerID string) (*User, error)
+	Update(ctx context.Context, u *User) (*User, error)
+}
+
+// service is the only implementation of Service.
+type service struct {
 	repo Repository
 }
 
-// NewService creates a new Service.
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+// NewService wires the user domain.
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
 }
 
-// UpsertFromOIDC creates or updates a user from OIDC claims.
-func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User, error) {
-	logx.Debug(ctx, "user.service.upsert.enter",
+var _ Service = (*service)(nil)
+
+func (s *service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User, error) {
+	logx.Debug(ctx, "user.svc.upsert.enter",
 		slog.String("provider", cmd.Provider),
 		slog.String("provider_id", cmd.ProviderID),
 	)
@@ -38,13 +51,13 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 
 	existing, err := s.repo.GetByProviderID(ctx, cmd.Provider, cmd.ProviderID)
 	if err != nil {
-		logx.Debug(ctx, "user.service.upsert.lookup_err",
+		logx.Debug(ctx, "user.svc.upsert.lookup_err",
 			slog.String("err", err.Error()),
 		)
 		return nil, errorx.Wrap(err, "user: upsert lookup", errorx.KindUnavailable)
 	}
 	if existing != nil {
-		logx.Debug(ctx, "user.service.upsert.existing",
+		logx.Debug(ctx, "user.svc.upsert.existing",
 			slog.String("user_id", existing.ID()),
 			slog.Bool("needs_update", existing.Name() != cmd.Name || emailDiffers(existing, cmd)),
 		)
@@ -56,17 +69,17 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 			)
 			saved, err := s.repo.Update(ctx, updated)
 			if err != nil {
-				logx.Debug(ctx, "user.service.upsert.update_err",
+				logx.Debug(ctx, "user.svc.upsert.update_err",
 					slog.String("err", err.Error()),
 				)
 				return nil, errorx.Wrap(err, "user: upsert update", errorx.KindUnavailable)
 			}
-			logx.Debug(ctx, "user.service.upsert.updated",
+			logx.Debug(ctx, "user.svc.upsert.updated",
 				slog.String("user_id", saved.ID()),
 			)
 			return saved, nil
 		}
-		logx.Debug(ctx, "user.service.upsert.unchanged",
+		logx.Debug(ctx, "user.svc.upsert.unchanged",
 			slog.String("user_id", existing.ID()),
 		)
 		return existing, nil
@@ -74,52 +87,49 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 
 	created, err := s.repo.Create(ctx, cmd)
 	if err != nil {
-		logx.Debug(ctx, "user.service.upsert.create_err",
+		logx.Debug(ctx, "user.svc.upsert.create_err",
 			slog.String("err", err.Error()),
 		)
 		return nil, errorx.Wrap(err, "user: upsert create", errorx.KindUnavailable)
 	}
-	logx.Debug(ctx, "user.service.upsert.created",
+	logx.Debug(ctx, "user.svc.upsert.created",
 		slog.String("user_id", created.ID()),
 	)
 	return created, nil
 }
 
-// GetByID returns a user by private ID.
-func (s *Service) GetByID(ctx context.Context, id string) (*User, error) {
-	logx.Debug(ctx, "user.service.get_by_id.enter", slog.String("user_id", id))
+func (s *service) GetByID(ctx context.Context, id string) (*User, error) {
+	logx.Debug(ctx, "user.svc.get_by_id.enter", slog.String("user_id", id))
 	u, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		logx.Debug(ctx, "user.service.get_by_id.err", slog.String("err", err.Error()))
+		logx.Debug(ctx, "user.svc.get_by_id.err", slog.String("err", err.Error()))
 		return nil, errorx.Wrap(err, fmt.Sprintf("user: get by id (id=%s)", id))
 	}
 	if u == nil {
-		logx.Debug(ctx, "user.service.get_by_id.not_found", slog.String("user_id", id))
+		logx.Debug(ctx, "user.svc.get_by_id.not_found", slog.String("user_id", id))
 		return nil, errorx.New(errorx.KindNotFound, "user: not found (id="+id+")")
 	}
-	logx.Debug(ctx, "user.service.get_by_id.ok", slog.String("user_id", u.ID()))
+	logx.Debug(ctx, "user.svc.get_by_id.ok", slog.String("user_id", u.ID()))
 	return u, nil
 }
 
-// GetByPublicID returns a user by public ID.
-func (s *Service) GetByPublicID(ctx context.Context, publicID string) (*User, error) {
-	logx.Debug(ctx, "user.service.get_by_public_id.enter", slog.String("public_id", publicID))
+func (s *service) GetByPublicID(ctx context.Context, publicID string) (*User, error) {
+	logx.Debug(ctx, "user.svc.get_by_public_id.enter", slog.String("public_id", publicID))
 	u, err := s.repo.GetByPublicID(ctx, publicID)
 	if err != nil {
-		logx.Debug(ctx, "user.service.get_by_public_id.err", slog.String("err", err.Error()))
+		logx.Debug(ctx, "user.svc.get_by_public_id.err", slog.String("err", err.Error()))
 		return nil, errorx.Wrap(err, fmt.Sprintf("user: get by public id (public_id=%s)", publicID))
 	}
 	if u == nil {
-		logx.Debug(ctx, "user.service.get_by_public_id.not_found", slog.String("public_id", publicID))
+		logx.Debug(ctx, "user.svc.get_by_public_id.not_found", slog.String("public_id", publicID))
 		return nil, errorx.New(errorx.KindNotFound, "user: not found (public_id="+publicID+")")
 	}
-	logx.Debug(ctx, "user.service.get_by_public_id.ok", slog.String("user_id", u.ID()))
+	logx.Debug(ctx, "user.svc.get_by_public_id.ok", slog.String("user_id", u.ID()))
 	return u, nil
 }
 
-// GetByProviderID returns a user by (provider, providerID).
-func (s *Service) GetByProviderID(ctx context.Context, provider, providerID string) (*User, error) {
-	logx.Debug(ctx, "user.service.get_by_provider_id.enter",
+func (s *service) GetByProviderID(ctx context.Context, provider, providerID string) (*User, error) {
+	logx.Debug(ctx, "user.svc.get_by_provider_id.enter",
 		slog.String("provider", provider),
 		slog.String("provider_id", providerID),
 	)
@@ -130,8 +140,7 @@ func (s *Service) GetByProviderID(ctx context.Context, provider, providerID stri
 	return u, nil
 }
 
-// Update updates an existing user.
-func (s *Service) Update(ctx context.Context, u *User) (*User, error) {
+func (s *service) Update(ctx context.Context, u *User) (*User, error) {
 	if u == nil {
 		return nil, errorx.New(errorx.KindInternal, "user: update requires non-nil user")
 	}

@@ -91,7 +91,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 
 	nodeRepo := node.NewRepository(entClient)
 	txMgr := entx.NewTxManager(entClient)
-	nodeSvc := node.NewService(nodeRepo, txMgr)
+	nodeSvc := node.NewNodeOperation(nodeRepo, txMgr)
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
@@ -110,7 +110,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 	driveRepo := drive.NewRepository(entClient, nil)
 	driveSvc := drive.NewService(driveRepo, userEx, &rootNodeCreator{rootID: rootDir.ID()}, txMgr)
 
-	fs := vfs.NewService(vfs.ServiceConfig{
+	fs := vfs.NewService(vfs.Config{
 		NodeClient:      nodeSvc,
 		DriveClient:     driveSvc,
 		GarbageRecorder: nil,

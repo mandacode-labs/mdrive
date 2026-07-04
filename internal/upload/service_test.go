@@ -11,14 +11,18 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
+	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	driveMocks "github.com/mandacode-labs/mdrive/internal/core/drive/mocks"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	nodeMocks "github.com/mandacode-labs/mdrive/internal/core/node/mocks"
+	entxMocks "github.com/mandacode-labs/mdrive/internal/entx/mocks"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	uploadMocks "github.com/mandacode-labs/mdrive/internal/upload/mocks"
+	vfsMocks "github.com/mandacode-labs/mdrive/internal/vfs/mocks"
 )
 
-func newTestService(t *testing.T, reg upload.TokenRegistry) *upload.Service {
+func newTestService(t *testing.T, reg upload.TokenRegistry) upload.Service {
 	t.Helper()
 	if reg == nil {
 		reg = upload.NewMemoryRegistry()
@@ -33,38 +37,61 @@ func newTestService(t *testing.T, reg upload.TokenRegistry) *upload.Service {
 	store.EXPECT().DeleteObject(mock.Anything, mock.Anything, mock.Anything).
 		Return(nil).Maybe()
 
-	storage := coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
-	drive := uploadMocks.NewStorageLookupMock(t)
-	drive.EXPECT().GetStorage(mock.Anything, mock.Anything).Return(storage, nil).Maybe()
+	storage := drive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
+	drives := newDriveMock(t, storage)
+	nodes := newNodeMock(t)
+	path := newVfsMock(t)
 
-	nodes := uploadMocks.NewNodeLifecycleMock(t)
-	root, _ := node.NewDirectory()
-	obj, _ := node.NewObject(node.ObjectContent{Bucket: "b", Key: "k"}, 100)
-	nodes.EXPECT().CreateObject(mock.Anything, mock.Anything, mock.Anything).Return(obj, nil).Maybe()
-	nodes.EXPECT().Link(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().GetByID(mock.Anything, mock.Anything).Return(root, nil).Maybe()
-
-	path := uploadMocks.NewPathResolverMock(t)
-	path.EXPECT().GetRootNodeID(mock.Anything, mock.Anything).Return(root.ID(), nil).Maybe()
-	path.EXPECT().ResolveParentNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, "test.bin", nil).Maybe()
-	path.EXPECT().ResolveNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, nil).Maybe()
-
-	tm := uploadMocks.NewTxManagerMock(t)
-	tm.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
-		func(ctx context.Context, fn func(ctx context.Context) error) error {
-			return fn(ctx)
-		},
-	).Maybe()
+	tm := newTxMock(t)
 
 	return upload.NewService(upload.Config{
 		TokenRegistry: reg,
-		StorageLookup: drive,
+		StorageLookup: drives,
 		NodeLifecycle: nodes,
 		ObjectStore:   store,
 		Path:          path,
 		TxManager:     tm,
 	})
+}
+
+func newDriveMock(t *testing.T, storage *drive.Storage) *driveMocks.ServiceMock {
+	t.Helper()
+	m := driveMocks.NewServiceMock(t)
+	m.EXPECT().GetStorage(mock.Anything, mock.Anything).Return(storage, nil).Maybe()
+	return m
+}
+
+func newNodeMock(t *testing.T) *nodeMocks.NodeOperationMock {
+	t.Helper()
+	root, _ := node.NewDirectory()
+	obj, _ := node.NewObject(node.ObjectContent{Bucket: "b", Key: "k"}, 100)
+	m := nodeMocks.NewNodeOperationMock(t)
+	m.EXPECT().CreateObject(mock.Anything, mock.Anything, mock.Anything).Return(obj, nil).Maybe()
+	m.EXPECT().Link(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	m.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil).Maybe()
+	m.EXPECT().GetByID(mock.Anything, mock.Anything).Return(root, nil).Maybe()
+	return m
+}
+
+func newVfsMock(t *testing.T) *vfsMocks.ServiceMock {
+	t.Helper()
+	root, _ := node.NewDirectory()
+	m := vfsMocks.NewServiceMock(t)
+	m.EXPECT().GetRootNodeID(mock.Anything, mock.Anything).Return(root.ID(), nil).Maybe()
+	m.EXPECT().ResolveParentNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, "test.bin", nil).Maybe()
+	m.EXPECT().ResolveNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, nil).Maybe()
+	return m
+}
+
+func newTxMock(t *testing.T) *entxMocks.TxManagerMock {
+	t.Helper()
+	m := entxMocks.NewTxManagerMock(t)
+	m.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, fn func(ctx context.Context) error) error {
+			return fn(ctx)
+		},
+	).Maybe()
+	return m
 }
 
 func TestInitiateUploadHappyPath(t *testing.T) {
@@ -88,30 +115,15 @@ func TestInitiateUploadPresignFailureRollsBackToken(t *testing.T) {
 	store.EXPECT().DeleteObject(mock.Anything, mock.Anything, mock.Anything).
 		Return(nil).Maybe()
 
-	storage := coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
-	drive := uploadMocks.NewStorageLookupMock(t)
-	drive.EXPECT().GetStorage(mock.Anything, mock.Anything).Return(storage, nil).Maybe()
-
-	root, _ := node.NewDirectory()
-	nodes := uploadMocks.NewNodeLifecycleMock(t)
-	nodes.EXPECT().CreateObject(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
-	nodes.EXPECT().Link(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().GetByID(mock.Anything, mock.Anything).Return(root, nil).Maybe()
-
-	path := uploadMocks.NewPathResolverMock(t)
-	path.EXPECT().GetRootNodeID(mock.Anything, mock.Anything).Return(root.ID(), nil).Maybe()
-	path.EXPECT().ResolveParentNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, "test.bin", nil).Maybe()
-	path.EXPECT().ResolveNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, nil).Maybe()
-
-	tm := uploadMocks.NewTxManagerMock(t)
-	tm.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
-		func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
-	).Maybe()
+	storage := drive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
+	drives := newDriveMock(t, storage)
+	nodes := newNodeMock(t)
+	path := newVfsMock(t)
+	tm := newTxMock(t)
 
 	svc := upload.NewService(upload.Config{
 		TokenRegistry: reg,
-		StorageLookup: drive,
+		StorageLookup: drives,
 		NodeLifecycle: nodes,
 		ObjectStore:   store,
 		Path:          path,
@@ -174,30 +186,15 @@ func TestCompleteUploadObjectNotUploaded(t *testing.T) {
 	store.EXPECT().ObjectExists(mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Maybe()
 	store.EXPECT().DeleteObject(mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-	storage := coredrive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
-	drive := uploadMocks.NewStorageLookupMock(t)
-	drive.EXPECT().GetStorage(mock.Anything, mock.Anything).Return(storage, nil).Maybe()
-
-	root, _ := node.NewDirectory()
-	nodes := uploadMocks.NewNodeLifecycleMock(t)
-	nodes.EXPECT().CreateObject(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Maybe()
-	nodes.EXPECT().Link(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().Delete(mock.Anything, mock.Anything).Return(nil).Maybe()
-	nodes.EXPECT().GetByID(mock.Anything, mock.Anything).Return(root, nil).Maybe()
-
-	path := uploadMocks.NewPathResolverMock(t)
-	path.EXPECT().GetRootNodeID(mock.Anything, mock.Anything).Return(root.ID(), nil).Maybe()
-	path.EXPECT().ResolveParentNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, "test.bin", nil).Maybe()
-	path.EXPECT().ResolveNodeID(mock.Anything, mock.Anything, mock.Anything).Return(uuid.Nil, nil).Maybe()
-
-	tm := uploadMocks.NewTxManagerMock(t)
-	tm.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
-		func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
-	).Maybe()
+	storage := drive.NewStorage("d1", "my-bucket", nil, "us-east-1", "a", "s", false)
+	drives := newDriveMock(t, storage)
+	nodes := newNodeMock(t)
+	path := newVfsMock(t)
+	tm := newTxMock(t)
 
 	svc := upload.NewService(upload.Config{
 		TokenRegistry: reg,
-		StorageLookup: drive,
+		StorageLookup: drives,
 		NodeLifecycle: nodes,
 		ObjectStore:   store,
 		Path:          path,
