@@ -249,6 +249,9 @@ func (d zeroDrive) Create(context.Context, string, string, string, drive.Storage
 func (d zeroDrive) GetByID(context.Context, string) (*drive.Drive, error) {
 	return driveOrNil(d.owner), nil
 }
+func (d zeroDrive) GetByPublicID(context.Context, string) (*drive.Drive, error) {
+	return driveOrNil(d.owner), nil
+}
 func (d zeroDrive) GetStorage(_ context.Context, driveID string) (*drive.Storage, error) {
 	return drive.NewStorage(driveID, "bucket", nil, "us-east-1", "a", "s", false), nil
 }

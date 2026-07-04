@@ -9,14 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
-
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
 
 // Service provides domain-level drive operations. Permission checks
 // are the caller's responsibility (the handler layer); this is the
@@ -25,10 +21,10 @@ type Service struct {
 	repo                 Repository
 	ownerChecker         OwnerChecker
 	rootDirectoryCreator RootDirectoryCreator
-	tm                   TxManager
+	tm                   entx.TxManager
 }
 
-func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator, tm TxManager) *Service {
+func NewService(repo Repository, ownerChecker OwnerChecker, rootDirectoryCreator RootDirectoryCreator, tm entx.TxManager) *Service {
 	return &Service{repo: repo, ownerChecker: ownerChecker, rootDirectoryCreator: rootDirectoryCreator, tm: tm}
 }
 

@@ -8,36 +8,14 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 var (
-	_ NodeClient  = (*node.Service)(nil)
-	_ DriveClient = (*drive.Service)(nil)
+	_ node.Linker  = (*node.Service)(nil)
+	_ drive.Reader = (*drive.Service)(nil)
 )
-
-// NodeClient is the subset of node.Service methods vfs needs to
-// orchestrate the inode tree. vfs does not create nodes (the
-// type-specific factories NewFile/NewDirectory/... in core/node
-// do that, called by the vfs op entry points after the path
-// has been resolved). vfs links, unlinks, moves, saves, and
-// looks up by ID — that's it.
-type NodeClient interface {
-	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
-	Unlink(ctx context.Context, parent *node.Node, name string) (*node.Node, error)
-	MoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) error
-	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
-	Save(ctx context.Context, n *node.Node) error
-}
-
-// DriveClient is the data-access contract vfs needs from a drive
-// service. vfs only needs read paths; permission checks are
-// the caller's responsibility.
-type DriveClient interface {
-	GetByID(ctx context.Context, id string) (*drive.Drive, error)
-	GetByPublicID(ctx context.Context, pubID string) (*drive.Drive, error)
-	GetStorage(ctx context.Context, driveID string) (*drive.Storage, error)
-}
 
 // GarbageRef points at an external (S3) object that needs cleanup
 // when an inode is removed.
@@ -46,32 +24,28 @@ type GarbageRef struct {
 	Key    string
 }
 
-// GarbageRecorder records tombstones for deleted S3 objects. A nil
-// GarbageRecorder means vfs skips tombstoning (errors are not
-// raised for missing tombstones in that case).
+// GarbageRecorder records tombstones for deleted S3 objects. A
+// nil GarbageRecorder means vfs skips tombstoning. The interface
+// stays in vfs (the only consumer); the concrete *gc.Recorder
+// satisfies it structurally.
 type GarbageRecorder interface {
 	RecordGarbage(ctx context.Context, refs []GarbageRef) error
 }
 
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
 type Service struct {
-	NodeClient      NodeClient
-	DriveClient     DriveClient
+	NodeClient      node.Linker
+	DriveClient     drive.Reader
 	GarbageRecorder GarbageRecorder
-	tm              TxManager
+	tm              entx.TxManager
 }
 
 // ServiceConfig groups the dependencies of NewService. Permission
 // checks are the caller's responsibility.
 type ServiceConfig struct {
-	NodeClient      NodeClient
-	DriveClient     DriveClient
+	NodeClient      node.Linker
+	DriveClient     drive.Reader
 	GarbageRecorder GarbageRecorder
-	TxManager       TxManager
+	TxManager       entx.TxManager
 }
 
 func NewService(cfg ServiceConfig) *Service {

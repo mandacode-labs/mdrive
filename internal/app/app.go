@@ -53,7 +53,7 @@ type App struct {
 	UploadToken  upload.TokenRegistry
 	UploadSvc    *upload.Service
 	VFS          *vfs.Service
-	Garbage      *gc.GarbageRecorder
+	Garbage      *gc.Recorder
 	Auth         *auth.Service
 	Security     *auth.Service
 	Authorizer   permission.Authorizer
@@ -203,7 +203,7 @@ type repositories struct {
 	DriveSvc     *drive.Service
 	UserSvc      *user.Service
 	OwnerChecker drive.OwnerChecker
-	TxMgr        *entx.TxManager
+	TxMgr        entx.TxManager
 }
 
 // newRepositories builds the three core domain services. The
@@ -294,7 +294,7 @@ func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*aut
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
 // dependency: it manages paths, links, and the tree; it
 // notifies Garbage when object nodes go away.
-func newVFS(repos repositories, garbage *gc.GarbageRecorder) *vfs.Service {
+func newVFS(repos repositories, garbage *gc.Recorder) *vfs.Service {
 	return vfs.NewService(vfs.ServiceConfig{
 		NodeClient:      repos.NodeSvc,
 		DriveClient:     repos.DriveSvc,

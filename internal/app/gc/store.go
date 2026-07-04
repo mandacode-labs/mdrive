@@ -19,20 +19,20 @@ type Tombstone struct {
 	Key    string
 }
 
-// GarbageRecorder writes tombstone rows for deleted S3 objects.
+// Recorder writes tombstone rows for deleted S3 objects.
 // Implements vfs.GarbageRecorder.
-type GarbageRecorder struct {
+type Recorder struct {
 	client *ent.Client
 }
 
-func NewGarbageRecorder(client *ent.Client) *GarbageRecorder {
-	return &GarbageRecorder{client: client}
+func NewGarbageRecorder(client *ent.Client) *Recorder {
+	return &Recorder{client: client}
 }
 
 // RecordGarbage writes one tombstone row per ref. When the caller's
 // context carries an entx tx, the inserts run inside that tx so
 // they commit or roll back with the caller's writes.
-func (g *GarbageRecorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageRef) error {
+func (g *Recorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageRef) error {
 	if len(refs) == 0 {
 		return nil
 	}

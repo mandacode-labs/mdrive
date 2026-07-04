@@ -11,7 +11,9 @@ import (
 
 	coredrive "github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
 // PresignInfo is the result of initiating or presigning a download URL.
@@ -22,23 +24,6 @@ type PresignInfo struct {
 	Headers   map[string]string
 	Key       string
 	ExpiresAt time.Time
-}
-
-// StorageLookup is the data-access contract for the storage
-// config of a drive. The underlying *drive.Service satisfies it
-// via GetStorage.
-type StorageLookup interface {
-	GetStorage(ctx context.Context, driveID string) (*coredrive.Storage, error)
-}
-
-// NodeLifecycle is the subset of node.Service the upload flow
-// needs: create object node, link into parent, delete on
-// failure, and look up an existing node by ID.
-type NodeLifecycle interface {
-	CreateObject(ctx context.Context, content node.ObjectContent, size int64) (*node.Node, error)
-	Link(ctx context.Context, parent *node.Node, name string, child *node.Node) error
-	Delete(ctx context.Context, id uuid.UUID) error
-	GetByID(ctx context.Context, id uuid.UUID) (*node.Node, error)
 }
 
 // ObjectStore is the S3 abstraction the upload flow needs: presigned
@@ -52,14 +37,6 @@ type ObjectStore interface {
 	DeleteObject(ctx context.Context, bucket, key string) error
 }
 
-// PathResolver provides drive-root lookup and path resolution.
-// vfs.Service satisfies it; tests can pass fakes.
-type PathResolver interface {
-	GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error)
-	ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error)
-	ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error)
-}
-
 // Service is the vfs-level upload orchestrator. It composes the
 // upload token registry with the vfs primitives (node tree, path
 // resolution) and the S3 store.
@@ -69,26 +46,21 @@ type PathResolver interface {
 // any of the three methods below.
 type Service struct {
 	TokenRegistry TokenRegistry
-	StorageLookup StorageLookup
-	NodeLifecycle NodeLifecycle
+	StorageLookup coredrive.StorageLookup
+	NodeLifecycle node.Lifecycle
 	ObjectStore   ObjectStore
-	Path          PathResolver
-	tm            TxManager
-}
-
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+	Path          vfs.PathResolver
+	tm            entx.TxManager
 }
 
 // Config groups Service dependencies.
 type Config struct {
 	TokenRegistry TokenRegistry
-	StorageLookup StorageLookup
-	NodeLifecycle NodeLifecycle
+	StorageLookup coredrive.StorageLookup
+	NodeLifecycle node.Lifecycle
 	ObjectStore   ObjectStore
-	Path          PathResolver
-	TxManager     TxManager
+	Path          vfs.PathResolver
+	TxManager     entx.TxManager
 }
 
 // NewService wires a Service. A nil TokenRegistry defaults to a

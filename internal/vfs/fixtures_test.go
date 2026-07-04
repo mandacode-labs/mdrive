@@ -9,7 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
+	driveMocks "github.com/mandacode-labs/mdrive/internal/core/drive/mocks"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	nodeMocks "github.com/mandacode-labs/mdrive/internal/core/node/mocks"
+	entxMocks "github.com/mandacode-labs/mdrive/internal/entx/mocks"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	vfsMocks "github.com/mandacode-labs/mdrive/internal/vfs/mocks"
@@ -44,9 +47,9 @@ func (m *memNodeRepo) del(id uuid.UUID) {
 	delete(m.nodes, id)
 }
 
-func newMockNodeClient(t *testing.T, mem *memNodeRepo) *vfsMocks.NodeClientMock {
+func newMockNodeClient(t *testing.T, mem *memNodeRepo) *nodeMocks.LinkerMock {
 	t.Helper()
-	mc := vfsMocks.NewNodeClientMock(t)
+	mc := nodeMocks.NewLinkerMock(t)
 	mc.EXPECT().GetByID(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ context.Context, id uuid.UUID) (*node.Node, error) {
 			if n, ok := mem.get(id); ok {
@@ -141,9 +144,9 @@ type memDrive struct {
 	deletedAt       *time.Time
 }
 
-func newMockDriveClient(t *testing.T, m *memDrive) *vfsMocks.DriveClientMock {
+func newMockDriveClient(t *testing.T, m *memDrive) *driveMocks.ReaderMock {
 	t.Helper()
-	dc := vfsMocks.NewDriveClientMock(t)
+	dc := driveMocks.NewReaderMock(t)
 	dc.EXPECT().GetByID(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ context.Context, _ string) (*drive.Drive, error) {
 			now := time.Now()
@@ -173,9 +176,9 @@ func newMockGarbageRecorder(t *testing.T) *vfsMocks.GarbageRecorderMock {
 	return g
 }
 
-func newMockTxManager(t *testing.T) *vfsMocks.TxManagerMock {
+func newMockTxManager(t *testing.T) *entxMocks.TxManagerMock {
 	t.Helper()
-	tm := vfsMocks.NewTxManagerMock(t)
+	tm := entxMocks.NewTxManagerMock(t)
 	tm.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
 		func(ctx context.Context, fn func(ctx context.Context) error) error {
 			return fn(ctx)

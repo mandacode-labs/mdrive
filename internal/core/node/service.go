@@ -8,14 +8,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 )
-
-// TxManager runs a function inside a transaction.
-type TxManager interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
 
 // Service provides domain-level node operations (create, link, unlink,
 // lookup). Path resolution and permission checks live in vfs.
@@ -25,10 +21,10 @@ type TxManager interface {
 // in may be partially mutated and must be re-fetched.
 type Service struct {
 	repo Repository
-	tm   TxManager
+	tm   entx.TxManager
 }
 
-func NewService(repo Repository, tm TxManager) *Service {
+func NewService(repo Repository, tm entx.TxManager) *Service {
 	return &Service{repo: repo, tm: tm}
 }
 

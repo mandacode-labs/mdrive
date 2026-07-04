@@ -26,11 +26,11 @@ import (
 // later call. Each vfs method that resolves more than once
 // must construct its own resolver.
 type resolver struct {
-	node  NodeClient
+	node  node.Linker
 	cache map[uuid.UUID]*node.Node
 }
 
-func newResolver(n NodeClient) *resolver {
+func newResolver(n node.Linker) *resolver {
 	return &resolver{node: n, cache: make(map[uuid.UUID]*node.Node)}
 }
 

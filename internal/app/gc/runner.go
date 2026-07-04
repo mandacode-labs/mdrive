@@ -156,10 +156,10 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 type UploadExpirer struct {
 	tokenRegistry upload.TokenRegistry
 	uploadService *upload.Service
-	garbage       *GarbageRecorder
+	garbage       *Recorder
 }
 
-func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc *upload.Service, garbage *GarbageRecorder) *UploadExpirer {
+func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc *upload.Service, garbage *Recorder) *UploadExpirer {
 	return &UploadExpirer{tokenRegistry: reg, uploadService: uploadSvc, garbage: garbage}
 }
 

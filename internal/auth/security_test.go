@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	authMocks "github.com/mandacode-labs/mdrive/internal/auth/mocks"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	userMocks "github.com/mandacode-labs/mdrive/internal/core/user/mocks"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-func newSecurityTestService(t *testing.T, users UserUpserter) *Service {
+func newSecurityTestService(t *testing.T, users user.Upserter) *Service {
 	t.Helper()
 	return &Service{
 		encKey:       newTestKey(t),
@@ -127,13 +127,13 @@ func TestHandleCookieAuthRejectsUnknownUser(t *testing.T) {
 	assert.Equal(t, errorx.KindUnauthenticated, de.Kind())
 }
 
-// newUserUpserterMock returns a UserUpserterMock whose
-// GetByProviderID returns (user, nil) and whose UpsertFromOIDC is
-// expected but unused. mockery's per-method Maybe() ensures a
-// test that never calls UpsertFromOIDC still passes cleanup.
-func newUserUpserterMock(t *testing.T, u *user.User, getErr error) *authMocks.UserUpserterMock {
+// newUserUpserterMock returns an UpserterMock whose GetByProviderID
+// returns (user, nil) and whose UpsertFromOIDC is expected but unused.
+// mockery's per-method Maybe() ensures a test that never calls
+// UpsertFromOIDC still passes cleanup.
+func newUserUpserterMock(t *testing.T, u *user.User, getErr error) *userMocks.UpserterMock {
 	t.Helper()
-	m := authMocks.NewUserUpserterMock(t)
+	m := userMocks.NewUpserterMock(t)
 	m.EXPECT().GetByProviderID(mock.Anything, mock.Anything, mock.Anything).
 		Return(u, getErr).Maybe()
 	m.EXPECT().UpsertFromOIDC(mock.Anything, mock.Anything).
