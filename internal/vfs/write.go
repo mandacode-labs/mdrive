@@ -42,7 +42,7 @@ func (s *Service) Write(ctx context.Context, driveID, path, content string) erro
 	}
 	n := out.Node
 	if !n.IsFile() {
-		return errorx.New(errorx.KindBadRequest, "vfs: write target is not a file (type="+string(n.Kind())+")")
+		return errorx.New(errorx.KindFailedPrecondition, "vfs: write target is not a file (type="+string(n.Kind())+")")
 	}
 	if err := n.WriteFile(content); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("vfs: write encode content (path=%s)", path))

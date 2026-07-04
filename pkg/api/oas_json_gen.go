@@ -1534,18 +1534,38 @@ func (s *ErrorCode) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch ErrorCode(v) {
+	case ErrorCodeCanceled:
+		*s = ErrorCodeCanceled
+	case ErrorCodeInvalidArgument:
+		*s = ErrorCodeInvalidArgument
+	case ErrorCodeDeadlineExceeded:
+		*s = ErrorCodeDeadlineExceeded
 	case ErrorCodeNotFound:
 		*s = ErrorCodeNotFound
-	case ErrorCodeConflict:
-		*s = ErrorCodeConflict
-	case ErrorCodeBadRequest:
-		*s = ErrorCodeBadRequest
-	case ErrorCodeForbidden:
-		*s = ErrorCodeForbidden
-	case ErrorCodeUnauthorized:
-		*s = ErrorCodeUnauthorized
+	case ErrorCodeAlreadyExists:
+		*s = ErrorCodeAlreadyExists
+	case ErrorCodePermissionDenied:
+		*s = ErrorCodePermissionDenied
+	case ErrorCodeResourceExhausted:
+		*s = ErrorCodeResourceExhausted
+	case ErrorCodeFailedPrecondition:
+		*s = ErrorCodeFailedPrecondition
+	case ErrorCodeAborted:
+		*s = ErrorCodeAborted
+	case ErrorCodeOutOfRange:
+		*s = ErrorCodeOutOfRange
+	case ErrorCodeUnimplemented:
+		*s = ErrorCodeUnimplemented
 	case ErrorCodeInternal:
 		*s = ErrorCodeInternal
+	case ErrorCodeUnavailable:
+		*s = ErrorCodeUnavailable
+	case ErrorCodeDataLoss:
+		*s = ErrorCodeDataLoss
+	case ErrorCodeUnauthenticated:
+		*s = ErrorCodeUnauthenticated
+	case ErrorCodeUnknown:
+		*s = ErrorCodeUnknown
 	case ErrorCodeRevisionConflict:
 		*s = ErrorCodeRevisionConflict
 	default:

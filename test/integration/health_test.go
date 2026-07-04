@@ -69,12 +69,12 @@ func TestHealthAnonymousWithAuthBridge(t *testing.T) {
 	assert.Equal(t, "ok", body["status"])
 }
 
-// TestAuthBridgeRejectsAnonymousPathOnAuthedRoute makes sure the
-// spec-derived anonymous set is consulted and that authenticated
-// paths still 401 without a session cookie. This is the negative
-// case for the /health 401 fix: if a future change accidentally
-// made AuthBridge pass through every path, this test would fail.
-func TestAuthBridgeRejectsAnonymousPathOnAuthedRoute(t *testing.T) {
+// TestAuthenticatedRoute401WithoutCookie is the negative case for
+// the cookie-auth flow: an authenticated route must 401 when the
+// session cookie is missing, and the response must come from the
+// real SecurityHandler (not a passthrough) so production behavior
+// is exercised end-to-end.
+func TestAuthenticatedRoute401WithoutCookie(t *testing.T) {
 	srv := newTestServerWithAuthBridge(t)
 	defer srv.Close()
 

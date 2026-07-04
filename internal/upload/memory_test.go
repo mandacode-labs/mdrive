@@ -31,7 +31,7 @@ func TestMemoryRegistryRoundTrip(t *testing.T) {
 
 	require.NoError(t, r.Delete(ctx, "u1"))
 	_, err = r.Get(ctx, "u1")
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestMemoryRegistryExpiry(t *testing.T) {
@@ -47,7 +47,7 @@ func TestMemoryRegistryExpiry(t *testing.T) {
 	require.NoError(t, r.Put(ctx, meta, time.Millisecond))
 	time.Sleep(5 * time.Millisecond)
 	_, err := r.Get(ctx, "u1")
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestPresignMetaEncodeDecode(t *testing.T) {

@@ -21,7 +21,7 @@ func TestNewSymlink(t *testing.T) {
 
 func TestNewSymlinkEmpty(t *testing.T) {
 	_, err := NewSymlink("")
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestSymlinkUpdate(t *testing.T) {
@@ -40,5 +40,5 @@ func TestReadlinkRejectsNonSymlink(t *testing.T) {
 	f, err := NewFile("content")
 	require.NoError(t, err)
 	_, err = f.Readlink()
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }

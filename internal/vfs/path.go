@@ -110,7 +110,7 @@ func (r *resolver) resolvePathInner(ctx context.Context, rootID uuid.UUID, p str
 			continue
 		case "..":
 			if len(parents) <= 1 {
-				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+				return walkResult{}, errorx.New(errorx.KindInvalidArgument, "vfs: invalid path")
 			}
 			parents = parents[:len(parents)-1]
 			cur = parents[len(parents)-1]
@@ -138,10 +138,10 @@ func (r *resolver) resolvePathInner(ctx context.Context, rootID uuid.UUID, p str
 		// remaining path and recurse from the drive root.
 		if follow && child.IsSymlink() {
 			if len(visited) >= maxSymlinkDepth {
-				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
+				return walkResult{}, errorx.New(errorx.KindInvalidArgument, "vfs: symlink cycle detected")
 			}
 			if _, seen := visited[child.ID()]; seen {
-				return walkResult{}, errorx.New(errorx.KindBadRequest, "vfs: symlink cycle detected")
+				return walkResult{}, errorx.New(errorx.KindInvalidArgument, "vfs: symlink cycle detected")
 			}
 			visited[child.ID()] = struct{}{}
 
@@ -228,7 +228,7 @@ func (s *Service) resolveWithMounts(ctx context.Context, driveID, path string, f
 				slog.String("cycle_drive", srcDriveID),
 				slog.String("path", path),
 			)
-			return "", nil, errorx.New(errorx.KindBadRequest, "vfs: mount cycle detected")
+			return "", nil, errorx.New(errorx.KindInvalidArgument, "vfs: mount cycle detected")
 		}
 		visited[srcDriveID] = struct{}{}
 		currentDrive = srcDriveID
@@ -239,7 +239,7 @@ func (s *Service) resolveWithMounts(ctx context.Context, driveID, path string, f
 		slog.Int("max_hops", maxMountHops),
 		slog.String("path", path),
 	)
-	return "", nil, errorx.New(errorx.KindBadRequest, "vfs: max mount hops exceeded")
+	return "", nil, errorx.New(errorx.KindInvalidArgument, "vfs: max mount hops exceeded")
 }
 
 // resolveParent returns the parent node and the last path component
@@ -252,12 +252,12 @@ func (s *Service) resolveWithMounts(ctx context.Context, driveID, path string, f
 // responsibility (e.g. mv constructs both endpoints explicitly).
 func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string) (parent *node.Node, name string, err error) {
 	if p == "" {
-		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+		return nil, "", errorx.New(errorx.KindInvalidArgument, "vfs: invalid path")
 	}
 	cleaned := cleanPath(p)
 	idx := strings.LastIndex(cleaned, "/")
 	if idx < 0 {
-		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+		return nil, "", errorx.New(errorx.KindInvalidArgument, "vfs: invalid path")
 	}
 	parentPath := cleaned[:idx]
 	if parentPath == "" {
@@ -265,7 +265,7 @@ func (r *resolver) resolveParent(ctx context.Context, rootID uuid.UUID, p string
 	}
 	name = cleaned[idx+1:]
 	if name == "" {
-		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: invalid path")
+		return nil, "", errorx.New(errorx.KindInvalidArgument, "vfs: invalid path")
 	}
 	out, err := r.resolvePath(ctx, rootID, parentPath, true)
 	if err != nil {
@@ -336,7 +336,7 @@ func (s *Service) resolveEditableParent(ctx context.Context, driveID, path strin
 		return nil, "", errorx.New(errorx.KindNotFound, "vfs: not found")
 	}
 	if !parent.IsDir() {
-		return nil, "", errorx.New(errorx.KindBadRequest, "vfs: not a directory")
+		return nil, "", errorx.New(errorx.KindInvalidArgument, "vfs: not a directory")
 	}
 	return parent, name, nil
 }

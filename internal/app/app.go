@@ -55,7 +55,7 @@ type App struct {
 	VFS          *vfs.Service
 	Garbage      *gc.GarbageRecorder
 	Auth         *auth.Service
-	Security     *auth.SecurityHandler
+	Security     *auth.Service
 	Authorizer   permission.Authorizer
 
 	DB  *sql.DB
@@ -182,7 +182,7 @@ func newInfra(ctx context.Context, cfg *config.Config) (*sql.DB, *ent.Client, er
 func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error) {
 	if cfg.Crypto.MasterKey == "" {
 		if cfg.App.Env == "production" {
-			return nil, errorx.New(errorx.KindBadRequest, "crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
+			return nil, errorx.New(errorx.KindInvalidArgument, "crypto: master key required in production (set CRYPTO_MASTER_KEY or crypto.master_key)")
 		}
 		logx.Warn(ctx, "crypto.noop.in_use",
 			slog.String("note", "drive storage secrets will be stored in plaintext"),
@@ -238,7 +238,7 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 // at the call site).
 func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, error) {
 	if cfg.OpenFGA.APIURL == "" {
-		return nil, errorx.New(errorx.KindBadRequest, "openfga: api_url is required (set OPENFGA_APIURL or openfga.api_url)")
+		return nil, errorx.New(errorx.KindInvalidArgument, "openfga: api_url is required (set OPENFGA_APIURL or openfga.api_url)")
 	}
 	checker, err := permission.NewFGAChecker(ctx, permission.Config{
 		AuthMode:             permission.AuthMode(cfg.OpenFGA.AuthMode),
@@ -261,12 +261,12 @@ func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, er
 // newAuth wires the OIDC authenticator (Keycloak). In dev (no auth
 // config) the service is nil and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
-func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*auth.Service, *auth.SecurityHandler, error) {
+func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*auth.Service, *auth.Service, error) {
 	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
 		return nil, nil, nil
 	}
 	if cfg.Auth.EncryptionKey == "" {
-		return nil, nil, errorx.New(errorx.KindBadRequest, "auth: encryption_key required when auth.issuer is set")
+		return nil, nil, errorx.New(errorx.KindInvalidArgument, "auth: encryption_key required when auth.issuer is set")
 	}
 	authenticator, err := auth.New(ctx, auth.Config{
 		Issuer:         cfg.Auth.Issuer,
@@ -287,7 +287,7 @@ func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*aut
 	if err != nil {
 		return nil, nil, err
 	}
-	sec := auth.NewSecurityHandler(authenticator)
+	sec := authenticator
 	return authenticator, sec, nil
 }
 
@@ -351,7 +351,7 @@ func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, e
 // Boot only fails when the AWS SDK cannot resolve a region.
 func newS3Client(ctx context.Context, cfg config.StorageConfig) (*s3.Client, error) {
 	if cfg.Region == "" {
-		return nil, errorx.New(errorx.KindBadRequest,
+		return nil, errorx.New(errorx.KindInvalidArgument,
 			"storage: region is required (set storage.region)")
 	}
 	if cfg.AccessKey == "" && cfg.SecretKey == "" {

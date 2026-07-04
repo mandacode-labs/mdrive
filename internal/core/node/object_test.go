@@ -26,14 +26,14 @@ func TestNewObject(t *testing.T) {
 
 func TestNewObjectInvalidRef(t *testing.T) {
 	_, err := NewObject(ObjectContent{Bucket: "", Key: "k"}, 100)
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 
 	_, err = NewObject(ObjectContent{Bucket: "b", Key: ""}, 100)
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }
 
 func TestNewObjectNegativeSize(t *testing.T) {
 	oc := NewObjectContent("b", "k", "text/plain", "")
 	_, err := NewObject(*oc, -1)
-	assert.True(t, errorx.IsKind(err, errorx.KindBadRequest))
+	assert.True(t, errorx.IsKind(err, errorx.KindInvalidArgument))
 }

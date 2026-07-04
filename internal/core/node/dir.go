@@ -72,14 +72,14 @@ func (n *Node) ReadDir() (DirContent, error) {
 // WriteDir replaces the directory's content with the given listing.
 func (n *Node) WriteDir(dc DirContent) error {
 	if n.kind != NodeKindDirectory {
-		return errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	data, err := json.Marshal(&dc)
 	if err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("node: marshal directory content (entries=%d)", len(dc.Entries)))
 	}
 	if len(data) > MaxContentSize {
-		return errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
+		return errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")
 	}
 	return n.write(Content(data), int64(len(data)))
 }
@@ -88,17 +88,17 @@ func (n *Node) WriteDir(dc DirContent) error {
 // Fails if the entry already exists or the node is not a directory.
 func (n *Node) AddEntry(name string, child *Node) error {
 	if n.kind != NodeKindDirectory {
-		return errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	if name == "" {
-		return errorx.New(errorx.KindBadRequest, "node: invalid name")
+		return errorx.New(errorx.KindInvalidArgument, "node: invalid name")
 	}
 	dc, err := n.ReadDir()
 	if err != nil {
 		return err
 	}
 	if dc.findEntry(name) != nil {
-		return errorx.New(errorx.KindConflict, "node: entry already exists")
+		return errorx.New(errorx.KindAlreadyExists, "node: entry already exists")
 	}
 	dc.Entries = append(dc.Entries, DirEntry{
 		InodeID: child.id,
@@ -113,7 +113,7 @@ func (n *Node) AddEntry(name string, child *Node) error {
 // is empty or already present, no entries are added.
 func (n *Node) AddEntries(entries map[string]*Node) error {
 	if n.kind != NodeKindDirectory {
-		return errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	if len(entries) == 0 {
 		return nil
@@ -128,13 +128,13 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 	}
 	for name, child := range entries {
 		if name == "" {
-			return errorx.New(errorx.KindBadRequest, "node: invalid name")
+			return errorx.New(errorx.KindInvalidArgument, "node: invalid name")
 		}
 		if child == nil {
-			return errorx.New(errorx.KindBadRequest, "node: add entries: nil child for "+name)
+			return errorx.New(errorx.KindInvalidArgument, "node: add entries: nil child for "+name)
 		}
 		if _, ok := existing[name]; ok {
-			return errorx.New(errorx.KindConflict, "node: entry already exists")
+			return errorx.New(errorx.KindAlreadyExists, "node: entry already exists")
 		}
 		dc.Entries = append(dc.Entries, DirEntry{
 			InodeID: child.id,
@@ -148,7 +148,7 @@ func (n *Node) AddEntries(entries map[string]*Node) error {
 // RemoveEntry removes a child entry by name.
 func (n *Node) RemoveEntry(name string) error {
 	if n.kind != NodeKindDirectory {
-		return errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	dc, err := n.ReadDir()
 	if err != nil {
@@ -169,7 +169,7 @@ func (n *Node) RemoveEntry(name string) error {
 // persisted exactly once.
 func (n *Node) RemoveEntries(names []string) error {
 	if n.kind != NodeKindDirectory {
-		return errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	if len(names) == 0 {
 		return nil
@@ -198,7 +198,7 @@ func (n *Node) RemoveEntries(names []string) error {
 // Lookup returns the child entry with the given name, or nil if not present.
 func (n *Node) Lookup(name string) (*DirEntry, error) {
 	if n.kind != NodeKindDirectory {
-		return nil, errorx.New(errorx.KindBadRequest, "node: not a directory")
+		return nil, errorx.New(errorx.KindInvalidArgument, "node: not a directory")
 	}
 	dc, err := n.ReadDir()
 	if err != nil {

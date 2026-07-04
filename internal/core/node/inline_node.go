@@ -20,7 +20,7 @@ func newInlineNode(kind NodeKind, payload any, size int64) (*Node, error) {
 		return nil, errorx.Wrap(err, fmt.Sprintf("node: marshal content (kind=%s)", string(kind)))
 	}
 	if len(data) > MaxContentSize {
-		return nil, errorx.New(errorx.KindBadRequest, "node: content exceeds maximum size")
+		return nil, errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")
 	}
 	n := newNode(kind)
 	if err := n.write(Content(data), size); err != nil {

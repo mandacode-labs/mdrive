@@ -27,19 +27,19 @@ func (h *Handler) Health(ctx context.Context) (api.HealthRes, error) {
 	if h.healthDeps.DB != nil {
 		if err := h.healthDeps.DB.PingContext(ctx); err != nil {
 			logx.Debug(ctx, "handler.health.db_ping_err", slog.String("err", err.Error()))
-			return nil, errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("health: database ping failed (err=%v)", err))
+			return nil, errorx.New(errorx.KindUnavailable, fmt.Sprintf("health: database ping failed (err=%v)", err))
 		}
 	}
 	if h.healthDeps.Valkey != nil {
 		if err := h.healthDeps.Valkey.Scan(ctx, func(_ string) error { return nil }); err != nil {
 			logx.Debug(ctx, "handler.health.valkey_scan_err", slog.String("err", err.Error()))
-			return nil, errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("health: valkey scan failed (err=%v)", err))
+			return nil, errorx.New(errorx.KindUnavailable, fmt.Sprintf("health: valkey scan failed (err=%v)", err))
 		}
 	}
 	if h.healthDeps.Authorizer != nil {
 		if _, err := h.healthDeps.Authorizer.Check(ctx, "healthcheck", permission.ActionView, permission.ObjectTypeDrive, "_healthcheck"); err != nil {
 			logx.Debug(ctx, "handler.health.fga_err", slog.String("err", err.Error()))
-			return nil, errorx.New(errorx.KindServiceDegraded, fmt.Sprintf("health: openfga check failed (err=%v)", err))
+			return nil, errorx.New(errorx.KindUnavailable, fmt.Sprintf("health: openfga check failed (err=%v)", err))
 		}
 	}
 	logx.Debug(ctx, "handler.health.ok")

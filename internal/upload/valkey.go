@@ -57,7 +57,7 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 	resp := r.client.Do(ctx, r.client.B().Get().Key(key).Build())
 	if err := resp.Error(); err != nil {
 		if errors.Is(err, valkey.Nil) {
-			return PresignMeta{}, errorx.New(errorx.KindBadRequest, "upload: token not found")
+			return PresignMeta{}, errorx.New(errorx.KindInvalidArgument, "upload: token not found")
 		}
 		return PresignMeta{}, errorx.Wrap(err, fmt.Sprintf("upload: valkey get (upload_id=%s)", uploadID))
 	}
@@ -71,7 +71,7 @@ func (r *ValkeyRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 	}
 	if meta.IsExpired() {
 		_ = r.Delete(ctx, uploadID)
-		return PresignMeta{}, errorx.New(errorx.KindBadRequest, "upload: token not found")
+		return PresignMeta{}, errorx.New(errorx.KindInvalidArgument, "upload: token not found")
 	}
 	return meta, nil
 }

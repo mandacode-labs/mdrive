@@ -83,31 +83,6 @@ func (s *AuthLogoutFound) SetSetCookie(val string) {
 	s.SetCookie = val
 }
 
-type BearerAuth struct {
-	Token string
-	Roles []string
-}
-
-// GetToken returns the value of Token.
-func (s *BearerAuth) GetToken() string {
-	return s.Token
-}
-
-// GetRoles returns the value of Roles.
-func (s *BearerAuth) GetRoles() []string {
-	return s.Roles
-}
-
-// SetToken sets the value of Token.
-func (s *BearerAuth) SetToken(val string) {
-	s.Token = val
-}
-
-// SetRoles sets the value of Roles.
-func (s *BearerAuth) SetRoles(val []string) {
-	s.Roles = val
-}
-
 type CatBadRequest Error
 
 func (*CatBadRequest) catRes() {}
@@ -163,6 +138,31 @@ func (*CompleteUploadUnauthorized) completeUploadRes() {}
 type CompleteUploadUnprocessableEntity Error
 
 func (*CompleteUploadUnprocessableEntity) completeUploadRes() {}
+
+type CookieAuth struct {
+	APIKey string
+	Roles  []string
+}
+
+// GetAPIKey returns the value of APIKey.
+func (s *CookieAuth) GetAPIKey() string {
+	return s.APIKey
+}
+
+// GetRoles returns the value of Roles.
+func (s *CookieAuth) GetRoles() []string {
+	return s.Roles
+}
+
+// SetAPIKey sets the value of APIKey.
+func (s *CookieAuth) SetAPIKey(val string) {
+	s.APIKey = val
+}
+
+// SetRoles sets the value of Roles.
+func (s *CookieAuth) SetRoles(val []string) {
+	s.Roles = val
+}
 
 type CreateDriveBadRequest Error
 
@@ -467,9 +467,13 @@ func (s *DriveUpdate) SetDescription(val OptString) {
 
 // Ref: #/components/schemas/Error
 type Error struct {
-	// Machine-readable error code.
+	// Machine-readable error code. gRPC-style short identifier;
+	// see https://grpc.io/docs/guides/status-codes/. The kind
+	// and original error text are included in `message`.
 	Code ErrorCode `json:"code"`
-	// Human-readable error message.
+	// Human-readable error message. Format is
+	// "<code>: <original error text>" so operators can diagnose
+	// without parsing the body.
 	Message string `json:"message"`
 }
 
@@ -497,28 +501,50 @@ func (*Error) authMeRes()     {}
 func (*Error) healthRes()     {}
 func (*Error) listDrivesRes() {}
 
-// Machine-readable error code.
+// Machine-readable error code. gRPC-style short identifier;
+// see https://grpc.io/docs/guides/status-codes/. The kind
+// and original error text are included in `message`.
 type ErrorCode string
 
 const (
-	ErrorCodeNotFound         ErrorCode = "not_found"
-	ErrorCodeConflict         ErrorCode = "conflict"
-	ErrorCodeBadRequest       ErrorCode = "bad_request"
-	ErrorCodeForbidden        ErrorCode = "forbidden"
-	ErrorCodeUnauthorized     ErrorCode = "unauthorized"
-	ErrorCodeInternal         ErrorCode = "internal"
-	ErrorCodeRevisionConflict ErrorCode = "revision_conflict"
+	ErrorCodeCanceled           ErrorCode = "canceled"
+	ErrorCodeInvalidArgument    ErrorCode = "invalid_argument"
+	ErrorCodeDeadlineExceeded   ErrorCode = "deadline_exceeded"
+	ErrorCodeNotFound           ErrorCode = "not_found"
+	ErrorCodeAlreadyExists      ErrorCode = "already_exists"
+	ErrorCodePermissionDenied   ErrorCode = "permission_denied"
+	ErrorCodeResourceExhausted  ErrorCode = "resource_exhausted"
+	ErrorCodeFailedPrecondition ErrorCode = "failed_precondition"
+	ErrorCodeAborted            ErrorCode = "aborted"
+	ErrorCodeOutOfRange         ErrorCode = "out_of_range"
+	ErrorCodeUnimplemented      ErrorCode = "unimplemented"
+	ErrorCodeInternal           ErrorCode = "internal"
+	ErrorCodeUnavailable        ErrorCode = "unavailable"
+	ErrorCodeDataLoss           ErrorCode = "data_loss"
+	ErrorCodeUnauthenticated    ErrorCode = "unauthenticated"
+	ErrorCodeUnknown            ErrorCode = "unknown"
+	ErrorCodeRevisionConflict   ErrorCode = "revision_conflict"
 )
 
 // AllValues returns all ErrorCode values.
 func (ErrorCode) AllValues() []ErrorCode {
 	return []ErrorCode{
+		ErrorCodeCanceled,
+		ErrorCodeInvalidArgument,
+		ErrorCodeDeadlineExceeded,
 		ErrorCodeNotFound,
-		ErrorCodeConflict,
-		ErrorCodeBadRequest,
-		ErrorCodeForbidden,
-		ErrorCodeUnauthorized,
+		ErrorCodeAlreadyExists,
+		ErrorCodePermissionDenied,
+		ErrorCodeResourceExhausted,
+		ErrorCodeFailedPrecondition,
+		ErrorCodeAborted,
+		ErrorCodeOutOfRange,
+		ErrorCodeUnimplemented,
 		ErrorCodeInternal,
+		ErrorCodeUnavailable,
+		ErrorCodeDataLoss,
+		ErrorCodeUnauthenticated,
+		ErrorCodeUnknown,
 		ErrorCodeRevisionConflict,
 	}
 }
@@ -526,17 +552,37 @@ func (ErrorCode) AllValues() []ErrorCode {
 // MarshalText implements encoding.TextMarshaler.
 func (s ErrorCode) MarshalText() ([]byte, error) {
 	switch s {
+	case ErrorCodeCanceled:
+		return []byte(s), nil
+	case ErrorCodeInvalidArgument:
+		return []byte(s), nil
+	case ErrorCodeDeadlineExceeded:
+		return []byte(s), nil
 	case ErrorCodeNotFound:
 		return []byte(s), nil
-	case ErrorCodeConflict:
+	case ErrorCodeAlreadyExists:
 		return []byte(s), nil
-	case ErrorCodeBadRequest:
+	case ErrorCodePermissionDenied:
 		return []byte(s), nil
-	case ErrorCodeForbidden:
+	case ErrorCodeResourceExhausted:
 		return []byte(s), nil
-	case ErrorCodeUnauthorized:
+	case ErrorCodeFailedPrecondition:
+		return []byte(s), nil
+	case ErrorCodeAborted:
+		return []byte(s), nil
+	case ErrorCodeOutOfRange:
+		return []byte(s), nil
+	case ErrorCodeUnimplemented:
 		return []byte(s), nil
 	case ErrorCodeInternal:
+		return []byte(s), nil
+	case ErrorCodeUnavailable:
+		return []byte(s), nil
+	case ErrorCodeDataLoss:
+		return []byte(s), nil
+	case ErrorCodeUnauthenticated:
+		return []byte(s), nil
+	case ErrorCodeUnknown:
 		return []byte(s), nil
 	case ErrorCodeRevisionConflict:
 		return []byte(s), nil
@@ -548,23 +594,53 @@ func (s ErrorCode) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *ErrorCode) UnmarshalText(data []byte) error {
 	switch ErrorCode(data) {
+	case ErrorCodeCanceled:
+		*s = ErrorCodeCanceled
+		return nil
+	case ErrorCodeInvalidArgument:
+		*s = ErrorCodeInvalidArgument
+		return nil
+	case ErrorCodeDeadlineExceeded:
+		*s = ErrorCodeDeadlineExceeded
+		return nil
 	case ErrorCodeNotFound:
 		*s = ErrorCodeNotFound
 		return nil
-	case ErrorCodeConflict:
-		*s = ErrorCodeConflict
+	case ErrorCodeAlreadyExists:
+		*s = ErrorCodeAlreadyExists
 		return nil
-	case ErrorCodeBadRequest:
-		*s = ErrorCodeBadRequest
+	case ErrorCodePermissionDenied:
+		*s = ErrorCodePermissionDenied
 		return nil
-	case ErrorCodeForbidden:
-		*s = ErrorCodeForbidden
+	case ErrorCodeResourceExhausted:
+		*s = ErrorCodeResourceExhausted
 		return nil
-	case ErrorCodeUnauthorized:
-		*s = ErrorCodeUnauthorized
+	case ErrorCodeFailedPrecondition:
+		*s = ErrorCodeFailedPrecondition
+		return nil
+	case ErrorCodeAborted:
+		*s = ErrorCodeAborted
+		return nil
+	case ErrorCodeOutOfRange:
+		*s = ErrorCodeOutOfRange
+		return nil
+	case ErrorCodeUnimplemented:
+		*s = ErrorCodeUnimplemented
 		return nil
 	case ErrorCodeInternal:
 		*s = ErrorCodeInternal
+		return nil
+	case ErrorCodeUnavailable:
+		*s = ErrorCodeUnavailable
+		return nil
+	case ErrorCodeDataLoss:
+		*s = ErrorCodeDataLoss
+		return nil
+	case ErrorCodeUnauthenticated:
+		*s = ErrorCodeUnauthenticated
+		return nil
+	case ErrorCodeUnknown:
+		*s = ErrorCodeUnknown
 		return nil
 	case ErrorCodeRevisionConflict:
 		*s = ErrorCodeRevisionConflict

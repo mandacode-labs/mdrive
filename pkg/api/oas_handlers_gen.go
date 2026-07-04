@@ -550,15 +550,15 @@ func (s *Server) handleAuthMeRequest(args [0]string, argsEscaped bool, w http.Re
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, AuthMeOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, AuthMeOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -736,15 +736,15 @@ func (s *Server) handleCatRequest(args [1]string, argsEscaped bool, w http.Respo
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, CatOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, CatOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -941,15 +941,15 @@ func (s *Server) handleCompleteUploadRequest(args [2]string, argsEscaped bool, w
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, CompleteUploadOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, CompleteUploadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -1160,15 +1160,15 @@ func (s *Server) handleCreateDriveRequest(args [0]string, argsEscaped bool, w ht
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, CreateDriveOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, CreateDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -1361,15 +1361,15 @@ func (s *Server) handleDeleteDriveRequest(args [1]string, argsEscaped bool, w ht
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, DeleteDriveOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, DeleteDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -1561,15 +1561,15 @@ func (s *Server) handleGetDriveRequest(args [1]string, argsEscaped bool, w http.
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, GetDriveOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, GetDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -1761,15 +1761,15 @@ func (s *Server) handleGetDriveStorageRequest(args [1]string, argsEscaped bool, 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, GetDriveStorageOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, GetDriveStorageOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -1961,15 +1961,15 @@ func (s *Server) handleGetUserRequest(args [0]string, argsEscaped bool, w http.R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, GetUserOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, GetUserOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -2147,15 +2147,15 @@ func (s *Server) handleHardlinkRequest(args [1]string, argsEscaped bool, w http.
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, HardlinkOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, HardlinkOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -2497,15 +2497,15 @@ func (s *Server) handleInitiateUploadRequest(args [1]string, argsEscaped bool, w
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, InitiateUploadOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, InitiateUploadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -2712,15 +2712,15 @@ func (s *Server) handleListDeletedDrivesRequest(args [0]string, argsEscaped bool
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, ListDeletedDrivesOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, ListDeletedDrivesOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -2897,15 +2897,15 @@ func (s *Server) handleListDrivesRequest(args [0]string, argsEscaped bool, w htt
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, ListDrivesOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, ListDrivesOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -3082,15 +3082,15 @@ func (s *Server) handleLsRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, LsOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, LsOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -3286,15 +3286,15 @@ func (s *Server) handleLstatRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, LstatOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, LstatOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -3490,15 +3490,15 @@ func (s *Server) handleMkdirRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, MkdirOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, MkdirOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -3706,15 +3706,15 @@ func (s *Server) handleMountRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, MountOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, MountOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -3922,15 +3922,15 @@ func (s *Server) handleMvRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, MvOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, MvOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -4137,15 +4137,15 @@ func (s *Server) handlePresignDownloadRequest(args [1]string, argsEscaped bool, 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, PresignDownloadOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, PresignDownloadOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -4341,15 +4341,15 @@ func (s *Server) handleReadlinkRequest(args [1]string, argsEscaped bool, w http.
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, ReadlinkOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, ReadlinkOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -4545,15 +4545,15 @@ func (s *Server) handleRealpathRequest(args [1]string, argsEscaped bool, w http.
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, RealpathOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, RealpathOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -4749,15 +4749,15 @@ func (s *Server) handleRestoreDriveRequest(args [1]string, argsEscaped bool, w h
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, RestoreDriveOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, RestoreDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -4950,15 +4950,15 @@ func (s *Server) handleRmRequest(args [1]string, argsEscaped bool, w http.Respon
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, RmOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, RmOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -5165,15 +5165,15 @@ func (s *Server) handleStatRequest(args [1]string, argsEscaped bool, w http.Resp
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, StatOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, StatOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -5370,15 +5370,15 @@ func (s *Server) handleSymlinkRequest(args [1]string, argsEscaped bool, w http.R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, SymlinkOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, SymlinkOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -5585,15 +5585,15 @@ func (s *Server) handleTouchRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, TouchOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, TouchOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -5800,15 +5800,15 @@ func (s *Server) handleUnmountRequest(args [1]string, argsEscaped bool, w http.R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, UnmountOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, UnmountOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -6004,15 +6004,15 @@ func (s *Server) handleUpdateDriveRequest(args [1]string, argsEscaped bool, w ht
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, UpdateDriveOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, UpdateDriveOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -6219,15 +6219,15 @@ func (s *Server) handleUpsertUserRequest(args [0]string, argsEscaped bool, w htt
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, UpsertUserOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, UpsertUserOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -6419,15 +6419,15 @@ func (s *Server) handleWriteRequest(args [1]string, argsEscaped bool, w http.Res
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, WriteOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, WriteOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}
@@ -6634,15 +6634,15 @@ func (s *Server) handleWriteLargeRequest(args [1]string, argsEscaped bool, w htt
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			sctx, ok, err := s.securityBearerAuth(ctx, WriteLargeOperation, r)
+			sctx, ok, err := s.securityCookieAuth(ctx, WriteLargeOperation, r)
 			if err != nil {
 				err = &ogenerrors.SecurityError{
 					OperationContext: opErrContext,
-					Security:         "BearerAuth",
+					Security:         "CookieAuth",
 					Err:              err,
 				}
 				if encodeErr := encodeErrorResponse(s.h.NewError(ctx, err), w, span); encodeErr != nil {
-					defer recordError("Security:BearerAuth", err)
+					defer recordError("Security:CookieAuth", err)
 				}
 				return
 			}

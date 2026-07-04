@@ -176,17 +176,37 @@ func (s *Error) Validate() error {
 
 func (s ErrorCode) Validate() error {
 	switch s {
+	case "canceled":
+		return nil
+	case "invalid_argument":
+		return nil
+	case "deadline_exceeded":
+		return nil
 	case "not_found":
 		return nil
-	case "conflict":
+	case "already_exists":
 		return nil
-	case "bad_request":
+	case "permission_denied":
 		return nil
-	case "forbidden":
+	case "resource_exhausted":
 		return nil
-	case "unauthorized":
+	case "failed_precondition":
+		return nil
+	case "aborted":
+		return nil
+	case "out_of_range":
+		return nil
+	case "unimplemented":
 		return nil
 	case "internal":
+		return nil
+	case "unavailable":
+		return nil
+	case "data_loss":
+		return nil
+	case "unauthenticated":
+		return nil
+	case "unknown":
 		return nil
 	case "revision_conflict":
 		return nil

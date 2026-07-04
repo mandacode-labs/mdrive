@@ -27,14 +27,14 @@ type stateData struct {
 
 // State-cookie failure sentinels. Each carries a distinct message so
 // logs and HTTP responses tell the operator exactly which step
-// rejected the callback. All four are KindBadRequest because the
+// rejected the callback. All four are KindInvalidArgument because the
 // client is at fault in every case (missing/tampered cookie, CSRF
 // mismatch). Operators see the difference via the message field.
 var (
-	errStateMissing  = errorx.New(errorx.KindBadRequest, "auth: missing state cookie")
-	errStateDecrypt  = errorx.New(errorx.KindBadRequest, "auth: state cookie decrypt failed")
-	errStateCorrupt  = errorx.New(errorx.KindBadRequest, "auth: state cookie corrupt")
-	errStateMismatch = errorx.New(errorx.KindBadRequest, "auth: state mismatch")
+	errStateMissing  = errorx.New(errorx.KindInvalidArgument, "auth: missing state cookie")
+	errStateDecrypt  = errorx.New(errorx.KindInvalidArgument, "auth: state cookie decrypt failed")
+	errStateCorrupt  = errorx.New(errorx.KindInvalidArgument, "auth: state cookie corrupt")
+	errStateMismatch = errorx.New(errorx.KindInvalidArgument, "auth: state mismatch")
 )
 
 // idTokenClaims captures the standard OIDC ID token claims we
@@ -111,7 +111,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		err := errorx.New(errorx.KindBadRequest, "auth: missing code or state")
+		err := errorx.New(errorx.KindInvalidArgument, "auth: missing code or state")
 		logx.Error(r.Context(), err, "callback missing code or state",
 			slog.String("path", "/auth/callback"),
 		)
@@ -139,7 +139,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		err := errorx.New(errorx.KindServiceDegraded, "auth: missing id_token")
+		err := errorx.New(errorx.KindUnavailable, "auth: missing id_token")
 		logx.Error(r.Context(), err, "token response missing id_token",
 			slog.String("path", "/auth/callback"),
 		)
@@ -203,7 +203,7 @@ func (s *Service) Callback(w http.ResponseWriter, r *http.Request) {
 // consumeStateCookie reads, decrypts, and clears the state cookie,
 // then verifies the `state` query parameter matches the stored one.
 // This is the CSRF guard per RFC 6749 §10.12. The returned error is
-// always an errorx.KindBadRequest sentinel so the response handler
+// always an errorx.KindInvalidArgument sentinel so the response handler
 // can map it to 400 and the operator can read the exact failure
 // reason from the message field.
 func (s *Service) consumeStateCookie(w http.ResponseWriter, r *http.Request, state string) (*stateData, error) {

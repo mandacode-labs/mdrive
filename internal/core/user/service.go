@@ -27,13 +27,13 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 		slog.String("provider_id", cmd.ProviderID),
 	)
 	if cmd.Provider == "" {
-		return nil, errorx.New(errorx.KindBadRequest, "user: provider is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "user: provider is required")
 	}
 	if cmd.ProviderID == "" {
-		return nil, errorx.New(errorx.KindBadRequest, "user: provider_id is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "user: provider_id is required")
 	}
 	if cmd.Name == "" {
-		return nil, errorx.New(errorx.KindBadRequest, "user: name is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "user: name is required")
 	}
 
 	existing, err := s.repo.GetByProviderID(ctx, cmd.Provider, cmd.ProviderID)
@@ -41,7 +41,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 		logx.Debug(ctx, "user.service.upsert.lookup_err",
 			slog.String("err", err.Error()),
 		)
-		return nil, errorx.Wrap(err, "user: upsert lookup", errorx.KindServiceDegraded)
+		return nil, errorx.Wrap(err, "user: upsert lookup", errorx.KindUnavailable)
 	}
 	if existing != nil {
 		logx.Debug(ctx, "user.service.upsert.existing",
@@ -59,7 +59,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 				logx.Debug(ctx, "user.service.upsert.update_err",
 					slog.String("err", err.Error()),
 				)
-				return nil, errorx.Wrap(err, "user: upsert update", errorx.KindServiceDegraded)
+				return nil, errorx.Wrap(err, "user: upsert update", errorx.KindUnavailable)
 			}
 			logx.Debug(ctx, "user.service.upsert.updated",
 				slog.String("user_id", saved.ID()),
@@ -77,7 +77,7 @@ func (s *Service) UpsertFromOIDC(ctx context.Context, cmd *CreateCommand) (*User
 		logx.Debug(ctx, "user.service.upsert.create_err",
 			slog.String("err", err.Error()),
 		)
-		return nil, errorx.Wrap(err, "user: upsert create", errorx.KindServiceDegraded)
+		return nil, errorx.Wrap(err, "user: upsert create", errorx.KindUnavailable)
 	}
 	logx.Debug(ctx, "user.service.upsert.created",
 		slog.String("user_id", created.ID()),
@@ -133,7 +133,7 @@ func (s *Service) GetByProviderID(ctx context.Context, provider, providerID stri
 // Update updates an existing user.
 func (s *Service) Update(ctx context.Context, u *User) (*User, error) {
 	if u == nil {
-		return nil, errorx.New(errorx.KindBadRequest, "user: update requires non-nil user")
+		return nil, errorx.New(errorx.KindInternal, "user: update requires non-nil user")
 	}
 	saved, err := s.repo.Update(ctx, u)
 	if err != nil {

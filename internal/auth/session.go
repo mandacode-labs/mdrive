@@ -102,7 +102,7 @@ func decrypt(s string, key []byte) ([]byte, error) {
 	}
 	nonceSize := aesgcm.NonceSize()
 	if len(raw) < nonceSize {
-		return nil, errorx.New(errorx.KindBadRequest, "aes: ciphertext too short (len="+itoa(len(raw))+", nonce_size="+itoa(nonceSize)+")")
+		return nil, errorx.New(errorx.KindInvalidArgument, "aes: ciphertext too short (len="+itoa(len(raw))+", nonce_size="+itoa(nonceSize)+")")
 	}
 	plain, err := aesgcm.Open(nil, raw[:nonceSize], raw[nonceSize:], nil)
 	if err != nil {
@@ -164,7 +164,7 @@ func (s *Service) readSessionCookie(r *http.Request) (*sessionData, error) {
 		return nil, err
 	}
 	if data.IsExpired() {
-		return nil, errorx.New(errorx.KindBadRequest, "session: expired")
+		return nil, errorx.New(errorx.KindInvalidArgument, "session: expired")
 	}
 	return &data, nil
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -28,15 +29,13 @@ func authUserIDContext(userID string) context.Context {
 	})
 }
 
-// requireAuthMeErr asserts that res is an *api.Error carrying
-// the given kind.
-func requireAuthMeErr(t *testing.T, res api.AuthMeRes, want errorx.Kind) {
+// requireAuthMeErrKind asserts that err's chain carries an
+// errorx.Error with the given kind. The middleware path converts
+// this to the right status.
+func requireAuthMeErrKind(t *testing.T, err error, want errorx.Kind) {
 	t.Helper()
-	require.NotNil(t, res)
-	apiErr, ok := res.(*api.Error)
-	require.True(t, ok, "expected *api.Error, got %T", res)
-	assert.Equal(t, api.ErrorCode(want.String()), apiErr.Code,
-		"unexpected error code in response")
+	require.Error(t, err)
+	assert.True(t, errorx.IsKind(err, want), "expected kind=%s, got %s", want, errorx.KindOf(err))
 }
 
 // newUserMockThatReturns wires GetByID to return the given
@@ -51,35 +50,34 @@ func newUserMockThatReturns(t *testing.T, u *user.User, err error) *handlerMocks
 	return m
 }
 
-// TestAuthMeReturns401WhenNoUser proves the regression: when no
-// session is attached, AuthMe returns *api.Error with
-// KindUnauthenticated rather than passing silently through to
-// ogen and surfacing as a 500.
-func TestAuthMeReturns401WhenNoUser(t *testing.T) {
-	users := newUserMockThatReturns(t, nil, errorx.New(errorx.KindUnauthenticated, "no session"))
+// TestAuthMeReturnsErrWhenNoSession covers the unauthenticated
+// branch. The error path returns the errorx so the middleware
+// (kindToCode) writes 401.
+func TestAuthMeReturnsErrWhenNoSession(t *testing.T) {
+	users := newUserMockThatReturns(t, nil, nil)
 	h := &Handler{
 		users:       users,
 		redirectURI: "https://api.example.com/auth/callback",
 	}
 
 	res, err := h.AuthMe(context.Background())
-	require.NoError(t, err)
-	requireAuthMeErr(t, res, errorx.KindUnauthenticated)
+	require.Nil(t, res)
+	requireAuthMeErrKind(t, err, errorx.KindUnauthenticated)
 }
 
-func TestAuthMeReturns503OnDBError(t *testing.T) {
-	users := newUserMockThatReturns(t, nil, errorx.New(errorx.KindServiceDegraded, "connection refused"))
+func TestAuthMeReturnsErrOnDBError(t *testing.T) {
+	users := newUserMockThatReturns(t, nil, errors.New("connection refused"))
 	h := &Handler{
 		users:       users,
 		redirectURI: "https://api.example.com/auth/callback",
 	}
 
 	res, err := h.AuthMe(authUserIDContext("user-1"))
-	require.NoError(t, err)
-	requireAuthMeErr(t, res, errorx.KindServiceDegraded)
+	require.Nil(t, res)
+	requireAuthMeErrKind(t, err, errorx.KindUnavailable)
 }
 
-func TestAuthMeReturns404OnMissingUser(t *testing.T) {
+func TestAuthMeReturnsErrOnMissingUser(t *testing.T) {
 	users := newUserMockThatReturns(t, nil, nil)
 	h := &Handler{
 		users:       users,
@@ -87,8 +85,8 @@ func TestAuthMeReturns404OnMissingUser(t *testing.T) {
 	}
 
 	res, err := h.AuthMe(authUserIDContext("user-1"))
-	require.NoError(t, err)
-	requireAuthMeErr(t, res, errorx.KindNotFound)
+	require.Nil(t, res)
+	requireAuthMeErrKind(t, err, errorx.KindNotFound)
 }
 
 func TestAuthMeReturns200WithUser(t *testing.T) {

@@ -46,7 +46,7 @@ func (r *MemoryRegistry) Get(ctx context.Context, uploadID string) (PresignMeta,
 	}
 	it, ok := r.items[uploadID]
 	if !ok || time.Now().After(it.exp) {
-		return PresignMeta{}, errorx.New(errorx.KindBadRequest, "upload: token not found")
+		return PresignMeta{}, errorx.New(errorx.KindInvalidArgument, "upload: token not found")
 	}
 	return it.meta, nil
 }

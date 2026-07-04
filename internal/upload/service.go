@@ -119,7 +119,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	}
 	bucket := storage.Bucket()
 	if bucket == "" {
-		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: drive has no bucket configured (drive_id="+driveID+")")
+		return PresignInfo{}, errorx.New(errorx.KindFailedPrecondition, "upload: drive has no bucket configured (drive_id="+driveID+")")
 	}
 	uploadID := uuid.NewString()
 	key := path.Join("drives", driveID, "uploads", uploadID)
@@ -170,13 +170,13 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete token get (upload_id=%s)", uploadID))
 	}
 	if meta.UserID != userID {
-		return nil, errorx.New(errorx.KindForbidden, "upload: token does not match user")
+		return nil, errorx.New(errorx.KindPermissionDenied, "upload: token does not match user")
 	}
 	if meta.DriveID != driveID {
-		return nil, errorx.New(errorx.KindBadRequest, "upload: token does not match drive")
+		return nil, errorx.New(errorx.KindInvalidArgument, "upload: token does not match drive")
 	}
 	if meta.Size != nil && *meta.Size != contentLength {
-		return nil, errorx.New(errorx.KindBadRequest, "upload: complete size mismatch (expected="+strconv.FormatInt(*meta.Size, 10)+", got="+strconv.FormatInt(contentLength, 10)+")")
+		return nil, errorx.New(errorx.KindInvalidArgument, "upload: complete size mismatch (expected="+strconv.FormatInt(*meta.Size, 10)+", got="+strconv.FormatInt(contentLength, 10)+")")
 	}
 
 	exists, err := s.ObjectStore.ObjectExists(ctx, meta.Bucket, meta.Key)
@@ -250,7 +250,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 		return PresignInfo{}, errorx.New(errorx.KindNotFound, fmt.Sprintf("upload: presign download node not found (node_id=%s)", nodeID))
 	}
 	if !n.IsObject() {
-		return PresignInfo{}, errorx.New(errorx.KindBadRequest, "upload: presign download target is not an object (type="+string(n.Kind())+")")
+		return PresignInfo{}, errorx.New(errorx.KindInvalidArgument, "upload: presign download target is not an object (type="+string(n.Kind())+")")
 	}
 	oc, err := n.ReadObject()
 	if err != nil {

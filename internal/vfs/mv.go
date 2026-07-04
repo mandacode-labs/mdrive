@@ -17,7 +17,7 @@ import (
 // Permission is the caller's responsibility.
 func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
-		return errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
+		return errorx.New(errorx.KindInvalidArgument, "vfs: cross-drive move not supported")
 	}
 	return s.tm.WithTx(ctx, func(ctx context.Context) error {
 		var overwriteRefs []GarbageRef
@@ -51,7 +51,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv resolve src (src_path=%s)", srcPath))
 	}
 	if srcOut.Remaining != "" {
-		return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
+		return nil, errorx.New(errorx.KindInvalidArgument, "vfs: cross-drive move not supported")
 	}
 	if srcOut.Node == nil {
 		return nil, errorx.New(errorx.KindNotFound, "vfs: mv src not found (src_path="+srcPath+")")
@@ -71,7 +71,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 		return nil, errorx.New(errorx.KindNotFound, "vfs: mv dst parent not found (dst_path="+dstPath+")")
 	}
 	if !dstParent.IsDir() {
-		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
+		return nil, errorx.Wrap(errorx.New(errorx.KindInvalidArgument, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
 	}
 	return s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
 }
@@ -91,7 +91,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 	}
 	dstDir := dstOut.Node
 	if !dstDir.IsDir() {
-		return nil, errorx.Wrap(errorx.New(errorx.KindBadRequest, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
+		return nil, errorx.Wrap(errorx.New(errorx.KindInvalidArgument, "vfs: not a directory"), fmt.Sprintf("vfs: mv dest (dst_path=%s)", dstPath))
 	}
 
 	type srcInfo struct {
@@ -108,7 +108,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 			return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mv batch resolve src (src_path=%s)", srcPath))
 		}
 		if srcOut.Remaining != "" {
-			return nil, errorx.New(errorx.KindBadRequest, "vfs: cross-drive move not supported")
+			return nil, errorx.New(errorx.KindInvalidArgument, "vfs: cross-drive move not supported")
 		}
 		if srcOut.Node == nil {
 			return nil, errorx.New(errorx.KindNotFound, "vfs: mv batch src not found (src_path="+srcPath+")")
@@ -121,7 +121,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 			return nil, errorx.New(errorx.KindNotFound, "vfs: mv batch src parent not found (src_path="+srcPath+")")
 		}
 		if _, dup := seen[sn]; dup {
-			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv duplicate source basename "+sn+" in batch")
+			return nil, errorx.New(errorx.KindInvalidArgument, "vfs: mv duplicate source basename "+sn+" in batch")
 		}
 		seen[sn] = struct{}{}
 		sources = append(sources, srcInfo{node: srcOut.Node, baseName: sn, srcParent: sp, srcName: sn})
@@ -129,7 +129,7 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 
 	for _, si := range sources {
 		if si.node.ID() == dstDir.ID() {
-			return nil, errorx.New(errorx.KindBadRequest, "vfs: mv cannot move directory into itself")
+			return nil, errorx.New(errorx.KindInvalidArgument, "vfs: mv cannot move directory into itself")
 		}
 	}
 

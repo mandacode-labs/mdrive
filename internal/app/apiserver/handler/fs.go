@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -27,6 +28,7 @@ func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.Mkd
 		logx.Debug(ctx, "handler.fs.mkdir.perm_denied",
 			slog.String("drive_id", params.DriveID),
 			slog.String("path", r.Path),
+			slog.String("error_kind", errorx.KindOf(err).String()),
 			slog.String("err", err.Error()),
 		)
 		return nil, err

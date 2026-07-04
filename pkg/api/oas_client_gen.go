@@ -658,14 +658,14 @@ func (c *Client) sendAuthMe(ctx context.Context) (res AuthMeRes, err error) {
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, AuthMeOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, AuthMeOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -803,14 +803,14 @@ func (c *Client) sendCat(ctx context.Context, params CatParams) (res CatRes, err
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, CatOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, CatOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -952,14 +952,14 @@ func (c *Client) sendCompleteUpload(ctx context.Context, request OptUploadComple
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, CompleteUploadOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, CompleteUploadOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1062,14 +1062,14 @@ func (c *Client) sendCreateDrive(ctx context.Context, request OptDriveCreate) (r
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, CreateDriveOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, CreateDriveOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1189,14 +1189,14 @@ func (c *Client) sendDeleteDrive(ctx context.Context, params DeleteDriveParams) 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, DeleteDriveOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, DeleteDriveOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1315,14 +1315,14 @@ func (c *Client) sendGetDrive(ctx context.Context, params GetDriveParams) (res G
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, GetDriveOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetDriveOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1441,14 +1441,14 @@ func (c *Client) sendGetDriveStorage(ctx context.Context, params GetDriveStorage
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, GetDriveStorageOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetDriveStorageOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1548,14 +1548,14 @@ func (c *Client) sendGetUser(ctx context.Context) (res GetUserRes, err error) {
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, GetUserOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, GetUserOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1678,14 +1678,14 @@ func (c *Client) sendHardlink(ctx context.Context, request OptHardlinkReq, param
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, HardlinkOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, HardlinkOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1881,14 +1881,14 @@ func (c *Client) sendInitiateUpload(ctx context.Context, request OptPresignReque
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, InitiateUploadOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, InitiateUploadOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -1988,14 +1988,14 @@ func (c *Client) sendListDeletedDrives(ctx context.Context) (res ListDeletedDriv
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, ListDeletedDrivesOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ListDeletedDrivesOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2095,14 +2095,14 @@ func (c *Client) sendListDrives(ctx context.Context) (res ListDrivesRes, err err
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, ListDrivesOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ListDrivesOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2239,14 +2239,14 @@ func (c *Client) sendLs(ctx context.Context, params LsParams) (res LsRes, err er
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, LsOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, LsOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2383,14 +2383,14 @@ func (c *Client) sendLstat(ctx context.Context, params LstatParams) (res LstatRe
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, LstatOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, LstatOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2512,14 +2512,14 @@ func (c *Client) sendMkdir(ctx context.Context, request OptMkdirReq, params Mkdi
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, MkdirOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, MkdirOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2642,14 +2642,14 @@ func (c *Client) sendMount(ctx context.Context, request OptMountReq, params Moun
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, MountOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, MountOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2772,14 +2772,14 @@ func (c *Client) sendMv(ctx context.Context, request OptMvReq, params MvParams) 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, MvOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, MvOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -2916,14 +2916,14 @@ func (c *Client) sendPresignDownload(ctx context.Context, params PresignDownload
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, PresignDownloadOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, PresignDownloadOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3060,14 +3060,14 @@ func (c *Client) sendReadlink(ctx context.Context, params ReadlinkParams) (res R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, ReadlinkOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, ReadlinkOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3204,14 +3204,14 @@ func (c *Client) sendRealpath(ctx context.Context, params RealpathParams) (res R
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, RealpathOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RealpathOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3330,14 +3330,14 @@ func (c *Client) sendRestoreDrive(ctx context.Context, params RestoreDriveParams
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, RestoreDriveOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RestoreDriveOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3460,14 +3460,14 @@ func (c *Client) sendRm(ctx context.Context, request OptRmReq, params RmParams) 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, RmOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, RmOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3604,14 +3604,14 @@ func (c *Client) sendStat(ctx context.Context, params StatParams) (res StatRes, 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, StatOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, StatOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3734,14 +3734,14 @@ func (c *Client) sendSymlink(ctx context.Context, request OptSymlinkReq, params 
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, SymlinkOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, SymlinkOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -3863,14 +3863,14 @@ func (c *Client) sendTouch(ctx context.Context, request OptTouchReq, params Touc
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, TouchOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, TouchOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -4007,14 +4007,14 @@ func (c *Client) sendUnmount(ctx context.Context, params UnmountParams) (res Unm
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, UnmountOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, UnmountOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -4136,14 +4136,14 @@ func (c *Client) sendUpdateDrive(ctx context.Context, request OptDriveUpdate, pa
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, UpdateDriveOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, UpdateDriveOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -4246,14 +4246,14 @@ func (c *Client) sendUpsertUser(ctx context.Context, request OptUpsertUserReq) (
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, UpsertUserOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, UpsertUserOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -4375,14 +4375,14 @@ func (c *Client) sendWrite(ctx context.Context, request OptWriteReq, params Writ
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, WriteOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, WriteOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 
@@ -4504,14 +4504,14 @@ func (c *Client) sendWriteLarge(ctx context.Context, request OptWriteLargeReq, p
 		type bitset = [1]uint8
 		var satisfied bitset
 		{
-			stage = "Security:BearerAuth"
-			switch err := c.securityBearerAuth(ctx, WriteLargeOperation, r); {
+			stage = "Security:CookieAuth"
+			switch err := c.securityCookieAuth(ctx, WriteLargeOperation, r); {
 			case err == nil: // if NO error
 				satisfied[0] |= 1 << 0
 			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
 				// Skip this security.
 			default:
-				return res, errors.Wrap(err, "security \"BearerAuth\"")
+				return res, errors.Wrap(err, "security \"CookieAuth\"")
 			}
 		}
 

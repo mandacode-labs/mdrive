@@ -22,8 +22,8 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/ent/migrate"
-	"github.com/mandacode-labs/mdrive/internal/app/apiserver"
 	"github.com/mandacode-labs/mdrive/internal/app/apiserver/handler"
+	"github.com/mandacode-labs/mdrive/internal/app/apiserver/middleware"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/drive"
 	"github.com/mandacode-labs/mdrive/internal/core/node"
@@ -134,12 +134,9 @@ func setupE2E(t *testing.T) *e2eEnv {
 			UsePathStyle: false,
 		}))
 
-	ogenServer, err := api.NewServer(h, e2eSecurity{userID: u.ID()}, api.WithErrorHandler(
-		func(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-			t.Logf("e2e error: %s %s -> %v", r.Method, r.URL.Path, err)
-			apiserver.WriteError(w, err)
-		},
-	))
+	ogenServer, err := api.NewServer(h, e2eSecurity{userID: u.ID()},
+		api.WithMiddleware(middleware.ErrorMiddleware(), middleware.PanicMiddleware()),
+	)
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(ogenServer)
@@ -190,7 +187,7 @@ func newAllowAllAuthorizer(t *testing.T) *permissionMocks.AuthorizerMock {
 
 func (e *e2eEnv) authReq(method, path string, body io.Reader) *http.Request {
 	req, _ := http.NewRequest(method, e.baseURL+path, body)
-	req.Header.Set("Authorization", "Bearer test-token")
+	req.AddCookie(&http.Cookie{Name: "mdrive_session", Value: "e2e-bypass"})
 	req.Header.Set("Content-Type", "application/json")
 	return req
 }
@@ -201,7 +198,7 @@ type e2eSecurity struct {
 	userID string
 }
 
-func (e e2eSecurity) HandleBearerAuth(ctx context.Context, _ api.OperationName, _ api.BearerAuth) (context.Context, error) {
+func (e e2eSecurity) HandleCookieAuth(ctx context.Context, _ api.OperationName, _ api.CookieAuth) (context.Context, error) {
 	sess := &auth.Session{UserID: e.userID}
 	return auth.ContextWithSession(ctx, sess), nil
 }

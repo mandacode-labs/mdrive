@@ -5,7 +5,6 @@ go 1.26.1
 require (
 	ariga.io/atlas-go-sdk v0.7.2
 	entgo.io/ent v0.14.6
-	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/XSAM/otelsql v0.42.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
@@ -20,6 +19,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/ogen-go/ogen v1.20.3
 	github.com/openfga/go-sdk v0.8.2
+	github.com/rs/cors v1.11.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1

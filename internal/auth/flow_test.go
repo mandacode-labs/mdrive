@@ -157,7 +157,7 @@ func TestConsumeStateCookieClearsCookieOnSuccess(t *testing.T) {
 }
 
 // All four state-failure sentinels must map to 400 via the
-// errorx.KindBadRequest contract. This is the "consistent
+// errorx.KindInvalidArgument contract. This is the "consistent
 // handling" guarantee -- one Kind, four messages.
 func TestStateSentinelsAllMapToBadRequest(t *testing.T) {
 	sentinels := []error{
@@ -170,8 +170,8 @@ func TestStateSentinelsAllMapToBadRequest(t *testing.T) {
 		var de errorx.Error
 		require.True(t, errors.As(e, &de),
 			"sentinel %v must satisfy errorx.Error", e)
-		assert.Equal(t, errorx.KindBadRequest, de.Kind(),
-			"sentinel %v must be KindBadRequest", e)
+		assert.Equal(t, errorx.KindInvalidArgument, de.Kind(),
+			"sentinel %v must be KindInvalidArgument", e)
 		assert.Equal(t, http.StatusBadRequest, statusForError(e),
 			"sentinel %v must produce 400", e)
 	}
