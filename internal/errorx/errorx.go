@@ -127,8 +127,7 @@ func Wrap(err error, message string, kind ...Kind) Error {
 		return nil
 	}
 	k := KindUnknown
-	var de Error
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[Error](err); ok {
 		k = de.Kind()
 	}
 	if len(kind) > 0 {
