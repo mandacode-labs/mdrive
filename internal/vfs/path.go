@@ -26,11 +26,11 @@ import (
 // later call. Each vfs method that resolves more than once
 // must construct its own resolver.
 type resolver struct {
-	node  node.Linker
+	node  node.NodeOperation
 	cache map[uuid.UUID]*node.Node
 }
 
-func newResolver(n node.Linker) *resolver {
+func newResolver(n node.NodeOperation) *resolver {
 	return &resolver{node: n, cache: make(map[uuid.UUID]*node.Node)}
 }
 
@@ -188,7 +188,7 @@ func (r *resolver) resolvePathInner(ctx context.Context, rootID uuid.UUID, p str
 //
 // Each hop uses a fresh resolver so the cache for one mount
 // traversal does not leak across hops.
-func (s *Service) resolveWithMounts(ctx context.Context, driveID, path string, follow bool) (driveIDOut string, n *node.Node, err error) {
+func (s *service) resolveWithMounts(ctx context.Context, driveID, path string, follow bool) (driveIDOut string, n *node.Node, err error) {
 	visited := map[string]struct{}{driveID: {}}
 	currentDrive := driveID
 	currentPath := cleanPath(path)
@@ -320,7 +320,7 @@ func cleanPath(p string) string {
 //
 // Permission is the caller's responsibility: vfs does not check
 // edit permission.
-func (s *Service) resolveEditableParent(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
+func (s *service) resolveEditableParent(ctx context.Context, driveID, path string) (parent *node.Node, name string, err error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, "", err

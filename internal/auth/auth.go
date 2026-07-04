@@ -44,7 +44,7 @@ type Service struct {
 	verifier       *oidc.IDTokenVerifier
 	oauth2Cfg      oauth2.Config
 	encKey         []byte
-	users          user.Upserter
+	users          user.Service
 	providerName   string
 	cookieName     string
 	cookieDomain   string
@@ -58,7 +58,7 @@ type Service struct {
 // New discovers the IdP via OIDC discovery and returns a ready
 // Service. Returns an error if the issuer's discovery document
 // cannot be reached.
-func New(ctx context.Context, cfg Config, users user.Upserter) (*Service, error) {
+func New(ctx context.Context, cfg Config, users user.Service) (*Service, error) {
 	if len(cfg.Scopes) == 0 {
 		cfg.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	}

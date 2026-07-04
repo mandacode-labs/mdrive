@@ -20,26 +20,11 @@ import (
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
-// FSClient is the handler-facing vfs surface. vfs is filesystem-only:
-// it does not know about users or permissions. The handler is
-// responsible for permission checks before calling these methods.
-type FSClient = vfs.Filesystem
-
-// DriveClient is the handler-facing drive CRUD surface.
-type DriveClient = drive.Admin
-
-// UserClient is the handler-facing read surface for users. The
-// producer-defined alias keeps handler imports clean.
-type UserClient = user.Reader
-
-// UploadClient is the handler-facing upload surface.
-type UploadClient = upload.Client
-
 type Handler struct {
-	fs             FSClient
-	drive          DriveClient
-	users          UserClient
-	upload         UploadClient
+	fs             vfs.Service
+	drive          drive.Service
+	users          user.Service
+	upload         upload.Service
 	authorizer     permission.Authorizer
 	redirectURI    string
 	cookieConfig   CookieConfig
@@ -50,7 +35,7 @@ type Handler struct {
 
 type CookieConfig = config.CookieConfig
 
-func New(fs FSClient, drive DriveClient, users UserClient, upload UploadClient, authorizer permission.Authorizer, redirectURI string, opts ...Option) *Handler {
+func New(fs vfs.Service, drive drive.Service, users user.Service, upload upload.Service, authorizer permission.Authorizer, redirectURI string, opts ...Option) *Handler {
 	h := &Handler{
 		fs:          fs,
 		drive:       drive,

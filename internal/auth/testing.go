@@ -14,7 +14,7 @@ import (
 // Calling Authenticate / Callback / Logout on a service returned by
 // this function will panic; those paths need a real provider and
 // verifier, which only auth.New supplies.
-func NewForTest(users user.Upserter) *Service {
+func NewForTest(users user.Service) *Service {
 	return &Service{
 		encKey:       make([]byte, 32),
 		users:        users,

@@ -24,6 +24,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/upload"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -33,7 +35,7 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs handler.FSClient, driveSvc handler.DriveClient, uploadSvc handler.UploadClient, userSvc *user.Service, perm permission.Authorizer) (*Server, error) {
+func NewServer(a *app.App, fs vfs.Service, driveSvc drive.Service, uploadSvc upload.Service, userSvc user.Service, perm permission.Authorizer) (*Server, error) {
 	cookieCfg := a.Config.HTTP.Cookie
 	healthDeps := handler.HealthDeps{DB: a.DB}
 	if perm != nil {

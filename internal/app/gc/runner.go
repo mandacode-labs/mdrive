@@ -109,11 +109,11 @@ func (t *TombstoneCleaner) processGroup(ctx context.Context, g TombstoneGroup) e
 
 // DrivePurger permanently removes drives that have been soft-deleted longer than retention.
 type DrivePurger struct {
-	driveSvc  *drive.Service
+	driveSvc  drive.Service
 	retention time.Duration
 }
 
-func NewDrivePurger(driveSvc *drive.Service, retention time.Duration) *DrivePurger {
+func NewDrivePurger(driveSvc drive.Service, retention time.Duration) *DrivePurger {
 	if retention <= 0 {
 		retention = 7 * 24 * time.Hour
 	}
@@ -155,11 +155,11 @@ func (p *DrivePurger) Run(ctx context.Context) error {
 // returns).
 type UploadExpirer struct {
 	tokenRegistry upload.TokenRegistry
-	uploadService *upload.Service
+	uploadService upload.Service
 	garbage       *Recorder
 }
 
-func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc *upload.Service, garbage *Recorder) *UploadExpirer {
+func NewUploadExpirer(reg upload.TokenRegistry, uploadSvc upload.Service, garbage *Recorder) *UploadExpirer {
 	return &UploadExpirer{tokenRegistry: reg, uploadService: uploadSvc, garbage: garbage}
 }
 

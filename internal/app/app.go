@@ -46,13 +46,13 @@ import (
 type App struct {
 	Config *config.Config
 
-	NodeSvc      *node.Service
-	DriveSvc     *drive.Service
-	UserSvc      *user.Service
+	NodeSvc      node.NodeOperation
+	DriveSvc     drive.Service
+	UserSvc      user.Service
 	OwnerChecker drive.OwnerChecker
 	UploadToken  upload.TokenRegistry
-	UploadSvc    *upload.Service
-	VFS          *vfs.Service
+	UploadSvc    upload.Service
+	VFS          vfs.Service
 	Garbage      *gc.Recorder
 	Auth         *auth.Service
 	Security     *auth.Service
@@ -199,21 +199,21 @@ func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error
 // repositories groups the three core services so the
 // construction step is one assignment in New.
 type repositories struct {
-	NodeSvc      *node.Service
-	DriveSvc     *drive.Service
-	UserSvc      *user.Service
+	NodeSvc      node.NodeOperation
+	DriveSvc     drive.Service
+	UserSvc      user.Service
 	OwnerChecker drive.OwnerChecker
 	TxMgr        entx.TxManager
 }
 
 // newRepositories builds the three core domain services. The
-// drive service needs a root creator that wraps node.Service;
+// drive service needs a root creator that wraps node.NodeOperation;
 // drive verifies owners via the user.Repository directly.
 func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositories {
 	txMgr := entx.NewTxManager(entClient)
 
 	nodeRepo := node.NewRepository(entClient)
-	nodeSvc := node.NewService(nodeRepo, txMgr)
+	nodeSvc := node.NewNodeOperation(nodeRepo, txMgr)
 
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
@@ -261,7 +261,7 @@ func newPerm(ctx context.Context, cfg *config.Config) (permission.Authorizer, er
 // newAuth wires the OIDC authenticator (Keycloak). In dev (no auth
 // config) the service is nil and the security handler is nil; the
 // HTTP layer will fall back to AnonSecurity.
-func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*auth.Service, *auth.Service, error) {
+func newAuth(ctx context.Context, cfg *config.Config, users user.Service) (*auth.Service, *auth.Service, error) {
 	if cfg.Auth.Issuer == "" || cfg.Auth.ClientID == "" {
 		return nil, nil, nil
 	}
@@ -294,8 +294,8 @@ func newAuth(ctx context.Context, cfg *config.Config, users *user.Service) (*aut
 // newVFS builds the inode-tree manager. vfs has no S3 or HTTP
 // dependency: it manages paths, links, and the tree; it
 // notifies Garbage when object nodes go away.
-func newVFS(repos repositories, garbage *gc.Recorder) *vfs.Service {
-	return vfs.NewService(vfs.ServiceConfig{
+func newVFS(repos repositories, garbage *gc.Recorder) vfs.Service {
+	return vfs.NewService(vfs.Config{
 		NodeClient:      repos.NodeSvc,
 		DriveClient:     repos.DriveSvc,
 		GarbageRecorder: garbage,
@@ -306,7 +306,7 @@ func newVFS(repos repositories, garbage *gc.Recorder) *vfs.Service {
 // newUpload builds the S3 lifecycle service. Permission is the
 // handler's responsibility; the service is the pure
 // presign/complete/delete flow.
-func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry) *upload.Service {
+func newUpload(repos repositories, store *s3.Client, reg upload.TokenRegistry) upload.Service {
 	return upload.NewService(upload.Config{
 		TokenRegistry: reg,
 		StorageLookup: repos.DriveSvc,
@@ -328,9 +328,9 @@ func (a *App) Close() error {
 	return nil
 }
 
-// rootNodeCreator adapts node.Service to drive.RootDirectoryCreator.
+// rootNodeCreator adapts node.NodeOperation to drive.RootDirectoryCreator.
 type rootNodeCreator struct {
-	svc *node.Service
+	svc node.NodeOperation
 }
 
 func (n *rootNodeCreator) CreateRootDirectory(ctx context.Context) (uuid.UUID, error) {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	nodeMocks "github.com/mandacode-labs/mdrive/internal/core/node/mocks"
+	entxMocks "github.com/mandacode-labs/mdrive/internal/entx/mocks"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
@@ -78,9 +79,9 @@ func newMockRepo(t *testing.T, mem *memRepo) *nodeMocks.RepositoryMock {
 
 // nopTxManager returns a TxManagerMock that simply invokes fn(ctx).
 // Use when the service's transactional wrapping is not the test target.
-func nopTxManager(t *testing.T) *nodeMocks.TxManagerMock {
+func nopTxManager(t *testing.T) *entxMocks.TxManagerMock {
 	t.Helper()
-	m := nodeMocks.NewTxManagerMock(t)
+	m := entxMocks.NewTxManagerMock(t)
 	m.EXPECT().WithTx(mock.Anything, mock.Anything).RunAndReturn(
 		func(ctx context.Context, fn func(ctx context.Context) error) error {
 			return fn(ctx)
@@ -89,11 +90,11 @@ func nopTxManager(t *testing.T) *nodeMocks.TxManagerMock {
 	return m
 }
 
-func newSvc(t *testing.T) (*node.Service, *memRepo) {
+func newSvc(t *testing.T) (node.NodeOperation, *memRepo) {
 	t.Helper()
 	mem := newMemRepo()
 	repo := newMockRepo(t, mem)
-	svc := node.NewService(repo, nopTxManager(t))
+	svc := node.NewNodeOperation(repo, nopTxManager(t))
 	return svc, mem
 }
 

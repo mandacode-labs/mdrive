@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	handlerMocks "github.com/mandacode-labs/mdrive/internal/app/apiserver/handler/mocks"
 	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/core/user"
+	userMocks "github.com/mandacode-labs/mdrive/internal/core/user/mocks"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
@@ -43,9 +43,9 @@ func requireAuthMeErrKind(t *testing.T, err error, want errorx.Kind) {
 // Cleanup-AssertExpectations rejects unexpected calls only for
 // methods that had On/Return registered, so callers that don't
 // invoke UpsertFromOIDC see no failure.
-func newUserMockThatReturns(t *testing.T, u *user.User, err error) *handlerMocks.UserClientMock {
+func newUserMockThatReturns(t *testing.T, u *user.User, err error) *userMocks.ServiceMock {
 	t.Helper()
-	m := handlerMocks.NewUserClientMock(t)
+	m := userMocks.NewServiceMock(t)
 	m.EXPECT().GetByID(mock.Anything, mock.Anything).Return(u, err).Maybe()
 	return m
 }

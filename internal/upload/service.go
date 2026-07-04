@@ -43,34 +43,45 @@ type ObjectStore interface {
 //
 // Permission checks are the caller's responsibility: the handler
 // must call Authorizer.Check on the drive before invoking
-// any of the three methods below.
-type Service struct {
+// any of the methods below.
+//
+// Callers depend on this single interface; the unexported service
+// struct is the only implementation.
+type Service interface {
+	InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error)
+	CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error)
+	PresignDownload(ctx context.Context, userID, driveID, filePath string, expiry time.Duration) (PresignInfo, error)
+	DeleteObject(ctx context.Context, bucket, key string) error
+}
+
+// service is the only implementation of Service.
+type service struct {
 	TokenRegistry TokenRegistry
-	StorageLookup coredrive.StorageLookup
-	NodeLifecycle node.Lifecycle
+	StorageLookup coredrive.Service
+	NodeLifecycle node.NodeOperation
 	ObjectStore   ObjectStore
-	Path          vfs.PathResolver
+	Path          vfs.Service
 	tm            entx.TxManager
 }
 
-// Config groups Service dependencies.
+// Config groups the dependencies of NewService.
 type Config struct {
 	TokenRegistry TokenRegistry
-	StorageLookup coredrive.StorageLookup
-	NodeLifecycle node.Lifecycle
+	StorageLookup coredrive.Service
+	NodeLifecycle node.NodeOperation
 	ObjectStore   ObjectStore
-	Path          vfs.PathResolver
+	Path          vfs.Service
 	TxManager     entx.TxManager
 }
 
-// NewService wires a Service. A nil TokenRegistry defaults to a
+// NewService wires a service. A nil TokenRegistry defaults to a
 // MemoryRegistry (in-process, lazy TTL expiry on Get); production
 // code should pass a Valkey-backed registry.
-func NewService(cfg Config) *Service {
+func NewService(cfg Config) Service {
 	if cfg.TokenRegistry == nil {
 		cfg.TokenRegistry = NewMemoryRegistry()
 	}
-	return &Service{
+	return &service{
 		TokenRegistry: cfg.TokenRegistry,
 		StorageLookup: cfg.StorageLookup,
 		NodeLifecycle: cfg.NodeLifecycle,
@@ -80,10 +91,9 @@ func NewService(cfg Config) *Service {
 	}
 }
 
-// InitiateUpload creates a presigned PUT URL for uploading an object directly to S3.
-// The returned uploadID must be passed to CompleteUpload after the client PUTs the bytes.
-// Permission is the caller's responsibility.
-func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error) {
+var _ Service = (*service)(nil)
+
+func (s *service) InitiateUpload(ctx context.Context, userID, driveID, destPath string, contentType *string, contentLength *int64, expiry time.Duration) (PresignInfo, error) {
 	_ = userID
 	storage, err := s.StorageLookup.GetStorage(ctx, driveID)
 	if err != nil {
@@ -128,15 +138,7 @@ func (s *Service) InitiateUpload(ctx context.Context, userID, driveID, destPath 
 	}, nil
 }
 
-// CompleteUpload validates the upload token, verifies the S3 object exists,
-// and creates the object node at the destination path.
-// Permission is the caller's responsibility.
-//
-// userID is the principal initiating the completion; it must match
-// the userID stored on the upload token. Mismatch returns
-// ErrUploadOwnershipMismatch — the upload ID is not a bearer
-// credential across users.
-func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
+func (s *service) CompleteUpload(ctx context.Context, userID, driveID, uploadID string, contentLength int64, checksum *string) (*node.Node, error) {
 	meta, err := s.TokenRegistry.Get(ctx, uploadID)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("upload: complete token get (upload_id=%s)", uploadID))
@@ -206,9 +208,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 	return n, nil
 }
 
-// PresignDownload returns a presigned GET URL for an existing object node.
-// Permission is the caller's responsibility.
-func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath string, expiry time.Duration) (PresignInfo, error) {
+func (s *service) PresignDownload(ctx context.Context, userID, driveID, filePath string, expiry time.Duration) (PresignInfo, error) {
 	_ = userID
 	nodeID, err := s.Path.ResolveNodeID(ctx, driveID, filePath)
 	if err != nil {
@@ -239,11 +239,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, driveID, filePath
 	}, nil
 }
 
-// DeleteObject removes a single object from its bucket. Used by
-// gc.UploadExpirer to clean up objects the client uploaded but
-// never completed. Does not touch the node tree or the upload
-// registry — callers handle those.
-func (s *Service) DeleteObject(ctx context.Context, bucket, key string) error {
+func (s *service) DeleteObject(ctx context.Context, bucket, key string) error {
 	if err := s.ObjectStore.DeleteObject(ctx, bucket, key); err != nil {
 		return errorx.Wrap(err, fmt.Sprintf("upload: delete object (bucket=%s, key=%s)", bucket, key))
 	}

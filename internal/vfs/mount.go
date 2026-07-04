@@ -21,7 +21,7 @@ import (
 // Permission is the caller's responsibility: edit on driveID (to
 // create the mount entry) and view on sourceDriveID (to verify the
 // source exists and is accessible).
-func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
+func (s *service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
 	if driveID == sourceDriveID {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: mount self-cycle (drive_id="+driveID+")")
 	}
@@ -70,7 +70,7 @@ func (s *Service) Mount(ctx context.Context, driveID, mountPath, sourceDriveID s
 // If the entry at mountPath is not a mount, returns an error.
 //
 // Permission is the caller's responsibility.
-func (s *Service) Unmount(ctx context.Context, driveID, mountPath string) error {
+func (s *service) Unmount(ctx context.Context, driveID, mountPath string) error {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return err

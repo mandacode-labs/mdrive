@@ -10,7 +10,7 @@ import (
 
 // Mkdir creates a directory at path (like `mkdir /path/to/dir`).
 // Permission is the caller's responsibility.
-func (s *Service) Mkdir(ctx context.Context, driveID, path string) (*node.Node, error) {
+func (s *service) Mkdir(ctx context.Context, driveID, path string) (*node.Node, error) {
 	parent, name, err := s.resolveEditableParent(ctx, driveID, path)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: mkdir resolve parent (drive_id=%s, path=%s)", driveID, path))

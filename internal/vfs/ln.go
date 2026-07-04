@@ -13,7 +13,7 @@ import (
 // recorded as a path string; the link may dangle.
 //
 // Permission is the caller's responsibility.
-func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error) {
+func (s *service) Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error) {
 	parent, name, err := s.resolveEditableParent(ctx, driveID, linkPath)
 	if err != nil {
 		return nil, errorx.Wrap(err, fmt.Sprintf("vfs: symlink resolve parent (drive_id=%s, link_path=%s)", driveID, linkPath))
@@ -42,7 +42,7 @@ func (s *Service) Symlink(ctx context.Context, driveID, target, linkPath string)
 // requires same filesystem).
 //
 // Permission is the caller's responsibility.
-func (s *Service) Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error) {
+func (s *service) Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err

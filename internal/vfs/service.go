@@ -12,11 +12,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-var (
-	_ node.Linker  = (*node.Service)(nil)
-	_ drive.Reader = (*drive.Service)(nil)
-)
-
 // GarbageRef points at an external (S3) object that needs cleanup
 // when an inode is removed.
 type GarbageRef struct {
@@ -32,24 +27,54 @@ type GarbageRecorder interface {
 	RecordGarbage(ctx context.Context, refs []GarbageRef) error
 }
 
-type Service struct {
-	NodeClient      node.Linker
-	DriveClient     drive.Reader
+// Service is the public contract of the virtual filesystem. It
+// composes a node operation and a drive service, walks POSIX-style
+// paths, follows mounts, and records S3 tombstones for removed
+// object nodes. Permission checks are the caller's responsibility.
+//
+// Callers depend on this single interface; the unexported service
+// struct is the only implementation.
+type Service interface {
+	ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error)
+	Mkdir(ctx context.Context, driveID, path string) (*node.Node, error)
+	Touch(ctx context.Context, driveID, path string) (*node.Node, error)
+	Rm(ctx context.Context, driveID string, paths []string, recursive bool) error
+	Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error
+	Ls(ctx context.Context, driveID, path string) (node.DirContent, error)
+	Cat(ctx context.Context, driveID, path string) ([]byte, error)
+	Write(ctx context.Context, driveID, path, content string) error
+	WriteLarge(ctx context.Context, driveID, path string, obj node.ObjectContent, size int64) error
+	Stat(ctx context.Context, driveID, path string) (*node.Node, error)
+	Lstat(ctx context.Context, driveID, path string) (Resolved, error)
+	Symlink(ctx context.Context, driveID, target, linkPath string) (*node.Node, error)
+	Hardlink(ctx context.Context, driveID, srcPath, linkPath string) (*node.Node, error)
+	Mount(ctx context.Context, driveID, mountPath, sourceDriveID string) error
+	Unmount(ctx context.Context, driveID, mountPath string) error
+	Resolve(ctx context.Context, driveID, path string) (Resolved, error)
+	GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error)
+	ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error)
+	ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error)
+}
+
+// service is the only implementation of Service.
+type service struct {
+	NodeClient      node.NodeOperation
+	DriveClient     drive.Service
 	GarbageRecorder GarbageRecorder
 	tm              entx.TxManager
 }
 
-// ServiceConfig groups the dependencies of NewService. Permission
-// checks are the caller's responsibility.
-type ServiceConfig struct {
-	NodeClient      node.Linker
-	DriveClient     drive.Reader
+// Config groups the dependencies of NewService.
+type Config struct {
+	NodeClient      node.NodeOperation
+	DriveClient     drive.Service
 	GarbageRecorder GarbageRecorder
 	TxManager       entx.TxManager
 }
 
-func NewService(cfg ServiceConfig) *Service {
-	return &Service{
+// NewService wires a service.
+func NewService(cfg Config) Service {
+	return &service{
 		NodeClient:      cfg.NodeClient,
 		DriveClient:     cfg.DriveClient,
 		GarbageRecorder: cfg.GarbageRecorder,
@@ -57,6 +82,12 @@ func NewService(cfg ServiceConfig) *Service {
 	}
 }
 
+var _ Service = (*service)(nil)
+
+// Resolved is the result of a path lookup that follows mounts and
+// symlinks: the drive the final node lives in (which may differ
+// from the requested driveID if mounts were crossed) and the node
+// itself.
 type Resolved struct {
 	DriveID string
 	Node    *node.Node
@@ -64,13 +95,7 @@ type Resolved struct {
 
 const maxMountHops = 32
 
-// Resolve walks the path from root to the node, following
-// symlinks (POSIX stat(2) semantics) and transparently following
-// mount nodes into other drives. Permission checking is the
-// caller's responsibility: Resolve itself only does path
-// resolution. Callers that need a permission check should use
-// Resolve and then check against Resolved.DriveID.
-func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
+func (s *service) Resolve(ctx context.Context, driveID, path string) (Resolved, error) {
 	drive, n, err := s.resolveWithMounts(ctx, driveID, path, true)
 	if err != nil {
 		return Resolved{}, err
@@ -81,22 +106,15 @@ func (s *Service) Resolve(ctx context.Context, driveID, path string) (Resolved, 
 	return Resolved{DriveID: drive, Node: n}, nil
 }
 
-// PartialResolution is the partial resolution returned by ResolveForPermission:
-// the drive the path lands in (after stopping at the first mount) and
-// the remaining path within that drive.
+// PartialResolution is the partial resolution returned by
+// ResolveForPermission: the drive the path lands in (after stopping
+// at the first mount) and the remaining path within that drive.
 type PartialResolution struct {
 	DriveID string
 	Path    string
 }
 
-// ResolveForPermission is the variant of Resolve for callers that
-// need to perform a permission check on the resolved drive (the
-// one the path actually lands in, not the requested driveID). It
-// stops at the first mount node and returns the drive to which the
-// mount points plus the remaining path within that drive, so the
-// caller can both check permission and then re-resolve the rest of
-// the path within the source drive. Symlinks are followed.
-func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error) {
+func (s *service) ResolveForPermission(ctx context.Context, driveID, path string) (PartialResolution, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return PartialResolution{}, err
@@ -119,12 +137,7 @@ func (s *Service) ResolveForPermission(ctx context.Context, driveID, path string
 	return PartialResolution{DriveID: driveID, Path: path}, nil
 }
 
-// Lstat is the standalone no-symlink-follow variant. It returns
-// the final node without traversing symlinks (POSIX lstat(2)).
-// Mount traversal still happens; only the symlink follow is
-// skipped. Used by callers that need the resolved node itself
-// (e.g. the readlink handler).
-func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, error) {
+func (s *service) Lstat(ctx context.Context, driveID, path string) (Resolved, error) {
 	d, n, err := s.resolveWithMounts(ctx, driveID, path, false)
 	if err != nil {
 		return Resolved{}, err
@@ -135,10 +148,7 @@ func (s *Service) Lstat(ctx context.Context, driveID, path string) (Resolved, er
 	return Resolved{DriveID: d, Node: n}, nil
 }
 
-// GetRootNodeID resolves a drive's root node ID. External services
-// (notably internal/upload.Service) use it to anchor path
-// operations.
-func (s *Service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
+func (s *service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error) {
 	d, err := s.DriveClient.GetByID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, errorx.Wrap(err, fmt.Sprintf("vfs: get root node (drive_id=%s)", driveID))
@@ -149,11 +159,7 @@ func (s *Service) GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID,
 	return *d.RootNodeID(), nil
 }
 
-// ResolveParentNodeID resolves a path's parent directory and last
-// component, returning the parent's node ID and the leaf name.
-// Public so external services (internal/upload.Service) can link
-// new nodes without taking on the resolver.
-func (s *Service) ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error) {
+func (s *service) ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, "", err
@@ -168,10 +174,7 @@ func (s *Service) ResolveParentNodeID(ctx context.Context, driveID, path string)
 	return parent.ID(), name, nil
 }
 
-// ResolveNodeID resolves a path to its node ID within a drive.
-// Public so external services (internal/upload.Service) can fetch
-// an existing node without a full Resolved struct.
-func (s *Service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error) {
+func (s *service) ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return uuid.Nil, err

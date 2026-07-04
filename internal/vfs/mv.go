@@ -15,7 +15,7 @@ import (
 // the move on failure.
 //
 // Permission is the caller's responsibility.
-func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
+func (s *service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, dstDriveID, dstPath string) error {
 	if srcDriveID != dstDriveID {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: cross-drive move not supported")
 	}
@@ -40,7 +40,7 @@ func (s *Service) Mv(ctx context.Context, srcDriveID string, srcPaths []string, 
 	})
 }
 
-func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]GarbageRef, error) {
+func (s *service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (s *Service) mvOne(ctx context.Context, driveID, srcPath, dstPath string) (
 	return s.applyMoveEntry(ctx, srcParent, srcName, dstParent, dstName)
 }
 
-func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]GarbageRef, error) {
+func (s *service) mvBatch(ctx context.Context, driveID string, srcPaths []string, dstPath string) ([]GarbageRef, error) {
 	rootID, err := s.GetRootNodeID(ctx, driveID)
 	if err != nil {
 		return nil, err
@@ -146,9 +146,9 @@ func (s *Service) mvBatch(ctx context.Context, driveID string, srcPaths []string
 
 // applyMoveEntry captures the S3 reference of the overwrite target
 // (if any) before MoveEntry removes it, then delegates to
-// node.Service.MoveEntry. The child inode is preserved (no nlink
-// bookkeeping here) — that's MoveEntry's responsibility.
-func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]GarbageRef, error) {
+// node.NodeOperation.MoveEntry. The child inode is preserved (no
+// nlink bookkeeping here) — that's MoveEntry's responsibility.
+func (s *service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcName string, dstParent *node.Node, dstName string) ([]GarbageRef, error) {
 	if srcParent == nil {
 		return nil, errorx.New(errorx.KindNotFound, "vfs: mv src parent not found (src_name="+srcName+")")
 	}
@@ -168,7 +168,7 @@ func (s *Service) applyMoveEntry(ctx context.Context, srcParent *node.Node, srcN
 	return nil, nil
 }
 
-func (s *Service) captureOverwriteRef(ctx context.Context, dstParent *node.Node, dstName string) (*GarbageRef, error) {
+func (s *service) captureOverwriteRef(ctx context.Context, dstParent *node.Node, dstName string) (*GarbageRef, error) {
 	if dstParent == nil {
 		return nil, nil
 	}

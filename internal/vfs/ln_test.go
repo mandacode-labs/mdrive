@@ -28,7 +28,7 @@ func TestHardlink(t *testing.T) {
 	driveMock := newMockDriveClient(t, driveState)
 	garbageMock := newMockGarbageRecorder(t)
 	tmMock := newMockTxManager(t)
-	fullSvc := vfs.NewService(vfs.ServiceConfig{
+	fullSvc := vfs.NewService(vfs.Config{
 		NodeClient:      nodeMock,
 		DriveClient:     driveMock,
 		GarbageRecorder: garbageMock,
