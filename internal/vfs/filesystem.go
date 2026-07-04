@@ -3,19 +3,8 @@ package vfs
 import (
 	"context"
 
-	"github.com/google/uuid"
-
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 )
-
-// PathResolver is the path-only surface of vfs. The upload flow
-// uses it to anchor new object nodes and link them into a parent
-// directory; it never reads file contents or walks the tree.
-type PathResolver interface {
-	GetRootNodeID(ctx context.Context, driveID string) (uuid.UUID, error)
-	ResolveParentNodeID(ctx context.Context, driveID, path string) (uuid.UUID, string, error)
-	ResolveNodeID(ctx context.Context, driveID, path string) (uuid.UUID, error)
-}
 
 // Filesystem is the handler-facing vfs surface: all path-driven
 // filesystem operations, with permission checks handled by the
@@ -38,7 +27,4 @@ type Filesystem interface {
 	Unmount(ctx context.Context, driveID, mountPath string) error
 }
 
-var (
-	_ PathResolver = (*Service)(nil)
-	_ Filesystem   = (*Service)(nil)
-)
+var _ Filesystem = (*Service)(nil)
