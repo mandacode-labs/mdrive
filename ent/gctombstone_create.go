@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
@@ -18,6 +19,7 @@ type GCTombstoneCreate struct {
 	config
 	mutation *GCTombstoneMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreateTime sets the "create_time" field.
@@ -184,6 +186,7 @@ func (_c *GCTombstoneCreate) createSpec() (*GCTombstone, *sqlgraph.CreateSpec) {
 		_node = &GCTombstone{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(gctombstone.Table, sqlgraph.NewFieldSpec(gctombstone.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -211,11 +214,216 @@ func (_c *GCTombstoneCreate) createSpec() (*GCTombstone, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.GCTombstone.Create().
+//		SetCreateTime(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.GCTombstoneUpsert) {
+//			SetCreateTime(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *GCTombstoneCreate) OnConflict(opts ...sql.ConflictOption) *GCTombstoneUpsertOne {
+	_c.conflict = opts
+	return &GCTombstoneUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *GCTombstoneCreate) OnConflictColumns(columns ...string) *GCTombstoneUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &GCTombstoneUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// GCTombstoneUpsertOne is the builder for "upsert"-ing
+	//  one GCTombstone node.
+	GCTombstoneUpsertOne struct {
+		create *GCTombstoneCreate
+	}
+
+	// GCTombstoneUpsert is the "OnConflict" setter.
+	GCTombstoneUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdateTime sets the "update_time" field.
+func (u *GCTombstoneUpsert) SetUpdateTime(v time.Time) *GCTombstoneUpsert {
+	u.Set(gctombstone.FieldUpdateTime, v)
+	return u
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *GCTombstoneUpsert) UpdateUpdateTime() *GCTombstoneUpsert {
+	u.SetExcluded(gctombstone.FieldUpdateTime)
+	return u
+}
+
+// SetRetries sets the "retries" field.
+func (u *GCTombstoneUpsert) SetRetries(v int) *GCTombstoneUpsert {
+	u.Set(gctombstone.FieldRetries, v)
+	return u
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *GCTombstoneUpsert) UpdateRetries() *GCTombstoneUpsert {
+	u.SetExcluded(gctombstone.FieldRetries)
+	return u
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *GCTombstoneUpsert) AddRetries(v int) *GCTombstoneUpsert {
+	u.Add(gctombstone.FieldRetries, v)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(gctombstone.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *GCTombstoneUpsertOne) UpdateNewValues() *GCTombstoneUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(gctombstone.FieldID)
+		}
+		if _, exists := u.create.mutation.CreateTime(); exists {
+			s.SetIgnore(gctombstone.FieldCreateTime)
+		}
+		if _, exists := u.create.mutation.Bucket(); exists {
+			s.SetIgnore(gctombstone.FieldBucket)
+		}
+		if _, exists := u.create.mutation.Key(); exists {
+			s.SetIgnore(gctombstone.FieldKey)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *GCTombstoneUpsertOne) Ignore() *GCTombstoneUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *GCTombstoneUpsertOne) DoNothing() *GCTombstoneUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the GCTombstoneCreate.OnConflict
+// documentation for more info.
+func (u *GCTombstoneUpsertOne) Update(set func(*GCTombstoneUpsert)) *GCTombstoneUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&GCTombstoneUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (u *GCTombstoneUpsertOne) SetUpdateTime(v time.Time) *GCTombstoneUpsertOne {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.SetUpdateTime(v)
+	})
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *GCTombstoneUpsertOne) UpdateUpdateTime() *GCTombstoneUpsertOne {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.UpdateUpdateTime()
+	})
+}
+
+// SetRetries sets the "retries" field.
+func (u *GCTombstoneUpsertOne) SetRetries(v int) *GCTombstoneUpsertOne {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.SetRetries(v)
+	})
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *GCTombstoneUpsertOne) AddRetries(v int) *GCTombstoneUpsertOne {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.AddRetries(v)
+	})
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *GCTombstoneUpsertOne) UpdateRetries() *GCTombstoneUpsertOne {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.UpdateRetries()
+	})
+}
+
+// Exec executes the query.
+func (u *GCTombstoneUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for GCTombstoneCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *GCTombstoneUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *GCTombstoneUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *GCTombstoneUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // GCTombstoneCreateBulk is the builder for creating many GCTombstone entities in bulk.
 type GCTombstoneCreateBulk struct {
 	config
 	err      error
 	builders []*GCTombstoneCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the GCTombstone entities in the database.
@@ -245,6 +453,7 @@ func (_c *GCTombstoneCreateBulk) Save(ctx context.Context) ([]*GCTombstone, erro
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -295,6 +504,164 @@ func (_c *GCTombstoneCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *GCTombstoneCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.GCTombstone.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.GCTombstoneUpsert) {
+//			SetCreateTime(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *GCTombstoneCreateBulk) OnConflict(opts ...sql.ConflictOption) *GCTombstoneUpsertBulk {
+	_c.conflict = opts
+	return &GCTombstoneUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *GCTombstoneCreateBulk) OnConflictColumns(columns ...string) *GCTombstoneUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &GCTombstoneUpsertBulk{
+		create: _c,
+	}
+}
+
+// GCTombstoneUpsertBulk is the builder for "upsert"-ing
+// a bulk of GCTombstone nodes.
+type GCTombstoneUpsertBulk struct {
+	create *GCTombstoneCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(gctombstone.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *GCTombstoneUpsertBulk) UpdateNewValues() *GCTombstoneUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(gctombstone.FieldID)
+			}
+			if _, exists := b.mutation.CreateTime(); exists {
+				s.SetIgnore(gctombstone.FieldCreateTime)
+			}
+			if _, exists := b.mutation.Bucket(); exists {
+				s.SetIgnore(gctombstone.FieldBucket)
+			}
+			if _, exists := b.mutation.Key(); exists {
+				s.SetIgnore(gctombstone.FieldKey)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.GCTombstone.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *GCTombstoneUpsertBulk) Ignore() *GCTombstoneUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *GCTombstoneUpsertBulk) DoNothing() *GCTombstoneUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the GCTombstoneCreateBulk.OnConflict
+// documentation for more info.
+func (u *GCTombstoneUpsertBulk) Update(set func(*GCTombstoneUpsert)) *GCTombstoneUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&GCTombstoneUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (u *GCTombstoneUpsertBulk) SetUpdateTime(v time.Time) *GCTombstoneUpsertBulk {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.SetUpdateTime(v)
+	})
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *GCTombstoneUpsertBulk) UpdateUpdateTime() *GCTombstoneUpsertBulk {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.UpdateUpdateTime()
+	})
+}
+
+// SetRetries sets the "retries" field.
+func (u *GCTombstoneUpsertBulk) SetRetries(v int) *GCTombstoneUpsertBulk {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.SetRetries(v)
+	})
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *GCTombstoneUpsertBulk) AddRetries(v int) *GCTombstoneUpsertBulk {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.AddRetries(v)
+	})
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *GCTombstoneUpsertBulk) UpdateRetries() *GCTombstoneUpsertBulk {
+	return u.Update(func(s *GCTombstoneUpsert) {
+		s.UpdateRetries()
+	})
+}
+
+// Exec executes the query.
+func (u *GCTombstoneUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the GCTombstoneCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for GCTombstoneCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *GCTombstoneUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

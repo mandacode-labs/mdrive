@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/drive"
@@ -18,6 +19,7 @@ type DriveStorageCreate struct {
 	config
 	mutation *DriveStorageMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetDriveID sets the "drive_id" field.
@@ -203,6 +205,7 @@ func (_c *DriveStorageCreate) createSpec() (*DriveStorage, *sqlgraph.CreateSpec)
 		_node = &DriveStorage{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(drivestorage.Table, sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Bucket(); ok {
 		_spec.SetField(drivestorage.FieldBucket, field.TypeString, value)
 		_node.Bucket = value
@@ -247,11 +250,329 @@ func (_c *DriveStorageCreate) createSpec() (*DriveStorage, *sqlgraph.CreateSpec)
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.DriveStorage.Create().
+//		SetDriveID(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DriveStorageUpsert) {
+//			SetDriveID(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *DriveStorageCreate) OnConflict(opts ...sql.ConflictOption) *DriveStorageUpsertOne {
+	_c.conflict = opts
+	return &DriveStorageUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *DriveStorageCreate) OnConflictColumns(columns ...string) *DriveStorageUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &DriveStorageUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// DriveStorageUpsertOne is the builder for "upsert"-ing
+	//  one DriveStorage node.
+	DriveStorageUpsertOne struct {
+		create *DriveStorageCreate
+	}
+
+	// DriveStorageUpsert is the "OnConflict" setter.
+	DriveStorageUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetDriveID sets the "drive_id" field.
+func (u *DriveStorageUpsert) SetDriveID(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldDriveID, v)
+	return u
+}
+
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateDriveID() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldDriveID)
+	return u
+}
+
+// SetBucket sets the "bucket" field.
+func (u *DriveStorageUpsert) SetBucket(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldBucket, v)
+	return u
+}
+
+// UpdateBucket sets the "bucket" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateBucket() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldBucket)
+	return u
+}
+
+// SetEndpoint sets the "endpoint" field.
+func (u *DriveStorageUpsert) SetEndpoint(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldEndpoint, v)
+	return u
+}
+
+// UpdateEndpoint sets the "endpoint" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateEndpoint() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldEndpoint)
+	return u
+}
+
+// ClearEndpoint clears the value of the "endpoint" field.
+func (u *DriveStorageUpsert) ClearEndpoint() *DriveStorageUpsert {
+	u.SetNull(drivestorage.FieldEndpoint)
+	return u
+}
+
+// SetRegion sets the "region" field.
+func (u *DriveStorageUpsert) SetRegion(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldRegion, v)
+	return u
+}
+
+// UpdateRegion sets the "region" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateRegion() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldRegion)
+	return u
+}
+
+// SetAccessKey sets the "access_key" field.
+func (u *DriveStorageUpsert) SetAccessKey(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldAccessKey, v)
+	return u
+}
+
+// UpdateAccessKey sets the "access_key" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateAccessKey() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldAccessKey)
+	return u
+}
+
+// SetSecretKey sets the "secret_key" field.
+func (u *DriveStorageUpsert) SetSecretKey(v string) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldSecretKey, v)
+	return u
+}
+
+// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateSecretKey() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldSecretKey)
+	return u
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *DriveStorageUpsert) SetUsePathStyle(v bool) *DriveStorageUpsert {
+	u.Set(drivestorage.FieldUsePathStyle, v)
+	return u
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *DriveStorageUpsert) UpdateUsePathStyle() *DriveStorageUpsert {
+	u.SetExcluded(drivestorage.FieldUsePathStyle)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *DriveStorageUpsertOne) UpdateNewValues() *DriveStorageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *DriveStorageUpsertOne) Ignore() *DriveStorageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DriveStorageUpsertOne) DoNothing() *DriveStorageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DriveStorageCreate.OnConflict
+// documentation for more info.
+func (u *DriveStorageUpsertOne) Update(set func(*DriveStorageUpsert)) *DriveStorageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DriveStorageUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetDriveID sets the "drive_id" field.
+func (u *DriveStorageUpsertOne) SetDriveID(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetDriveID(v)
+	})
+}
+
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateDriveID() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateDriveID()
+	})
+}
+
+// SetBucket sets the "bucket" field.
+func (u *DriveStorageUpsertOne) SetBucket(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetBucket(v)
+	})
+}
+
+// UpdateBucket sets the "bucket" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateBucket() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateBucket()
+	})
+}
+
+// SetEndpoint sets the "endpoint" field.
+func (u *DriveStorageUpsertOne) SetEndpoint(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetEndpoint(v)
+	})
+}
+
+// UpdateEndpoint sets the "endpoint" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateEndpoint() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateEndpoint()
+	})
+}
+
+// ClearEndpoint clears the value of the "endpoint" field.
+func (u *DriveStorageUpsertOne) ClearEndpoint() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.ClearEndpoint()
+	})
+}
+
+// SetRegion sets the "region" field.
+func (u *DriveStorageUpsertOne) SetRegion(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetRegion(v)
+	})
+}
+
+// UpdateRegion sets the "region" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateRegion() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateRegion()
+	})
+}
+
+// SetAccessKey sets the "access_key" field.
+func (u *DriveStorageUpsertOne) SetAccessKey(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetAccessKey(v)
+	})
+}
+
+// UpdateAccessKey sets the "access_key" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateAccessKey() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateAccessKey()
+	})
+}
+
+// SetSecretKey sets the "secret_key" field.
+func (u *DriveStorageUpsertOne) SetSecretKey(v string) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetSecretKey(v)
+	})
+}
+
+// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateSecretKey() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateSecretKey()
+	})
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *DriveStorageUpsertOne) SetUsePathStyle(v bool) *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetUsePathStyle(v)
+	})
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *DriveStorageUpsertOne) UpdateUsePathStyle() *DriveStorageUpsertOne {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateUsePathStyle()
+	})
+}
+
+// Exec executes the query.
+func (u *DriveStorageUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DriveStorageCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DriveStorageUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *DriveStorageUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *DriveStorageUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // DriveStorageCreateBulk is the builder for creating many DriveStorage entities in bulk.
 type DriveStorageCreateBulk struct {
 	config
 	err      error
 	builders []*DriveStorageCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the DriveStorage entities in the database.
@@ -281,6 +602,7 @@ func (_c *DriveStorageCreateBulk) Save(ctx context.Context) ([]*DriveStorage, er
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -331,6 +653,215 @@ func (_c *DriveStorageCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *DriveStorageCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.DriveStorage.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DriveStorageUpsert) {
+//			SetDriveID(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *DriveStorageCreateBulk) OnConflict(opts ...sql.ConflictOption) *DriveStorageUpsertBulk {
+	_c.conflict = opts
+	return &DriveStorageUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *DriveStorageCreateBulk) OnConflictColumns(columns ...string) *DriveStorageUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &DriveStorageUpsertBulk{
+		create: _c,
+	}
+}
+
+// DriveStorageUpsertBulk is the builder for "upsert"-ing
+// a bulk of DriveStorage nodes.
+type DriveStorageUpsertBulk struct {
+	create *DriveStorageCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *DriveStorageUpsertBulk) UpdateNewValues() *DriveStorageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.DriveStorage.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *DriveStorageUpsertBulk) Ignore() *DriveStorageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DriveStorageUpsertBulk) DoNothing() *DriveStorageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DriveStorageCreateBulk.OnConflict
+// documentation for more info.
+func (u *DriveStorageUpsertBulk) Update(set func(*DriveStorageUpsert)) *DriveStorageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DriveStorageUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetDriveID sets the "drive_id" field.
+func (u *DriveStorageUpsertBulk) SetDriveID(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetDriveID(v)
+	})
+}
+
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateDriveID() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateDriveID()
+	})
+}
+
+// SetBucket sets the "bucket" field.
+func (u *DriveStorageUpsertBulk) SetBucket(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetBucket(v)
+	})
+}
+
+// UpdateBucket sets the "bucket" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateBucket() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateBucket()
+	})
+}
+
+// SetEndpoint sets the "endpoint" field.
+func (u *DriveStorageUpsertBulk) SetEndpoint(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetEndpoint(v)
+	})
+}
+
+// UpdateEndpoint sets the "endpoint" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateEndpoint() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateEndpoint()
+	})
+}
+
+// ClearEndpoint clears the value of the "endpoint" field.
+func (u *DriveStorageUpsertBulk) ClearEndpoint() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.ClearEndpoint()
+	})
+}
+
+// SetRegion sets the "region" field.
+func (u *DriveStorageUpsertBulk) SetRegion(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetRegion(v)
+	})
+}
+
+// UpdateRegion sets the "region" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateRegion() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateRegion()
+	})
+}
+
+// SetAccessKey sets the "access_key" field.
+func (u *DriveStorageUpsertBulk) SetAccessKey(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetAccessKey(v)
+	})
+}
+
+// UpdateAccessKey sets the "access_key" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateAccessKey() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateAccessKey()
+	})
+}
+
+// SetSecretKey sets the "secret_key" field.
+func (u *DriveStorageUpsertBulk) SetSecretKey(v string) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetSecretKey(v)
+	})
+}
+
+// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateSecretKey() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateSecretKey()
+	})
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *DriveStorageUpsertBulk) SetUsePathStyle(v bool) *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.SetUsePathStyle(v)
+	})
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *DriveStorageUpsertBulk) UpdateUsePathStyle() *DriveStorageUpsertBulk {
+	return u.Update(func(s *DriveStorageUpsert) {
+		s.UpdateUsePathStyle()
+	})
+}
+
+// Exec executes the query.
+func (u *DriveStorageUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the DriveStorageCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DriveStorageCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DriveStorageUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

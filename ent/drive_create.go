@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
@@ -20,6 +22,7 @@ type DriveCreate struct {
 	config
 	mutation *DriveMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetCreateTime sets the "create_time" field.
@@ -279,6 +282,7 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 		_node = &Drive{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(drive.Table, sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -338,11 +342,397 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Drive.Create().
+//		SetCreateTime(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DriveUpsert) {
+//			SetCreateTime(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *DriveCreate) OnConflict(opts ...sql.ConflictOption) *DriveUpsertOne {
+	_c.conflict = opts
+	return &DriveUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *DriveCreate) OnConflictColumns(columns ...string) *DriveUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &DriveUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// DriveUpsertOne is the builder for "upsert"-ing
+	//  one Drive node.
+	DriveUpsertOne struct {
+		create *DriveCreate
+	}
+
+	// DriveUpsert is the "OnConflict" setter.
+	DriveUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetUpdateTime sets the "update_time" field.
+func (u *DriveUpsert) SetUpdateTime(v time.Time) *DriveUpsert {
+	u.Set(drive.FieldUpdateTime, v)
+	return u
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateUpdateTime() *DriveUpsert {
+	u.SetExcluded(drive.FieldUpdateTime)
+	return u
+}
+
+// SetPublicID sets the "public_id" field.
+func (u *DriveUpsert) SetPublicID(v string) *DriveUpsert {
+	u.Set(drive.FieldPublicID, v)
+	return u
+}
+
+// UpdatePublicID sets the "public_id" field to the value that was provided on create.
+func (u *DriveUpsert) UpdatePublicID() *DriveUpsert {
+	u.SetExcluded(drive.FieldPublicID)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *DriveUpsert) SetName(v string) *DriveUpsert {
+	u.Set(drive.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateName() *DriveUpsert {
+	u.SetExcluded(drive.FieldName)
+	return u
+}
+
+// SetDescription sets the "description" field.
+func (u *DriveUpsert) SetDescription(v string) *DriveUpsert {
+	u.Set(drive.FieldDescription, v)
+	return u
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateDescription() *DriveUpsert {
+	u.SetExcluded(drive.FieldDescription)
+	return u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *DriveUpsert) ClearDescription() *DriveUpsert {
+	u.SetNull(drive.FieldDescription)
+	return u
+}
+
+// SetProvider sets the "provider" field.
+func (u *DriveUpsert) SetProvider(v drive.Provider) *DriveUpsert {
+	u.Set(drive.FieldProvider, v)
+	return u
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateProvider() *DriveUpsert {
+	u.SetExcluded(drive.FieldProvider)
+	return u
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (u *DriveUpsert) SetOwnerID(v string) *DriveUpsert {
+	u.Set(drive.FieldOwnerID, v)
+	return u
+}
+
+// UpdateOwnerID sets the "owner_id" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateOwnerID() *DriveUpsert {
+	u.SetExcluded(drive.FieldOwnerID)
+	return u
+}
+
+// SetRootNodeID sets the "root_node_id" field.
+func (u *DriveUpsert) SetRootNodeID(v uuid.UUID) *DriveUpsert {
+	u.Set(drive.FieldRootNodeID, v)
+	return u
+}
+
+// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateRootNodeID() *DriveUpsert {
+	u.SetExcluded(drive.FieldRootNodeID)
+	return u
+}
+
+// ClearRootNodeID clears the value of the "root_node_id" field.
+func (u *DriveUpsert) ClearRootNodeID() *DriveUpsert {
+	u.SetNull(drive.FieldRootNodeID)
+	return u
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *DriveUpsert) SetDeletedAt(v time.Time) *DriveUpsert {
+	u.Set(drive.FieldDeletedAt, v)
+	return u
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *DriveUpsert) UpdateDeletedAt() *DriveUpsert {
+	u.SetExcluded(drive.FieldDeletedAt)
+	return u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *DriveUpsert) ClearDeletedAt() *DriveUpsert {
+	u.SetNull(drive.FieldDeletedAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(drive.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DriveUpsertOne) UpdateNewValues() *DriveUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(drive.FieldID)
+		}
+		if _, exists := u.create.mutation.CreateTime(); exists {
+			s.SetIgnore(drive.FieldCreateTime)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *DriveUpsertOne) Ignore() *DriveUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DriveUpsertOne) DoNothing() *DriveUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DriveCreate.OnConflict
+// documentation for more info.
+func (u *DriveUpsertOne) Update(set func(*DriveUpsert)) *DriveUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DriveUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (u *DriveUpsertOne) SetUpdateTime(v time.Time) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetUpdateTime(v)
+	})
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateUpdateTime() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateUpdateTime()
+	})
+}
+
+// SetPublicID sets the "public_id" field.
+func (u *DriveUpsertOne) SetPublicID(v string) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetPublicID(v)
+	})
+}
+
+// UpdatePublicID sets the "public_id" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdatePublicID() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdatePublicID()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DriveUpsertOne) SetName(v string) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateName() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *DriveUpsertOne) SetDescription(v string) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateDescription() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *DriveUpsertOne) ClearDescription() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearDescription()
+	})
+}
+
+// SetProvider sets the "provider" field.
+func (u *DriveUpsertOne) SetProvider(v drive.Provider) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetProvider(v)
+	})
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateProvider() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateProvider()
+	})
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (u *DriveUpsertOne) SetOwnerID(v string) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetOwnerID(v)
+	})
+}
+
+// UpdateOwnerID sets the "owner_id" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateOwnerID() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateOwnerID()
+	})
+}
+
+// SetRootNodeID sets the "root_node_id" field.
+func (u *DriveUpsertOne) SetRootNodeID(v uuid.UUID) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetRootNodeID(v)
+	})
+}
+
+// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateRootNodeID() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateRootNodeID()
+	})
+}
+
+// ClearRootNodeID clears the value of the "root_node_id" field.
+func (u *DriveUpsertOne) ClearRootNodeID() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearRootNodeID()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *DriveUpsertOne) SetDeletedAt(v time.Time) *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *DriveUpsertOne) UpdateDeletedAt() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *DriveUpsertOne) ClearDeletedAt() *DriveUpsertOne {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearDeletedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *DriveUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DriveCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DriveUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *DriveUpsertOne) ID(ctx context.Context) (id string, err error) {
+	if u.create.driver.Dialect() == dialect.MySQL {
+		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
+		// fields from the database since MySQL does not support the RETURNING clause.
+		return id, errors.New("ent: DriveUpsertOne.ID is not supported by MySQL driver. Use DriveUpsertOne.Exec instead")
+	}
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *DriveUpsertOne) IDX(ctx context.Context) string {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // DriveCreateBulk is the builder for creating many Drive entities in bulk.
 type DriveCreateBulk struct {
 	config
 	err      error
 	builders []*DriveCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Drive entities in the database.
@@ -372,6 +762,7 @@ func (_c *DriveCreateBulk) Save(ctx context.Context) ([]*Drive, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -418,6 +809,256 @@ func (_c *DriveCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *DriveCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Drive.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.DriveUpsert) {
+//			SetCreateTime(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *DriveCreateBulk) OnConflict(opts ...sql.ConflictOption) *DriveUpsertBulk {
+	_c.conflict = opts
+	return &DriveUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *DriveCreateBulk) OnConflictColumns(columns ...string) *DriveUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &DriveUpsertBulk{
+		create: _c,
+	}
+}
+
+// DriveUpsertBulk is the builder for "upsert"-ing
+// a bulk of Drive nodes.
+type DriveUpsertBulk struct {
+	create *DriveCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(drive.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *DriveUpsertBulk) UpdateNewValues() *DriveUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(drive.FieldID)
+			}
+			if _, exists := b.mutation.CreateTime(); exists {
+				s.SetIgnore(drive.FieldCreateTime)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Drive.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *DriveUpsertBulk) Ignore() *DriveUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *DriveUpsertBulk) DoNothing() *DriveUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the DriveCreateBulk.OnConflict
+// documentation for more info.
+func (u *DriveUpsertBulk) Update(set func(*DriveUpsert)) *DriveUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&DriveUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (u *DriveUpsertBulk) SetUpdateTime(v time.Time) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetUpdateTime(v)
+	})
+}
+
+// UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateUpdateTime() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateUpdateTime()
+	})
+}
+
+// SetPublicID sets the "public_id" field.
+func (u *DriveUpsertBulk) SetPublicID(v string) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetPublicID(v)
+	})
+}
+
+// UpdatePublicID sets the "public_id" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdatePublicID() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdatePublicID()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *DriveUpsertBulk) SetName(v string) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateName() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *DriveUpsertBulk) SetDescription(v string) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateDescription() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *DriveUpsertBulk) ClearDescription() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearDescription()
+	})
+}
+
+// SetProvider sets the "provider" field.
+func (u *DriveUpsertBulk) SetProvider(v drive.Provider) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetProvider(v)
+	})
+}
+
+// UpdateProvider sets the "provider" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateProvider() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateProvider()
+	})
+}
+
+// SetOwnerID sets the "owner_id" field.
+func (u *DriveUpsertBulk) SetOwnerID(v string) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetOwnerID(v)
+	})
+}
+
+// UpdateOwnerID sets the "owner_id" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateOwnerID() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateOwnerID()
+	})
+}
+
+// SetRootNodeID sets the "root_node_id" field.
+func (u *DriveUpsertBulk) SetRootNodeID(v uuid.UUID) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetRootNodeID(v)
+	})
+}
+
+// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateRootNodeID() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateRootNodeID()
+	})
+}
+
+// ClearRootNodeID clears the value of the "root_node_id" field.
+func (u *DriveUpsertBulk) ClearRootNodeID() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearRootNodeID()
+	})
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (u *DriveUpsertBulk) SetDeletedAt(v time.Time) *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.SetDeletedAt(v)
+	})
+}
+
+// UpdateDeletedAt sets the "deleted_at" field to the value that was provided on create.
+func (u *DriveUpsertBulk) UpdateDeletedAt() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.UpdateDeletedAt()
+	})
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (u *DriveUpsertBulk) ClearDeletedAt() *DriveUpsertBulk {
+	return u.Update(func(s *DriveUpsert) {
+		s.ClearDeletedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *DriveUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the DriveCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for DriveCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *DriveUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

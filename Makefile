@@ -12,7 +12,8 @@ generate: gen-ent gen-api gen-mock gen-fga
 
 .PHONY: gen-ent
 gen-ent:
-	go run -mod=mod entgo.io/ent/cmd/ent generate ./ent/schema
+	go get -tool entgo.io/ent/cmd/ent
+	go generate ./ent/...
 
 .PHONY: gen-api
 gen-api:
