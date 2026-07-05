@@ -35,16 +35,16 @@ func (_u *NodeUpdate) SetUpdateTime(v time.Time) *NodeUpdate {
 	return _u
 }
 
-// SetDrv sets the "drv" field.
-func (_u *NodeUpdate) SetDrv(v string) *NodeUpdate {
-	_u.mutation.SetDrv(v)
+// SetDriveID sets the "drive_id" field.
+func (_u *NodeUpdate) SetDriveID(v string) *NodeUpdate {
+	_u.mutation.SetDriveID(v)
 	return _u
 }
 
-// SetNillableDrv sets the "drv" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableDrv(v *string) *NodeUpdate {
+// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableDriveID(v *string) *NodeUpdate {
 	if v != nil {
-		_u.SetDrv(*v)
+		_u.SetDriveID(*v)
 	}
 	return _u
 }
@@ -205,12 +205,6 @@ func (_u *NodeUpdate) SetNillableRevision(v *string) *NodeUpdate {
 	if v != nil {
 		_u.SetRevision(*v)
 	}
-	return _u
-}
-
-// SetDriveID sets the "drive" edge to the Drive entity by ID.
-func (_u *NodeUpdate) SetDriveID(id string) *NodeUpdate {
-	_u.mutation.SetDriveID(id)
 	return _u
 }
 
@@ -401,16 +395,16 @@ func (_u *NodeUpdateOne) SetUpdateTime(v time.Time) *NodeUpdateOne {
 	return _u
 }
 
-// SetDrv sets the "drv" field.
-func (_u *NodeUpdateOne) SetDrv(v string) *NodeUpdateOne {
-	_u.mutation.SetDrv(v)
+// SetDriveID sets the "drive_id" field.
+func (_u *NodeUpdateOne) SetDriveID(v string) *NodeUpdateOne {
+	_u.mutation.SetDriveID(v)
 	return _u
 }
 
-// SetNillableDrv sets the "drv" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableDrv(v *string) *NodeUpdateOne {
+// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableDriveID(v *string) *NodeUpdateOne {
 	if v != nil {
-		_u.SetDrv(*v)
+		_u.SetDriveID(*v)
 	}
 	return _u
 }
@@ -571,12 +565,6 @@ func (_u *NodeUpdateOne) SetNillableRevision(v *string) *NodeUpdateOne {
 	if v != nil {
 		_u.SetRevision(*v)
 	}
-	return _u
-}
-
-// SetDriveID sets the "drive" edge to the Drive entity by ID.
-func (_u *NodeUpdateOne) SetDriveID(id string) *NodeUpdateOne {
-	_u.mutation.SetDriveID(id)
 	return _u
 }
 

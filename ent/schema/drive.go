@@ -57,14 +57,12 @@ func (Drive) Fields() []ent.Field {
 			MaxLen(255),
 
 		// Owning user (ULID, references User.id).
-		field.String("owner_id").
-			MaxLen(32),
+		field.String("owner_id"),
 
 		// Root node of this drive (UUID, references Node.id).
 		// Set when the drive's root directory is created.
-		field.UUID("root_node_id", uuid.UUID{}).
-			Optional().
-			Nillable(),
+		field.UUID("root_node_id", uuid.UUID{}),
+
 		// Soft-delete timestamp. Null means active.
 		field.Time("deleted_at").
 			Optional().
@@ -76,6 +74,7 @@ func (Drive) Fields() []ent.Field {
 func (Drive) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("owner_id"),
+		index.Fields("root_node_id"),
 		index.Fields("deleted_at"),
 	}
 }
@@ -85,7 +84,18 @@ func (Drive) Edges() []ent.Edge {
 	return []ent.Edge{
 		// Drive has one storage configuration.
 		edge.To("storage", Storage.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}).
 			Unique(),
-		edge.To("nodes", Node.Type),
+		edge.To("nodes", Node.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
+		edge.From("user", User.Type).
+			Ref("drives").
+			Field("owner_id").
+			Unique().
+			Required(),
 	}
 }

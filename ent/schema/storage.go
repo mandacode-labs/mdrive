@@ -15,7 +15,7 @@ type Storage struct {
 func (Storage) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("drive_id").
-			MaxLen(32).
+			Immutable().
 			Unique(),
 
 		// Storage provider.
@@ -58,6 +58,7 @@ func (Storage) Edges() []ent.Edge {
 		edge.From("drive", Drive.Type).
 			Ref("storage").
 			Field("drive_id").
+			Immutable().
 			Required().
 			Unique(),
 	}

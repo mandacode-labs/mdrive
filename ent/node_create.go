@@ -53,9 +53,9 @@ func (_c *NodeCreate) SetNillableUpdateTime(v *time.Time) *NodeCreate {
 	return _c
 }
 
-// SetDrv sets the "drv" field.
-func (_c *NodeCreate) SetDrv(v string) *NodeCreate {
-	_c.mutation.SetDrv(v)
+// SetDriveID sets the "drive_id" field.
+func (_c *NodeCreate) SetDriveID(v string) *NodeCreate {
+	_c.mutation.SetDriveID(v)
 	return _c
 }
 
@@ -165,12 +165,6 @@ func (_c *NodeCreate) SetNillableID(v *uuid.UUID) *NodeCreate {
 	return _c
 }
 
-// SetDriveID sets the "drive" edge to the Drive entity by ID.
-func (_c *NodeCreate) SetDriveID(id string) *NodeCreate {
-	_c.mutation.SetDriveID(id)
-	return _c
-}
-
 // SetDrive sets the "drive" edge to the Drive entity.
 func (_c *NodeCreate) SetDrive(v *Drive) *NodeCreate {
 	return _c.SetDriveID(v.ID)
@@ -249,8 +243,8 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Node.update_time"`)}
 	}
-	if _, ok := _c.mutation.Drv(); !ok {
-		return &ValidationError{Name: "drv", err: errors.New(`ent: missing required field "Node.drv"`)}
+	if _, ok := _c.mutation.DriveID(); !ok {
+		return &ValidationError{Name: "drive_id", err: errors.New(`ent: missing required field "Node.drive_id"`)}
 	}
 	if _, ok := _c.mutation.Kind(); !ok {
 		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "Node.kind"`)}
@@ -395,7 +389,7 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.Drv = nodes[0]
+		_node.DriveID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -462,15 +456,15 @@ func (u *NodeUpsert) UpdateUpdateTime() *NodeUpsert {
 	return u
 }
 
-// SetDrv sets the "drv" field.
-func (u *NodeUpsert) SetDrv(v string) *NodeUpsert {
-	u.Set(node.FieldDrv, v)
+// SetDriveID sets the "drive_id" field.
+func (u *NodeUpsert) SetDriveID(v string) *NodeUpsert {
+	u.Set(node.FieldDriveID, v)
 	return u
 }
 
-// UpdateDrv sets the "drv" field to the value that was provided on create.
-func (u *NodeUpsert) UpdateDrv() *NodeUpsert {
-	u.SetExcluded(node.FieldDrv)
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *NodeUpsert) UpdateDriveID() *NodeUpsert {
+	u.SetExcluded(node.FieldDriveID)
 	return u
 }
 
@@ -683,17 +677,17 @@ func (u *NodeUpsertOne) UpdateUpdateTime() *NodeUpsertOne {
 	})
 }
 
-// SetDrv sets the "drv" field.
-func (u *NodeUpsertOne) SetDrv(v string) *NodeUpsertOne {
+// SetDriveID sets the "drive_id" field.
+func (u *NodeUpsertOne) SetDriveID(v string) *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetDrv(v)
+		s.SetDriveID(v)
 	})
 }
 
-// UpdateDrv sets the "drv" field to the value that was provided on create.
-func (u *NodeUpsertOne) UpdateDrv() *NodeUpsertOne {
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *NodeUpsertOne) UpdateDriveID() *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateDrv()
+		s.UpdateDriveID()
 	})
 }
 
@@ -1097,17 +1091,17 @@ func (u *NodeUpsertBulk) UpdateUpdateTime() *NodeUpsertBulk {
 	})
 }
 
-// SetDrv sets the "drv" field.
-func (u *NodeUpsertBulk) SetDrv(v string) *NodeUpsertBulk {
+// SetDriveID sets the "drive_id" field.
+func (u *NodeUpsertBulk) SetDriveID(v string) *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetDrv(v)
+		s.SetDriveID(v)
 	})
 }
 
-// UpdateDrv sets the "drv" field to the value that was provided on create.
-func (u *NodeUpsertBulk) UpdateDrv() *NodeUpsertBulk {
+// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
+func (u *NodeUpsertBulk) UpdateDriveID() *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateDrv()
+		s.UpdateDriveID()
 	})
 }
 

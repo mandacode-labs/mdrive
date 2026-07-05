@@ -30,8 +30,29 @@ type User struct {
 	// Provider holds the value of the "provider" field.
 	Provider string `json:"provider,omitempty"`
 	// ProviderID holds the value of the "provider_id" field.
-	ProviderID   string `json:"provider_id,omitempty"`
+	ProviderID string `json:"provider_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Drives holds the value of the drives edge.
+	Drives []*Drive `json:"drives,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// DrivesOrErr returns the Drives value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) DrivesOrErr() ([]*Drive, error) {
+	if e.loadedTypes[0] {
+		return e.Drives, nil
+	}
+	return nil, &NotLoadedError{edge: "drives"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -118,6 +139,11 @@ func (_m *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryDrives queries the "drives" edge of the User entity.
+func (_m *User) QueryDrives() *DriveQuery {
+	return NewUserClient(_m.config).QueryDrives(_m)
 }
 
 // Update returns a builder for updating this User.

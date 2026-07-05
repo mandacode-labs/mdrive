@@ -41,7 +41,7 @@ func (Node) Fields() []ent.Field {
 			Immutable(),
 
 		// Drive ID
-		field.String("drv"),
+		field.String("drive_id"),
 
 		// Node kind (file, directory, symlink, object, mount).
 		field.Enum("kind").
@@ -63,9 +63,11 @@ func (Node) Fields() []ent.Field {
 
 		// POSIX timestamps.
 		field.Time("atime"),
-		field.Time("mtime"),
+		field.Time("mtime").
+			StorageKey("updated_at"),
 		field.Time("ctime"),
-		field.Time("crtime"),
+		field.Time("crtime").
+			StorageKey("created_at"),
 
 		// Bitmask of node-level flags (ext2-style i_flags).
 		field.Uint32("flags").
@@ -81,7 +83,7 @@ func (Node) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("drive", Drive.Type).
 			Ref("nodes").
-			Field("drv").
+			Field("drive_id").
 			Unique().
 			Required(),
 	}

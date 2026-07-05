@@ -149,11 +149,6 @@ func (_c *StorageCreate) check() error {
 	if _, ok := _c.mutation.DriveID(); !ok {
 		return &ValidationError{Name: "drive_id", err: errors.New(`ent: missing required field "Storage.drive_id"`)}
 	}
-	if v, ok := _c.mutation.DriveID(); ok {
-		if err := storage.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Storage.drive_id": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.Provider(); !ok {
 		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "Storage.provider"`)}
 	}
@@ -329,18 +324,6 @@ type (
 	}
 )
 
-// SetDriveID sets the "drive_id" field.
-func (u *StorageUpsert) SetDriveID(v string) *StorageUpsert {
-	u.Set(storage.FieldDriveID, v)
-	return u
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *StorageUpsert) UpdateDriveID() *StorageUpsert {
-	u.SetExcluded(storage.FieldDriveID)
-	return u
-}
-
 // SetProvider sets the "provider" field.
 func (u *StorageUpsert) SetProvider(v storage.Provider) *StorageUpsert {
 	u.Set(storage.FieldProvider, v)
@@ -441,6 +424,11 @@ func (u *StorageUpsert) UpdateUsePathStyle() *StorageUpsert {
 //		Exec(ctx)
 func (u *StorageUpsertOne) UpdateNewValues() *StorageUpsertOne {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.DriveID(); exists {
+			s.SetIgnore(storage.FieldDriveID)
+		}
+	}))
 	return u
 }
 
@@ -469,20 +457,6 @@ func (u *StorageUpsertOne) Update(set func(*StorageUpsert)) *StorageUpsertOne {
 		set(&StorageUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (u *StorageUpsertOne) SetDriveID(v string) *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.SetDriveID(v)
-	})
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *StorageUpsertOne) UpdateDriveID() *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.UpdateDriveID()
-	})
 }
 
 // SetProvider sets the "provider" field.
@@ -764,6 +738,13 @@ type StorageUpsertBulk struct {
 //		Exec(ctx)
 func (u *StorageUpsertBulk) UpdateNewValues() *StorageUpsertBulk {
 	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.DriveID(); exists {
+				s.SetIgnore(storage.FieldDriveID)
+			}
+		}
+	}))
 	return u
 }
 
@@ -792,20 +773,6 @@ func (u *StorageUpsertBulk) Update(set func(*StorageUpsert)) *StorageUpsertBulk 
 		set(&StorageUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (u *StorageUpsertBulk) SetDriveID(v string) *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.SetDriveID(v)
-	})
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *StorageUpsertBulk) UpdateDriveID() *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.UpdateDriveID()
-	})
 }
 
 // SetProvider sets the "provider" field.

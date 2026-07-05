@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -110,9 +111,45 @@ func (_u *UserUpdate) SetNillableProviderID(v *string) *UserUpdate {
 	return _u
 }
 
+// AddDrifeIDs adds the "drives" edge to the Drive entity by IDs.
+func (_u *UserUpdate) AddDrifeIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddDrifeIDs(ids...)
+	return _u
+}
+
+// AddDrives adds the "drives" edges to the Drive entity.
+func (_u *UserUpdate) AddDrives(v ...*Drive) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDrifeIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearDrives clears all "drives" edges to the Drive entity.
+func (_u *UserUpdate) ClearDrives() *UserUpdate {
+	_u.mutation.ClearDrives()
+	return _u
+}
+
+// RemoveDrifeIDs removes the "drives" edge to Drive entities by IDs.
+func (_u *UserUpdate) RemoveDrifeIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveDrifeIDs(ids...)
+	return _u
+}
+
+// RemoveDrives removes "drives" edges to Drive entities.
+func (_u *UserUpdate) RemoveDrives(v ...*Drive) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDrifeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -213,6 +250,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ProviderID(); ok {
 		_spec.SetField(user.FieldProviderID, field.TypeString, value)
+	}
+	if _u.mutation.DrivesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDrivesIDs(); len(nodes) > 0 && !_u.mutation.DrivesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DrivesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -316,9 +398,45 @@ func (_u *UserUpdateOne) SetNillableProviderID(v *string) *UserUpdateOne {
 	return _u
 }
 
+// AddDrifeIDs adds the "drives" edge to the Drive entity by IDs.
+func (_u *UserUpdateOne) AddDrifeIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddDrifeIDs(ids...)
+	return _u
+}
+
+// AddDrives adds the "drives" edges to the Drive entity.
+func (_u *UserUpdateOne) AddDrives(v ...*Drive) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDrifeIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearDrives clears all "drives" edges to the Drive entity.
+func (_u *UserUpdateOne) ClearDrives() *UserUpdateOne {
+	_u.mutation.ClearDrives()
+	return _u
+}
+
+// RemoveDrifeIDs removes the "drives" edge to Drive entities by IDs.
+func (_u *UserUpdateOne) RemoveDrifeIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveDrifeIDs(ids...)
+	return _u
+}
+
+// RemoveDrives removes "drives" edges to Drive entities.
+func (_u *UserUpdateOne) RemoveDrives(v ...*Drive) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDrifeIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -449,6 +567,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.ProviderID(); ok {
 		_spec.SetField(user.FieldProviderID, field.TypeString, value)
+	}
+	if _u.mutation.DrivesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDrivesIDs(); len(nodes) > 0 && !_u.mutation.DrivesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DrivesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: _u.config}
 	_spec.Assign = _node.assignValues

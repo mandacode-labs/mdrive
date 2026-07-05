@@ -20,8 +20,8 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
-	// FieldDrv holds the string denoting the drv field in the database.
-	FieldDrv = "drv"
+	// FieldDriveID holds the string denoting the drive_id field in the database.
+	FieldDriveID = "drive_id"
 	// FieldKind holds the string denoting the kind field in the database.
 	FieldKind = "kind"
 	// FieldSize holds the string denoting the size field in the database.
@@ -33,11 +33,11 @@ const (
 	// FieldAtime holds the string denoting the atime field in the database.
 	FieldAtime = "atime"
 	// FieldMtime holds the string denoting the mtime field in the database.
-	FieldMtime = "mtime"
+	FieldMtime = "updated_at"
 	// FieldCtime holds the string denoting the ctime field in the database.
 	FieldCtime = "ctime"
 	// FieldCrtime holds the string denoting the crtime field in the database.
-	FieldCrtime = "crtime"
+	FieldCrtime = "created_at"
 	// FieldFlags holds the string denoting the flags field in the database.
 	FieldFlags = "flags"
 	// FieldRevision holds the string denoting the revision field in the database.
@@ -52,7 +52,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "drive" package.
 	DriveInverseTable = "drives"
 	// DriveColumn is the table column denoting the drive relation/edge.
-	DriveColumn = "drv"
+	DriveColumn = "drive_id"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -60,7 +60,7 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
-	FieldDrv,
+	FieldDriveID,
 	FieldKind,
 	FieldSize,
 	FieldNlink,
@@ -151,9 +151,9 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
-// ByDrv orders the results by the drv field.
-func ByDrv(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDrv, opts...).ToFunc()
+// ByDriveID orders the results by the drive_id field.
+func ByDriveID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDriveID, opts...).ToFunc()
 }
 
 // ByKind orders the results by the kind field.

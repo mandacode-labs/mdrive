@@ -41,10 +41,6 @@ func init() {
 	driveDescDescription := driveFields[2].Descriptor()
 	// drive.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
 	drive.DescriptionValidator = driveDescDescription.Validators[0].(func(string) error)
-	// driveDescOwnerID is the schema descriptor for owner_id field.
-	driveDescOwnerID := driveFields[3].Descriptor()
-	// drive.OwnerIDValidator is a validator for the "owner_id" field. It is called by the builders before save.
-	drive.OwnerIDValidator = driveDescOwnerID.Validators[0].(func(string) error)
 	// driveDescID is the schema descriptor for id field.
 	driveDescID := driveFields[0].Descriptor()
 	// drive.DefaultID holds the default value on creation for the id field.
@@ -117,10 +113,6 @@ func init() {
 	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
-	// storageDescDriveID is the schema descriptor for drive_id field.
-	storageDescDriveID := storageFields[0].Descriptor()
-	// storage.DriveIDValidator is a validator for the "drive_id" field. It is called by the builders before save.
-	storage.DriveIDValidator = storageDescDriveID.Validators[0].(func(string) error)
 	// storageDescBucket is the schema descriptor for bucket field.
 	storageDescBucket := storageFields[2].Descriptor()
 	// storage.BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
@@ -182,6 +174,6 @@ func init() {
 	user.ProviderIDValidator = userDescProviderID.Validators[0].(func(string) error)
 	// userDescID is the schema descriptor for id field.
 	userDescID := userFields[0].Descriptor()
-	// user.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	user.IDValidator = userDescID.Validators[0].(func(string) error)
+	// user.DefaultID holds the default value on creation for the id field.
+	user.DefaultID = userDescID.Default.(func() string)
 }

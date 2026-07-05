@@ -23,8 +23,8 @@ type Node struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
-	// Drv holds the value of the "drv" field.
-	Drv string `json:"drv,omitempty"`
+	// DriveID holds the value of the "drive_id" field.
+	DriveID string `json:"drive_id,omitempty"`
 	// Kind holds the value of the "kind" field.
 	Kind node.Kind `json:"kind,omitempty"`
 	// Size holds the value of the "size" field.
@@ -80,7 +80,7 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case node.FieldSize, node.FieldNlink, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldDrv, node.FieldKind, node.FieldRevision:
+		case node.FieldDriveID, node.FieldKind, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
 			values[i] = new(sql.NullTime)
@@ -119,11 +119,11 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
-		case node.FieldDrv:
+		case node.FieldDriveID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field drv", values[i])
+				return fmt.Errorf("unexpected type %T for field drive_id", values[i])
 			} else if value.Valid {
-				_m.Drv = value.String
+				_m.DriveID = value.String
 			}
 		case node.FieldKind:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -232,8 +232,8 @@ func (_m *Node) String() string {
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("drv=")
-	builder.WriteString(_m.Drv)
+	builder.WriteString("drive_id=")
+	builder.WriteString(_m.DriveID)
 	builder.WriteString(", ")
 	builder.WriteString("kind=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Kind))

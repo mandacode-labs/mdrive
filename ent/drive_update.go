@@ -16,6 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
 // DriveUpdate is the builder for updating Drive entities.
@@ -99,12 +100,6 @@ func (_u *DriveUpdate) SetNillableRootNodeID(v *uuid.UUID) *DriveUpdate {
 	return _u
 }
 
-// ClearRootNodeID clears the value of the "root_node_id" field.
-func (_u *DriveUpdate) ClearRootNodeID() *DriveUpdate {
-	_u.mutation.ClearRootNodeID()
-	return _u
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_u *DriveUpdate) SetDeletedAt(v time.Time) *DriveUpdate {
 	_u.mutation.SetDeletedAt(v)
@@ -159,6 +154,17 @@ func (_u *DriveUpdate) AddNodes(v ...*Node) *DriveUpdate {
 	return _u.AddNodeIDs(ids...)
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *DriveUpdate) SetUserID(id string) *DriveUpdate {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *DriveUpdate) SetUser(v *User) *DriveUpdate {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdate) Mutation() *DriveMutation {
 	return _u.mutation
@@ -189,6 +195,12 @@ func (_u *DriveUpdate) RemoveNodes(v ...*Node) *DriveUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNodeIDs(ids...)
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DriveUpdate) ClearUser() *DriveUpdate {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -239,10 +251,8 @@ func (_u *DriveUpdate) check() error {
 			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Drive.description": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.OwnerID(); ok {
-		if err := drive.OwnerIDValidator(v); err != nil {
-			return &ValidationError{Name: "owner_id", err: fmt.Errorf(`ent: validator failed for field "Drive.owner_id": %w`, err)}
-		}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Drive.user"`)
 	}
 	return nil
 }
@@ -271,14 +281,8 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
 	}
-	if value, ok := _u.mutation.OwnerID(); ok {
-		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.RootNodeID(); ok {
 		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-	}
-	if _u.mutation.RootNodeIDCleared() {
-		_spec.ClearField(drive.FieldRootNodeID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
@@ -353,6 +357,35 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -448,12 +481,6 @@ func (_u *DriveUpdateOne) SetNillableRootNodeID(v *uuid.UUID) *DriveUpdateOne {
 	return _u
 }
 
-// ClearRootNodeID clears the value of the "root_node_id" field.
-func (_u *DriveUpdateOne) ClearRootNodeID() *DriveUpdateOne {
-	_u.mutation.ClearRootNodeID()
-	return _u
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_u *DriveUpdateOne) SetDeletedAt(v time.Time) *DriveUpdateOne {
 	_u.mutation.SetDeletedAt(v)
@@ -508,6 +535,17 @@ func (_u *DriveUpdateOne) AddNodes(v ...*Node) *DriveUpdateOne {
 	return _u.AddNodeIDs(ids...)
 }
 
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *DriveUpdateOne) SetUserID(id string) *DriveUpdateOne {
+	_u.mutation.SetUserID(id)
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *DriveUpdateOne) SetUser(v *User) *DriveUpdateOne {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdateOne) Mutation() *DriveMutation {
 	return _u.mutation
@@ -538,6 +576,12 @@ func (_u *DriveUpdateOne) RemoveNodes(v ...*Node) *DriveUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNodeIDs(ids...)
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DriveUpdateOne) ClearUser() *DriveUpdateOne {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Where appends a list predicates to the DriveUpdate builder.
@@ -601,10 +645,8 @@ func (_u *DriveUpdateOne) check() error {
 			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Drive.description": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.OwnerID(); ok {
-		if err := drive.OwnerIDValidator(v); err != nil {
-			return &ValidationError{Name: "owner_id", err: fmt.Errorf(`ent: validator failed for field "Drive.owner_id": %w`, err)}
-		}
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Drive.user"`)
 	}
 	return nil
 }
@@ -650,14 +692,8 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
 	}
-	if value, ok := _u.mutation.OwnerID(); ok {
-		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.RootNodeID(); ok {
 		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-	}
-	if _u.mutation.RootNodeIDCleared() {
-		_spec.ClearField(drive.FieldRootNodeID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
@@ -732,6 +768,35 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

@@ -4,9 +4,11 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"entgo.io/ent/schema/mixin"
+	"github.com/oklog/ulid/v2"
 )
 
 // User holds the schema definition for an externally-authenticated user.
@@ -32,9 +34,11 @@ func (User) Mixin() []ent.Mixin {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		// Primary identifier (ULID, 26 chars).
 		field.String("id").
-			MaxLen(32).
+			StorageKey("id").
+			DefaultFunc(func() string {
+				return ulid.Make().String()
+			}).
 			Unique().
 			Immutable(),
 
@@ -60,6 +64,15 @@ func (User) Fields() []ent.Field {
 		// OIDC provider's user ID (the `sub` claim).
 		field.String("provider_id").
 			MaxLen(255),
+	}
+}
+
+func (User) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("drives", Drive.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
 	}
 }
 

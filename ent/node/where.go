@@ -66,9 +66,9 @@ func UpdateTime(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldUpdateTime, v))
 }
 
-// Drv applies equality check predicate on the "drv" field. It's identical to DrvEQ.
-func Drv(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldDrv, v))
+// DriveID applies equality check predicate on the "drive_id" field. It's identical to DriveIDEQ.
+func DriveID(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldDriveID, v))
 }
 
 // Size applies equality check predicate on the "size" field. It's identical to SizeEQ.
@@ -196,69 +196,69 @@ func UpdateTimeLTE(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldUpdateTime, v))
 }
 
-// DrvEQ applies the EQ predicate on the "drv" field.
-func DrvEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldDrv, v))
+// DriveIDEQ applies the EQ predicate on the "drive_id" field.
+func DriveIDEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldDriveID, v))
 }
 
-// DrvNEQ applies the NEQ predicate on the "drv" field.
-func DrvNEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldDrv, v))
+// DriveIDNEQ applies the NEQ predicate on the "drive_id" field.
+func DriveIDNEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldDriveID, v))
 }
 
-// DrvIn applies the In predicate on the "drv" field.
-func DrvIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldDrv, vs...))
+// DriveIDIn applies the In predicate on the "drive_id" field.
+func DriveIDIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldDriveID, vs...))
 }
 
-// DrvNotIn applies the NotIn predicate on the "drv" field.
-func DrvNotIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldDrv, vs...))
+// DriveIDNotIn applies the NotIn predicate on the "drive_id" field.
+func DriveIDNotIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldDriveID, vs...))
 }
 
-// DrvGT applies the GT predicate on the "drv" field.
-func DrvGT(v string) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldDrv, v))
+// DriveIDGT applies the GT predicate on the "drive_id" field.
+func DriveIDGT(v string) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldDriveID, v))
 }
 
-// DrvGTE applies the GTE predicate on the "drv" field.
-func DrvGTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldDrv, v))
+// DriveIDGTE applies the GTE predicate on the "drive_id" field.
+func DriveIDGTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldDriveID, v))
 }
 
-// DrvLT applies the LT predicate on the "drv" field.
-func DrvLT(v string) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldDrv, v))
+// DriveIDLT applies the LT predicate on the "drive_id" field.
+func DriveIDLT(v string) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldDriveID, v))
 }
 
-// DrvLTE applies the LTE predicate on the "drv" field.
-func DrvLTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldDrv, v))
+// DriveIDLTE applies the LTE predicate on the "drive_id" field.
+func DriveIDLTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldDriveID, v))
 }
 
-// DrvContains applies the Contains predicate on the "drv" field.
-func DrvContains(v string) predicate.Node {
-	return predicate.Node(sql.FieldContains(FieldDrv, v))
+// DriveIDContains applies the Contains predicate on the "drive_id" field.
+func DriveIDContains(v string) predicate.Node {
+	return predicate.Node(sql.FieldContains(FieldDriveID, v))
 }
 
-// DrvHasPrefix applies the HasPrefix predicate on the "drv" field.
-func DrvHasPrefix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasPrefix(FieldDrv, v))
+// DriveIDHasPrefix applies the HasPrefix predicate on the "drive_id" field.
+func DriveIDHasPrefix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasPrefix(FieldDriveID, v))
 }
 
-// DrvHasSuffix applies the HasSuffix predicate on the "drv" field.
-func DrvHasSuffix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasSuffix(FieldDrv, v))
+// DriveIDHasSuffix applies the HasSuffix predicate on the "drive_id" field.
+func DriveIDHasSuffix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasSuffix(FieldDriveID, v))
 }
 
-// DrvEqualFold applies the EqualFold predicate on the "drv" field.
-func DrvEqualFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldEqualFold(FieldDrv, v))
+// DriveIDEqualFold applies the EqualFold predicate on the "drive_id" field.
+func DriveIDEqualFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldEqualFold(FieldDriveID, v))
 }
 
-// DrvContainsFold applies the ContainsFold predicate on the "drv" field.
-func DrvContainsFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldContainsFold(FieldDrv, v))
+// DriveIDContainsFold applies the ContainsFold predicate on the "drive_id" field.
+func DriveIDContainsFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldContainsFold(FieldDriveID, v))
 }
 
 // KindEQ applies the EQ predicate on the "kind" field.

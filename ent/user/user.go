@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -27,8 +28,17 @@ const (
 	FieldProvider = "provider"
 	// FieldProviderID holds the string denoting the provider_id field in the database.
 	FieldProviderID = "provider_id"
+	// EdgeDrives holds the string denoting the drives edge name in mutations.
+	EdgeDrives = "drives"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// DrivesTable is the table that holds the drives relation/edge.
+	DrivesTable = "drives"
+	// DrivesInverseTable is the table name for the Drive entity.
+	// It exists in this package in order to avoid circular dependency with the "drive" package.
+	DrivesInverseTable = "drives"
+	// DrivesColumn is the table column denoting the drives relation/edge.
+	DrivesColumn = "owner_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -70,8 +80,8 @@ var (
 	ProviderValidator func(string) error
 	// ProviderIDValidator is a validator for the "provider_id" field. It is called by the builders before save.
 	ProviderIDValidator func(string) error
-	// IDValidator is a validator for the "id" field. It is called by the builders before save.
-	IDValidator func(string) error
+	// DefaultID holds the default value on creation for the "id" field.
+	DefaultID func() string
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -115,4 +125,25 @@ func ByProvider(opts ...sql.OrderTermOption) OrderOption {
 // ByProviderID orders the results by the provider_id field.
 func ByProviderID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProviderID, opts...).ToFunc()
+}
+
+// ByDrivesCount orders the results by drives count.
+func ByDrivesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDrivesStep(), opts...)
+	}
+}
+
+// ByDrives orders the results by drives terms.
+func ByDrives(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDrivesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newDrivesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DrivesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DrivesTable, DrivesColumn),
+	)
 }

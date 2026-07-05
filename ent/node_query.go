@@ -406,7 +406,7 @@ func (_q *NodeQuery) loadDrive(ctx context.Context, query *DriveQuery, nodes []*
 	ids := make([]string, 0, len(nodes))
 	nodeids := make(map[string][]*Node)
 	for i := range nodes {
-		fk := nodes[i].Drv
+		fk := nodes[i].DriveID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -423,7 +423,7 @@ func (_q *NodeQuery) loadDrive(ctx context.Context, query *DriveQuery, nodes []*
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "drv" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "drive_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -458,7 +458,7 @@ func (_q *NodeQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 		if _q.withDrive != nil {
-			_spec.Node.AddColumnOnce(node.FieldDrv)
+			_spec.Node.AddColumnOnce(node.FieldDriveID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

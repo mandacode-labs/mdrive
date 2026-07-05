@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -95,6 +96,29 @@ func (_c *UserCreate) SetID(v string) *UserCreate {
 	return _c
 }
 
+// SetNillableID sets the "id" field if the given value is not nil.
+func (_c *UserCreate) SetNillableID(v *string) *UserCreate {
+	if v != nil {
+		_c.SetID(*v)
+	}
+	return _c
+}
+
+// AddDrifeIDs adds the "drives" edge to the Drive entity by IDs.
+func (_c *UserCreate) AddDrifeIDs(ids ...string) *UserCreate {
+	_c.mutation.AddDrifeIDs(ids...)
+	return _c
+}
+
+// AddDrives adds the "drives" edges to the Drive entity.
+func (_c *UserCreate) AddDrives(v ...*Drive) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDrifeIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_c *UserCreate) Mutation() *UserMutation {
 	return _c.mutation
@@ -137,6 +161,10 @@ func (_c *UserCreate) defaults() {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		v := user.DefaultUpdateTime()
 		_c.mutation.SetUpdateTime(v)
+	}
+	if _, ok := _c.mutation.ID(); !ok {
+		v := user.DefaultID()
+		_c.mutation.SetID(v)
 	}
 }
 
@@ -183,11 +211,6 @@ func (_c *UserCreate) check() error {
 	if v, ok := _c.mutation.ProviderID(); ok {
 		if err := user.ProviderIDValidator(v); err != nil {
 			return &ValidationError{Name: "provider_id", err: fmt.Errorf(`ent: validator failed for field "User.provider_id": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.ID(); ok {
-		if err := user.IDValidator(v); err != nil {
-			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "User.id": %w`, err)}
 		}
 	}
 	return nil
@@ -253,6 +276,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ProviderID(); ok {
 		_spec.SetField(user.FieldProviderID, field.TypeString, value)
 		_node.ProviderID = value
+	}
+	if nodes := _c.mutation.DrivesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DrivesTable,
+			Columns: []string{user.DrivesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

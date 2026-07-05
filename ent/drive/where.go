@@ -426,16 +426,6 @@ func RootNodeIDLTE(v uuid.UUID) predicate.Drive {
 	return predicate.Drive(sql.FieldLTE(FieldRootNodeID, v))
 }
 
-// RootNodeIDIsNil applies the IsNil predicate on the "root_node_id" field.
-func RootNodeIDIsNil() predicate.Drive {
-	return predicate.Drive(sql.FieldIsNull(FieldRootNodeID))
-}
-
-// RootNodeIDNotNil applies the NotNil predicate on the "root_node_id" field.
-func RootNodeIDNotNil() predicate.Drive {
-	return predicate.Drive(sql.FieldNotNull(FieldRootNodeID))
-}
-
 // DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
 func DeletedAtEQ(v time.Time) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldDeletedAt, v))
@@ -524,6 +514,29 @@ func HasNodes() predicate.Drive {
 func HasNodesWith(preds ...predicate.Node) predicate.Drive {
 	return predicate.Drive(func(s *sql.Selector) {
 		step := newNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasUser applies the HasEdge predicate on the "user" edge.
+func HasUser() predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
+func HasUserWith(preds ...predicate.User) predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := newUserStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

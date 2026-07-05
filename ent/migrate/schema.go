@@ -16,25 +16,38 @@ var (
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "name", Type: field.TypeString, Size: 64},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "owner_id", Type: field.TypeString, Size: 32},
-		{Name: "root_node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "root_node_id", Type: field.TypeUUID},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
+		{Name: "owner_id", Type: field.TypeString},
 	}
 	// DrivesTable holds the schema information for the "drives" table.
 	DrivesTable = &schema.Table{
 		Name:       "drives",
 		Columns:    DrivesColumns,
 		PrimaryKey: []*schema.Column{DrivesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "drives_users_drives",
+				Columns:    []*schema.Column{DrivesColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "drive_owner_id",
+				Unique:  false,
+				Columns: []*schema.Column{DrivesColumns[7]},
+			},
+			{
+				Name:    "drive_root_node_id",
 				Unique:  false,
 				Columns: []*schema.Column{DrivesColumns[5]},
 			},
 			{
 				Name:    "drive_deleted_at",
 				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[7]},
+				Columns: []*schema.Column{DrivesColumns[6]},
 			},
 		},
 	}
@@ -63,12 +76,12 @@ var (
 		{Name: "nlink", Type: field.TypeUint32, Default: 0},
 		{Name: "data", Type: field.TypeBytes, Nullable: true, Size: 4096},
 		{Name: "atime", Type: field.TypeTime},
-		{Name: "mtime", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "ctime", Type: field.TypeTime},
-		{Name: "crtime", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
 		{Name: "flags", Type: field.TypeUint32, Default: 0},
 		{Name: "revision", Type: field.TypeString, Size: 26},
-		{Name: "drv", Type: field.TypeString},
+		{Name: "drive_id", Type: field.TypeString},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
 	NodesTable = &schema.Table{
@@ -80,7 +93,7 @@ var (
 				Symbol:     "nodes_drives_nodes",
 				Columns:    []*schema.Column{NodesColumns[13]},
 				RefColumns: []*schema.Column{DrivesColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -106,13 +119,13 @@ var (
 				Symbol:     "storages_drives_storage",
 				Columns:    []*schema.Column{StoragesColumns[8]},
 				RefColumns: []*schema.Column{DrivesColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "public_id", Type: field.TypeString, Unique: true, Size: 32},
@@ -145,6 +158,7 @@ var (
 )
 
 func init() {
+	DrivesTable.ForeignKeys[0].RefTable = UsersTable
 	DrivesTable.Annotation = &entsql.Annotation{
 		Table: "drives",
 	}

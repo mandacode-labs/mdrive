@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
 
@@ -512,6 +513,29 @@ func ProviderIDEqualFold(v string) predicate.User {
 // ProviderIDContainsFold applies the ContainsFold predicate on the "provider_id" field.
 func ProviderIDContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldProviderID, v))
+}
+
+// HasDrives applies the HasEdge predicate on the "drives" edge.
+func HasDrives() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DrivesTable, DrivesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDrivesWith applies the HasEdge predicate on the "drives" edge with a given conditions (other predicates).
+func HasDrivesWith(preds ...predicate.Drive) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newDrivesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

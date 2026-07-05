@@ -16,6 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
 // DriveCreate is the builder for creating a Drive entity.
@@ -86,14 +87,6 @@ func (_c *DriveCreate) SetRootNodeID(v uuid.UUID) *DriveCreate {
 	return _c
 }
 
-// SetNillableRootNodeID sets the "root_node_id" field if the given value is not nil.
-func (_c *DriveCreate) SetNillableRootNodeID(v *uuid.UUID) *DriveCreate {
-	if v != nil {
-		_c.SetRootNodeID(*v)
-	}
-	return _c
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_c *DriveCreate) SetDeletedAt(v time.Time) *DriveCreate {
 	_c.mutation.SetDeletedAt(v)
@@ -154,6 +147,17 @@ func (_c *DriveCreate) AddNodes(v ...*Node) *DriveCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddNodeIDs(ids...)
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_c *DriveCreate) SetUserID(id string) *DriveCreate {
+	_c.mutation.SetUserID(id)
+	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *DriveCreate) SetUser(v *User) *DriveCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // Mutation returns the DriveMutation object of the builder.
@@ -229,10 +233,11 @@ func (_c *DriveCreate) check() error {
 	if _, ok := _c.mutation.OwnerID(); !ok {
 		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "Drive.owner_id"`)}
 	}
-	if v, ok := _c.mutation.OwnerID(); ok {
-		if err := drive.OwnerIDValidator(v); err != nil {
-			return &ValidationError{Name: "owner_id", err: fmt.Errorf(`ent: validator failed for field "Drive.owner_id": %w`, err)}
-		}
+	if _, ok := _c.mutation.RootNodeID(); !ok {
+		return &ValidationError{Name: "root_node_id", err: errors.New(`ent: missing required field "Drive.root_node_id"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Drive.user"`)}
 	}
 	return nil
 }
@@ -286,13 +291,9 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 		_spec.SetField(drive.FieldDescription, field.TypeString, value)
 		_node.Description = &value
 	}
-	if value, ok := _c.mutation.OwnerID(); ok {
-		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
-		_node.OwnerID = value
-	}
 	if value, ok := _c.mutation.RootNodeID(); ok {
 		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-		_node.RootNodeID = &value
+		_node.RootNodeID = value
 	}
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
@@ -328,6 +329,23 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.OwnerID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -445,12 +463,6 @@ func (u *DriveUpsert) SetRootNodeID(v uuid.UUID) *DriveUpsert {
 // UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
 func (u *DriveUpsert) UpdateRootNodeID() *DriveUpsert {
 	u.SetExcluded(drive.FieldRootNodeID)
-	return u
-}
-
-// ClearRootNodeID clears the value of the "root_node_id" field.
-func (u *DriveUpsert) ClearRootNodeID() *DriveUpsert {
-	u.SetNull(drive.FieldRootNodeID)
 	return u
 }
 
@@ -597,13 +609,6 @@ func (u *DriveUpsertOne) SetRootNodeID(v uuid.UUID) *DriveUpsertOne {
 func (u *DriveUpsertOne) UpdateRootNodeID() *DriveUpsertOne {
 	return u.Update(func(s *DriveUpsert) {
 		s.UpdateRootNodeID()
-	})
-}
-
-// ClearRootNodeID clears the value of the "root_node_id" field.
-func (u *DriveUpsertOne) ClearRootNodeID() *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.ClearRootNodeID()
 	})
 }
 
@@ -920,13 +925,6 @@ func (u *DriveUpsertBulk) SetRootNodeID(v uuid.UUID) *DriveUpsertBulk {
 func (u *DriveUpsertBulk) UpdateRootNodeID() *DriveUpsertBulk {
 	return u.Update(func(s *DriveUpsert) {
 		s.UpdateRootNodeID()
-	})
-}
-
-// ClearRootNodeID clears the value of the "root_node_id" field.
-func (u *DriveUpsertBulk) ClearRootNodeID() *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.ClearRootNodeID()
 	})
 }
 

@@ -67,8 +67,6 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DriveIDValidator is a validator for the "drive_id" field. It is called by the builders before save.
-	DriveIDValidator func(string) error
 	// BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
 	BucketValidator func(string) error
 	// EndpointValidator is a validator for the "endpoint" field. It is called by the builders before save.

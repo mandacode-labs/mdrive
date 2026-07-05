@@ -10,7 +10,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/storage"
 )
@@ -25,20 +24,6 @@ type StorageUpdate struct {
 // Where appends a list predicates to the StorageUpdate builder.
 func (_u *StorageUpdate) Where(ps ...predicate.Storage) *StorageUpdate {
 	_u.mutation.Where(ps...)
-	return _u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (_u *StorageUpdate) SetDriveID(v string) *StorageUpdate {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *StorageUpdate) SetNillableDriveID(v *string) *StorageUpdate {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
 	return _u
 }
 
@@ -146,20 +131,9 @@ func (_u *StorageUpdate) SetNillableUsePathStyle(v *bool) *StorageUpdate {
 	return _u
 }
 
-// SetDrive sets the "drive" edge to the Drive entity.
-func (_u *StorageUpdate) SetDrive(v *Drive) *StorageUpdate {
-	return _u.SetDriveID(v.ID)
-}
-
 // Mutation returns the StorageMutation object of the builder.
 func (_u *StorageUpdate) Mutation() *StorageMutation {
 	return _u.mutation
-}
-
-// ClearDrive clears the "drive" edge to the Drive entity.
-func (_u *StorageUpdate) ClearDrive() *StorageUpdate {
-	_u.mutation.ClearDrive()
-	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -191,11 +165,6 @@ func (_u *StorageUpdate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *StorageUpdate) check() error {
-	if v, ok := _u.mutation.DriveID(); ok {
-		if err := storage.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Storage.drive_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Provider(); ok {
 		if err := storage.ProviderValidator(v); err != nil {
 			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Storage.provider": %w`, err)}
@@ -268,35 +237,6 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
 	}
-	if _u.mutation.DriveCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   storage.DriveTable,
-			Columns: []string{storage.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DriveIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   storage.DriveTable,
-			Columns: []string{storage.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{storage.Label}
@@ -315,20 +255,6 @@ type StorageUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *StorageMutation
-}
-
-// SetDriveID sets the "drive_id" field.
-func (_u *StorageUpdateOne) SetDriveID(v string) *StorageUpdateOne {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *StorageUpdateOne) SetNillableDriveID(v *string) *StorageUpdateOne {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
-	return _u
 }
 
 // SetProvider sets the "provider" field.
@@ -435,20 +361,9 @@ func (_u *StorageUpdateOne) SetNillableUsePathStyle(v *bool) *StorageUpdateOne {
 	return _u
 }
 
-// SetDrive sets the "drive" edge to the Drive entity.
-func (_u *StorageUpdateOne) SetDrive(v *Drive) *StorageUpdateOne {
-	return _u.SetDriveID(v.ID)
-}
-
 // Mutation returns the StorageMutation object of the builder.
 func (_u *StorageUpdateOne) Mutation() *StorageMutation {
 	return _u.mutation
-}
-
-// ClearDrive clears the "drive" edge to the Drive entity.
-func (_u *StorageUpdateOne) ClearDrive() *StorageUpdateOne {
-	_u.mutation.ClearDrive()
-	return _u
 }
 
 // Where appends a list predicates to the StorageUpdate builder.
@@ -493,11 +408,6 @@ func (_u *StorageUpdateOne) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *StorageUpdateOne) check() error {
-	if v, ok := _u.mutation.DriveID(); ok {
-		if err := storage.DriveIDValidator(v); err != nil {
-			return &ValidationError{Name: "drive_id", err: fmt.Errorf(`ent: validator failed for field "Storage.drive_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Provider(); ok {
 		if err := storage.ProviderValidator(v); err != nil {
 			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Storage.provider": %w`, err)}
@@ -586,35 +496,6 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 	}
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
-	}
-	if _u.mutation.DriveCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   storage.DriveTable,
-			Columns: []string{storage.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DriveIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: true,
-			Table:   storage.DriveTable,
-			Columns: []string{storage.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Storage{config: _u.config}
 	_spec.Assign = _node.assignValues
