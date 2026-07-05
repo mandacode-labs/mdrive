@@ -24,8 +24,8 @@ type blockStorage struct {
 }
 
 // Destroy implements [BlockStorage].
-func (s *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
-	client := s.client
+func (bs *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
+	client := bs.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -40,8 +40,8 @@ func (s *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
 }
 
 // Read implements [BlockStorage].
-func (s *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error) {
-	client := s.client
+func (bs *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error) {
+	client := bs.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -56,8 +56,8 @@ func (s *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error
 }
 
 // Write implements [BlockStorage].
-func (s *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
-	client := s.client
+func (bs *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
+	client := bs.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -84,7 +84,7 @@ func (s *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
 	return nil
 }
 
-func NewSuperOperation(client *ent.Client) BlockStorage {
+func NewBlockStorage(client *ent.Client) BlockStorage {
 	return &blockStorage{client: client}
 }
 
