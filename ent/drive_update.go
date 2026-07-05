@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
 // DriveUpdate is the builder for updating Drive entities.
@@ -34,20 +34,6 @@ func (_u *DriveUpdate) Where(ps ...predicate.Drive) *DriveUpdate {
 // SetUpdateTime sets the "update_time" field.
 func (_u *DriveUpdate) SetUpdateTime(v time.Time) *DriveUpdate {
 	_u.mutation.SetUpdateTime(v)
-	return _u
-}
-
-// SetPublicID sets the "public_id" field.
-func (_u *DriveUpdate) SetPublicID(v string) *DriveUpdate {
-	_u.mutation.SetPublicID(v)
-	return _u
-}
-
-// SetNillablePublicID sets the "public_id" field if the given value is not nil.
-func (_u *DriveUpdate) SetNillablePublicID(v *string) *DriveUpdate {
-	if v != nil {
-		_u.SetPublicID(*v)
-	}
 	return _u
 }
 
@@ -82,20 +68,6 @@ func (_u *DriveUpdate) SetNillableDescription(v *string) *DriveUpdate {
 // ClearDescription clears the value of the "description" field.
 func (_u *DriveUpdate) ClearDescription() *DriveUpdate {
 	_u.mutation.ClearDescription()
-	return _u
-}
-
-// SetProvider sets the "provider" field.
-func (_u *DriveUpdate) SetProvider(v drive.Provider) *DriveUpdate {
-	_u.mutation.SetProvider(v)
-	return _u
-}
-
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_u *DriveUpdate) SetNillableProvider(v *drive.Provider) *DriveUpdate {
-	if v != nil {
-		_u.SetProvider(*v)
-	}
 	return _u
 }
 
@@ -153,13 +125,13 @@ func (_u *DriveUpdate) ClearDeletedAt() *DriveUpdate {
 	return _u
 }
 
-// SetStorageID sets the "storage" edge to the DriveStorage entity by ID.
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
 func (_u *DriveUpdate) SetStorageID(id int) *DriveUpdate {
 	_u.mutation.SetStorageID(id)
 	return _u
 }
 
-// SetNillableStorageID sets the "storage" edge to the DriveStorage entity by ID if the given value is not nil.
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
 func (_u *DriveUpdate) SetNillableStorageID(id *int) *DriveUpdate {
 	if id != nil {
 		_u = _u.SetStorageID(*id)
@@ -167,8 +139,8 @@ func (_u *DriveUpdate) SetNillableStorageID(id *int) *DriveUpdate {
 	return _u
 }
 
-// SetStorage sets the "storage" edge to the DriveStorage entity.
-func (_u *DriveUpdate) SetStorage(v *DriveStorage) *DriveUpdate {
+// SetStorage sets the "storage" edge to the Storage entity.
+func (_u *DriveUpdate) SetStorage(v *Storage) *DriveUpdate {
 	return _u.SetStorageID(v.ID)
 }
 
@@ -192,7 +164,7 @@ func (_u *DriveUpdate) Mutation() *DriveMutation {
 	return _u.mutation
 }
 
-// ClearStorage clears the "storage" edge to the DriveStorage entity.
+// ClearStorage clears the "storage" edge to the Storage entity.
 func (_u *DriveUpdate) ClearStorage() *DriveUpdate {
 	_u.mutation.ClearStorage()
 	return _u
@@ -257,11 +229,6 @@ func (_u *DriveUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DriveUpdate) check() error {
-	if v, ok := _u.mutation.PublicID(); ok {
-		if err := drive.PublicIDValidator(v); err != nil {
-			return &ValidationError{Name: "public_id", err: fmt.Errorf(`ent: validator failed for field "Drive.public_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Name(); ok {
 		if err := drive.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Drive.name": %w`, err)}
@@ -270,11 +237,6 @@ func (_u *DriveUpdate) check() error {
 	if v, ok := _u.mutation.Description(); ok {
 		if err := drive.DescriptionValidator(v); err != nil {
 			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Drive.description": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Provider(); ok {
-		if err := drive.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Drive.provider": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.OwnerID(); ok {
@@ -300,9 +262,6 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(drive.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.PublicID(); ok {
-		_spec.SetField(drive.FieldPublicID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(drive.FieldName, field.TypeString, value)
 	}
@@ -311,9 +270,6 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
-	}
-	if value, ok := _u.mutation.Provider(); ok {
-		_spec.SetField(drive.FieldProvider, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.OwnerID(); ok {
 		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
@@ -338,7 +294,7 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: []string{drive.StorageColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -351,7 +307,7 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: []string{drive.StorageColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -430,20 +386,6 @@ func (_u *DriveUpdateOne) SetUpdateTime(v time.Time) *DriveUpdateOne {
 	return _u
 }
 
-// SetPublicID sets the "public_id" field.
-func (_u *DriveUpdateOne) SetPublicID(v string) *DriveUpdateOne {
-	_u.mutation.SetPublicID(v)
-	return _u
-}
-
-// SetNillablePublicID sets the "public_id" field if the given value is not nil.
-func (_u *DriveUpdateOne) SetNillablePublicID(v *string) *DriveUpdateOne {
-	if v != nil {
-		_u.SetPublicID(*v)
-	}
-	return _u
-}
-
 // SetName sets the "name" field.
 func (_u *DriveUpdateOne) SetName(v string) *DriveUpdateOne {
 	_u.mutation.SetName(v)
@@ -475,20 +417,6 @@ func (_u *DriveUpdateOne) SetNillableDescription(v *string) *DriveUpdateOne {
 // ClearDescription clears the value of the "description" field.
 func (_u *DriveUpdateOne) ClearDescription() *DriveUpdateOne {
 	_u.mutation.ClearDescription()
-	return _u
-}
-
-// SetProvider sets the "provider" field.
-func (_u *DriveUpdateOne) SetProvider(v drive.Provider) *DriveUpdateOne {
-	_u.mutation.SetProvider(v)
-	return _u
-}
-
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_u *DriveUpdateOne) SetNillableProvider(v *drive.Provider) *DriveUpdateOne {
-	if v != nil {
-		_u.SetProvider(*v)
-	}
 	return _u
 }
 
@@ -546,13 +474,13 @@ func (_u *DriveUpdateOne) ClearDeletedAt() *DriveUpdateOne {
 	return _u
 }
 
-// SetStorageID sets the "storage" edge to the DriveStorage entity by ID.
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
 func (_u *DriveUpdateOne) SetStorageID(id int) *DriveUpdateOne {
 	_u.mutation.SetStorageID(id)
 	return _u
 }
 
-// SetNillableStorageID sets the "storage" edge to the DriveStorage entity by ID if the given value is not nil.
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
 func (_u *DriveUpdateOne) SetNillableStorageID(id *int) *DriveUpdateOne {
 	if id != nil {
 		_u = _u.SetStorageID(*id)
@@ -560,8 +488,8 @@ func (_u *DriveUpdateOne) SetNillableStorageID(id *int) *DriveUpdateOne {
 	return _u
 }
 
-// SetStorage sets the "storage" edge to the DriveStorage entity.
-func (_u *DriveUpdateOne) SetStorage(v *DriveStorage) *DriveUpdateOne {
+// SetStorage sets the "storage" edge to the Storage entity.
+func (_u *DriveUpdateOne) SetStorage(v *Storage) *DriveUpdateOne {
 	return _u.SetStorageID(v.ID)
 }
 
@@ -585,7 +513,7 @@ func (_u *DriveUpdateOne) Mutation() *DriveMutation {
 	return _u.mutation
 }
 
-// ClearStorage clears the "storage" edge to the DriveStorage entity.
+// ClearStorage clears the "storage" edge to the Storage entity.
 func (_u *DriveUpdateOne) ClearStorage() *DriveUpdateOne {
 	_u.mutation.ClearStorage()
 	return _u
@@ -663,11 +591,6 @@ func (_u *DriveUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *DriveUpdateOne) check() error {
-	if v, ok := _u.mutation.PublicID(); ok {
-		if err := drive.PublicIDValidator(v); err != nil {
-			return &ValidationError{Name: "public_id", err: fmt.Errorf(`ent: validator failed for field "Drive.public_id": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Name(); ok {
 		if err := drive.NameValidator(v); err != nil {
 			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Drive.name": %w`, err)}
@@ -676,11 +599,6 @@ func (_u *DriveUpdateOne) check() error {
 	if v, ok := _u.mutation.Description(); ok {
 		if err := drive.DescriptionValidator(v); err != nil {
 			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Drive.description": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Provider(); ok {
-		if err := drive.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Drive.provider": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.OwnerID(); ok {
@@ -723,9 +641,6 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(drive.FieldUpdateTime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.PublicID(); ok {
-		_spec.SetField(drive.FieldPublicID, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(drive.FieldName, field.TypeString, value)
 	}
@@ -734,9 +649,6 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	}
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
-	}
-	if value, ok := _u.mutation.Provider(); ok {
-		_spec.SetField(drive.FieldProvider, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.OwnerID(); ok {
 		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
@@ -761,7 +673,7 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 			Columns: []string{drive.StorageColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -774,7 +686,7 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 			Columns: []string{drive.StorageColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

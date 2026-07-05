@@ -5,11 +5,12 @@ package ent
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/schema"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -32,56 +33,22 @@ func init() {
 	drive.DefaultUpdateTime = driveDescUpdateTime.Default.(func() time.Time)
 	// drive.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
 	drive.UpdateDefaultUpdateTime = driveDescUpdateTime.UpdateDefault.(func() time.Time)
-	// driveDescPublicID is the schema descriptor for public_id field.
-	driveDescPublicID := driveFields[1].Descriptor()
-	// drive.PublicIDValidator is a validator for the "public_id" field. It is called by the builders before save.
-	drive.PublicIDValidator = driveDescPublicID.Validators[0].(func(string) error)
 	// driveDescName is the schema descriptor for name field.
-	driveDescName := driveFields[2].Descriptor()
+	driveDescName := driveFields[1].Descriptor()
 	// drive.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	drive.NameValidator = driveDescName.Validators[0].(func(string) error)
 	// driveDescDescription is the schema descriptor for description field.
-	driveDescDescription := driveFields[3].Descriptor()
+	driveDescDescription := driveFields[2].Descriptor()
 	// drive.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
 	drive.DescriptionValidator = driveDescDescription.Validators[0].(func(string) error)
 	// driveDescOwnerID is the schema descriptor for owner_id field.
-	driveDescOwnerID := driveFields[5].Descriptor()
+	driveDescOwnerID := driveFields[3].Descriptor()
 	// drive.OwnerIDValidator is a validator for the "owner_id" field. It is called by the builders before save.
 	drive.OwnerIDValidator = driveDescOwnerID.Validators[0].(func(string) error)
 	// driveDescID is the schema descriptor for id field.
 	driveDescID := driveFields[0].Descriptor()
-	// drive.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	drive.IDValidator = driveDescID.Validators[0].(func(string) error)
-	drivestorageFields := schema.DriveStorage{}.Fields()
-	_ = drivestorageFields
-	// drivestorageDescDriveID is the schema descriptor for drive_id field.
-	drivestorageDescDriveID := drivestorageFields[0].Descriptor()
-	// drivestorage.DriveIDValidator is a validator for the "drive_id" field. It is called by the builders before save.
-	drivestorage.DriveIDValidator = drivestorageDescDriveID.Validators[0].(func(string) error)
-	// drivestorageDescBucket is the schema descriptor for bucket field.
-	drivestorageDescBucket := drivestorageFields[1].Descriptor()
-	// drivestorage.BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
-	drivestorage.BucketValidator = drivestorageDescBucket.Validators[0].(func(string) error)
-	// drivestorageDescEndpoint is the schema descriptor for endpoint field.
-	drivestorageDescEndpoint := drivestorageFields[2].Descriptor()
-	// drivestorage.EndpointValidator is a validator for the "endpoint" field. It is called by the builders before save.
-	drivestorage.EndpointValidator = drivestorageDescEndpoint.Validators[0].(func(string) error)
-	// drivestorageDescRegion is the schema descriptor for region field.
-	drivestorageDescRegion := drivestorageFields[3].Descriptor()
-	// drivestorage.RegionValidator is a validator for the "region" field. It is called by the builders before save.
-	drivestorage.RegionValidator = drivestorageDescRegion.Validators[0].(func(string) error)
-	// drivestorageDescAccessKey is the schema descriptor for access_key field.
-	drivestorageDescAccessKey := drivestorageFields[4].Descriptor()
-	// drivestorage.AccessKeyValidator is a validator for the "access_key" field. It is called by the builders before save.
-	drivestorage.AccessKeyValidator = drivestorageDescAccessKey.Validators[0].(func(string) error)
-	// drivestorageDescSecretKey is the schema descriptor for secret_key field.
-	drivestorageDescSecretKey := drivestorageFields[5].Descriptor()
-	// drivestorage.SecretKeyValidator is a validator for the "secret_key" field. It is called by the builders before save.
-	drivestorage.SecretKeyValidator = drivestorageDescSecretKey.Validators[0].(func(string) error)
-	// drivestorageDescUsePathStyle is the schema descriptor for use_path_style field.
-	drivestorageDescUsePathStyle := drivestorageFields[6].Descriptor()
-	// drivestorage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
-	drivestorage.DefaultUsePathStyle = drivestorageDescUsePathStyle.Default.(bool)
+	// drive.DefaultID holds the default value on creation for the id field.
+	drive.DefaultID = driveDescID.Default.(func() string)
 	gctombstoneMixin := schema.GCTombstone{}.Mixin()
 	gctombstoneMixinFields0 := gctombstoneMixin[0].Fields()
 	_ = gctombstoneMixinFields0
@@ -144,6 +111,40 @@ func init() {
 	nodeDescRevision := nodeFields[11].Descriptor()
 	// node.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
 	node.RevisionValidator = nodeDescRevision.Validators[0].(func(string) error)
+	// nodeDescID is the schema descriptor for id field.
+	nodeDescID := nodeFields[0].Descriptor()
+	// node.DefaultID holds the default value on creation for the id field.
+	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
+	storageFields := schema.Storage{}.Fields()
+	_ = storageFields
+	// storageDescDriveID is the schema descriptor for drive_id field.
+	storageDescDriveID := storageFields[0].Descriptor()
+	// storage.DriveIDValidator is a validator for the "drive_id" field. It is called by the builders before save.
+	storage.DriveIDValidator = storageDescDriveID.Validators[0].(func(string) error)
+	// storageDescBucket is the schema descriptor for bucket field.
+	storageDescBucket := storageFields[2].Descriptor()
+	// storage.BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
+	storage.BucketValidator = storageDescBucket.Validators[0].(func(string) error)
+	// storageDescEndpoint is the schema descriptor for endpoint field.
+	storageDescEndpoint := storageFields[3].Descriptor()
+	// storage.EndpointValidator is a validator for the "endpoint" field. It is called by the builders before save.
+	storage.EndpointValidator = storageDescEndpoint.Validators[0].(func(string) error)
+	// storageDescRegion is the schema descriptor for region field.
+	storageDescRegion := storageFields[4].Descriptor()
+	// storage.RegionValidator is a validator for the "region" field. It is called by the builders before save.
+	storage.RegionValidator = storageDescRegion.Validators[0].(func(string) error)
+	// storageDescAccessKey is the schema descriptor for access_key field.
+	storageDescAccessKey := storageFields[5].Descriptor()
+	// storage.AccessKeyValidator is a validator for the "access_key" field. It is called by the builders before save.
+	storage.AccessKeyValidator = storageDescAccessKey.Validators[0].(func(string) error)
+	// storageDescSecretKey is the schema descriptor for secret_key field.
+	storageDescSecretKey := storageFields[6].Descriptor()
+	// storage.SecretKeyValidator is a validator for the "secret_key" field. It is called by the builders before save.
+	storage.SecretKeyValidator = storageDescSecretKey.Validators[0].(func(string) error)
+	// storageDescUsePathStyle is the schema descriptor for use_path_style field.
+	storageDescUsePathStyle := storageFields[7].Descriptor()
+	// storage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
+	storage.DefaultUsePathStyle = storageDescUsePathStyle.Default.(bool)
 	userMixin := schema.User{}.Mixin()
 	userMixinFields0 := userMixin[0].Fields()
 	_ = userMixinFields0

@@ -35,6 +35,8 @@ func (Node) Fields() []ent.Field {
 	return []ent.Field{
 		// Primary identifier (UUID).
 		field.UUID("id", uuid.UUID{}).
+			StorageKey("id").
+			Default(uuid.New).
 			Unique().
 			Immutable(),
 

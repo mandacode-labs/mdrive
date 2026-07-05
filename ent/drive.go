@@ -11,7 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
 // Drive is the model entity for the Drive schema.
@@ -23,14 +23,10 @@ type Drive struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
-	// PublicID holds the value of the "public_id" field.
-	PublicID string `json:"public_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Description holds the value of the "description" field.
 	Description *string `json:"description,omitempty"`
-	// Provider holds the value of the "provider" field.
-	Provider drive.Provider `json:"provider,omitempty"`
 	// OwnerID holds the value of the "owner_id" field.
 	OwnerID string `json:"owner_id,omitempty"`
 	// RootNodeID holds the value of the "root_node_id" field.
@@ -46,7 +42,7 @@ type Drive struct {
 // DriveEdges holds the relations/edges for other nodes in the graph.
 type DriveEdges struct {
 	// Storage holds the value of the storage edge.
-	Storage *DriveStorage `json:"storage,omitempty"`
+	Storage *Storage `json:"storage,omitempty"`
 	// Nodes holds the value of the nodes edge.
 	Nodes []*Node `json:"nodes,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -56,11 +52,11 @@ type DriveEdges struct {
 
 // StorageOrErr returns the Storage value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e DriveEdges) StorageOrErr() (*DriveStorage, error) {
+func (e DriveEdges) StorageOrErr() (*Storage, error) {
 	if e.Storage != nil {
 		return e.Storage, nil
 	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: drivestorage.Label}
+		return nil, &NotFoundError{label: storage.Label}
 	}
 	return nil, &NotLoadedError{edge: "storage"}
 }
@@ -81,7 +77,7 @@ func (*Drive) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case drive.FieldRootNodeID:
 			values[i] = &sql.NullScanner{S: new(uuid.UUID)}
-		case drive.FieldID, drive.FieldPublicID, drive.FieldName, drive.FieldDescription, drive.FieldProvider, drive.FieldOwnerID:
+		case drive.FieldID, drive.FieldName, drive.FieldDescription, drive.FieldOwnerID:
 			values[i] = new(sql.NullString)
 		case drive.FieldCreateTime, drive.FieldUpdateTime, drive.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -118,12 +114,6 @@ func (_m *Drive) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
-		case drive.FieldPublicID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field public_id", values[i])
-			} else if value.Valid {
-				_m.PublicID = value.String
-			}
 		case drive.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
@@ -136,12 +126,6 @@ func (_m *Drive) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Description = new(string)
 				*_m.Description = value.String
-			}
-		case drive.FieldProvider:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field provider", values[i])
-			} else if value.Valid {
-				_m.Provider = drive.Provider(value.String)
 			}
 		case drive.FieldOwnerID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -177,7 +161,7 @@ func (_m *Drive) Value(name string) (ent.Value, error) {
 }
 
 // QueryStorage queries the "storage" edge of the Drive entity.
-func (_m *Drive) QueryStorage() *DriveStorageQuery {
+func (_m *Drive) QueryStorage() *StorageQuery {
 	return NewDriveClient(_m.config).QueryStorage(_m)
 }
 
@@ -215,9 +199,6 @@ func (_m *Drive) String() string {
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("public_id=")
-	builder.WriteString(_m.PublicID)
-	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
 	builder.WriteString(", ")
@@ -225,9 +206,6 @@ func (_m *Drive) String() string {
 		builder.WriteString("description=")
 		builder.WriteString(*v)
 	}
-	builder.WriteString(", ")
-	builder.WriteString("provider=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Provider))
 	builder.WriteString(", ")
 	builder.WriteString("owner_id=")
 	builder.WriteString(_m.OwnerID)

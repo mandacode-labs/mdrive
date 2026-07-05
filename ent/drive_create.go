@@ -14,8 +14,8 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
 // DriveCreate is the builder for creating a Drive entity.
@@ -54,12 +54,6 @@ func (_c *DriveCreate) SetNillableUpdateTime(v *time.Time) *DriveCreate {
 	return _c
 }
 
-// SetPublicID sets the "public_id" field.
-func (_c *DriveCreate) SetPublicID(v string) *DriveCreate {
-	_c.mutation.SetPublicID(v)
-	return _c
-}
-
 // SetName sets the "name" field.
 func (_c *DriveCreate) SetName(v string) *DriveCreate {
 	_c.mutation.SetName(v)
@@ -76,20 +70,6 @@ func (_c *DriveCreate) SetDescription(v string) *DriveCreate {
 func (_c *DriveCreate) SetNillableDescription(v *string) *DriveCreate {
 	if v != nil {
 		_c.SetDescription(*v)
-	}
-	return _c
-}
-
-// SetProvider sets the "provider" field.
-func (_c *DriveCreate) SetProvider(v drive.Provider) *DriveCreate {
-	_c.mutation.SetProvider(v)
-	return _c
-}
-
-// SetNillableProvider sets the "provider" field if the given value is not nil.
-func (_c *DriveCreate) SetNillableProvider(v *drive.Provider) *DriveCreate {
-	if v != nil {
-		_c.SetProvider(*v)
 	}
 	return _c
 }
@@ -134,13 +114,21 @@ func (_c *DriveCreate) SetID(v string) *DriveCreate {
 	return _c
 }
 
-// SetStorageID sets the "storage" edge to the DriveStorage entity by ID.
+// SetNillableID sets the "id" field if the given value is not nil.
+func (_c *DriveCreate) SetNillableID(v *string) *DriveCreate {
+	if v != nil {
+		_c.SetID(*v)
+	}
+	return _c
+}
+
+// SetStorageID sets the "storage" edge to the Storage entity by ID.
 func (_c *DriveCreate) SetStorageID(id int) *DriveCreate {
 	_c.mutation.SetStorageID(id)
 	return _c
 }
 
-// SetNillableStorageID sets the "storage" edge to the DriveStorage entity by ID if the given value is not nil.
+// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
 func (_c *DriveCreate) SetNillableStorageID(id *int) *DriveCreate {
 	if id != nil {
 		_c = _c.SetStorageID(*id)
@@ -148,8 +136,8 @@ func (_c *DriveCreate) SetNillableStorageID(id *int) *DriveCreate {
 	return _c
 }
 
-// SetStorage sets the "storage" edge to the DriveStorage entity.
-func (_c *DriveCreate) SetStorage(v *DriveStorage) *DriveCreate {
+// SetStorage sets the "storage" edge to the Storage entity.
+func (_c *DriveCreate) SetStorage(v *Storage) *DriveCreate {
 	return _c.SetStorageID(v.ID)
 }
 
@@ -211,9 +199,9 @@ func (_c *DriveCreate) defaults() {
 		v := drive.DefaultUpdateTime()
 		_c.mutation.SetUpdateTime(v)
 	}
-	if _, ok := _c.mutation.Provider(); !ok {
-		v := drive.DefaultProvider
-		_c.mutation.SetProvider(v)
+	if _, ok := _c.mutation.ID(); !ok {
+		v := drive.DefaultID()
+		_c.mutation.SetID(v)
 	}
 }
 
@@ -224,14 +212,6 @@ func (_c *DriveCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Drive.update_time"`)}
-	}
-	if _, ok := _c.mutation.PublicID(); !ok {
-		return &ValidationError{Name: "public_id", err: errors.New(`ent: missing required field "Drive.public_id"`)}
-	}
-	if v, ok := _c.mutation.PublicID(); ok {
-		if err := drive.PublicIDValidator(v); err != nil {
-			return &ValidationError{Name: "public_id", err: fmt.Errorf(`ent: validator failed for field "Drive.public_id": %w`, err)}
-		}
 	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Drive.name"`)}
@@ -246,25 +226,12 @@ func (_c *DriveCreate) check() error {
 			return &ValidationError{Name: "description", err: fmt.Errorf(`ent: validator failed for field "Drive.description": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Provider(); !ok {
-		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "Drive.provider"`)}
-	}
-	if v, ok := _c.mutation.Provider(); ok {
-		if err := drive.ProviderValidator(v); err != nil {
-			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Drive.provider": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.OwnerID(); !ok {
 		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "Drive.owner_id"`)}
 	}
 	if v, ok := _c.mutation.OwnerID(); ok {
 		if err := drive.OwnerIDValidator(v); err != nil {
 			return &ValidationError{Name: "owner_id", err: fmt.Errorf(`ent: validator failed for field "Drive.owner_id": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.ID(); ok {
-		if err := drive.IDValidator(v); err != nil {
-			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Drive.id": %w`, err)}
 		}
 	}
 	return nil
@@ -311,10 +278,6 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 		_spec.SetField(drive.FieldUpdateTime, field.TypeTime, value)
 		_node.UpdateTime = value
 	}
-	if value, ok := _c.mutation.PublicID(); ok {
-		_spec.SetField(drive.FieldPublicID, field.TypeString, value)
-		_node.PublicID = value
-	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(drive.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -322,10 +285,6 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Description(); ok {
 		_spec.SetField(drive.FieldDescription, field.TypeString, value)
 		_node.Description = &value
-	}
-	if value, ok := _c.mutation.Provider(); ok {
-		_spec.SetField(drive.FieldProvider, field.TypeEnum, value)
-		_node.Provider = value
 	}
 	if value, ok := _c.mutation.OwnerID(); ok {
 		_spec.SetField(drive.FieldOwnerID, field.TypeString, value)
@@ -347,7 +306,7 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 			Columns: []string{drive.StorageColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -435,18 +394,6 @@ func (u *DriveUpsert) UpdateUpdateTime() *DriveUpsert {
 	return u
 }
 
-// SetPublicID sets the "public_id" field.
-func (u *DriveUpsert) SetPublicID(v string) *DriveUpsert {
-	u.Set(drive.FieldPublicID, v)
-	return u
-}
-
-// UpdatePublicID sets the "public_id" field to the value that was provided on create.
-func (u *DriveUpsert) UpdatePublicID() *DriveUpsert {
-	u.SetExcluded(drive.FieldPublicID)
-	return u
-}
-
 // SetName sets the "name" field.
 func (u *DriveUpsert) SetName(v string) *DriveUpsert {
 	u.Set(drive.FieldName, v)
@@ -474,18 +421,6 @@ func (u *DriveUpsert) UpdateDescription() *DriveUpsert {
 // ClearDescription clears the value of the "description" field.
 func (u *DriveUpsert) ClearDescription() *DriveUpsert {
 	u.SetNull(drive.FieldDescription)
-	return u
-}
-
-// SetProvider sets the "provider" field.
-func (u *DriveUpsert) SetProvider(v drive.Provider) *DriveUpsert {
-	u.Set(drive.FieldProvider, v)
-	return u
-}
-
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *DriveUpsert) UpdateProvider() *DriveUpsert {
-	u.SetExcluded(drive.FieldProvider)
 	return u
 }
 
@@ -602,20 +537,6 @@ func (u *DriveUpsertOne) UpdateUpdateTime() *DriveUpsertOne {
 	})
 }
 
-// SetPublicID sets the "public_id" field.
-func (u *DriveUpsertOne) SetPublicID(v string) *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetPublicID(v)
-	})
-}
-
-// UpdatePublicID sets the "public_id" field to the value that was provided on create.
-func (u *DriveUpsertOne) UpdatePublicID() *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdatePublicID()
-	})
-}
-
 // SetName sets the "name" field.
 func (u *DriveUpsertOne) SetName(v string) *DriveUpsertOne {
 	return u.Update(func(s *DriveUpsert) {
@@ -648,20 +569,6 @@ func (u *DriveUpsertOne) UpdateDescription() *DriveUpsertOne {
 func (u *DriveUpsertOne) ClearDescription() *DriveUpsertOne {
 	return u.Update(func(s *DriveUpsert) {
 		s.ClearDescription()
-	})
-}
-
-// SetProvider sets the "provider" field.
-func (u *DriveUpsertOne) SetProvider(v drive.Provider) *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetProvider(v)
-	})
-}
-
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *DriveUpsertOne) UpdateProvider() *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdateProvider()
 	})
 }
 
@@ -953,20 +860,6 @@ func (u *DriveUpsertBulk) UpdateUpdateTime() *DriveUpsertBulk {
 	})
 }
 
-// SetPublicID sets the "public_id" field.
-func (u *DriveUpsertBulk) SetPublicID(v string) *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetPublicID(v)
-	})
-}
-
-// UpdatePublicID sets the "public_id" field to the value that was provided on create.
-func (u *DriveUpsertBulk) UpdatePublicID() *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdatePublicID()
-	})
-}
-
 // SetName sets the "name" field.
 func (u *DriveUpsertBulk) SetName(v string) *DriveUpsertBulk {
 	return u.Update(func(s *DriveUpsert) {
@@ -999,20 +892,6 @@ func (u *DriveUpsertBulk) UpdateDescription() *DriveUpsertBulk {
 func (u *DriveUpsertBulk) ClearDescription() *DriveUpsertBulk {
 	return u.Update(func(s *DriveUpsert) {
 		s.ClearDescription()
-	})
-}
-
-// SetProvider sets the "provider" field.
-func (u *DriveUpsertBulk) SetProvider(v drive.Provider) *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetProvider(v)
-	})
-}
-
-// UpdateProvider sets the "provider" field to the value that was provided on create.
-func (u *DriveUpsertBulk) UpdateProvider() *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdateProvider()
 	})
 }
 

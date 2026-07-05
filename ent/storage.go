@@ -9,16 +9,18 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
-// DriveStorage is the model entity for the DriveStorage schema.
-type DriveStorage struct {
+// Storage is the model entity for the Storage schema.
+type Storage struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// DriveID holds the value of the "drive_id" field.
 	DriveID string `json:"drive_id,omitempty"`
+	// Provider holds the value of the "provider" field.
+	Provider storage.Provider `json:"provider,omitempty"`
 	// Bucket holds the value of the "bucket" field.
 	Bucket string `json:"bucket,omitempty"`
 	// Endpoint holds the value of the "endpoint" field.
@@ -32,13 +34,13 @@ type DriveStorage struct {
 	// UsePathStyle holds the value of the "use_path_style" field.
 	UsePathStyle bool `json:"use_path_style,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the DriveStorageQuery when eager-loading is set.
-	Edges        DriveStorageEdges `json:"edges"`
+	// The values are being populated by the StorageQuery when eager-loading is set.
+	Edges        StorageEdges `json:"edges"`
 	selectValues sql.SelectValues
 }
 
-// DriveStorageEdges holds the relations/edges for other nodes in the graph.
-type DriveStorageEdges struct {
+// StorageEdges holds the relations/edges for other nodes in the graph.
+type StorageEdges struct {
 	// Drive holds the value of the drive edge.
 	Drive *Drive `json:"drive,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -48,7 +50,7 @@ type DriveStorageEdges struct {
 
 // DriveOrErr returns the Drive value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e DriveStorageEdges) DriveOrErr() (*Drive, error) {
+func (e StorageEdges) DriveOrErr() (*Drive, error) {
 	if e.Drive != nil {
 		return e.Drive, nil
 	} else if e.loadedTypes[0] {
@@ -58,15 +60,15 @@ func (e DriveStorageEdges) DriveOrErr() (*Drive, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*DriveStorage) scanValues(columns []string) ([]any, error) {
+func (*Storage) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case drivestorage.FieldUsePathStyle:
+		case storage.FieldUsePathStyle:
 			values[i] = new(sql.NullBool)
-		case drivestorage.FieldID:
+		case storage.FieldID:
 			values[i] = new(sql.NullInt64)
-		case drivestorage.FieldDriveID, drivestorage.FieldBucket, drivestorage.FieldEndpoint, drivestorage.FieldRegion, drivestorage.FieldAccessKey, drivestorage.FieldSecretKey:
+		case storage.FieldDriveID, storage.FieldProvider, storage.FieldBucket, storage.FieldEndpoint, storage.FieldRegion, storage.FieldAccessKey, storage.FieldSecretKey:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -76,57 +78,63 @@ func (*DriveStorage) scanValues(columns []string) ([]any, error) {
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the DriveStorage fields.
-func (_m *DriveStorage) assignValues(columns []string, values []any) error {
+// to the Storage fields.
+func (_m *Storage) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	for i := range columns {
 		switch columns[i] {
-		case drivestorage.FieldID:
+		case storage.FieldID:
 			value, ok := values[i].(*sql.NullInt64)
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
-		case drivestorage.FieldDriveID:
+		case storage.FieldDriveID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field drive_id", values[i])
 			} else if value.Valid {
 				_m.DriveID = value.String
 			}
-		case drivestorage.FieldBucket:
+		case storage.FieldProvider:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field provider", values[i])
+			} else if value.Valid {
+				_m.Provider = storage.Provider(value.String)
+			}
+		case storage.FieldBucket:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field bucket", values[i])
 			} else if value.Valid {
 				_m.Bucket = value.String
 			}
-		case drivestorage.FieldEndpoint:
+		case storage.FieldEndpoint:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field endpoint", values[i])
 			} else if value.Valid {
 				_m.Endpoint = new(string)
 				*_m.Endpoint = value.String
 			}
-		case drivestorage.FieldRegion:
+		case storage.FieldRegion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field region", values[i])
 			} else if value.Valid {
 				_m.Region = value.String
 			}
-		case drivestorage.FieldAccessKey:
+		case storage.FieldAccessKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field access_key", values[i])
 			} else if value.Valid {
 				_m.AccessKey = value.String
 			}
-		case drivestorage.FieldSecretKey:
+		case storage.FieldSecretKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field secret_key", values[i])
 			} else if value.Valid {
 				_m.SecretKey = value.String
 			}
-		case drivestorage.FieldUsePathStyle:
+		case storage.FieldUsePathStyle:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field use_path_style", values[i])
 			} else if value.Valid {
@@ -139,42 +147,45 @@ func (_m *DriveStorage) assignValues(columns []string, values []any) error {
 	return nil
 }
 
-// Value returns the ent.Value that was dynamically selected and assigned to the DriveStorage.
+// Value returns the ent.Value that was dynamically selected and assigned to the Storage.
 // This includes values selected through modifiers, order, etc.
-func (_m *DriveStorage) Value(name string) (ent.Value, error) {
+func (_m *Storage) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryDrive queries the "drive" edge of the DriveStorage entity.
-func (_m *DriveStorage) QueryDrive() *DriveQuery {
-	return NewDriveStorageClient(_m.config).QueryDrive(_m)
+// QueryDrive queries the "drive" edge of the Storage entity.
+func (_m *Storage) QueryDrive() *DriveQuery {
+	return NewStorageClient(_m.config).QueryDrive(_m)
 }
 
-// Update returns a builder for updating this DriveStorage.
-// Note that you need to call DriveStorage.Unwrap() before calling this method if this DriveStorage
+// Update returns a builder for updating this Storage.
+// Note that you need to call Storage.Unwrap() before calling this method if this Storage
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (_m *DriveStorage) Update() *DriveStorageUpdateOne {
-	return NewDriveStorageClient(_m.config).UpdateOne(_m)
+func (_m *Storage) Update() *StorageUpdateOne {
+	return NewStorageClient(_m.config).UpdateOne(_m)
 }
 
-// Unwrap unwraps the DriveStorage entity that was returned from a transaction after it was closed,
+// Unwrap unwraps the Storage entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (_m *DriveStorage) Unwrap() *DriveStorage {
+func (_m *Storage) Unwrap() *Storage {
 	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
-		panic("ent: DriveStorage is not a transactional entity")
+		panic("ent: Storage is not a transactional entity")
 	}
 	_m.config.driver = _tx.drv
 	return _m
 }
 
 // String implements the fmt.Stringer.
-func (_m *DriveStorage) String() string {
+func (_m *Storage) String() string {
 	var builder strings.Builder
-	builder.WriteString("DriveStorage(")
+	builder.WriteString("Storage(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("drive_id=")
 	builder.WriteString(_m.DriveID)
+	builder.WriteString(", ")
+	builder.WriteString("provider=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Provider))
 	builder.WriteString(", ")
 	builder.WriteString("bucket=")
 	builder.WriteString(_m.Bucket)
@@ -199,5 +210,5 @@ func (_m *DriveStorage) String() string {
 	return builder.String()
 }
 
-// DriveStorages is a parsable slice of DriveStorage.
-type DriveStorages []*DriveStorage
+// Storages is a parsable slice of Storage.
+type Storages []*Storage

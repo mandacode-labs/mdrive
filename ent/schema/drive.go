@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/schema/mixin"
 
 	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
 )
 
 // Drive holds the schema for a drive (multi-tenant storage unit).
@@ -38,14 +39,12 @@ func (Drive) Fields() []ent.Field {
 	return []ent.Field{
 		// Primary identifier (ULID).
 		field.String("id").
-			MaxLen(32).
+			StorageKey("id").
+			DefaultFunc(func() string {
+				return ulid.Make().String()
+			}).
 			Unique().
 			Immutable(),
-
-		// Public ID (also ULID) for external exposure.
-		field.String("public_id").
-			MaxLen(32).
-			Unique(),
 
 		// Display name.
 		field.String("name").
@@ -56,11 +55,6 @@ func (Drive) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			MaxLen(255),
-
-		// Storage provider.
-		field.Enum("provider").
-			Values("s3", "minio").
-			Default("s3"),
 
 		// Owning user (ULID, references User.id).
 		field.String("owner_id").
@@ -81,7 +75,6 @@ func (Drive) Fields() []ent.Field {
 // Indexes of the Drive.
 func (Drive) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("public_id"),
 		index.Fields("owner_id"),
 		index.Fields("deleted_at"),
 	}
@@ -91,7 +84,7 @@ func (Drive) Indexes() []ent.Index {
 func (Drive) Edges() []ent.Edge {
 	return []ent.Edge{
 		// Drive has one storage configuration.
-		edge.To("storage", DriveStorage.Type).
+		edge.To("storage", Storage.Type).
 			Unique(),
 		edge.To("nodes", Node.Type),
 	}

@@ -21,18 +21,6 @@ func (f DriveFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveMutation", m)
 }
 
-// The DriveStorageFunc type is an adapter to allow the use of ordinary
-// function as DriveStorage mutator.
-type DriveStorageFunc func(context.Context, *ent.DriveStorageMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f DriveStorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DriveStorageMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DriveStorageMutation", m)
-}
-
 // The GCTombstoneFunc type is an adapter to allow the use of ordinary
 // function as GCTombstone mutator.
 type GCTombstoneFunc func(context.Context, *ent.GCTombstoneMutation) (ent.Value, error)
@@ -55,6 +43,18 @@ func (f NodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NodeMutation", m)
+}
+
+// The StorageFunc type is an adapter to allow the use of ordinary
+// function as Storage mutator.
+type StorageFunc func(context.Context, *ent.StorageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f StorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.StorageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StorageMutation", m)
 }
 
 // The UserFunc type is an adapter to allow the use of ordinary

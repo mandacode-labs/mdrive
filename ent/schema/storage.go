@@ -2,33 +2,26 @@ package schema
 
 import (
 	"entgo.io/ent"
-	"entgo.io/ent/dialect/entsql"
-	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
-// DriveStorage holds the S3/MinIO backend configuration for a drive.
-// Kept as a separate table so that drive metadata stays small and
-// storage changes don't require touching the drives table.
-type DriveStorage struct {
+// Storage holds the schema definition for the Storage entity.
+type Storage struct {
 	ent.Schema
 }
 
-// Annotations of the DriveStorage (table name: drive_storage).
-func (DriveStorage) Annotations() []schema.Annotation {
-	return []schema.Annotation{
-		entsql.Annotation{Table: "drive_storage"},
-	}
-}
-
-// Fields of the DriveStorage.
-func (DriveStorage) Fields() []ent.Field {
+// Fields of the Storage.
+func (Storage) Fields() []ent.Field {
 	return []ent.Field{
-		// Drive ID (PK + FK to drives.id).
 		field.String("drive_id").
 			MaxLen(32).
 			Unique(),
+
+		// Storage provider.
+		field.Enum("provider").
+			Values("s3", "minio").
+			Default("s3"),
 
 		// Bucket name.
 		field.String("bucket").
@@ -58,8 +51,8 @@ func (DriveStorage) Fields() []ent.Field {
 	}
 }
 
-// Edges of the DriveStorage.
-func (DriveStorage) Edges() []ent.Edge {
+// Edges of the Storage.
+func (Storage) Edges() []ent.Edge {
 	return []ent.Edge{
 		// Storage belongs to one drive.
 		edge.From("drive", Drive.Type).

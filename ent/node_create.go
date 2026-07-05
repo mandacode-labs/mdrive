@@ -157,6 +157,14 @@ func (_c *NodeCreate) SetID(v uuid.UUID) *NodeCreate {
 	return _c
 }
 
+// SetNillableID sets the "id" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableID(v *uuid.UUID) *NodeCreate {
+	if v != nil {
+		_c.SetID(*v)
+	}
+	return _c
+}
+
 // SetDriveID sets the "drive" edge to the Drive entity by ID.
 func (_c *NodeCreate) SetDriveID(id string) *NodeCreate {
 	_c.mutation.SetDriveID(id)
@@ -226,6 +234,10 @@ func (_c *NodeCreate) defaults() {
 	if _, ok := _c.mutation.Flags(); !ok {
 		v := node.DefaultFlags
 		_c.mutation.SetFlags(v)
+	}
+	if _, ok := _c.mutation.ID(); !ok {
+		v := node.DefaultID()
+		_c.mutation.SetID(v)
 	}
 }
 

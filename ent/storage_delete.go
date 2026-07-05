@@ -8,30 +8,30 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
-// DriveStorageDelete is the builder for deleting a DriveStorage entity.
-type DriveStorageDelete struct {
+// StorageDelete is the builder for deleting a Storage entity.
+type StorageDelete struct {
 	config
 	hooks    []Hook
-	mutation *DriveStorageMutation
+	mutation *StorageMutation
 }
 
-// Where appends a list predicates to the DriveStorageDelete builder.
-func (_d *DriveStorageDelete) Where(ps ...predicate.DriveStorage) *DriveStorageDelete {
+// Where appends a list predicates to the StorageDelete builder.
+func (_d *StorageDelete) Where(ps ...predicate.Storage) *StorageDelete {
 	_d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (_d *DriveStorageDelete) Exec(ctx context.Context) (int, error) {
+func (_d *StorageDelete) Exec(ctx context.Context) (int, error) {
 	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *DriveStorageDelete) ExecX(ctx context.Context) int {
+func (_d *StorageDelete) ExecX(ctx context.Context) int {
 	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
@@ -39,8 +39,8 @@ func (_d *DriveStorageDelete) ExecX(ctx context.Context) int {
 	return n
 }
 
-func (_d *DriveStorageDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(drivestorage.Table, sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt))
+func (_d *StorageDelete) sqlExec(ctx context.Context) (int, error) {
+	_spec := sqlgraph.NewDeleteSpec(storage.Table, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -56,32 +56,32 @@ func (_d *DriveStorageDelete) sqlExec(ctx context.Context) (int, error) {
 	return affected, err
 }
 
-// DriveStorageDeleteOne is the builder for deleting a single DriveStorage entity.
-type DriveStorageDeleteOne struct {
-	_d *DriveStorageDelete
+// StorageDeleteOne is the builder for deleting a single Storage entity.
+type StorageDeleteOne struct {
+	_d *StorageDelete
 }
 
-// Where appends a list predicates to the DriveStorageDelete builder.
-func (_d *DriveStorageDeleteOne) Where(ps ...predicate.DriveStorage) *DriveStorageDeleteOne {
+// Where appends a list predicates to the StorageDelete builder.
+func (_d *StorageDeleteOne) Where(ps ...predicate.Storage) *StorageDeleteOne {
 	_d._d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query.
-func (_d *DriveStorageDeleteOne) Exec(ctx context.Context) error {
+func (_d *StorageDeleteOne) Exec(ctx context.Context) error {
 	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
 	case n == 0:
-		return &NotFoundError{drivestorage.Label}
+		return &NotFoundError{storage.Label}
 	default:
 		return nil
 	}
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *DriveStorageDeleteOne) ExecX(ctx context.Context) {
+func (_d *StorageDeleteOne) ExecX(ctx context.Context) {
 	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}

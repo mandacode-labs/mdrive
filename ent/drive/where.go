@@ -76,11 +76,6 @@ func UpdateTime(v time.Time) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldUpdateTime, v))
 }
 
-// PublicID applies equality check predicate on the "public_id" field. It's identical to PublicIDEQ.
-func PublicID(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldEQ(FieldPublicID, v))
-}
-
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldName, v))
@@ -184,71 +179,6 @@ func UpdateTimeLT(v time.Time) predicate.Drive {
 // UpdateTimeLTE applies the LTE predicate on the "update_time" field.
 func UpdateTimeLTE(v time.Time) predicate.Drive {
 	return predicate.Drive(sql.FieldLTE(FieldUpdateTime, v))
-}
-
-// PublicIDEQ applies the EQ predicate on the "public_id" field.
-func PublicIDEQ(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldEQ(FieldPublicID, v))
-}
-
-// PublicIDNEQ applies the NEQ predicate on the "public_id" field.
-func PublicIDNEQ(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldNEQ(FieldPublicID, v))
-}
-
-// PublicIDIn applies the In predicate on the "public_id" field.
-func PublicIDIn(vs ...string) predicate.Drive {
-	return predicate.Drive(sql.FieldIn(FieldPublicID, vs...))
-}
-
-// PublicIDNotIn applies the NotIn predicate on the "public_id" field.
-func PublicIDNotIn(vs ...string) predicate.Drive {
-	return predicate.Drive(sql.FieldNotIn(FieldPublicID, vs...))
-}
-
-// PublicIDGT applies the GT predicate on the "public_id" field.
-func PublicIDGT(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldGT(FieldPublicID, v))
-}
-
-// PublicIDGTE applies the GTE predicate on the "public_id" field.
-func PublicIDGTE(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldGTE(FieldPublicID, v))
-}
-
-// PublicIDLT applies the LT predicate on the "public_id" field.
-func PublicIDLT(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldLT(FieldPublicID, v))
-}
-
-// PublicIDLTE applies the LTE predicate on the "public_id" field.
-func PublicIDLTE(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldLTE(FieldPublicID, v))
-}
-
-// PublicIDContains applies the Contains predicate on the "public_id" field.
-func PublicIDContains(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldContains(FieldPublicID, v))
-}
-
-// PublicIDHasPrefix applies the HasPrefix predicate on the "public_id" field.
-func PublicIDHasPrefix(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldHasPrefix(FieldPublicID, v))
-}
-
-// PublicIDHasSuffix applies the HasSuffix predicate on the "public_id" field.
-func PublicIDHasSuffix(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldHasSuffix(FieldPublicID, v))
-}
-
-// PublicIDEqualFold applies the EqualFold predicate on the "public_id" field.
-func PublicIDEqualFold(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldEqualFold(FieldPublicID, v))
-}
-
-// PublicIDContainsFold applies the ContainsFold predicate on the "public_id" field.
-func PublicIDContainsFold(v string) predicate.Drive {
-	return predicate.Drive(sql.FieldContainsFold(FieldPublicID, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -389,26 +319,6 @@ func DescriptionEqualFold(v string) predicate.Drive {
 // DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
 func DescriptionContainsFold(v string) predicate.Drive {
 	return predicate.Drive(sql.FieldContainsFold(FieldDescription, v))
-}
-
-// ProviderEQ applies the EQ predicate on the "provider" field.
-func ProviderEQ(v Provider) predicate.Drive {
-	return predicate.Drive(sql.FieldEQ(FieldProvider, v))
-}
-
-// ProviderNEQ applies the NEQ predicate on the "provider" field.
-func ProviderNEQ(v Provider) predicate.Drive {
-	return predicate.Drive(sql.FieldNEQ(FieldProvider, v))
-}
-
-// ProviderIn applies the In predicate on the "provider" field.
-func ProviderIn(vs ...Provider) predicate.Drive {
-	return predicate.Drive(sql.FieldIn(FieldProvider, vs...))
-}
-
-// ProviderNotIn applies the NotIn predicate on the "provider" field.
-func ProviderNotIn(vs ...Provider) predicate.Drive {
-	return predicate.Drive(sql.FieldNotIn(FieldProvider, vs...))
 }
 
 // OwnerIDEQ applies the EQ predicate on the "owner_id" field.
@@ -588,7 +498,7 @@ func HasStorage() predicate.Drive {
 }
 
 // HasStorageWith applies the HasEdge predicate on the "storage" edge with a given conditions (other predicates).
-func HasStorageWith(preds ...predicate.DriveStorage) predicate.Drive {
+func HasStorageWith(preds ...predicate.Storage) predicate.Drive {
 	return predicate.Drive(func(s *sql.Selector) {
 		step := newStorageStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {

@@ -3,7 +3,6 @@
 package drive
 
 import (
-	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -19,14 +18,10 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
-	// FieldPublicID holds the string denoting the public_id field in the database.
-	FieldPublicID = "public_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
-	// FieldProvider holds the string denoting the provider field in the database.
-	FieldProvider = "provider"
 	// FieldOwnerID holds the string denoting the owner_id field in the database.
 	FieldOwnerID = "owner_id"
 	// FieldRootNodeID holds the string denoting the root_node_id field in the database.
@@ -40,10 +35,10 @@ const (
 	// Table holds the table name of the drive in the database.
 	Table = "drives"
 	// StorageTable is the table that holds the storage relation/edge.
-	StorageTable = "drive_storage"
-	// StorageInverseTable is the table name for the DriveStorage entity.
-	// It exists in this package in order to avoid circular dependency with the "drivestorage" package.
-	StorageInverseTable = "drive_storage"
+	StorageTable = "storages"
+	// StorageInverseTable is the table name for the Storage entity.
+	// It exists in this package in order to avoid circular dependency with the "storage" package.
+	StorageInverseTable = "storages"
 	// StorageColumn is the table column denoting the storage relation/edge.
 	StorageColumn = "drive_id"
 	// NodesTable is the table that holds the nodes relation/edge.
@@ -60,10 +55,8 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
-	FieldPublicID,
 	FieldName,
 	FieldDescription,
-	FieldProvider,
 	FieldOwnerID,
 	FieldRootNodeID,
 	FieldDeletedAt,
@@ -86,43 +79,15 @@ var (
 	DefaultUpdateTime func() time.Time
 	// UpdateDefaultUpdateTime holds the default value on update for the "update_time" field.
 	UpdateDefaultUpdateTime func() time.Time
-	// PublicIDValidator is a validator for the "public_id" field. It is called by the builders before save.
-	PublicIDValidator func(string) error
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
 	// DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
 	DescriptionValidator func(string) error
 	// OwnerIDValidator is a validator for the "owner_id" field. It is called by the builders before save.
 	OwnerIDValidator func(string) error
-	// IDValidator is a validator for the "id" field. It is called by the builders before save.
-	IDValidator func(string) error
+	// DefaultID holds the default value on creation for the "id" field.
+	DefaultID func() string
 )
-
-// Provider defines the type for the "provider" enum field.
-type Provider string
-
-// ProviderS3 is the default value of the Provider enum.
-const DefaultProvider = ProviderS3
-
-// Provider values.
-const (
-	ProviderS3    Provider = "s3"
-	ProviderMinio Provider = "minio"
-)
-
-func (pr Provider) String() string {
-	return string(pr)
-}
-
-// ProviderValidator is a validator for the "provider" field enum values. It is called by the builders before save.
-func ProviderValidator(pr Provider) error {
-	switch pr {
-	case ProviderS3, ProviderMinio:
-		return nil
-	default:
-		return fmt.Errorf("drive: invalid enum value for provider field: %q", pr)
-	}
-}
 
 // OrderOption defines the ordering options for the Drive queries.
 type OrderOption func(*sql.Selector)
@@ -142,11 +107,6 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
-// ByPublicID orders the results by the public_id field.
-func ByPublicID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPublicID, opts...).ToFunc()
-}
-
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
@@ -155,11 +115,6 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
-}
-
-// ByProvider orders the results by the provider field.
-func ByProvider(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProvider, opts...).ToFunc()
 }
 
 // ByOwnerID orders the results by the owner_id field.

@@ -12,56 +12,56 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
-// DriveStorageQuery is the builder for querying DriveStorage entities.
-type DriveStorageQuery struct {
+// StorageQuery is the builder for querying Storage entities.
+type StorageQuery struct {
 	config
 	ctx        *QueryContext
-	order      []drivestorage.OrderOption
+	order      []storage.OrderOption
 	inters     []Interceptor
-	predicates []predicate.DriveStorage
+	predicates []predicate.Storage
 	withDrive  *DriveQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the DriveStorageQuery builder.
-func (_q *DriveStorageQuery) Where(ps ...predicate.DriveStorage) *DriveStorageQuery {
+// Where adds a new predicate for the StorageQuery builder.
+func (_q *StorageQuery) Where(ps ...predicate.Storage) *StorageQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *DriveStorageQuery) Limit(limit int) *DriveStorageQuery {
+func (_q *StorageQuery) Limit(limit int) *StorageQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *DriveStorageQuery) Offset(offset int) *DriveStorageQuery {
+func (_q *StorageQuery) Offset(offset int) *StorageQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *DriveStorageQuery) Unique(unique bool) *DriveStorageQuery {
+func (_q *StorageQuery) Unique(unique bool) *StorageQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *DriveStorageQuery) Order(o ...drivestorage.OrderOption) *DriveStorageQuery {
+func (_q *StorageQuery) Order(o ...storage.OrderOption) *StorageQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
 // QueryDrive chains the current query on the "drive" edge.
-func (_q *DriveStorageQuery) QueryDrive() *DriveQuery {
+func (_q *StorageQuery) QueryDrive() *DriveQuery {
 	query := (&DriveClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -72,9 +72,9 @@ func (_q *DriveStorageQuery) QueryDrive() *DriveQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(drivestorage.Table, drivestorage.FieldID, selector),
+			sqlgraph.From(storage.Table, storage.FieldID, selector),
 			sqlgraph.To(drive.Table, drive.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, true, drivestorage.DriveTable, drivestorage.DriveColumn),
+			sqlgraph.Edge(sqlgraph.O2O, true, storage.DriveTable, storage.DriveColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -82,21 +82,21 @@ func (_q *DriveStorageQuery) QueryDrive() *DriveQuery {
 	return query
 }
 
-// First returns the first DriveStorage entity from the query.
-// Returns a *NotFoundError when no DriveStorage was found.
-func (_q *DriveStorageQuery) First(ctx context.Context) (*DriveStorage, error) {
+// First returns the first Storage entity from the query.
+// Returns a *NotFoundError when no Storage was found.
+func (_q *StorageQuery) First(ctx context.Context) (*Storage, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{drivestorage.Label}
+		return nil, &NotFoundError{storage.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *DriveStorageQuery) FirstX(ctx context.Context) *DriveStorage {
+func (_q *StorageQuery) FirstX(ctx context.Context) *Storage {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -104,22 +104,22 @@ func (_q *DriveStorageQuery) FirstX(ctx context.Context) *DriveStorage {
 	return node
 }
 
-// FirstID returns the first DriveStorage ID from the query.
-// Returns a *NotFoundError when no DriveStorage ID was found.
-func (_q *DriveStorageQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first Storage ID from the query.
+// Returns a *NotFoundError when no Storage ID was found.
+func (_q *StorageQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{drivestorage.Label}
+		err = &NotFoundError{storage.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *DriveStorageQuery) FirstIDX(ctx context.Context) int {
+func (_q *StorageQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -127,10 +127,10 @@ func (_q *DriveStorageQuery) FirstIDX(ctx context.Context) int {
 	return id
 }
 
-// Only returns a single DriveStorage entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one DriveStorage entity is found.
-// Returns a *NotFoundError when no DriveStorage entities are found.
-func (_q *DriveStorageQuery) Only(ctx context.Context) (*DriveStorage, error) {
+// Only returns a single Storage entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Storage entity is found.
+// Returns a *NotFoundError when no Storage entities are found.
+func (_q *StorageQuery) Only(ctx context.Context) (*Storage, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -139,14 +139,14 @@ func (_q *DriveStorageQuery) Only(ctx context.Context) (*DriveStorage, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{drivestorage.Label}
+		return nil, &NotFoundError{storage.Label}
 	default:
-		return nil, &NotSingularError{drivestorage.Label}
+		return nil, &NotSingularError{storage.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *DriveStorageQuery) OnlyX(ctx context.Context) *DriveStorage {
+func (_q *StorageQuery) OnlyX(ctx context.Context) *Storage {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -154,10 +154,10 @@ func (_q *DriveStorageQuery) OnlyX(ctx context.Context) *DriveStorage {
 	return node
 }
 
-// OnlyID is like Only, but returns the only DriveStorage ID in the query.
-// Returns a *NotSingularError when more than one DriveStorage ID is found.
+// OnlyID is like Only, but returns the only Storage ID in the query.
+// Returns a *NotSingularError when more than one Storage ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *DriveStorageQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *StorageQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -166,15 +166,15 @@ func (_q *DriveStorageQuery) OnlyID(ctx context.Context) (id int, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{drivestorage.Label}
+		err = &NotFoundError{storage.Label}
 	default:
-		err = &NotSingularError{drivestorage.Label}
+		err = &NotSingularError{storage.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *DriveStorageQuery) OnlyIDX(ctx context.Context) int {
+func (_q *StorageQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -182,18 +182,18 @@ func (_q *DriveStorageQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of DriveStorages.
-func (_q *DriveStorageQuery) All(ctx context.Context) ([]*DriveStorage, error) {
+// All executes the query and returns a list of Storages.
+func (_q *StorageQuery) All(ctx context.Context) ([]*Storage, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*DriveStorage, *DriveStorageQuery]()
-	return withInterceptors[[]*DriveStorage](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Storage, *StorageQuery]()
+	return withInterceptors[[]*Storage](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *DriveStorageQuery) AllX(ctx context.Context) []*DriveStorage {
+func (_q *StorageQuery) AllX(ctx context.Context) []*Storage {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -201,20 +201,20 @@ func (_q *DriveStorageQuery) AllX(ctx context.Context) []*DriveStorage {
 	return nodes
 }
 
-// IDs executes the query and returns a list of DriveStorage IDs.
-func (_q *DriveStorageQuery) IDs(ctx context.Context) (ids []int, err error) {
+// IDs executes the query and returns a list of Storage IDs.
+func (_q *StorageQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(drivestorage.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(storage.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *DriveStorageQuery) IDsX(ctx context.Context) []int {
+func (_q *StorageQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -223,16 +223,16 @@ func (_q *DriveStorageQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (_q *DriveStorageQuery) Count(ctx context.Context) (int, error) {
+func (_q *StorageQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*DriveStorageQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*StorageQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *DriveStorageQuery) CountX(ctx context.Context) int {
+func (_q *StorageQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -241,7 +241,7 @@ func (_q *DriveStorageQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *DriveStorageQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *StorageQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -254,7 +254,7 @@ func (_q *DriveStorageQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *DriveStorageQuery) ExistX(ctx context.Context) bool {
+func (_q *StorageQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -262,18 +262,18 @@ func (_q *DriveStorageQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the DriveStorageQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the StorageQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *DriveStorageQuery) Clone() *DriveStorageQuery {
+func (_q *StorageQuery) Clone() *StorageQuery {
 	if _q == nil {
 		return nil
 	}
-	return &DriveStorageQuery{
+	return &StorageQuery{
 		config:     _q.config,
 		ctx:        _q.ctx.Clone(),
-		order:      append([]drivestorage.OrderOption{}, _q.order...),
+		order:      append([]storage.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.DriveStorage{}, _q.predicates...),
+		predicates: append([]predicate.Storage{}, _q.predicates...),
 		withDrive:  _q.withDrive.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
@@ -283,7 +283,7 @@ func (_q *DriveStorageQuery) Clone() *DriveStorageQuery {
 
 // WithDrive tells the query-builder to eager-load the nodes that are connected to
 // the "drive" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DriveStorageQuery) WithDrive(opts ...func(*DriveQuery)) *DriveStorageQuery {
+func (_q *StorageQuery) WithDrive(opts ...func(*DriveQuery)) *StorageQuery {
 	query := (&DriveClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
@@ -302,15 +302,15 @@ func (_q *DriveStorageQuery) WithDrive(opts ...func(*DriveQuery)) *DriveStorageQ
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.DriveStorage.Query().
-//		GroupBy(drivestorage.FieldDriveID).
+//	client.Storage.Query().
+//		GroupBy(storage.FieldDriveID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *DriveStorageQuery) GroupBy(field string, fields ...string) *DriveStorageGroupBy {
+func (_q *StorageQuery) GroupBy(field string, fields ...string) *StorageGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &DriveStorageGroupBy{build: _q}
+	grbuild := &StorageGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = drivestorage.Label
+	grbuild.label = storage.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -324,23 +324,23 @@ func (_q *DriveStorageQuery) GroupBy(field string, fields ...string) *DriveStora
 //		DriveID string `json:"drive_id,omitempty"`
 //	}
 //
-//	client.DriveStorage.Query().
-//		Select(drivestorage.FieldDriveID).
+//	client.Storage.Query().
+//		Select(storage.FieldDriveID).
 //		Scan(ctx, &v)
-func (_q *DriveStorageQuery) Select(fields ...string) *DriveStorageSelect {
+func (_q *StorageQuery) Select(fields ...string) *StorageSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &DriveStorageSelect{DriveStorageQuery: _q}
-	sbuild.label = drivestorage.Label
+	sbuild := &StorageSelect{StorageQuery: _q}
+	sbuild.label = storage.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a DriveStorageSelect configured with the given aggregations.
-func (_q *DriveStorageQuery) Aggregate(fns ...AggregateFunc) *DriveStorageSelect {
+// Aggregate returns a StorageSelect configured with the given aggregations.
+func (_q *StorageQuery) Aggregate(fns ...AggregateFunc) *StorageSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *DriveStorageQuery) prepareQuery(ctx context.Context) error {
+func (_q *StorageQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -352,7 +352,7 @@ func (_q *DriveStorageQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !drivestorage.ValidColumn(f) {
+		if !storage.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -366,19 +366,19 @@ func (_q *DriveStorageQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *DriveStorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*DriveStorage, error) {
+func (_q *StorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Storage, error) {
 	var (
-		nodes       = []*DriveStorage{}
+		nodes       = []*Storage{}
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
 			_q.withDrive != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*DriveStorage).scanValues(nil, columns)
+		return (*Storage).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &DriveStorage{config: _q.config}
+		node := &Storage{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -394,16 +394,16 @@ func (_q *DriveStorageQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	}
 	if query := _q.withDrive; query != nil {
 		if err := _q.loadDrive(ctx, query, nodes, nil,
-			func(n *DriveStorage, e *Drive) { n.Edges.Drive = e }); err != nil {
+			func(n *Storage, e *Drive) { n.Edges.Drive = e }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *DriveStorageQuery) loadDrive(ctx context.Context, query *DriveQuery, nodes []*DriveStorage, init func(*DriveStorage), assign func(*DriveStorage, *Drive)) error {
+func (_q *StorageQuery) loadDrive(ctx context.Context, query *DriveQuery, nodes []*Storage, init func(*Storage), assign func(*Storage, *Drive)) error {
 	ids := make([]string, 0, len(nodes))
-	nodeids := make(map[string][]*DriveStorage)
+	nodeids := make(map[string][]*Storage)
 	for i := range nodes {
 		fk := nodes[i].DriveID
 		if _, ok := nodeids[fk]; !ok {
@@ -431,7 +431,7 @@ func (_q *DriveStorageQuery) loadDrive(ctx context.Context, query *DriveQuery, n
 	return nil
 }
 
-func (_q *DriveStorageQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *StorageQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -440,8 +440,8 @@ func (_q *DriveStorageQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *DriveStorageQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(drivestorage.Table, drivestorage.Columns, sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt))
+func (_q *StorageQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(storage.Table, storage.Columns, sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -450,14 +450,14 @@ func (_q *DriveStorageQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, drivestorage.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, storage.FieldID)
 		for i := range fields {
-			if fields[i] != drivestorage.FieldID {
+			if fields[i] != storage.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
 		if _q.withDrive != nil {
-			_spec.Node.AddColumnOnce(drivestorage.FieldDriveID)
+			_spec.Node.AddColumnOnce(storage.FieldDriveID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -483,12 +483,12 @@ func (_q *DriveStorageQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *DriveStorageQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *StorageQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(drivestorage.Table)
+	t1 := builder.Table(storage.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = drivestorage.Columns
+		columns = storage.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -515,28 +515,28 @@ func (_q *DriveStorageQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// DriveStorageGroupBy is the group-by builder for DriveStorage entities.
-type DriveStorageGroupBy struct {
+// StorageGroupBy is the group-by builder for Storage entities.
+type StorageGroupBy struct {
 	selector
-	build *DriveStorageQuery
+	build *StorageQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *DriveStorageGroupBy) Aggregate(fns ...AggregateFunc) *DriveStorageGroupBy {
+func (_g *StorageGroupBy) Aggregate(fns ...AggregateFunc) *StorageGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *DriveStorageGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *StorageGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*DriveStorageQuery, *DriveStorageGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*StorageQuery, *StorageGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *DriveStorageGroupBy) sqlScan(ctx context.Context, root *DriveStorageQuery, v any) error {
+func (_g *StorageGroupBy) sqlScan(ctx context.Context, root *StorageQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -563,28 +563,28 @@ func (_g *DriveStorageGroupBy) sqlScan(ctx context.Context, root *DriveStorageQu
 	return sql.ScanSlice(rows, v)
 }
 
-// DriveStorageSelect is the builder for selecting fields of DriveStorage entities.
-type DriveStorageSelect struct {
-	*DriveStorageQuery
+// StorageSelect is the builder for selecting fields of Storage entities.
+type StorageSelect struct {
+	*StorageQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *DriveStorageSelect) Aggregate(fns ...AggregateFunc) *DriveStorageSelect {
+func (_s *StorageSelect) Aggregate(fns ...AggregateFunc) *StorageSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *DriveStorageSelect) Scan(ctx context.Context, v any) error {
+func (_s *StorageSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*DriveStorageQuery, *DriveStorageSelect](ctx, _s.DriveStorageQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*StorageQuery, *StorageSelect](ctx, _s.StorageQuery, _s, _s.inters, v)
 }
 
-func (_s *DriveStorageSelect) sqlScan(ctx context.Context, root *DriveStorageQuery, v any) error {
+func (_s *StorageSelect) sqlScan(ctx context.Context, root *StorageQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

@@ -11,13 +11,11 @@ import (
 var (
 	// DrivesColumns holds the columns for the "drives" table.
 	DrivesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeString, Unique: true, Size: 32},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
-		{Name: "public_id", Type: field.TypeString, Unique: true, Size: 32},
 		{Name: "name", Type: field.TypeString, Size: 64},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
 		{Name: "owner_id", Type: field.TypeString, Size: 32},
 		{Name: "root_node_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
@@ -29,44 +27,14 @@ var (
 		PrimaryKey: []*schema.Column{DrivesColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "drive_public_id",
-				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[3]},
-			},
-			{
 				Name:    "drive_owner_id",
 				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[7]},
+				Columns: []*schema.Column{DrivesColumns[5]},
 			},
 			{
 				Name:    "drive_deleted_at",
 				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[9]},
-			},
-		},
-	}
-	// DriveStorageColumns holds the columns for the "drive_storage" table.
-	DriveStorageColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "bucket", Type: field.TypeString, Size: 128},
-		{Name: "endpoint", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "region", Type: field.TypeString, Size: 32},
-		{Name: "access_key", Type: field.TypeString, Size: 255},
-		{Name: "secret_key", Type: field.TypeString, Size: 255},
-		{Name: "use_path_style", Type: field.TypeBool, Default: false},
-		{Name: "drive_id", Type: field.TypeString, Unique: true, Size: 32},
-	}
-	// DriveStorageTable holds the schema information for the "drive_storage" table.
-	DriveStorageTable = &schema.Table{
-		Name:       "drive_storage",
-		Columns:    DriveStorageColumns,
-		PrimaryKey: []*schema.Column{DriveStorageColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "drive_storage_drives_storage",
-				Columns:    []*schema.Column{DriveStorageColumns[7]},
-				RefColumns: []*schema.Column{DrivesColumns[0]},
-				OnDelete:   schema.NoAction,
+				Columns: []*schema.Column{DrivesColumns[7]},
 			},
 		},
 	}
@@ -100,7 +68,7 @@ var (
 		{Name: "crtime", Type: field.TypeTime},
 		{Name: "flags", Type: field.TypeUint32, Default: 0},
 		{Name: "revision", Type: field.TypeString, Size: 26},
-		{Name: "drv", Type: field.TypeString, Size: 32},
+		{Name: "drv", Type: field.TypeString},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
 	NodesTable = &schema.Table{
@@ -111,6 +79,32 @@ var (
 			{
 				Symbol:     "nodes_drives_nodes",
 				Columns:    []*schema.Column{NodesColumns[13]},
+				RefColumns: []*schema.Column{DrivesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// StoragesColumns holds the columns for the "storages" table.
+	StoragesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
+		{Name: "bucket", Type: field.TypeString, Size: 128},
+		{Name: "endpoint", Type: field.TypeString, Nullable: true, Size: 255},
+		{Name: "region", Type: field.TypeString, Size: 32},
+		{Name: "access_key", Type: field.TypeString, Size: 255},
+		{Name: "secret_key", Type: field.TypeString, Size: 255},
+		{Name: "use_path_style", Type: field.TypeBool, Default: false},
+		{Name: "drive_id", Type: field.TypeString, Unique: true},
+	}
+	// StoragesTable holds the schema information for the "storages" table.
+	StoragesTable = &schema.Table{
+		Name:       "storages",
+		Columns:    StoragesColumns,
+		PrimaryKey: []*schema.Column{StoragesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "storages_drives_storage",
+				Columns:    []*schema.Column{StoragesColumns[8]},
 				RefColumns: []*schema.Column{DrivesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -143,9 +137,9 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		DrivesTable,
-		DriveStorageTable,
 		GcTombstonesTable,
 		NodesTable,
+		StoragesTable,
 		UsersTable,
 	}
 )
@@ -154,10 +148,6 @@ func init() {
 	DrivesTable.Annotation = &entsql.Annotation{
 		Table: "drives",
 	}
-	DriveStorageTable.ForeignKeys[0].RefTable = DrivesTable
-	DriveStorageTable.Annotation = &entsql.Annotation{
-		Table: "drive_storage",
-	}
 	GcTombstonesTable.Annotation = &entsql.Annotation{
 		Table: "gc_tombstones",
 	}
@@ -165,6 +155,7 @@ func init() {
 	NodesTable.Annotation = &entsql.Annotation{
 		Table: "nodes",
 	}
+	StoragesTable.ForeignKeys[0].RefTable = DrivesTable
 	UsersTable.Annotation = &entsql.Annotation{
 		Table: "users",
 	}

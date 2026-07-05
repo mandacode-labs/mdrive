@@ -14,12 +14,12 @@ type Tx struct {
 	config
 	// Drive is the client for interacting with the Drive builders.
 	Drive *DriveClient
-	// DriveStorage is the client for interacting with the DriveStorage builders.
-	DriveStorage *DriveStorageClient
 	// GCTombstone is the client for interacting with the GCTombstone builders.
 	GCTombstone *GCTombstoneClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
+	// Storage is the client for interacting with the Storage builders.
+	Storage *StorageClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -154,9 +154,9 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Drive = NewDriveClient(tx.config)
-	tx.DriveStorage = NewDriveStorageClient(tx.config)
 	tx.GCTombstone = NewGCTombstoneClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
+	tx.Storage = NewStorageClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 )
 
 // DriveQuery is the builder for querying Drive entities.
@@ -25,7 +25,7 @@ type DriveQuery struct {
 	order       []drive.OrderOption
 	inters      []Interceptor
 	predicates  []predicate.Drive
-	withStorage *DriveStorageQuery
+	withStorage *StorageQuery
 	withNodes   *NodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -64,8 +64,8 @@ func (_q *DriveQuery) Order(o ...drive.OrderOption) *DriveQuery {
 }
 
 // QueryStorage chains the current query on the "storage" edge.
-func (_q *DriveQuery) QueryStorage() *DriveStorageQuery {
-	query := (&DriveStorageClient{config: _q.config}).Query()
+func (_q *DriveQuery) QueryStorage() *StorageQuery {
+	query := (&StorageClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func (_q *DriveQuery) QueryStorage() *DriveStorageQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(drive.Table, drive.FieldID, selector),
-			sqlgraph.To(drivestorage.Table, drivestorage.FieldID),
+			sqlgraph.To(storage.Table, storage.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, drive.StorageTable, drive.StorageColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -309,8 +309,8 @@ func (_q *DriveQuery) Clone() *DriveQuery {
 
 // WithStorage tells the query-builder to eager-load the nodes that are connected to
 // the "storage" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DriveQuery) WithStorage(opts ...func(*DriveStorageQuery)) *DriveQuery {
-	query := (&DriveStorageClient{config: _q.config}).Query()
+func (_q *DriveQuery) WithStorage(opts ...func(*StorageQuery)) *DriveQuery {
+	query := (&StorageClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -432,7 +432,7 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	}
 	if query := _q.withStorage; query != nil {
 		if err := _q.loadStorage(ctx, query, nodes, nil,
-			func(n *Drive, e *DriveStorage) { n.Edges.Storage = e }); err != nil {
+			func(n *Drive, e *Storage) { n.Edges.Storage = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -446,7 +446,7 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	return nodes, nil
 }
 
-func (_q *DriveQuery) loadStorage(ctx context.Context, query *DriveStorageQuery, nodes []*Drive, init func(*Drive), assign func(*Drive, *DriveStorage)) error {
+func (_q *DriveQuery) loadStorage(ctx context.Context, query *StorageQuery, nodes []*Drive, init func(*Drive), assign func(*Drive, *Storage)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[string]*Drive)
 	for i := range nodes {
@@ -454,9 +454,9 @@ func (_q *DriveQuery) loadStorage(ctx context.Context, query *DriveStorageQuery,
 		nodeids[nodes[i].ID] = nodes[i]
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(drivestorage.FieldDriveID)
+		query.ctx.AppendFieldOnce(storage.FieldDriveID)
 	}
-	query.Where(predicate.DriveStorage(func(s *sql.Selector) {
+	query.Where(predicate.Storage(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(drive.StorageColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)

@@ -13,9 +13,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/drivestorage"
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -77,11 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			drive.Table:        drive.ValidColumn,
-			drivestorage.Table: drivestorage.ValidColumn,
-			gctombstone.Table:  gctombstone.ValidColumn,
-			node.Table:         node.ValidColumn,
-			user.Table:         user.ValidColumn,
+			drive.Table:       drive.ValidColumn,
+			gctombstone.Table: gctombstone.ValidColumn,
+			node.Table:        node.ValidColumn,
+			storage.Table:     storage.ValidColumn,
+			user.Table:        user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

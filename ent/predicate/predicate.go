@@ -9,14 +9,14 @@ import (
 // Drive is the predicate function for drive builders.
 type Drive func(*sql.Selector)
 
-// DriveStorage is the predicate function for drivestorage builders.
-type DriveStorage func(*sql.Selector)
-
 // GCTombstone is the predicate function for gctombstone builders.
 type GCTombstone func(*sql.Selector)
 
 // Node is the predicate function for node builders.
 type Node func(*sql.Selector)
+
+// Storage is the predicate function for storage builders.
+type Storage func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
