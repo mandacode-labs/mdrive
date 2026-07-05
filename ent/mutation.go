@@ -1545,7 +1545,7 @@ type NodeMutation struct {
 	atime         *time.Time
 	mtime         *time.Time
 	ctime         *time.Time
-	crtime        *time.Time
+	btime         *time.Time
 	flags         *uint32
 	addflags      *int32
 	revision      *string
@@ -2074,40 +2074,40 @@ func (m *NodeMutation) ResetCtime() {
 	m.ctime = nil
 }
 
-// SetCrtime sets the "crtime" field.
-func (m *NodeMutation) SetCrtime(t time.Time) {
-	m.crtime = &t
+// SetBtime sets the "btime" field.
+func (m *NodeMutation) SetBtime(t time.Time) {
+	m.btime = &t
 }
 
-// Crtime returns the value of the "crtime" field in the mutation.
-func (m *NodeMutation) Crtime() (r time.Time, exists bool) {
-	v := m.crtime
+// Btime returns the value of the "btime" field in the mutation.
+func (m *NodeMutation) Btime() (r time.Time, exists bool) {
+	v := m.btime
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldCrtime returns the old "crtime" field's value of the Node entity.
+// OldBtime returns the old "btime" field's value of the Node entity.
 // If the Node object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldCrtime(ctx context.Context) (v time.Time, err error) {
+func (m *NodeMutation) OldBtime(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCrtime is only allowed on UpdateOne operations")
+		return v, errors.New("OldBtime is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCrtime requires an ID field in the mutation")
+		return v, errors.New("OldBtime requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCrtime: %w", err)
+		return v, fmt.Errorf("querying old value for OldBtime: %w", err)
 	}
-	return oldValue.Crtime, nil
+	return oldValue.Btime, nil
 }
 
-// ResetCrtime resets all changes to the "crtime" field.
-func (m *NodeMutation) ResetCrtime() {
-	m.crtime = nil
+// ResetBtime resets all changes to the "btime" field.
+func (m *NodeMutation) ResetBtime() {
+	m.btime = nil
 }
 
 // SetFlags sets the "flags" field.
@@ -2294,8 +2294,8 @@ func (m *NodeMutation) Fields() []string {
 	if m.ctime != nil {
 		fields = append(fields, node.FieldCtime)
 	}
-	if m.crtime != nil {
-		fields = append(fields, node.FieldCrtime)
+	if m.btime != nil {
+		fields = append(fields, node.FieldBtime)
 	}
 	if m.flags != nil {
 		fields = append(fields, node.FieldFlags)
@@ -2331,8 +2331,8 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.Mtime()
 	case node.FieldCtime:
 		return m.Ctime()
-	case node.FieldCrtime:
-		return m.Crtime()
+	case node.FieldBtime:
+		return m.Btime()
 	case node.FieldFlags:
 		return m.Flags()
 	case node.FieldRevision:
@@ -2366,8 +2366,8 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldMtime(ctx)
 	case node.FieldCtime:
 		return m.OldCtime(ctx)
-	case node.FieldCrtime:
-		return m.OldCrtime(ctx)
+	case node.FieldBtime:
+		return m.OldBtime(ctx)
 	case node.FieldFlags:
 		return m.OldFlags(ctx)
 	case node.FieldRevision:
@@ -2451,12 +2451,12 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCtime(v)
 		return nil
-	case node.FieldCrtime:
+	case node.FieldBtime:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCrtime(v)
+		m.SetBtime(v)
 		return nil
 	case node.FieldFlags:
 		v, ok := value.(uint32)
@@ -2599,8 +2599,8 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldCtime:
 		m.ResetCtime()
 		return nil
-	case node.FieldCrtime:
-		m.ResetCrtime()
+	case node.FieldBtime:
+		m.ResetBtime()
 		return nil
 	case node.FieldFlags:
 		m.ResetFlags()

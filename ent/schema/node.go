@@ -66,7 +66,7 @@ func (Node) Fields() []ent.Field {
 		field.Time("mtime").
 			StorageKey("updated_at"),
 		field.Time("ctime"),
-		field.Time("crtime").
+		field.Time("btime").
 			StorageKey("created_at"),
 
 		// Bitmask of node-level flags (ext2-style i_flags).

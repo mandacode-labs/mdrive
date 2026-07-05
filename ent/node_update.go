@@ -159,16 +159,16 @@ func (_u *NodeUpdate) SetNillableCtime(v *time.Time) *NodeUpdate {
 	return _u
 }
 
-// SetCrtime sets the "crtime" field.
-func (_u *NodeUpdate) SetCrtime(v time.Time) *NodeUpdate {
-	_u.mutation.SetCrtime(v)
+// SetBtime sets the "btime" field.
+func (_u *NodeUpdate) SetBtime(v time.Time) *NodeUpdate {
+	_u.mutation.SetBtime(v)
 	return _u
 }
 
-// SetNillableCrtime sets the "crtime" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableCrtime(v *time.Time) *NodeUpdate {
+// SetNillableBtime sets the "btime" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableBtime(v *time.Time) *NodeUpdate {
 	if v != nil {
-		_u.SetCrtime(*v)
+		_u.SetBtime(*v)
 	}
 	return _u
 }
@@ -328,8 +328,8 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Ctime(); ok {
 		_spec.SetField(node.FieldCtime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Crtime(); ok {
-		_spec.SetField(node.FieldCrtime, field.TypeTime, value)
+	if value, ok := _u.mutation.Btime(); ok {
+		_spec.SetField(node.FieldBtime, field.TypeTime, value)
 	}
 	if value, ok := _u.mutation.Flags(); ok {
 		_spec.SetField(node.FieldFlags, field.TypeUint32, value)
@@ -519,16 +519,16 @@ func (_u *NodeUpdateOne) SetNillableCtime(v *time.Time) *NodeUpdateOne {
 	return _u
 }
 
-// SetCrtime sets the "crtime" field.
-func (_u *NodeUpdateOne) SetCrtime(v time.Time) *NodeUpdateOne {
-	_u.mutation.SetCrtime(v)
+// SetBtime sets the "btime" field.
+func (_u *NodeUpdateOne) SetBtime(v time.Time) *NodeUpdateOne {
+	_u.mutation.SetBtime(v)
 	return _u
 }
 
-// SetNillableCrtime sets the "crtime" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableCrtime(v *time.Time) *NodeUpdateOne {
+// SetNillableBtime sets the "btime" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableBtime(v *time.Time) *NodeUpdateOne {
 	if v != nil {
-		_u.SetCrtime(*v)
+		_u.SetBtime(*v)
 	}
 	return _u
 }
@@ -718,8 +718,8 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	if value, ok := _u.mutation.Ctime(); ok {
 		_spec.SetField(node.FieldCtime, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Crtime(); ok {
-		_spec.SetField(node.FieldCrtime, field.TypeTime, value)
+	if value, ok := _u.mutation.Btime(); ok {
+		_spec.SetField(node.FieldBtime, field.TypeTime, value)
 	}
 	if value, ok := _u.mutation.Flags(); ok {
 		_spec.SetField(node.FieldFlags, field.TypeUint32, value)

@@ -36,8 +36,8 @@ const (
 	FieldMtime = "updated_at"
 	// FieldCtime holds the string denoting the ctime field in the database.
 	FieldCtime = "ctime"
-	// FieldCrtime holds the string denoting the crtime field in the database.
-	FieldCrtime = "created_at"
+	// FieldBtime holds the string denoting the btime field in the database.
+	FieldBtime = "created_at"
 	// FieldFlags holds the string denoting the flags field in the database.
 	FieldFlags = "flags"
 	// FieldRevision holds the string denoting the revision field in the database.
@@ -68,7 +68,7 @@ var Columns = []string{
 	FieldAtime,
 	FieldMtime,
 	FieldCtime,
-	FieldCrtime,
+	FieldBtime,
 	FieldFlags,
 	FieldRevision,
 }
@@ -186,9 +186,9 @@ func ByCtime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCtime, opts...).ToFunc()
 }
 
-// ByCrtime orders the results by the crtime field.
-func ByCrtime(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCrtime, opts...).ToFunc()
+// ByBtime orders the results by the btime field.
+func ByBtime(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBtime, opts...).ToFunc()
 }
 
 // ByFlags orders the results by the flags field.

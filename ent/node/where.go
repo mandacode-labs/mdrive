@@ -101,9 +101,9 @@ func Ctime(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldCtime, v))
 }
 
-// Crtime applies equality check predicate on the "crtime" field. It's identical to CrtimeEQ.
-func Crtime(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldCrtime, v))
+// Btime applies equality check predicate on the "btime" field. It's identical to BtimeEQ.
+func Btime(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldBtime, v))
 }
 
 // Flags applies equality check predicate on the "flags" field. It's identical to FlagsEQ.
@@ -531,44 +531,44 @@ func CtimeLTE(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldCtime, v))
 }
 
-// CrtimeEQ applies the EQ predicate on the "crtime" field.
-func CrtimeEQ(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldCrtime, v))
+// BtimeEQ applies the EQ predicate on the "btime" field.
+func BtimeEQ(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldBtime, v))
 }
 
-// CrtimeNEQ applies the NEQ predicate on the "crtime" field.
-func CrtimeNEQ(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldCrtime, v))
+// BtimeNEQ applies the NEQ predicate on the "btime" field.
+func BtimeNEQ(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldBtime, v))
 }
 
-// CrtimeIn applies the In predicate on the "crtime" field.
-func CrtimeIn(vs ...time.Time) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldCrtime, vs...))
+// BtimeIn applies the In predicate on the "btime" field.
+func BtimeIn(vs ...time.Time) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldBtime, vs...))
 }
 
-// CrtimeNotIn applies the NotIn predicate on the "crtime" field.
-func CrtimeNotIn(vs ...time.Time) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldCrtime, vs...))
+// BtimeNotIn applies the NotIn predicate on the "btime" field.
+func BtimeNotIn(vs ...time.Time) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldBtime, vs...))
 }
 
-// CrtimeGT applies the GT predicate on the "crtime" field.
-func CrtimeGT(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldCrtime, v))
+// BtimeGT applies the GT predicate on the "btime" field.
+func BtimeGT(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldBtime, v))
 }
 
-// CrtimeGTE applies the GTE predicate on the "crtime" field.
-func CrtimeGTE(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldCrtime, v))
+// BtimeGTE applies the GTE predicate on the "btime" field.
+func BtimeGTE(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldBtime, v))
 }
 
-// CrtimeLT applies the LT predicate on the "crtime" field.
-func CrtimeLT(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldCrtime, v))
+// BtimeLT applies the LT predicate on the "btime" field.
+func BtimeLT(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldBtime, v))
 }
 
-// CrtimeLTE applies the LTE predicate on the "crtime" field.
-func CrtimeLTE(v time.Time) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldCrtime, v))
+// BtimeLTE applies the LTE predicate on the "btime" field.
+func BtimeLTE(v time.Time) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldBtime, v))
 }
 
 // FlagsEQ applies the EQ predicate on the "flags" field.

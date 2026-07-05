@@ -125,9 +125,9 @@ func (_c *NodeCreate) SetCtime(v time.Time) *NodeCreate {
 	return _c
 }
 
-// SetCrtime sets the "crtime" field.
-func (_c *NodeCreate) SetCrtime(v time.Time) *NodeCreate {
-	_c.mutation.SetCrtime(v)
+// SetBtime sets the "btime" field.
+func (_c *NodeCreate) SetBtime(v time.Time) *NodeCreate {
+	_c.mutation.SetBtime(v)
 	return _c
 }
 
@@ -274,8 +274,8 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.Ctime(); !ok {
 		return &ValidationError{Name: "ctime", err: errors.New(`ent: missing required field "Node.ctime"`)}
 	}
-	if _, ok := _c.mutation.Crtime(); !ok {
-		return &ValidationError{Name: "crtime", err: errors.New(`ent: missing required field "Node.crtime"`)}
+	if _, ok := _c.mutation.Btime(); !ok {
+		return &ValidationError{Name: "btime", err: errors.New(`ent: missing required field "Node.btime"`)}
 	}
 	if _, ok := _c.mutation.Flags(); !ok {
 		return &ValidationError{Name: "flags", err: errors.New(`ent: missing required field "Node.flags"`)}
@@ -363,9 +363,9 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		_spec.SetField(node.FieldCtime, field.TypeTime, value)
 		_node.Ctime = value
 	}
-	if value, ok := _c.mutation.Crtime(); ok {
-		_spec.SetField(node.FieldCrtime, field.TypeTime, value)
-		_node.Crtime = value
+	if value, ok := _c.mutation.Btime(); ok {
+		_spec.SetField(node.FieldBtime, field.TypeTime, value)
+		_node.Btime = value
 	}
 	if value, ok := _c.mutation.Flags(); ok {
 		_spec.SetField(node.FieldFlags, field.TypeUint32, value)
@@ -570,15 +570,15 @@ func (u *NodeUpsert) UpdateCtime() *NodeUpsert {
 	return u
 }
 
-// SetCrtime sets the "crtime" field.
-func (u *NodeUpsert) SetCrtime(v time.Time) *NodeUpsert {
-	u.Set(node.FieldCrtime, v)
+// SetBtime sets the "btime" field.
+func (u *NodeUpsert) SetBtime(v time.Time) *NodeUpsert {
+	u.Set(node.FieldBtime, v)
 	return u
 }
 
-// UpdateCrtime sets the "crtime" field to the value that was provided on create.
-func (u *NodeUpsert) UpdateCrtime() *NodeUpsert {
-	u.SetExcluded(node.FieldCrtime)
+// UpdateBtime sets the "btime" field to the value that was provided on create.
+func (u *NodeUpsert) UpdateBtime() *NodeUpsert {
+	u.SetExcluded(node.FieldBtime)
 	return u
 }
 
@@ -810,17 +810,17 @@ func (u *NodeUpsertOne) UpdateCtime() *NodeUpsertOne {
 	})
 }
 
-// SetCrtime sets the "crtime" field.
-func (u *NodeUpsertOne) SetCrtime(v time.Time) *NodeUpsertOne {
+// SetBtime sets the "btime" field.
+func (u *NodeUpsertOne) SetBtime(v time.Time) *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetCrtime(v)
+		s.SetBtime(v)
 	})
 }
 
-// UpdateCrtime sets the "crtime" field to the value that was provided on create.
-func (u *NodeUpsertOne) UpdateCrtime() *NodeUpsertOne {
+// UpdateBtime sets the "btime" field to the value that was provided on create.
+func (u *NodeUpsertOne) UpdateBtime() *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateCrtime()
+		s.UpdateBtime()
 	})
 }
 
@@ -1224,17 +1224,17 @@ func (u *NodeUpsertBulk) UpdateCtime() *NodeUpsertBulk {
 	})
 }
 
-// SetCrtime sets the "crtime" field.
-func (u *NodeUpsertBulk) SetCrtime(v time.Time) *NodeUpsertBulk {
+// SetBtime sets the "btime" field.
+func (u *NodeUpsertBulk) SetBtime(v time.Time) *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetCrtime(v)
+		s.SetBtime(v)
 	})
 }
 
-// UpdateCrtime sets the "crtime" field to the value that was provided on create.
-func (u *NodeUpsertBulk) UpdateCrtime() *NodeUpsertBulk {
+// UpdateBtime sets the "btime" field to the value that was provided on create.
+func (u *NodeUpsertBulk) UpdateBtime() *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateCrtime()
+		s.UpdateBtime()
 	})
 }
 

@@ -39,8 +39,8 @@ type Node struct {
 	Mtime time.Time `json:"mtime,omitempty"`
 	// Ctime holds the value of the "ctime" field.
 	Ctime time.Time `json:"ctime,omitempty"`
-	// Crtime holds the value of the "crtime" field.
-	Crtime time.Time `json:"crtime,omitempty"`
+	// Btime holds the value of the "btime" field.
+	Btime time.Time `json:"btime,omitempty"`
 	// Flags holds the value of the "flags" field.
 	Flags uint32 `json:"flags,omitempty"`
 	// Revision holds the value of the "revision" field.
@@ -82,7 +82,7 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case node.FieldDriveID, node.FieldKind, node.FieldRevision:
 			values[i] = new(sql.NullString)
-		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
+		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldBtime:
 			values[i] = new(sql.NullTime)
 		case node.FieldID:
 			values[i] = new(uuid.UUID)
@@ -167,11 +167,11 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Ctime = value.Time
 			}
-		case node.FieldCrtime:
+		case node.FieldBtime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field crtime", values[i])
+				return fmt.Errorf("unexpected type %T for field btime", values[i])
 			} else if value.Valid {
-				_m.Crtime = value.Time
+				_m.Btime = value.Time
 			}
 		case node.FieldFlags:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -256,8 +256,8 @@ func (_m *Node) String() string {
 	builder.WriteString("ctime=")
 	builder.WriteString(_m.Ctime.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("crtime=")
-	builder.WriteString(_m.Crtime.Format(time.ANSIC))
+	builder.WriteString("btime=")
+	builder.WriteString(_m.Btime.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("flags=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Flags))
