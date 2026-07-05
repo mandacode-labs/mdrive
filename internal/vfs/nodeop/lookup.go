@@ -20,7 +20,7 @@ func (n *nodeOperation) Lookup(ctx context.Context, dir *vfs.Node, name string) 
 		return nil, errorx.New(errorx.KindNotFound, "entry not found")
 	}
 
-	node, err := n.super.Read(ctx, entry.NodeID)
+	node, err := n.bs.Read(ctx, entry.NodeID)
 	if err != nil {
 		return nil, errorx.Wrap(err, "failed to read node")
 	}

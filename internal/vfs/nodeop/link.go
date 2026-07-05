@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
+	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Link implements [NodeOperation].
-func (n *nodeOperation) Link(ctx context.Context, dentry *vfs.Dentry, linkDir *node.Node, linkName string) error {
+func (n *nodeOperation) Link(ctx context.Context, dentry *vfs.Dentry, linkDir *vfs.Node, linkName string) error {
 	// Check if linkDir is a directory
-	if linkDir.Kind() != node.NodeKindDirectory {
+	if linkDir.Kind() != vfs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "linkDir is not a directory")
 	}
 
@@ -46,16 +45,16 @@ func (n *nodeOperation) Link(ctx context.Context, dentry *vfs.Dentry, linkDir *n
 	linkDir.Write(newLinkDirData, int64(len(newLinkDirData)))
 
 	// Check permissions for the drive
-	if err := n.requirePerm(ctx, permission.ActionEdit, linkDir.DriveID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, linkDir.Drive()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.DriveID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.Drive()); err != nil {
 		return err
 	}
 
 	// Save the changes to the database
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.super.Write(ctx, linkDir); err != nil {
+		if err := n.bs.Write(ctx, linkDir); err != nil {
 			return errorx.Wrap(err, "failed to update link directory")
 		}
 		return nil

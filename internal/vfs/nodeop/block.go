@@ -6,15 +6,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent"
 	entnode "github.com/mandacode-labs/mdrive/ent/node"
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/oklog/ulid/v2"
 )
 
 // BlockStorage is the data-access contract for nodes.
 type BlockStorage interface {
-	Read(ctx context.Context, id uuid.UUID) (*node.Node, error)
-	Write(ctx context.Context, n *node.Node) error
+	Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error)
+	Write(ctx context.Context, n *vfs.Node) error
 	Destroy(ctx context.Context, id uuid.UUID) error
 }
 
@@ -39,7 +40,7 @@ func (s *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
 }
 
 // Read implements [BlockStorage].
-func (s *blockStorage) Read(ctx context.Context, id uuid.UUID) (*node.Node, error) {
+func (s *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error) {
 	client := s.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
@@ -51,11 +52,11 @@ func (s *blockStorage) Read(ctx context.Context, id uuid.UUID) (*node.Node, erro
 		}
 		return nil, err
 	}
-	return fromEnt(e), nil
+	return fromEnt(e)
 }
 
 // Write implements [BlockStorage].
-func (s *blockStorage) Write(ctx context.Context, n *node.Node) error {
+func (s *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
 	client := s.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
@@ -66,12 +67,12 @@ func (s *blockStorage) Write(ctx context.Context, n *node.Node) error {
 		SetKind(entKind(n.Kind())).
 		SetData(n.Data()).
 		SetSize(n.Size()).
-		SetDriveID(n.DriveID()).
+		SetDriveID(n.Drive().String()).
 		SetNlink(n.NLink()).
 		SetAtime(n.ATime()).
 		SetMtime(n.MTime()).
 		SetCtime(n.CTime()).
-		SetCrtime(n.CRTime()).
+		SetBtime(n.BTime()).
 		SetFlags(flags.UInt32()).
 		SetRevision(n.Revision().String()).
 		OnConflictColumns(entnode.FieldID).
@@ -80,7 +81,6 @@ func (s *blockStorage) Write(ctx context.Context, n *node.Node) error {
 	if err != nil {
 		return err
 	}
-	n.SetStaleRev(n.Revision())
 	return nil
 }
 
@@ -88,57 +88,64 @@ func NewSuperOperation(client *ent.Client) BlockStorage {
 	return &blockStorage{client: client}
 }
 
-func fromEnt(e *ent.Node) *node.Node {
+func fromEnt(e *ent.Node) (*vfs.Node, error) {
 	if e == nil {
-		return nil
+		return nil, errorx.New(errorx.KindNotFound, "node: not found")
 	}
-	rev := node.Revision(e.Revision)
-	n := node.NewNode(
+	rev := vfs.Revision(e.Revision)
+	driveID, err := ulid.Parse(e.DriveID)
+	if err != nil {
+		return nil, errorx.New(errorx.KindInternal, "invalid drive id")
+	}
+	kind := parseNodeKind(e.Kind)
+	flags := vfs.Flags(e.Flags)
+
+	n := vfs.HydrateNode(
 		e.ID,
-		e.Drv,
-		parseNodeKind(e.Kind),
+		driveID,
+		kind,
+		e.Size,
+		e.Nlink,
+		e.Data,
+		e.Atime,
+		e.Mtime,
+		e.Ctime,
+		e.Btime,
+		flags,
+		rev,
+		rev,
 	)
-	n.SetData(e.Data)
-	n.SetSize(e.Size)
-	n.SetNLink(e.Nlink)
-	n.SetATime(e.Atime)
-	n.SetMTime(e.Mtime)
-	n.SetCTime(e.Ctime)
-	n.SetCRTime(e.Crtime)
-	n.SetFlags(node.Flags(e.Flags))
-	n.SetRevision(rev)
-	n.SetStaleRev(rev)
-	return n
+	return n, nil
 }
 
-func parseNodeKind(s entnode.Kind) node.NodeKind {
+func parseNodeKind(s entnode.Kind) vfs.NodeKind {
 	switch s {
 	case entnode.KindFile:
-		return node.NodeKindFile
+		return vfs.NodeKindFile
 	case entnode.KindDirectory:
-		return node.NodeKindDirectory
+		return vfs.NodeKindDirectory
 	case entnode.KindSymlink:
-		return node.NodeKindSymlink
+		return vfs.NodeKindSymlink
 	case entnode.KindObject:
-		return node.NodeKindObject
+		return vfs.NodeKindObject
 	case entnode.KindMount:
-		return node.NodeKindMount
+		return vfs.NodeKindMount
 	default:
-		return node.NodeKind(0)
+		return vfs.NodeKind(0)
 	}
 }
 
-func entKind(k node.NodeKind) entnode.Kind {
+func entKind(k vfs.NodeKind) entnode.Kind {
 	switch k {
-	case node.NodeKindFile:
+	case vfs.NodeKindFile:
 		return entnode.KindFile
-	case node.NodeKindDirectory:
+	case vfs.NodeKindDirectory:
 		return entnode.KindDirectory
-	case node.NodeKindSymlink:
+	case vfs.NodeKindSymlink:
 		return entnode.KindSymlink
-	case node.NodeKindObject:
+	case vfs.NodeKindObject:
 		return entnode.KindObject
-	case node.NodeKindMount:
+	case vfs.NodeKindMount:
 		return entnode.KindMount
 	default:
 		return entnode.KindFile

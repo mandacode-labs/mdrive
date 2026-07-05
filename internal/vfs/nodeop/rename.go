@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	"github.com/mandacode-labs/mdrive/internal/vfs/nodeop/content"
+	"github.com/mandacode-labs/mdrive/internal/vfs/content"
+	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Rename implements [NodeOperation].
-func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *node.Node, newName string) error {
+func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *vfs.Node, newName string) error {
 	// Read the content of the new parent directory and unmarshal it into a DirContent struct.
 	newDirData := newDir.Data()
 	newDirContent := &content.DirContent{}
@@ -55,19 +54,19 @@ func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *nod
 	oldDir.Write(newOldDirData, int64(len(newOldDirData)))
 
 	// Check permissions for the drive.
-	if err := n.requirePerm(ctx, permission.ActionEdit, oldDir.DriveID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, oldDir.Drive()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionEdit, newDir.DriveID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, newDir.Drive()); err != nil {
 		return err
 	}
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.super.Write(ctx, oldDir); err != nil {
+		if err := n.bs.Write(ctx, oldDir); err != nil {
 			return errorx.Wrap(err, "failed to update old parent directory")
 		}
-		if err := n.super.Write(ctx, newDir); err != nil {
+		if err := n.bs.Write(ctx, newDir); err != nil {
 			return errorx.Wrap(err, "failed to update new parent directory")
 		}
 		return nil

@@ -4,21 +4,21 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
+	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Mknod implements [NodeOperation].
-func (n *nodeOperation) Mknod(ctx context.Context, dir *node.Node, ino *node.Node, name string) error {
+func (n *nodeOperation) Mknod(ctx context.Context, dir *vfs.Node, ino *vfs.Node, name string) error {
 	// Check if the parent directory is a directory.
-	if dir.Kind() != node.NodeKindDirectory {
+	if dir.Kind() != vfs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "parent node is not a directory")
 	}
 
 	// Check if the node drive ID matches the parent directory drive ID.
-	if ino.DriveID() != dir.DriveID() {
+	if ino.Drive().Compare(dir.Drive()) != 0 {
 		return errorx.New(errorx.KindInvalidArgument, "node drive ID does not match parent directory drive ID")
 	}
 
@@ -47,16 +47,16 @@ func (n *nodeOperation) Mknod(ctx context.Context, dir *node.Node, ino *node.Nod
 	dir.Write(newDirData, int64(len(newDirData)))
 
 	// Check permissions for the drive.
-	if err := n.requirePerm(ctx, permission.ActionEdit, dir.DriveID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, dir.Drive()); err != nil {
 		return err
 	}
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.super.Write(ctx, dir); err != nil {
+		if err := n.bs.Write(ctx, dir); err != nil {
 			return errorx.Wrap(err, "failed to update parent directory")
 		}
-		if err := n.super.Write(ctx, ino); err != nil {
+		if err := n.bs.Write(ctx, ino); err != nil {
 			return errorx.Wrap(err, "failed to update new node")
 		}
 		return nil

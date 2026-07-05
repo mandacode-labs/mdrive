@@ -1,7 +1,16 @@
 package vfs
 
+// Provider represents a storage backend type.
+type Provider string
+
+const (
+	ProviderS3    Provider = "s3"
+	ProviderMinio Provider = "minio"
+)
+
 type Storage struct {
 	driveID      string
+	provider     Provider
 	bucket       string
 	endpoint     *string
 	region       string

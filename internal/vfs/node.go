@@ -144,28 +144,25 @@ const MaxDataSize = 4096
 
 // Node represents a file system node
 type Node struct {
-	id     uuid.UUID
-	drv    string // Drive ID
-	kind   NodeKind
-	size   int64
-	nlink  uint32
-	data   []byte
-	atime  time.Time
-	mtime  time.Time
-	ctime  time.Time
-	crtime time.Time
-	flags  Flags
-	rev    Revision
+	id    uuid.UUID
+	drv   ulid.ULID
+	kind  NodeKind
+	size  int64
+	nlink uint32
+	data  []byte
+	atime time.Time // Access time
+	mtime time.Time // Modification time
+	ctime time.Time // Change time
+	btime time.Time // Birth time
+	flags Flags
+	rev   Revision
 
-	// staleRev is the revision loaded from the DB. Save uses it for
-	// optimistic concurrency: UPDATE WHERE revision = staleRev.
-	// On conflict (0 rows affected) it returns ErrRevisionConflict.
 	staleRev Revision
 }
 
 // Getters
 func (n *Node) ID() uuid.UUID      { return n.id }
-func (n *Node) DriveID() string    { return n.drv }
+func (n *Node) Drive() ulid.ULID   { return n.drv }
 func (n *Node) Kind() NodeKind     { return n.kind }
 func (n *Node) Size() int64        { return n.size }
 func (n *Node) NLink() uint32      { return n.nlink }
@@ -173,29 +170,64 @@ func (n *Node) Data() []byte       { return n.data }
 func (n *Node) ATime() time.Time   { return n.atime }
 func (n *Node) MTime() time.Time   { return n.mtime }
 func (n *Node) CTime() time.Time   { return n.ctime }
-func (n *Node) CRTime() time.Time  { return n.crtime }
+func (n *Node) BTime() time.Time   { return n.btime }
 func (n *Node) Flags() Flags       { return n.flags }
 func (n *Node) Revision() Revision { return n.rev }
 func (n *Node) StaleRev() Revision { return n.staleRev }
 
-func (n *Node) IncNLink() { n.nlink++ }
-func (n *Node) DecNLink() {
-	if n.nlink > 0 {
-		n.nlink--
+func NewNode(id uuid.UUID, drv ulid.ULID, kind NodeKind) *Node {
+	rev := newRevision()
+	return &Node{
+		id:    id,
+		drv:   drv,
+		kind:  kind,
+		size:  0,
+		nlink: 0,
+		data:  nil,
+		atime: time.Now(),
+		mtime: time.Now(),
+		ctime: time.Now(),
+		btime: time.Now(),
+		flags: Flags(0),
+		rev:   rev,
 	}
 }
 
-func (n *Node) SetData(data []byte)    { n.data = data }
-func (n *Node) SetNLink(nlink uint32)  { n.nlink = nlink }
-func (n *Node) SetSize(size int64)     { n.size = size }
-func (n *Node) SetMTime(t time.Time)   { n.mtime = t }
-func (n *Node) SetCTime(t time.Time)   { n.ctime = t }
-func (n *Node) SetATime(t time.Time)   { n.atime = t }
-func (n *Node) SetCRTime(t time.Time)  { n.crtime = t }
-func (n *Node) SetFlags(f Flags)       { n.flags = f }
-func (n *Node) SetRevision(r Revision) { n.rev = r }
-func (n *Node) SetStaleRev(r Revision) { n.staleRev = r }
+func HydrateNode(
+	id uuid.UUID,
+	drv ulid.ULID,
+	kind NodeKind,
+	size int64,
+	nlink uint32,
+	data []byte,
+	atime time.Time,
+	mtime time.Time,
+	ctime time.Time,
+	btime time.Time,
+	flags Flags,
+	rev Revision,
+	staleRev Revision,
+) *Node {
+	return &Node{
+		id:       id,
+		drv:      drv,
+		kind:     kind,
+		size:     size,
+		nlink:    nlink,
+		data:     data,
+		atime:    atime,
+		mtime:    mtime,
+		ctime:    ctime,
+		btime:    btime,
+		flags:    flags,
+		rev:      rev,
+		staleRev: staleRev,
+	}
+}
 
+// Node domain logics
+
+// Write writes data to the node, updating its size and timestamps.
 func (n *Node) Write(data []byte, size int64) error {
 	if len(data) > MaxDataSize {
 		return errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")
@@ -209,20 +241,18 @@ func (n *Node) Write(data []byte, size int64) error {
 	return nil
 }
 
-func NewNode(id uuid.UUID, drv string, kind NodeKind) *Node {
-	rev := newRevision()
-	return &Node{
-		id:     id,
-		drv:    drv,
-		kind:   kind,
-		size:   0,
-		nlink:  0,
-		data:   nil,
-		atime:  time.Now(),
-		mtime:  time.Now(),
-		ctime:  time.Now(),
-		crtime: time.Now(),
-		flags:  Flags(0),
-		rev:    rev,
+func (n *Node) IncNLink() {
+	now := time.Now()
+	n.nlink++
+	n.ctime = now
+	n.rev = n.rev.Next()
+}
+
+func (n *Node) DecNLink() {
+	if n.nlink > 0 {
+		now := time.Now()
+		n.nlink--
+		n.ctime = now
+		n.rev = n.rev.Next()
 	}
 }
