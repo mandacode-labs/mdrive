@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
@@ -65,6 +66,11 @@ func UpdateTime(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldUpdateTime, v))
 }
 
+// Drv applies equality check predicate on the "drv" field. It's identical to DrvEQ.
+func Drv(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldDrv, v))
+}
+
 // Size applies equality check predicate on the "size" field. It's identical to SizeEQ.
 func Size(v int64) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldSize, v))
@@ -75,9 +81,9 @@ func Nlink(v uint32) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldNlink, v))
 }
 
-// Content applies equality check predicate on the "content" field. It's identical to ContentEQ.
-func Content(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldContent, v))
+// Data applies equality check predicate on the "data" field. It's identical to DataEQ.
+func Data(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldData, v))
 }
 
 // Atime applies equality check predicate on the "atime" field. It's identical to AtimeEQ.
@@ -190,6 +196,71 @@ func UpdateTimeLTE(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldUpdateTime, v))
 }
 
+// DrvEQ applies the EQ predicate on the "drv" field.
+func DrvEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldDrv, v))
+}
+
+// DrvNEQ applies the NEQ predicate on the "drv" field.
+func DrvNEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldDrv, v))
+}
+
+// DrvIn applies the In predicate on the "drv" field.
+func DrvIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldDrv, vs...))
+}
+
+// DrvNotIn applies the NotIn predicate on the "drv" field.
+func DrvNotIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldDrv, vs...))
+}
+
+// DrvGT applies the GT predicate on the "drv" field.
+func DrvGT(v string) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldDrv, v))
+}
+
+// DrvGTE applies the GTE predicate on the "drv" field.
+func DrvGTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldDrv, v))
+}
+
+// DrvLT applies the LT predicate on the "drv" field.
+func DrvLT(v string) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldDrv, v))
+}
+
+// DrvLTE applies the LTE predicate on the "drv" field.
+func DrvLTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldDrv, v))
+}
+
+// DrvContains applies the Contains predicate on the "drv" field.
+func DrvContains(v string) predicate.Node {
+	return predicate.Node(sql.FieldContains(FieldDrv, v))
+}
+
+// DrvHasPrefix applies the HasPrefix predicate on the "drv" field.
+func DrvHasPrefix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasPrefix(FieldDrv, v))
+}
+
+// DrvHasSuffix applies the HasSuffix predicate on the "drv" field.
+func DrvHasSuffix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasSuffix(FieldDrv, v))
+}
+
+// DrvEqualFold applies the EqualFold predicate on the "drv" field.
+func DrvEqualFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldEqualFold(FieldDrv, v))
+}
+
+// DrvContainsFold applies the ContainsFold predicate on the "drv" field.
+func DrvContainsFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldContainsFold(FieldDrv, v))
+}
+
 // KindEQ applies the EQ predicate on the "kind" field.
 func KindEQ(v Kind) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldKind, v))
@@ -290,54 +361,54 @@ func NlinkLTE(v uint32) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldNlink, v))
 }
 
-// ContentEQ applies the EQ predicate on the "content" field.
-func ContentEQ(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldContent, v))
+// DataEQ applies the EQ predicate on the "data" field.
+func DataEQ(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldData, v))
 }
 
-// ContentNEQ applies the NEQ predicate on the "content" field.
-func ContentNEQ(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldContent, v))
+// DataNEQ applies the NEQ predicate on the "data" field.
+func DataNEQ(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldData, v))
 }
 
-// ContentIn applies the In predicate on the "content" field.
-func ContentIn(vs ...[]byte) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldContent, vs...))
+// DataIn applies the In predicate on the "data" field.
+func DataIn(vs ...[]byte) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldData, vs...))
 }
 
-// ContentNotIn applies the NotIn predicate on the "content" field.
-func ContentNotIn(vs ...[]byte) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldContent, vs...))
+// DataNotIn applies the NotIn predicate on the "data" field.
+func DataNotIn(vs ...[]byte) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldData, vs...))
 }
 
-// ContentGT applies the GT predicate on the "content" field.
-func ContentGT(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldContent, v))
+// DataGT applies the GT predicate on the "data" field.
+func DataGT(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldData, v))
 }
 
-// ContentGTE applies the GTE predicate on the "content" field.
-func ContentGTE(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldContent, v))
+// DataGTE applies the GTE predicate on the "data" field.
+func DataGTE(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldData, v))
 }
 
-// ContentLT applies the LT predicate on the "content" field.
-func ContentLT(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldContent, v))
+// DataLT applies the LT predicate on the "data" field.
+func DataLT(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldData, v))
 }
 
-// ContentLTE applies the LTE predicate on the "content" field.
-func ContentLTE(v []byte) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldContent, v))
+// DataLTE applies the LTE predicate on the "data" field.
+func DataLTE(v []byte) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldData, v))
 }
 
-// ContentIsNil applies the IsNil predicate on the "content" field.
-func ContentIsNil() predicate.Node {
-	return predicate.Node(sql.FieldIsNull(FieldContent))
+// DataIsNil applies the IsNil predicate on the "data" field.
+func DataIsNil() predicate.Node {
+	return predicate.Node(sql.FieldIsNull(FieldData))
 }
 
-// ContentNotNil applies the NotNil predicate on the "content" field.
-func ContentNotNil() predicate.Node {
-	return predicate.Node(sql.FieldNotNull(FieldContent))
+// DataNotNil applies the NotNil predicate on the "data" field.
+func DataNotNil() predicate.Node {
+	return predicate.Node(sql.FieldNotNull(FieldData))
 }
 
 // AtimeEQ applies the EQ predicate on the "atime" field.
@@ -603,6 +674,29 @@ func RevisionEqualFold(v string) predicate.Node {
 // RevisionContainsFold applies the ContainsFold predicate on the "revision" field.
 func RevisionContainsFold(v string) predicate.Node {
 	return predicate.Node(sql.FieldContainsFold(FieldRevision, v))
+}
+
+// HasDrive applies the HasEdge predicate on the "drive" edge.
+func HasDrive() predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, DriveTable, DriveColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDriveWith applies the HasEdge predicate on the "drive" edge with a given conditions (other predicates).
+func HasDriveWith(preds ...predicate.Drive) predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := newDriveStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

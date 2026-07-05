@@ -54,6 +54,9 @@ type DriveMutation struct {
 	clearedFields  map[string]struct{}
 	storage        *int
 	clearedstorage bool
+	nodes          map[uuid.UUID]struct{}
+	removednodes   map[uuid.UUID]struct{}
+	clearednodes   bool
 	done           bool
 	oldValue       func(context.Context) (*Drive, error)
 	predicates     []predicate.Drive
@@ -565,6 +568,60 @@ func (m *DriveMutation) ResetStorage() {
 	m.clearedstorage = false
 }
 
+// AddNodeIDs adds the "nodes" edge to the Node entity by ids.
+func (m *DriveMutation) AddNodeIDs(ids ...uuid.UUID) {
+	if m.nodes == nil {
+		m.nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNodes clears the "nodes" edge to the Node entity.
+func (m *DriveMutation) ClearNodes() {
+	m.clearednodes = true
+}
+
+// NodesCleared reports if the "nodes" edge to the Node entity was cleared.
+func (m *DriveMutation) NodesCleared() bool {
+	return m.clearednodes
+}
+
+// RemoveNodeIDs removes the "nodes" edge to the Node entity by IDs.
+func (m *DriveMutation) RemoveNodeIDs(ids ...uuid.UUID) {
+	if m.removednodes == nil {
+		m.removednodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.nodes, ids[i])
+		m.removednodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNodes returns the removed IDs of the "nodes" edge to the Node entity.
+func (m *DriveMutation) RemovedNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removednodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NodesIDs returns the "nodes" edge IDs in the mutation.
+func (m *DriveMutation) NodesIDs() (ids []uuid.UUID) {
+	for id := range m.nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNodes resets all changes to the "nodes" edge.
+func (m *DriveMutation) ResetNodes() {
+	m.nodes = nil
+	m.clearednodes = false
+	m.removednodes = nil
+}
+
 // Where appends a list predicates to the DriveMutation builder.
 func (m *DriveMutation) Where(ps ...predicate.Drive) {
 	m.predicates = append(m.predicates, ps...)
@@ -855,9 +912,12 @@ func (m *DriveMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DriveMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.storage != nil {
 		edges = append(edges, drive.EdgeStorage)
+	}
+	if m.nodes != nil {
+		edges = append(edges, drive.EdgeNodes)
 	}
 	return edges
 }
@@ -870,27 +930,47 @@ func (m *DriveMutation) AddedIDs(name string) []ent.Value {
 		if id := m.storage; id != nil {
 			return []ent.Value{*id}
 		}
+	case drive.EdgeNodes:
+		ids := make([]ent.Value, 0, len(m.nodes))
+		for id := range m.nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DriveMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removednodes != nil {
+		edges = append(edges, drive.EdgeNodes)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *DriveMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case drive.EdgeNodes:
+		ids := make([]ent.Value, 0, len(m.removednodes))
+		for id := range m.removednodes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DriveMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedstorage {
 		edges = append(edges, drive.EdgeStorage)
+	}
+	if m.clearednodes {
+		edges = append(edges, drive.EdgeNodes)
 	}
 	return edges
 }
@@ -901,6 +981,8 @@ func (m *DriveMutation) EdgeCleared(name string) bool {
 	switch name {
 	case drive.EdgeStorage:
 		return m.clearedstorage
+	case drive.EdgeNodes:
+		return m.clearednodes
 	}
 	return false
 }
@@ -922,6 +1004,9 @@ func (m *DriveMutation) ResetEdge(name string) error {
 	switch name {
 	case drive.EdgeStorage:
 		m.ResetStorage()
+		return nil
+	case drive.EdgeNodes:
+		m.ResetNodes()
 		return nil
 	}
 	return fmt.Errorf("unknown Drive edge %s", name)
@@ -2250,7 +2335,7 @@ type NodeMutation struct {
 	addsize       *int64
 	nlink         *uint32
 	addnlink      *int32
-	content       *[]byte
+	data          *[]byte
 	atime         *time.Time
 	mtime         *time.Time
 	ctime         *time.Time
@@ -2259,6 +2344,8 @@ type NodeMutation struct {
 	addflags      *int32
 	revision      *string
 	clearedFields map[string]struct{}
+	drive         *string
+	cleareddrive  bool
 	done          bool
 	oldValue      func(context.Context) (*Node, error)
 	predicates    []predicate.Node
@@ -2440,6 +2527,42 @@ func (m *NodeMutation) ResetUpdateTime() {
 	m.update_time = nil
 }
 
+// SetDrv sets the "drv" field.
+func (m *NodeMutation) SetDrv(s string) {
+	m.drive = &s
+}
+
+// Drv returns the value of the "drv" field in the mutation.
+func (m *NodeMutation) Drv() (r string, exists bool) {
+	v := m.drive
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDrv returns the old "drv" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldDrv(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDrv is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDrv requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDrv: %w", err)
+	}
+	return oldValue.Drv, nil
+}
+
+// ResetDrv resets all changes to the "drv" field.
+func (m *NodeMutation) ResetDrv() {
+	m.drive = nil
+}
+
 // SetKind sets the "kind" field.
 func (m *NodeMutation) SetKind(n node.Kind) {
 	m.kind = &n
@@ -2588,53 +2711,53 @@ func (m *NodeMutation) ResetNlink() {
 	m.addnlink = nil
 }
 
-// SetContent sets the "content" field.
-func (m *NodeMutation) SetContent(b []byte) {
-	m.content = &b
+// SetData sets the "data" field.
+func (m *NodeMutation) SetData(b []byte) {
+	m.data = &b
 }
 
-// Content returns the value of the "content" field in the mutation.
-func (m *NodeMutation) Content() (r []byte, exists bool) {
-	v := m.content
+// Data returns the value of the "data" field in the mutation.
+func (m *NodeMutation) Data() (r []byte, exists bool) {
+	v := m.data
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldContent returns the old "content" field's value of the Node entity.
+// OldData returns the old "data" field's value of the Node entity.
 // If the Node object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldContent(ctx context.Context) (v *[]byte, err error) {
+func (m *NodeMutation) OldData(ctx context.Context) (v []byte, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldContent is only allowed on UpdateOne operations")
+		return v, errors.New("OldData is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldContent requires an ID field in the mutation")
+		return v, errors.New("OldData requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldContent: %w", err)
+		return v, fmt.Errorf("querying old value for OldData: %w", err)
 	}
-	return oldValue.Content, nil
+	return oldValue.Data, nil
 }
 
-// ClearContent clears the value of the "content" field.
-func (m *NodeMutation) ClearContent() {
-	m.content = nil
-	m.clearedFields[node.FieldContent] = struct{}{}
+// ClearData clears the value of the "data" field.
+func (m *NodeMutation) ClearData() {
+	m.data = nil
+	m.clearedFields[node.FieldData] = struct{}{}
 }
 
-// ContentCleared returns if the "content" field was cleared in this mutation.
-func (m *NodeMutation) ContentCleared() bool {
-	_, ok := m.clearedFields[node.FieldContent]
+// DataCleared returns if the "data" field was cleared in this mutation.
+func (m *NodeMutation) DataCleared() bool {
+	_, ok := m.clearedFields[node.FieldData]
 	return ok
 }
 
-// ResetContent resets all changes to the "content" field.
-func (m *NodeMutation) ResetContent() {
-	m.content = nil
-	delete(m.clearedFields, node.FieldContent)
+// ResetData resets all changes to the "data" field.
+func (m *NodeMutation) ResetData() {
+	m.data = nil
+	delete(m.clearedFields, node.FieldData)
 }
 
 // SetAtime sets the "atime" field.
@@ -2873,6 +2996,46 @@ func (m *NodeMutation) ResetRevision() {
 	m.revision = nil
 }
 
+// SetDriveID sets the "drive" edge to the Drive entity by id.
+func (m *NodeMutation) SetDriveID(id string) {
+	m.drive = &id
+}
+
+// ClearDrive clears the "drive" edge to the Drive entity.
+func (m *NodeMutation) ClearDrive() {
+	m.cleareddrive = true
+	m.clearedFields[node.FieldDrv] = struct{}{}
+}
+
+// DriveCleared reports if the "drive" edge to the Drive entity was cleared.
+func (m *NodeMutation) DriveCleared() bool {
+	return m.cleareddrive
+}
+
+// DriveID returns the "drive" edge ID in the mutation.
+func (m *NodeMutation) DriveID() (id string, exists bool) {
+	if m.drive != nil {
+		return *m.drive, true
+	}
+	return
+}
+
+// DriveIDs returns the "drive" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DriveID instead. It exists only for internal usage by the builders.
+func (m *NodeMutation) DriveIDs() (ids []string) {
+	if id := m.drive; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDrive resets all changes to the "drive" edge.
+func (m *NodeMutation) ResetDrive() {
+	m.drive = nil
+	m.cleareddrive = false
+}
+
 // Where appends a list predicates to the NodeMutation builder.
 func (m *NodeMutation) Where(ps ...predicate.Node) {
 	m.predicates = append(m.predicates, ps...)
@@ -2907,12 +3070,15 @@ func (m *NodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.create_time != nil {
 		fields = append(fields, node.FieldCreateTime)
 	}
 	if m.update_time != nil {
 		fields = append(fields, node.FieldUpdateTime)
+	}
+	if m.drive != nil {
+		fields = append(fields, node.FieldDrv)
 	}
 	if m.kind != nil {
 		fields = append(fields, node.FieldKind)
@@ -2923,8 +3089,8 @@ func (m *NodeMutation) Fields() []string {
 	if m.nlink != nil {
 		fields = append(fields, node.FieldNlink)
 	}
-	if m.content != nil {
-		fields = append(fields, node.FieldContent)
+	if m.data != nil {
+		fields = append(fields, node.FieldData)
 	}
 	if m.atime != nil {
 		fields = append(fields, node.FieldAtime)
@@ -2956,14 +3122,16 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.CreateTime()
 	case node.FieldUpdateTime:
 		return m.UpdateTime()
+	case node.FieldDrv:
+		return m.Drv()
 	case node.FieldKind:
 		return m.Kind()
 	case node.FieldSize:
 		return m.Size()
 	case node.FieldNlink:
 		return m.Nlink()
-	case node.FieldContent:
-		return m.Content()
+	case node.FieldData:
+		return m.Data()
 	case node.FieldAtime:
 		return m.Atime()
 	case node.FieldMtime:
@@ -2989,14 +3157,16 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreateTime(ctx)
 	case node.FieldUpdateTime:
 		return m.OldUpdateTime(ctx)
+	case node.FieldDrv:
+		return m.OldDrv(ctx)
 	case node.FieldKind:
 		return m.OldKind(ctx)
 	case node.FieldSize:
 		return m.OldSize(ctx)
 	case node.FieldNlink:
 		return m.OldNlink(ctx)
-	case node.FieldContent:
-		return m.OldContent(ctx)
+	case node.FieldData:
+		return m.OldData(ctx)
 	case node.FieldAtime:
 		return m.OldAtime(ctx)
 	case node.FieldMtime:
@@ -3032,6 +3202,13 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdateTime(v)
 		return nil
+	case node.FieldDrv:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDrv(v)
+		return nil
 	case node.FieldKind:
 		v, ok := value.(node.Kind)
 		if !ok {
@@ -3053,12 +3230,12 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNlink(v)
 		return nil
-	case node.FieldContent:
+	case node.FieldData:
 		v, ok := value.([]byte)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetContent(v)
+		m.SetData(v)
 		return nil
 	case node.FieldAtime:
 		v, ok := value.(time.Time)
@@ -3171,8 +3348,8 @@ func (m *NodeMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *NodeMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(node.FieldContent) {
-		fields = append(fields, node.FieldContent)
+	if m.FieldCleared(node.FieldData) {
+		fields = append(fields, node.FieldData)
 	}
 	return fields
 }
@@ -3188,8 +3365,8 @@ func (m *NodeMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *NodeMutation) ClearField(name string) error {
 	switch name {
-	case node.FieldContent:
-		m.ClearContent()
+	case node.FieldData:
+		m.ClearData()
 		return nil
 	}
 	return fmt.Errorf("unknown Node nullable field %s", name)
@@ -3205,6 +3382,9 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldUpdateTime:
 		m.ResetUpdateTime()
 		return nil
+	case node.FieldDrv:
+		m.ResetDrv()
+		return nil
 	case node.FieldKind:
 		m.ResetKind()
 		return nil
@@ -3214,8 +3394,8 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldNlink:
 		m.ResetNlink()
 		return nil
-	case node.FieldContent:
-		m.ResetContent()
+	case node.FieldData:
+		m.ResetData()
 		return nil
 	case node.FieldAtime:
 		m.ResetAtime()
@@ -3241,19 +3421,28 @@ func (m *NodeMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NodeMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.drive != nil {
+		edges = append(edges, node.EdgeDrive)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *NodeMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case node.EdgeDrive:
+		if id := m.drive; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *NodeMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -3265,25 +3454,42 @@ func (m *NodeMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NodeMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.cleareddrive {
+		edges = append(edges, node.EdgeDrive)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *NodeMutation) EdgeCleared(name string) bool {
+	switch name {
+	case node.EdgeDrive:
+		return m.cleareddrive
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *NodeMutation) ClearEdge(name string) error {
+	switch name {
+	case node.EdgeDrive:
+		m.ClearDrive()
+		return nil
+	}
 	return fmt.Errorf("unknown Node unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *NodeMutation) ResetEdge(name string) error {
+	switch name {
+	case node.EdgeDrive:
+		m.ResetDrive()
+		return nil
+	}
 	return fmt.Errorf("unknown Node edge %s", name)
 }
 

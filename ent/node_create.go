@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 )
 
@@ -49,6 +50,12 @@ func (_c *NodeCreate) SetNillableUpdateTime(v *time.Time) *NodeCreate {
 	if v != nil {
 		_c.SetUpdateTime(*v)
 	}
+	return _c
+}
+
+// SetDrv sets the "drv" field.
+func (_c *NodeCreate) SetDrv(v string) *NodeCreate {
+	_c.mutation.SetDrv(v)
 	return _c
 }
 
@@ -94,9 +101,9 @@ func (_c *NodeCreate) SetNillableNlink(v *uint32) *NodeCreate {
 	return _c
 }
 
-// SetContent sets the "content" field.
-func (_c *NodeCreate) SetContent(v []byte) *NodeCreate {
-	_c.mutation.SetContent(v)
+// SetData sets the "data" field.
+func (_c *NodeCreate) SetData(v []byte) *NodeCreate {
+	_c.mutation.SetData(v)
 	return _c
 }
 
@@ -148,6 +155,17 @@ func (_c *NodeCreate) SetRevision(v string) *NodeCreate {
 func (_c *NodeCreate) SetID(v uuid.UUID) *NodeCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// SetDriveID sets the "drive" edge to the Drive entity by ID.
+func (_c *NodeCreate) SetDriveID(id string) *NodeCreate {
+	_c.mutation.SetDriveID(id)
+	return _c
+}
+
+// SetDrive sets the "drive" edge to the Drive entity.
+func (_c *NodeCreate) SetDrive(v *Drive) *NodeCreate {
+	return _c.SetDriveID(v.ID)
 }
 
 // Mutation returns the NodeMutation object of the builder.
@@ -219,6 +237,9 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Node.update_time"`)}
 	}
+	if _, ok := _c.mutation.Drv(); !ok {
+		return &ValidationError{Name: "drv", err: errors.New(`ent: missing required field "Node.drv"`)}
+	}
 	if _, ok := _c.mutation.Kind(); !ok {
 		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "Node.kind"`)}
 	}
@@ -233,9 +254,9 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.Nlink(); !ok {
 		return &ValidationError{Name: "nlink", err: errors.New(`ent: missing required field "Node.nlink"`)}
 	}
-	if v, ok := _c.mutation.Content(); ok {
-		if err := node.ContentValidator(v); err != nil {
-			return &ValidationError{Name: "content", err: fmt.Errorf(`ent: validator failed for field "Node.content": %w`, err)}
+	if v, ok := _c.mutation.Data(); ok {
+		if err := node.DataValidator(v); err != nil {
+			return &ValidationError{Name: "data", err: fmt.Errorf(`ent: validator failed for field "Node.data": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Atime(); !ok {
@@ -260,6 +281,9 @@ func (_c *NodeCreate) check() error {
 		if err := node.RevisionValidator(v); err != nil {
 			return &ValidationError{Name: "revision", err: fmt.Errorf(`ent: validator failed for field "Node.revision": %w`, err)}
 		}
+	}
+	if len(_c.mutation.DriveIDs()) == 0 {
+		return &ValidationError{Name: "drive", err: errors.New(`ent: missing required edge "Node.drive"`)}
 	}
 	return nil
 }
@@ -317,9 +341,9 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		_spec.SetField(node.FieldNlink, field.TypeUint32, value)
 		_node.Nlink = value
 	}
-	if value, ok := _c.mutation.Content(); ok {
-		_spec.SetField(node.FieldContent, field.TypeBytes, value)
-		_node.Content = &value
+	if value, ok := _c.mutation.Data(); ok {
+		_spec.SetField(node.FieldData, field.TypeBytes, value)
+		_node.Data = value
 	}
 	if value, ok := _c.mutation.Atime(); ok {
 		_spec.SetField(node.FieldAtime, field.TypeTime, value)
@@ -344,6 +368,23 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Revision(); ok {
 		_spec.SetField(node.FieldRevision, field.TypeString, value)
 		_node.Revision = value
+	}
+	if nodes := _c.mutation.DriveIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   node.DriveTable,
+			Columns: []string{node.DriveColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.Drv = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -409,6 +450,18 @@ func (u *NodeUpsert) UpdateUpdateTime() *NodeUpsert {
 	return u
 }
 
+// SetDrv sets the "drv" field.
+func (u *NodeUpsert) SetDrv(v string) *NodeUpsert {
+	u.Set(node.FieldDrv, v)
+	return u
+}
+
+// UpdateDrv sets the "drv" field to the value that was provided on create.
+func (u *NodeUpsert) UpdateDrv() *NodeUpsert {
+	u.SetExcluded(node.FieldDrv)
+	return u
+}
+
 // SetKind sets the "kind" field.
 func (u *NodeUpsert) SetKind(v node.Kind) *NodeUpsert {
 	u.Set(node.FieldKind, v)
@@ -457,21 +510,21 @@ func (u *NodeUpsert) AddNlink(v uint32) *NodeUpsert {
 	return u
 }
 
-// SetContent sets the "content" field.
-func (u *NodeUpsert) SetContent(v []byte) *NodeUpsert {
-	u.Set(node.FieldContent, v)
+// SetData sets the "data" field.
+func (u *NodeUpsert) SetData(v []byte) *NodeUpsert {
+	u.Set(node.FieldData, v)
 	return u
 }
 
-// UpdateContent sets the "content" field to the value that was provided on create.
-func (u *NodeUpsert) UpdateContent() *NodeUpsert {
-	u.SetExcluded(node.FieldContent)
+// UpdateData sets the "data" field to the value that was provided on create.
+func (u *NodeUpsert) UpdateData() *NodeUpsert {
+	u.SetExcluded(node.FieldData)
 	return u
 }
 
-// ClearContent clears the value of the "content" field.
-func (u *NodeUpsert) ClearContent() *NodeUpsert {
-	u.SetNull(node.FieldContent)
+// ClearData clears the value of the "data" field.
+func (u *NodeUpsert) ClearData() *NodeUpsert {
+	u.SetNull(node.FieldData)
 	return u
 }
 
@@ -618,6 +671,20 @@ func (u *NodeUpsertOne) UpdateUpdateTime() *NodeUpsertOne {
 	})
 }
 
+// SetDrv sets the "drv" field.
+func (u *NodeUpsertOne) SetDrv(v string) *NodeUpsertOne {
+	return u.Update(func(s *NodeUpsert) {
+		s.SetDrv(v)
+	})
+}
+
+// UpdateDrv sets the "drv" field to the value that was provided on create.
+func (u *NodeUpsertOne) UpdateDrv() *NodeUpsertOne {
+	return u.Update(func(s *NodeUpsert) {
+		s.UpdateDrv()
+	})
+}
+
 // SetKind sets the "kind" field.
 func (u *NodeUpsertOne) SetKind(v node.Kind) *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
@@ -674,24 +741,24 @@ func (u *NodeUpsertOne) UpdateNlink() *NodeUpsertOne {
 	})
 }
 
-// SetContent sets the "content" field.
-func (u *NodeUpsertOne) SetContent(v []byte) *NodeUpsertOne {
+// SetData sets the "data" field.
+func (u *NodeUpsertOne) SetData(v []byte) *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetContent(v)
+		s.SetData(v)
 	})
 }
 
-// UpdateContent sets the "content" field to the value that was provided on create.
-func (u *NodeUpsertOne) UpdateContent() *NodeUpsertOne {
+// UpdateData sets the "data" field to the value that was provided on create.
+func (u *NodeUpsertOne) UpdateData() *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateContent()
+		s.UpdateData()
 	})
 }
 
-// ClearContent clears the value of the "content" field.
-func (u *NodeUpsertOne) ClearContent() *NodeUpsertOne {
+// ClearData clears the value of the "data" field.
+func (u *NodeUpsertOne) ClearData() *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
-		s.ClearContent()
+		s.ClearData()
 	})
 }
 
@@ -1018,6 +1085,20 @@ func (u *NodeUpsertBulk) UpdateUpdateTime() *NodeUpsertBulk {
 	})
 }
 
+// SetDrv sets the "drv" field.
+func (u *NodeUpsertBulk) SetDrv(v string) *NodeUpsertBulk {
+	return u.Update(func(s *NodeUpsert) {
+		s.SetDrv(v)
+	})
+}
+
+// UpdateDrv sets the "drv" field to the value that was provided on create.
+func (u *NodeUpsertBulk) UpdateDrv() *NodeUpsertBulk {
+	return u.Update(func(s *NodeUpsert) {
+		s.UpdateDrv()
+	})
+}
+
 // SetKind sets the "kind" field.
 func (u *NodeUpsertBulk) SetKind(v node.Kind) *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
@@ -1074,24 +1155,24 @@ func (u *NodeUpsertBulk) UpdateNlink() *NodeUpsertBulk {
 	})
 }
 
-// SetContent sets the "content" field.
-func (u *NodeUpsertBulk) SetContent(v []byte) *NodeUpsertBulk {
+// SetData sets the "data" field.
+func (u *NodeUpsertBulk) SetData(v []byte) *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.SetContent(v)
+		s.SetData(v)
 	})
 }
 
-// UpdateContent sets the "content" field to the value that was provided on create.
-func (u *NodeUpsertBulk) UpdateContent() *NodeUpsertBulk {
+// UpdateData sets the "data" field to the value that was provided on create.
+func (u *NodeUpsertBulk) UpdateData() *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.UpdateContent()
+		s.UpdateData()
 	})
 }
 
-// ClearContent clears the value of the "content" field.
-func (u *NodeUpsertBulk) ClearContent() *NodeUpsertBulk {
+// ClearData clears the value of the "data" field.
+func (u *NodeUpsertBulk) ClearData() *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
-		s.ClearContent()
+		s.ClearData()
 	})
 }
 

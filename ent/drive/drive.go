@@ -35,6 +35,8 @@ const (
 	FieldDeletedAt = "deleted_at"
 	// EdgeStorage holds the string denoting the storage edge name in mutations.
 	EdgeStorage = "storage"
+	// EdgeNodes holds the string denoting the nodes edge name in mutations.
+	EdgeNodes = "nodes"
 	// Table holds the table name of the drive in the database.
 	Table = "drives"
 	// StorageTable is the table that holds the storage relation/edge.
@@ -44,6 +46,13 @@ const (
 	StorageInverseTable = "drive_storage"
 	// StorageColumn is the table column denoting the storage relation/edge.
 	StorageColumn = "drive_id"
+	// NodesTable is the table that holds the nodes relation/edge.
+	NodesTable = "nodes"
+	// NodesInverseTable is the table name for the Node entity.
+	// It exists in this package in order to avoid circular dependency with the "node" package.
+	NodesInverseTable = "nodes"
+	// NodesColumn is the table column denoting the nodes relation/edge.
+	NodesColumn = "drv"
 )
 
 // Columns holds all SQL columns for drive fields.
@@ -174,10 +183,31 @@ func ByStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newStorageStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByNodesCount orders the results by nodes count.
+func ByNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNodesStep(), opts...)
+	}
+}
+
+// ByNodes orders the results by nodes terms.
+func ByNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newStorageStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(StorageInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
+	)
+}
+func newNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
 	)
 }

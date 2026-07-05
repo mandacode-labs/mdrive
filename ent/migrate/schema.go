@@ -93,19 +93,28 @@ var (
 		{Name: "kind", Type: field.TypeEnum, Enums: []string{"file", "directory", "symlink", "object", "mount"}, Default: "file"},
 		{Name: "size", Type: field.TypeInt64, Default: 0},
 		{Name: "nlink", Type: field.TypeUint32, Default: 0},
-		{Name: "content", Type: field.TypeBytes, Nullable: true, Size: 4096},
+		{Name: "data", Type: field.TypeBytes, Nullable: true, Size: 4096},
 		{Name: "atime", Type: field.TypeTime},
 		{Name: "mtime", Type: field.TypeTime},
 		{Name: "ctime", Type: field.TypeTime},
 		{Name: "crtime", Type: field.TypeTime},
 		{Name: "flags", Type: field.TypeUint32, Default: 0},
 		{Name: "revision", Type: field.TypeString, Size: 26},
+		{Name: "drv", Type: field.TypeString, Size: 32},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
 	NodesTable = &schema.Table{
 		Name:       "nodes",
 		Columns:    NodesColumns,
 		PrimaryKey: []*schema.Column{NodesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "nodes_drives_nodes",
+				Columns:    []*schema.Column{NodesColumns[13]},
+				RefColumns: []*schema.Column{DrivesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -152,6 +161,7 @@ func init() {
 	GcTombstonesTable.Annotation = &entsql.Annotation{
 		Table: "gc_tombstones",
 	}
+	NodesTable.ForeignKeys[0].RefTable = DrivesTable
 	NodesTable.Annotation = &entsql.Annotation{
 		Table: "nodes",
 	}

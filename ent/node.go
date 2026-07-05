@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 )
 
@@ -22,14 +23,16 @@ type Node struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
+	// Drv holds the value of the "drv" field.
+	Drv string `json:"drv,omitempty"`
 	// Kind holds the value of the "kind" field.
 	Kind node.Kind `json:"kind,omitempty"`
 	// Size holds the value of the "size" field.
 	Size int64 `json:"size,omitempty"`
 	// Nlink holds the value of the "nlink" field.
 	Nlink uint32 `json:"nlink,omitempty"`
-	// Content holds the value of the "content" field.
-	Content *[]byte `json:"content,omitempty"`
+	// Data holds the value of the "data" field.
+	Data []byte `json:"data,omitempty"`
 	// Atime holds the value of the "atime" field.
 	Atime time.Time `json:"atime,omitempty"`
 	// Mtime holds the value of the "mtime" field.
@@ -41,8 +44,31 @@ type Node struct {
 	// Flags holds the value of the "flags" field.
 	Flags uint32 `json:"flags,omitempty"`
 	// Revision holds the value of the "revision" field.
-	Revision     string `json:"revision,omitempty"`
+	Revision string `json:"revision,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the NodeQuery when eager-loading is set.
+	Edges        NodeEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// NodeEdges holds the relations/edges for other nodes in the graph.
+type NodeEdges struct {
+	// Drive holds the value of the drive edge.
+	Drive *Drive `json:"drive,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// DriveOrErr returns the Drive value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e NodeEdges) DriveOrErr() (*Drive, error) {
+	if e.Drive != nil {
+		return e.Drive, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: drive.Label}
+	}
+	return nil, &NotLoadedError{edge: "drive"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -50,11 +76,11 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case node.FieldContent:
+		case node.FieldData:
 			values[i] = new([]byte)
 		case node.FieldSize, node.FieldNlink, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldKind, node.FieldRevision:
+		case node.FieldDrv, node.FieldKind, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldCrtime:
 			values[i] = new(sql.NullTime)
@@ -93,6 +119,12 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
+		case node.FieldDrv:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field drv", values[i])
+			} else if value.Valid {
+				_m.Drv = value.String
+			}
 		case node.FieldKind:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field kind", values[i])
@@ -111,11 +143,11 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Nlink = uint32(value.Int64)
 			}
-		case node.FieldContent:
+		case node.FieldData:
 			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field content", values[i])
+				return fmt.Errorf("unexpected type %T for field data", values[i])
 			} else if value != nil {
-				_m.Content = value
+				_m.Data = *value
 			}
 		case node.FieldAtime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -166,6 +198,11 @@ func (_m *Node) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryDrive queries the "drive" edge of the Node entity.
+func (_m *Node) QueryDrive() *DriveQuery {
+	return NewNodeClient(_m.config).QueryDrive(_m)
+}
+
 // Update returns a builder for updating this Node.
 // Note that you need to call Node.Unwrap() before calling this method if this Node
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -195,6 +232,9 @@ func (_m *Node) String() string {
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
 	builder.WriteString(", ")
+	builder.WriteString("drv=")
+	builder.WriteString(_m.Drv)
+	builder.WriteString(", ")
 	builder.WriteString("kind=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Kind))
 	builder.WriteString(", ")
@@ -204,10 +244,8 @@ func (_m *Node) String() string {
 	builder.WriteString("nlink=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Nlink))
 	builder.WriteString(", ")
-	if v := _m.Content; v != nil {
-		builder.WriteString("content=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
+	builder.WriteString("data=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Data))
 	builder.WriteString(", ")
 	builder.WriteString("atime=")
 	builder.WriteString(_m.Atime.Format(time.ANSIC))

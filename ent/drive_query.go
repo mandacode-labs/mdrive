@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
 
@@ -25,6 +26,7 @@ type DriveQuery struct {
 	inters      []Interceptor
 	predicates  []predicate.Drive
 	withStorage *DriveStorageQuery
+	withNodes   *NodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +78,28 @@ func (_q *DriveQuery) QueryStorage() *DriveStorageQuery {
 			sqlgraph.From(drive.Table, drive.FieldID, selector),
 			sqlgraph.To(drivestorage.Table, drivestorage.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, drive.StorageTable, drive.StorageColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryNodes chains the current query on the "nodes" edge.
+func (_q *DriveQuery) QueryNodes() *NodeQuery {
+	query := (&NodeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drive.Table, drive.FieldID, selector),
+			sqlgraph.To(node.Table, node.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, drive.NodesTable, drive.NodesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +300,7 @@ func (_q *DriveQuery) Clone() *DriveQuery {
 		inters:      append([]Interceptor{}, _q.inters...),
 		predicates:  append([]predicate.Drive{}, _q.predicates...),
 		withStorage: _q.withStorage.Clone(),
+		withNodes:   _q.withNodes.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -290,6 +315,17 @@ func (_q *DriveQuery) WithStorage(opts ...func(*DriveStorageQuery)) *DriveQuery 
 		opt(query)
 	}
 	_q.withStorage = query
+	return _q
+}
+
+// WithNodes tells the query-builder to eager-load the nodes that are connected to
+// the "nodes" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *DriveQuery) WithNodes(opts ...func(*NodeQuery)) *DriveQuery {
+	query := (&NodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withNodes = query
 	return _q
 }
 
@@ -371,8 +407,9 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	var (
 		nodes       = []*Drive{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withStorage != nil,
+			_q.withNodes != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -396,6 +433,13 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	if query := _q.withStorage; query != nil {
 		if err := _q.loadStorage(ctx, query, nodes, nil,
 			func(n *Drive, e *DriveStorage) { n.Edges.Storage = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withNodes; query != nil {
+		if err := _q.loadNodes(ctx, query, nodes,
+			func(n *Drive) { n.Edges.Nodes = []*Node{} },
+			func(n *Drive, e *Node) { n.Edges.Nodes = append(n.Edges.Nodes, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -424,6 +468,36 @@ func (_q *DriveQuery) loadStorage(ctx context.Context, query *DriveStorageQuery,
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "drive_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *DriveQuery) loadNodes(ctx context.Context, query *NodeQuery, nodes []*Drive, init func(*Drive), assign func(*Drive, *Node)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[string]*Drive)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(node.FieldDrv)
+	}
+	query.Where(predicate.Node(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(drive.NodesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.Drv
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "drv" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

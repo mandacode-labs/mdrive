@@ -47,9 +47,11 @@ type Drive struct {
 type DriveEdges struct {
 	// Storage holds the value of the storage edge.
 	Storage *DriveStorage `json:"storage,omitempty"`
+	// Nodes holds the value of the nodes edge.
+	Nodes []*Node `json:"nodes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // StorageOrErr returns the Storage value or an error if the edge
@@ -61,6 +63,15 @@ func (e DriveEdges) StorageOrErr() (*DriveStorage, error) {
 		return nil, &NotFoundError{label: drivestorage.Label}
 	}
 	return nil, &NotLoadedError{edge: "storage"}
+}
+
+// NodesOrErr returns the Nodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e DriveEdges) NodesOrErr() ([]*Node, error) {
+	if e.loadedTypes[1] {
+		return e.Nodes, nil
+	}
+	return nil, &NotLoadedError{edge: "nodes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -168,6 +179,11 @@ func (_m *Drive) Value(name string) (ent.Value, error) {
 // QueryStorage queries the "storage" edge of the Drive entity.
 func (_m *Drive) QueryStorage() *DriveStorageQuery {
 	return NewDriveClient(_m.config).QueryStorage(_m)
+}
+
+// QueryNodes queries the "nodes" edge of the Drive entity.
+func (_m *Drive) QueryNodes() *NodeQuery {
+	return NewDriveClient(_m.config).QueryNodes(_m)
 }
 
 // Update returns a builder for updating this Drive.

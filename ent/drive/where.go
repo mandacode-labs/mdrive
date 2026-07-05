@@ -599,6 +599,29 @@ func HasStorageWith(preds ...predicate.DriveStorage) predicate.Drive {
 	})
 }
 
+// HasNodes applies the HasEdge predicate on the "nodes" edge.
+func HasNodes() predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNodesWith applies the HasEdge predicate on the "nodes" edge with a given conditions (other predicates).
+func HasNodesWith(preds ...predicate.Node) predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := newNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Drive) predicate.Drive {
 	return predicate.Drive(sql.AndPredicates(predicates...))

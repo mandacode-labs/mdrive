@@ -93,5 +93,6 @@ func (Drive) Edges() []ent.Edge {
 		// Drive has one storage configuration.
 		edge.To("storage", DriveStorage.Type).
 			Unique(),
+		edge.To("nodes", Node.Type),
 	}
 }

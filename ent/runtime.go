@@ -125,23 +125,23 @@ func init() {
 	// node.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
 	node.UpdateDefaultUpdateTime = nodeDescUpdateTime.UpdateDefault.(func() time.Time)
 	// nodeDescSize is the schema descriptor for size field.
-	nodeDescSize := nodeFields[2].Descriptor()
+	nodeDescSize := nodeFields[3].Descriptor()
 	// node.DefaultSize holds the default value on creation for the size field.
 	node.DefaultSize = nodeDescSize.Default.(int64)
 	// nodeDescNlink is the schema descriptor for nlink field.
-	nodeDescNlink := nodeFields[3].Descriptor()
+	nodeDescNlink := nodeFields[4].Descriptor()
 	// node.DefaultNlink holds the default value on creation for the nlink field.
 	node.DefaultNlink = nodeDescNlink.Default.(uint32)
-	// nodeDescContent is the schema descriptor for content field.
-	nodeDescContent := nodeFields[4].Descriptor()
-	// node.ContentValidator is a validator for the "content" field. It is called by the builders before save.
-	node.ContentValidator = nodeDescContent.Validators[0].(func([]byte) error)
+	// nodeDescData is the schema descriptor for data field.
+	nodeDescData := nodeFields[5].Descriptor()
+	// node.DataValidator is a validator for the "data" field. It is called by the builders before save.
+	node.DataValidator = nodeDescData.Validators[0].(func([]byte) error)
 	// nodeDescFlags is the schema descriptor for flags field.
-	nodeDescFlags := nodeFields[9].Descriptor()
+	nodeDescFlags := nodeFields[10].Descriptor()
 	// node.DefaultFlags holds the default value on creation for the flags field.
 	node.DefaultFlags = nodeDescFlags.Default.(uint32)
 	// nodeDescRevision is the schema descriptor for revision field.
-	nodeDescRevision := nodeFields[10].Descriptor()
+	nodeDescRevision := nodeFields[11].Descriptor()
 	// node.RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
 	node.RevisionValidator = nodeDescRevision.Validators[0].(func(string) error)
 	userMixin := schema.User{}.Mixin()

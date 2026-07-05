@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -18,14 +19,16 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
+	// FieldDrv holds the string denoting the drv field in the database.
+	FieldDrv = "drv"
 	// FieldKind holds the string denoting the kind field in the database.
 	FieldKind = "kind"
 	// FieldSize holds the string denoting the size field in the database.
 	FieldSize = "size"
 	// FieldNlink holds the string denoting the nlink field in the database.
 	FieldNlink = "nlink"
-	// FieldContent holds the string denoting the content field in the database.
-	FieldContent = "content"
+	// FieldData holds the string denoting the data field in the database.
+	FieldData = "data"
 	// FieldAtime holds the string denoting the atime field in the database.
 	FieldAtime = "atime"
 	// FieldMtime holds the string denoting the mtime field in the database.
@@ -38,8 +41,17 @@ const (
 	FieldFlags = "flags"
 	// FieldRevision holds the string denoting the revision field in the database.
 	FieldRevision = "revision"
+	// EdgeDrive holds the string denoting the drive edge name in mutations.
+	EdgeDrive = "drive"
 	// Table holds the table name of the node in the database.
 	Table = "nodes"
+	// DriveTable is the table that holds the drive relation/edge.
+	DriveTable = "nodes"
+	// DriveInverseTable is the table name for the Drive entity.
+	// It exists in this package in order to avoid circular dependency with the "drive" package.
+	DriveInverseTable = "drives"
+	// DriveColumn is the table column denoting the drive relation/edge.
+	DriveColumn = "drv"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -47,10 +59,11 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
+	FieldDrv,
 	FieldKind,
 	FieldSize,
 	FieldNlink,
-	FieldContent,
+	FieldData,
 	FieldAtime,
 	FieldMtime,
 	FieldCtime,
@@ -80,8 +93,8 @@ var (
 	DefaultSize int64
 	// DefaultNlink holds the default value on creation for the "nlink" field.
 	DefaultNlink uint32
-	// ContentValidator is a validator for the "content" field. It is called by the builders before save.
-	ContentValidator func([]byte) error
+	// DataValidator is a validator for the "data" field. It is called by the builders before save.
+	DataValidator func([]byte) error
 	// DefaultFlags holds the default value on creation for the "flags" field.
 	DefaultFlags uint32
 	// RevisionValidator is a validator for the "revision" field. It is called by the builders before save.
@@ -135,6 +148,11 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
+// ByDrv orders the results by the drv field.
+func ByDrv(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDrv, opts...).ToFunc()
+}
+
 // ByKind orders the results by the kind field.
 func ByKind(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldKind, opts...).ToFunc()
@@ -178,4 +196,18 @@ func ByFlags(opts ...sql.OrderTermOption) OrderOption {
 // ByRevision orders the results by the revision field.
 func ByRevision(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRevision, opts...).ToFunc()
+}
+
+// ByDriveField orders the results by drive field.
+func ByDriveField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDriveStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newDriveStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DriveInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, DriveTable, DriveColumn),
+	)
 }

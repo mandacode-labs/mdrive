@@ -362,6 +362,22 @@ func (c *DriveClient) QueryStorage(_m *Drive) *DriveStorageQuery {
 	return query
 }
 
+// QueryNodes queries the nodes edge of a Drive.
+func (c *DriveClient) QueryNodes(_m *Drive) *NodeQuery {
+	query := (&NodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drive.Table, drive.FieldID, id),
+			sqlgraph.To(node.Table, node.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, drive.NodesTable, drive.NodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *DriveClient) Hooks() []Hook {
 	return c.hooks.Drive
@@ -775,6 +791,22 @@ func (c *NodeClient) GetX(ctx context.Context, id uuid.UUID) *Node {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryDrive queries the drive edge of a Node.
+func (c *NodeClient) QueryDrive(_m *Node) *DriveQuery {
+	query := (&DriveClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(node.Table, node.FieldID, id),
+			sqlgraph.To(drive.Table, drive.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, node.DriveTable, node.DriveColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/drivestorage"
+	"github.com/mandacode-labs/mdrive/ent/node"
 )
 
 // DriveCreate is the builder for creating a Drive entity.
@@ -150,6 +151,21 @@ func (_c *DriveCreate) SetNillableStorageID(id *int) *DriveCreate {
 // SetStorage sets the "storage" edge to the DriveStorage entity.
 func (_c *DriveCreate) SetStorage(v *DriveStorage) *DriveCreate {
 	return _c.SetStorageID(v.ID)
+}
+
+// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
+func (_c *DriveCreate) AddNodeIDs(ids ...uuid.UUID) *DriveCreate {
+	_c.mutation.AddNodeIDs(ids...)
+	return _c
+}
+
+// AddNodes adds the "nodes" edges to the Node entity.
+func (_c *DriveCreate) AddNodes(v ...*Node) *DriveCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddNodeIDs(ids...)
 }
 
 // Mutation returns the DriveMutation object of the builder.
@@ -332,6 +348,22 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(drivestorage.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.NodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   drive.NodesTable,
+			Columns: []string{drive.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

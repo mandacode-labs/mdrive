@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
@@ -23,6 +24,7 @@ type NodeQuery struct {
 	order      []node.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Node
+	withDrive  *DriveQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +59,28 @@ func (_q *NodeQuery) Unique(unique bool) *NodeQuery {
 func (_q *NodeQuery) Order(o ...node.OrderOption) *NodeQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryDrive chains the current query on the "drive" edge.
+func (_q *NodeQuery) QueryDrive() *DriveQuery {
+	query := (&DriveClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(node.Table, node.FieldID, selector),
+			sqlgraph.To(drive.Table, drive.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, node.DriveTable, node.DriveColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Node entity from the query.
@@ -251,10 +275,22 @@ func (_q *NodeQuery) Clone() *NodeQuery {
 		order:      append([]node.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Node{}, _q.predicates...),
+		withDrive:  _q.withDrive.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithDrive tells the query-builder to eager-load the nodes that are connected to
+// the "drive" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *NodeQuery) WithDrive(opts ...func(*DriveQuery)) *NodeQuery {
+	query := (&DriveClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDrive = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -333,8 +369,11 @@ func (_q *NodeQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *NodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Node, error) {
 	var (
-		nodes = []*Node{}
-		_spec = _q.querySpec()
+		nodes       = []*Node{}
+		_spec       = _q.querySpec()
+		loadedTypes = [1]bool{
+			_q.withDrive != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Node).scanValues(nil, columns)
@@ -342,6 +381,7 @@ func (_q *NodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Node, e
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Node{config: _q.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +393,43 @@ func (_q *NodeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Node, e
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withDrive; query != nil {
+		if err := _q.loadDrive(ctx, query, nodes, nil,
+			func(n *Node, e *Drive) { n.Edges.Drive = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (_q *NodeQuery) loadDrive(ctx context.Context, query *DriveQuery, nodes []*Node, init func(*Node), assign func(*Node, *Drive)) error {
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*Node)
+	for i := range nodes {
+		fk := nodes[i].Drv
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(drive.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "drv" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (_q *NodeQuery) sqlCount(ctx context.Context) (int, error) {
@@ -380,6 +456,9 @@ func (_q *NodeQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != node.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withDrive != nil {
+			_spec.Node.AddColumnOnce(node.FieldDrv)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
