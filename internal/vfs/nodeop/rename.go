@@ -2,44 +2,76 @@ package nodeop
 
 import (
 	"context"
+	"encoding/json"
 
+	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
+	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/vfs/nodeop/content"
 )
 
 // Rename implements [NodeOperation].
-func (n *nodeOperation) Rename(ctx context.Context, oldDentry *Dentry, newDentry *Dentry) error {
-	// Check if the old and new nodes are the same.
-	if oldDentry.Node.ID() != newDentry.Node.ID() {
-		return errorx.New(errorx.KindInvalidArgument, "old and new nodes are not the same")
+func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *node.Node, newName string) error {
+	// Read the content of the new parent directory and unmarshal it into a DirContent struct.
+	newDirData := newDir.Data()
+	newDirContent := &content.DirContent{}
+	if err := json.Unmarshal(newDirData, newDirContent); err != nil {
+		return errorx.Wrap(err, "failed to unmarshal new directory content")
 	}
 
-	// Add node to new parent directory
-	if err := newDentry.Parent.AddEntry(newDentry.Name, oldDentry.Node); err != nil {
-		return err
+	// Add the new entry to the new parent directory's content.
+	err := newDirContent.AddEntry(content.DirEntry{
+		NodeID: old.Node.ID(),
+		Name:   newName,
+		Kind:   old.Node.Kind(),
+	})
+	if err != nil {
+		return errorx.Wrap(err, "failed to add entry to new directory content")
 	}
-	// Remove node from old parent directory
-	if err := oldDentry.Parent.RemoveEntry(oldDentry.Name); err != nil {
-		return err
+
+	// Marshal the updated new directory content and write it back to the new parent directory node.
+	newNewDirData, err := newDirContent.Marshal()
+	if err != nil {
+		return errorx.Wrap(err, "failed to marshal new directory content")
 	}
+	newDir.Write(newNewDirData, int64(len(newNewDirData)))
+
+	// Remove the old entry from the old parent directory's content.
+	oldDir := old.Parent
+	oldDirData := oldDir.Data()
+	oldDirContent := &content.DirContent{}
+	if err := json.Unmarshal(oldDirData, oldDirContent); err != nil {
+		return errorx.Wrap(err, "failed to unmarshal old directory content")
+	}
+	if err := oldDirContent.RemoveEntry(old.Name); err != nil {
+		return errorx.Wrap(err, "failed to remove entry from old directory content")
+	}
+	// Marshal the updated old directory content and write it back to the old parent directory node.
+	newOldDirData, err := oldDirContent.Marshal()
+	if err != nil {
+		return errorx.Wrap(err, "failed to marshal old directory content")
+	}
+	oldDir.Write(newOldDirData, int64(len(newOldDirData)))
 
 	// Check permissions for the drive.
-	if err := n.requirePerm(ctx, permission.ActionEdit, oldDentry.Drive.ID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, oldDir.DriveID()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionEdit, newDentry.Drive.ID()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, newDir.DriveID()); err != nil {
 		return err
 	}
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.super.Write(ctx, oldDentry.Parent); err != nil {
-			return err
+		if err := n.super.Write(ctx, oldDir); err != nil {
+			return errorx.Wrap(err, "failed to update old parent directory")
 		}
-		if err := n.super.Write(ctx, newDentry.Parent); err != nil {
-			return err
+		if err := n.super.Write(ctx, newDir); err != nil {
+			return errorx.Wrap(err, "failed to update new parent directory")
 		}
 		return nil
 	})
+
 	return nil
 }
