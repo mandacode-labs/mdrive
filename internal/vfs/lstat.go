@@ -1,23 +1,12 @@
 package vfs
 
-import (
-	"context"
+import "context"
 
-	"github.com/oklog/ulid/v2"
-
-	"github.com/mandacode-labs/mdrive/internal/errorx"
-)
-
-// Lstat returns the symlink itself without following it.
-// Linux lstat(2).
-func (v *vfs) Lstat(ctx context.Context, driveID string, path string) (*Node, error) {
-	startDrive, err := ulid.Parse(driveID)
-	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
-	}
-	dentry, err := v.walk(ctx, startDrive, path, false)
-	if err != nil {
-		return nil, err
+// Lstat returns the dentry's node without following a trailing
+// symlink. Linux lstat(2).
+func (v *vfs) Lstat(ctx context.Context, dentry *Dentry) (*Node, error) {
+	if dentry == nil {
+		return nil, nil
 	}
 	return dentry.Node, nil
 }

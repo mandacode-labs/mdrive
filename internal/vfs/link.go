@@ -3,38 +3,24 @@ package vfs
 import (
 	"context"
 
-	"github.com/oklog/ulid/v2"
-
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Link creates a hard link. linkPath becomes a second directory
-// entry pointing at the same inode as srcPath. Linux vfs_link.
-func (v *vfs) Link(ctx context.Context, driveID string, srcPath string, linkPath string) error {
-	startDrive, err := ulid.Parse(driveID)
-	if err != nil {
-		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+// Link adds a hard link: a second directory entry under
+// `linkName` in `linkParent` pointing at the same inode as
+// `oldDentry`. Linux vfs_link.
+func (v *vfs) Link(ctx context.Context, oldDentry *Dentry, linkParent *Dentry, linkName string) error {
+	if oldDentry == nil || linkParent == nil {
+		return errorx.New(errorx.KindInvalidArgument, "vfs: link requires oldDentry and linkParent")
 	}
-	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
-		return err
+	if linkName == "" {
+		return errorx.New(errorx.KindInvalidArgument, "vfs: link name must be non-empty")
 	}
-	srcTarget, err := v.walk(ctx, startDrive, srcPath, false)
-	if err != nil {
-		return err
+	if linkParent.Node.Kind() != NodeKindDirectory {
+		return errorx.New(errorx.KindInvalidArgument, "vfs: link parent is not a directory")
 	}
-	if srcTarget.Parent == nil {
-		return errorx.New(errorx.KindInvalidArgument, "vfs: source path has no parent")
-	}
-	if srcTarget.Node.Kind() == NodeKindDirectory {
+	if oldDentry.Node.Kind() == NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: cannot hardlink a directory")
 	}
-	dstTarget, err := v.walk(ctx, startDrive, linkPath, false)
-	if err != nil {
-		return err
-	}
-	if dstTarget.Parent == nil {
-		return errorx.New(errorx.KindInvalidArgument, "vfs: link path has no parent")
-	}
-	return v.nodeOp.Link(ctx, srcTarget, dstTarget.Parent, dstTarget.Name)
+	return v.nodeOp.Link(ctx, oldDentry, linkParent.Node, linkName)
 }

@@ -12,56 +12,61 @@ import (
 )
 
 // VFS is the canonical virtual filesystem surface for mdrive.
-// It mirrors the Linux VFS layer: path → walk → dentry/inode.
-// Path resolution is private — callers pass paths, vfs runs
-// walk internally (see walk.go).
+//
+// Layering mirrors Linux: Walk does path lookup (namei /
+// path_lookupat); other methods assume the caller has
+// resolved the entry and act on *Dentry (and a leaf name for
+// mutations). Permission is the caller's job.
 type VFS interface {
-	// Create an empty inode (Linux vfs_create + vfs_mkdir + vfs_mknod,
-	// unified by NodeKind). Kind-specific data is set by Write /
-	// WriteObject / Mount / Symlink.
-	Create(ctx context.Context, driveID string, path string, kind NodeKind) (*Node, error)
+	// Walk resolves a path into a Dentry. follow selects
+	// trailing symlink semantics (true → stat, false → lstat).
+	Walk(ctx context.Context, driveID string, path string, follow bool) (*Dentry, error)
 
-	// Symlink creates a link at linkPath pointing at target.
-	// Target id is stored inline via content.SymlinkContent.
-	Symlink(ctx context.Context, driveID string, target string, linkPath string) error
+	// Inode creation. Caller passes a fresh *Node whose
+	// kind-specific data is already set.
+	Create(ctx context.Context, parent *Dentry, child *Node, name string) error
+	Symlink(ctx context.Context, linkParent *Dentry, linkName string, targetID uuid.UUID) error
+	Mount(ctx context.Context, mountParent *Dentry, mountName string, sourceDriveID ulid.ULID) error
 
-	// Mount installs a mount point at mountPath into sourceDriveID's
-	// root. Mount kind stores source drive id inline as
-	// content.MountContent.
-	Mount(ctx context.Context, driveID string, mountPath string, sourceDriveID string) error
+	// Inode removal. Linux vfs_unlink + vfs_rmdir. Unlink
+	// refuses directories; Rmdir refuses non-empty entries
+	// (use Remove with Recursive=true to clear first).
+	Unlink(ctx context.Context, parent *Dentry, name string) error
+	Rmdir(ctx context.Context, parent *Dentry, name string) error
 
-	// Unlink removes a non-directory. Rmdir removes an empty
-	// directory. nlink==0 destroys the inode. Linux vfs_unlink + vfs_rmdir.
-	Unlink(ctx context.Context, driveID string, path string) error
-	Rmdir(ctx context.Context, driveID string, path string) error
+	// Linux vfs_rename + vfs_link.
+	Rename(ctx context.Context, oldParent *Dentry, oldName string, newParent *Dentry, newName string) error
+	Link(ctx context.Context, oldDentry *Dentry, linkParent *Dentry, linkName string) error
 
-	// Rename moves an entry. Cross-drive rename is not supported.
-	// Link adds a hard link. Linux vfs_rename + vfs_link.
-	Rename(ctx context.Context, srcDriveID string, srcPath string, dstDriveID string, dstPath string) error
-	Link(ctx context.Context, driveID string, srcPath string, linkPath string) error
+	// Linux stat(2) / lstat(2) / readlink(2). Readlink returns
+	// the symlink target's inode id (mdrive is graph-based).
+	Stat(ctx context.Context, dentry *Dentry) (*Node, error)
+	Lstat(ctx context.Context, dentry *Dentry) (*Node, error)
+	Readlink(ctx context.Context, dentry *Dentry) (uuid.UUID, error)
 
-	// Stat follows the trailing symlink. Lstat returns the symlink
-	// itself. Readlink returns the symlink target's inode id
-	// (graph-based, not raw path).
-	Stat(ctx context.Context, driveID string, path string) (*Node, error)
-	Lstat(ctx context.Context, driveID string, path string) (*Node, error)
-	Readlink(ctx context.Context, driveID string, path string) (uuid.UUID, error)
+	// Linux vfs_read + vfs_write on a file-kind node.
+	Read(ctx context.Context, dentry *Dentry) ([]byte, error)
+	Write(ctx context.Context, dentry *Dentry, data []byte) error
 
-	// Read returns the inline data of a file-kind node. Write
-	// overwrites it. Object-kind reads use ReadObject; writes use
-	// WriteObject.
-	Read(ctx context.Context, driveID string, path string) ([]byte, error)
-	Write(ctx context.Context, driveID string, path string, data []byte) error
+	// Object-kind storage: WriteObject stores S3 metadata from
+	// a completed upload; ReadObject retrieves it (caller uses
+	// upload.PresignDownload). vfs carries no S3 client.
+	WriteObject(ctx context.Context, parent *Dentry, child *Node, name string) error
+	ReadObject(ctx context.Context, dentry *Dentry) (ObjectRef, error)
 
-	// WriteObject stores S3 metadata of an Object-kind node from a
-	// completed upload. ReadObject retrieves it for the caller
-	// (typically upload.PresignDownload). vfs carries no S3 client.
-	WriteObject(ctx context.Context, driveID string, path string, ref ObjectRef) error
-	ReadObject(ctx context.Context, driveID string, path string) (ObjectRef, error)
+	// Linux iterate_dir / getdents64.
+	IterateDir(ctx context.Context, parent *Dentry) ([]DirEntry, error)
 
-	// IterateDir returns the direct children of a directory-kind
-	// node (Linux iterate_dir / getdents64).
-	IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error)
+	// Remove is mdrive's `rm -rf` equivalent — recursive
+	// cascade not provided by in-kernel rmdir/unlink.
+	Remove(ctx context.Context, parent *Dentry, name string, opts RemoveOpts) error
+}
+
+// RemoveOpts controls Remove behavior.
+// Currently only Recursive is exposed; force / error-swallowing
+// options are not.
+type RemoveOpts struct {
+	Recursive bool
 }
 
 // DirEntry is one entry from IterateDir.
@@ -96,14 +101,24 @@ func NewVFS(nodeOp NodeOperation, superop SuperOperation, perm permission.Author
 	}
 }
 
+// Walk implements [VFS]. Mirrors Linux's path lookup entry:
+// namei / path_lookupat. Mounts are followed transparently;
+// a final symlink is followed only when follow=true.
+func (v *vfs) Walk(ctx context.Context, driveID string, path string, follow bool) (*Dentry, error) {
+	id, err := ulid.Parse(driveID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	return v.walk(ctx, id, path, follow)
+}
+
 // userID extracts the caller's user id from the request context.
 func (v *vfs) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
-// checkPerm gates a drive-level permission. walk uses ActionView
-// for path entry (and again on each mount boundary). Mutation
-// commands layer their own ActionEdit check on top.
+// checkPerm gates a drive-level permission. walk uses
+// ActionView; mutation commands layer ActionEdit on top.
 func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID ulid.ULID) error {
 	uid := v.userID(ctx)
 	ok, err := v.perm.Check(ctx, uid, action, permission.ObjectTypeDrive, driveID.String())

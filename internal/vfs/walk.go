@@ -11,11 +11,10 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// walk resolves `path` from `driveID`. Mirrors Linux link_path_walk.
-//
-// ActionView is checked once on the starting drive and again on
-// each mount boundary crossed. follow controls trailing symlink
-// behavior: true → stat, false → lstat/readlink.
+// walk resolves `path` from `driveID`. Mirrors Linux
+// link_path_walk. ActionView on starting drive and again
+// on each mount boundary; follow controls trailing symlink
+// semantics (true → stat, false → lstat/readlink).
 func (v *vfs) walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, error) {
 	sb, err := v.superop.GetByDriveID(ctx, driveID)
 	if err != nil {
@@ -48,9 +47,8 @@ func (v *vfs) walk(ctx context.Context, driveID ulid.ULID, path string, follow b
 	return cur, nil
 }
 
-// walkOne walks one component. Mount nodes cross to the source
-// drive (with an ActionView check); symlinks are passed through
-// for walk to resolve at the end.
+// walkOne walks one component. Mounts cross to the source
+// drive; symlinks are passed through for walk to resolve.
 func (v *vfs) walkOne(ctx context.Context, cur *Dentry, name string) (*Dentry, error) {
 	if name == "" || name == "." {
 		return cur, nil
@@ -80,7 +78,7 @@ func (v *vfs) walkOne(ctx context.Context, cur *Dentry, name string) (*Dentry, e
 }
 
 // walkMount resolves a mount node to the source drive's root
-// after an ActionView check on the source drive.
+// after an ActionView check.
 func (v *vfs) walkMount(ctx context.Context, mount *Node) (*Dentry, error) {
 	var mc content.MountContent
 	if err := json.Unmarshal(mount.Data(), &mc); err != nil {

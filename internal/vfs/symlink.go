@@ -5,59 +5,44 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Symlink creates a link at linkPath pointing at target. Target
-// id is stored inline via content.SymlinkContent.
-func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPath string) error {
-	startDrive, err := ulid.Parse(driveID)
-	if err != nil {
-		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+// Symlink creates a link at `linkName` under `linkParent`
+// pointing at `targetID`. Target id is stored inline as
+// content.SymlinkContent.
+func (v *vfs) Symlink(ctx context.Context, linkParent *Dentry, linkName string, targetID uuid.UUID) error {
+	if linkParent == nil || linkName == "" {
+		return errorx.New(errorx.KindInvalidArgument, "vfs: symlink requires parent and name")
 	}
-	targetDentry, err := v.walk(ctx, startDrive, target, true)
-	if err != nil {
-		return err
-	}
-	linkDentry, err := v.walk(ctx, startDrive, linkPath, false)
-	if err != nil {
-		return err
-	}
-	if linkDentry.Parent == nil {
-		return errorx.New(errorx.KindInvalidArgument, "vfs: link path has no parent")
-	}
-	if linkDentry.Parent.Kind() != NodeKindDirectory {
+	if linkParent.Node.Kind() != NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: link parent is not a directory")
 	}
-	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
-		return err
+
+	sc := &content.SymlinkContent{NodeID: targetID}
+	data, err := sc.Marshal()
+	if err != nil {
+		return errorx.Wrap(err, "vfs: failed to marshal symlink content", errorx.KindInternal)
 	}
 
 	now := time.Now()
-	link := NewNode(uuid.New(), linkDentry.Parent.SuperblockID(), NodeKindSymlink)
+	link := NewNode(uuid.New(), linkParent.Node.SuperblockID(), NodeKindSymlink)
 	link.atime = now
 	link.mtime = now
 	link.ctime = now
 	link.btime = now
-	sc := &content.SymlinkContent{NodeID: targetDentry.Node.ID()}
-	scData, err := sc.Marshal()
-	if err != nil {
-		return errorx.Wrap(err, "vfs: failed to marshal symlink content")
-	}
-	if err := link.Write(scData, int64(len(scData))); err != nil {
+	if err := link.Write(data, int64(len(data))); err != nil {
 		return err
 	}
 
-	if err := v.nodeOp.Create(ctx, linkDentry.Parent, link, linkDentry.Name); err != nil {
+	if err := v.nodeOp.Create(ctx, linkParent.Node, link, linkName); err != nil {
 		return err
 	}
 	return v.nodeOp.Symlink(ctx, link, &Dentry{
-		Parent: targetDentry.Node,
-		Name:   target,
-		Node:   targetDentry.Node,
+		Parent: linkParent.Node,
+		Name:   linkName,
+		Node:   link,
 	})
 }

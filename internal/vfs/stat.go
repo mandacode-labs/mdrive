@@ -2,21 +2,14 @@ package vfs
 
 import (
 	"context"
-
-	"github.com/oklog/ulid/v2"
-
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// Stat follows the trailing symlink. Linux stat(2).
-func (v *vfs) Stat(ctx context.Context, driveID string, path string) (*Node, error) {
-	startDrive, err := ulid.Parse(driveID)
-	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
-	}
-	dentry, err := v.walk(ctx, startDrive, path, true)
-	if err != nil {
-		return nil, err
+// Stat returns the dentry's node. Linux stat(2) — caller is
+// expected to have followed trailing symlinks (Walk with
+// follow=true) before calling.
+func (v *vfs) Stat(ctx context.Context, dentry *Dentry) (*Node, error) {
+	if dentry == nil {
+		return nil, nil
 	}
 	return dentry.Node, nil
 }
