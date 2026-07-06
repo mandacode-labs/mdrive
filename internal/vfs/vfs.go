@@ -80,17 +80,6 @@ type VFS interface {
 
 	// Directory listing. Linux: iterate_dir.
 	IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error)
-
-	// Drive CRUD (mdrive-specific).
-	CreateDrive(ctx context.Context, ownerID string, name string, description string, storage *Storage) (*Drive, error)
-	GetDrive(ctx context.Context, driveID string) (*Drive, error)
-	GetDriveStorage(ctx context.Context, driveID string) (*Storage, error)
-	UpdateDrive(ctx context.Context, driveID string, name string, description string) (*Drive, error)
-	SoftDeleteDrive(ctx context.Context, driveID string) error
-	RestoreDrive(ctx context.Context, driveID string) (*Drive, error)
-	PurgeDrive(ctx context.Context, driveID string) error
-	ListDrives(ctx context.Context, userID string) ([]*Drive, error)
-	ListDeletedDrives(ctx context.Context, before time.Time, limit int) ([]*Drive, error)
 }
 
 // DirEntry is one entry from IterateDir (Linux readdir result).
@@ -103,15 +92,15 @@ type DirEntry struct {
 // vfs is the unexported impl.
 type vfs struct {
 	nodeOp  NodeOperation
-	driveOp DriveOperation
+	superop SuperOperation
 	perm    permission.Authorizer
 }
 
 // NewVFS wires the canonical impl.
-func NewVFS(nodeOp NodeOperation, driveOp DriveOperation, perm permission.Authorizer) VFS {
+func NewVFS(nodeOp NodeOperation, superop SuperOperation, perm permission.Authorizer) VFS {
 	return &vfs{
 		nodeOp:  nodeOp,
-		driveOp: driveOp,
+		superop: superop,
 		perm:    perm,
 	}
 }
@@ -136,16 +125,13 @@ func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID u
 	return nil
 }
 
-// rootOf returns the root inode of a drive.
+// rootOf returns the root inode of a drive via the superblock.
 func (v *vfs) rootOf(ctx context.Context, driveID ulid.ULID) (*Node, error) {
-	d, err := v.driveOp.GetDrive(ctx, driveID.String())
+	rootID, err := v.superop.GetRootNodeID(ctx, driveID)
 	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: failed to load drive", errorx.KindInternal)
+		return nil, errorx.Wrap(err, "vfs: failed to load drive root", errorx.KindInternal)
 	}
-	if d == nil {
-		return nil, errorx.New(errorx.KindNotFound, "vfs: drive not found")
-	}
-	return NewNode(d.Root(), driveID, NodeKindDirectory), nil
+	return NewNode(rootID, driveID, NodeKindDirectory), nil
 }
 
 // resolveTarget walks `path` from `driveID`.
