@@ -29,14 +29,14 @@ func (v *vfs) Rename(ctx context.Context, srcDriveID string, srcPath string, dst
 	if err := v.checkPerm(ctx, permission.ActionEdit, srcDrive); err != nil {
 		return err
 	}
-	srcTarget, err := v.walk(ctx, srcDrive, srcPath, false)
+	srcTarget, _, err := v.walkEntry(ctx, srcDrive, srcPath, false)
 	if err != nil {
 		return err
 	}
 	if srcTarget.Parent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: source path has no parent")
 	}
-	dstTarget, err := v.walk(ctx, dstDrive, dstPath, false)
+	dstTarget, _, err := v.walkEntry(ctx, dstDrive, dstPath, false)
 	if err != nil {
 		return err
 	}

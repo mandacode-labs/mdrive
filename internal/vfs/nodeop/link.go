@@ -44,12 +44,13 @@ func (n *nodeOperation) Link(ctx context.Context, dentry *vfs.Dentry, linkDir *v
 	}
 	linkDir.Write(newLinkDirData, int64(len(newLinkDirData)))
 
-	// Check permissions for the drive
-	if err := n.requirePerm(ctx, permission.ActionEdit, linkDir.Drive()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, linkDir.SuperblockID()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.Drive()); err != nil {
-		return err
+	if dentry.Parent != nil {
+		if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.SuperblockID()); err != nil {
+			return err
+		}
 	}
 
 	// Save the changes to the database

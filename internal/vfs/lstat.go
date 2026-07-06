@@ -15,7 +15,7 @@ func (v *vfs) Lstat(ctx context.Context, driveID string, path string) (*Node, er
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	dentry, err := v.walk(ctx, startDrive, path, false)
+	dentry, _, err := v.walkEntry(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}

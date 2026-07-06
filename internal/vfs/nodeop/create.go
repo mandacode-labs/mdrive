@@ -17,8 +17,8 @@ func (n *nodeOperation) Create(ctx context.Context, parent *vfs.Node, child *vfs
 	if parent.Kind() != vfs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: parent is not a directory")
 	}
-	if child.Drive().Compare(parent.Drive()) != 0 {
-		return errorx.New(errorx.KindInvalidArgument, "nodeop: child drive does not match parent drive")
+	if child.SuperblockID() != parent.SuperblockID() {
+		return errorx.New(errorx.KindInvalidArgument, "nodeop: child superblock does not match parent superblock")
 	}
 
 	dirContent := &content.DirContent{}

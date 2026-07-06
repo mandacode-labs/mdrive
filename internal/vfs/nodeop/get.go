@@ -16,4 +16,3 @@ func (n *nodeOperation) Get(ctx context.Context, id uuid.UUID) (*vfs.Node, error
 	}
 	return node, nil
 }
-

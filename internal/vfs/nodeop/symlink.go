@@ -26,12 +26,13 @@ func (n *nodeOperation) Symlink(ctx context.Context, symlink *vfs.Node, target *
 	}
 	symlink.Write(data, int64(len(data)))
 
-	// Check permissions for the symlink's drive and the target node's drive.
-	if err := n.requirePerm(ctx, permission.ActionEdit, symlink.Drive()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, symlink.SuperblockID()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionView, target.Parent.Drive()); err != nil {
-		return err
+	if target.Parent != nil {
+		if err := n.requirePerm(ctx, permission.ActionView, target.Parent.SuperblockID()); err != nil {
+			return err
+		}
 	}
 
 	// Save the changes to the database.

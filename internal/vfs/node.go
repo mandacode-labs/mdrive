@@ -138,45 +138,50 @@ func (r Revision) Time() (time.Time, error) {
 // MaxDataSize bounds the inline data of a file-kind node.
 const MaxDataSize = 4096
 
-// Node is the inode-like record: identity, drive, kind, sizes,
-// timestamps, flags, and revision.
+// Node is the inode-like record: identity, superblock, kind,
+// sizes, timestamps, flags, and revision.
+//
+// All nodes belonging to a drive share the same superblock id;
+// the per-node link back to the drive is via superblock →
+// drive (one-to-one).
 type Node struct {
 	id    uuid.UUID
-	drv   ulid.ULID
+	sb    uuid.UUID
 	kind  NodeKind
 	size  int64
 	nlink uint32
 	data  []byte
-	atime time.Time // Access time
-	mtime time.Time // Modification time
-	ctime time.Time // Change time
-	btime time.Time // Birth time
+	atime time.Time
+	mtime time.Time
+	ctime time.Time
+	btime time.Time
 	flags Flags
 	rev   Revision
 
 	staleRev Revision
 }
 
-// Getters
-func (n *Node) ID() uuid.UUID      { return n.id }
-func (n *Node) Drive() ulid.ULID   { return n.drv }
-func (n *Node) Kind() NodeKind     { return n.kind }
-func (n *Node) Size() int64        { return n.size }
-func (n *Node) NLink() uint32      { return n.nlink }
-func (n *Node) Data() []byte       { return n.data }
-func (n *Node) ATime() time.Time   { return n.atime }
-func (n *Node) MTime() time.Time   { return n.mtime }
-func (n *Node) CTime() time.Time   { return n.ctime }
-func (n *Node) BTime() time.Time   { return n.btime }
-func (n *Node) Flags() Flags       { return n.flags }
-func (n *Node) Revision() Revision { return n.rev }
-func (n *Node) StaleRev() Revision { return n.staleRev }
+func (n *Node) ID() uuid.UUID           { return n.id }
+func (n *Node) SuperblockID() uuid.UUID { return n.sb }
+func (n *Node) Kind() NodeKind          { return n.kind }
+func (n *Node) Size() int64             { return n.size }
+func (n *Node) NLink() uint32           { return n.nlink }
+func (n *Node) Data() []byte            { return n.data }
+func (n *Node) ATime() time.Time        { return n.atime }
+func (n *Node) MTime() time.Time        { return n.mtime }
+func (n *Node) CTime() time.Time        { return n.ctime }
+func (n *Node) BTime() time.Time        { return n.btime }
+func (n *Node) Flags() Flags            { return n.flags }
+func (n *Node) Revision() Revision      { return n.rev }
+func (n *Node) StaleRev() Revision      { return n.staleRev }
 
-func NewNode(id uuid.UUID, drv ulid.ULID, kind NodeKind) *Node {
+// NewNode constructs a fresh inode belonging to the given
+// superblock.
+func NewNode(id uuid.UUID, sb uuid.UUID, kind NodeKind) *Node {
 	rev := newRevision()
 	return &Node{
 		id:    id,
-		drv:   drv,
+		sb:    sb,
 		kind:  kind,
 		size:  0,
 		nlink: 0,
@@ -190,9 +195,10 @@ func NewNode(id uuid.UUID, drv ulid.ULID, kind NodeKind) *Node {
 	}
 }
 
+// HydrateNode reconstructs a Node from its persisted fields.
 func HydrateNode(
 	id uuid.UUID,
-	drv ulid.ULID,
+	sb uuid.UUID,
 	kind NodeKind,
 	size int64,
 	nlink uint32,
@@ -207,7 +213,7 @@ func HydrateNode(
 ) *Node {
 	return &Node{
 		id:       id,
-		drv:      drv,
+		sb:       sb,
 		kind:     kind,
 		size:     size,
 		nlink:    nlink,

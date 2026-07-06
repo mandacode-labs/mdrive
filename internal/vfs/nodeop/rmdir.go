@@ -23,7 +23,7 @@ func (n *nodeOperation) Rmdir(ctx context.Context, dentry *vfs.Dentry) error {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: target is not a directory")
 	}
 
-	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.Drive()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.SuperblockID()); err != nil {
 		return err
 	}
 

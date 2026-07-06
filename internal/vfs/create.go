@@ -20,7 +20,7 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	target, err := v.walk(ctx, startDrive, path, false)
+	target, sb, err := v.walkEntry(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	}
 
 	now := time.Now()
-	child := NewNode(uuid.New(), startDrive, kind)
+	child := NewNode(uuid.New(), sb.ID(), kind)
 	child.atime = now
 	child.mtime = now
 	child.ctime = now

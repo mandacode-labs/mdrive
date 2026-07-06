@@ -11,4 +11,3 @@ import (
 func (s *superOperation) Stat(ctx context.Context, id uuid.UUID) (*vfs.Superblock, error) {
 	panic("unimplemented")
 }
-

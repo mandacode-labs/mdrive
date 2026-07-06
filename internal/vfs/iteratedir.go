@@ -18,7 +18,7 @@ func (v *vfs) IterateDir(ctx context.Context, driveID string, path string) ([]Di
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	dentry, err := v.walk(ctx, startDrive, path, true)
+	dentry, _, err := v.walkEntry(ctx, startDrive, path, true)
 	if err != nil {
 		return nil, err
 	}

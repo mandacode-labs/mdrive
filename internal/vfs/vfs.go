@@ -101,6 +101,59 @@ func (v *vfs) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
+// walkEntry pairs the walk result with the starting superblock
+// so callers can mint new inodes bound to the same sb without
+// a separate superop round-trip.
+func (v *vfs) walkEntry(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, *Superblock, error) {
+	sb, err := v.superop.GetByDriveID(ctx, driveID)
+	if err != nil {
+		return nil, nil, errorx.Wrap(err, "vfs: failed to get superblock", errorx.KindInternal)
+	}
+	dentry, err := v.walkFrom(ctx, sb, path, follow)
+	if err != nil {
+		return nil, nil, err
+	}
+	return dentry, sb, nil
+}
+
+// loadSB returns the superblock backing a drive id.
+func (v *vfs) loadSB(ctx context.Context, driveID ulid.ULID) (*Superblock, error) {
+	return v.superop.GetByDriveID(ctx, driveID)
+}
+
+// walkEntryNoFollow / walkEntryNoFollowErr aliases folded into
+// walkEntry by parameter; left intentionally absent to keep the
+// single call form.
+
+// walkFrom resolves `path` from the given superblock. Used by
+// walkEntry and as the core path-walking primitive.
+func (v *vfs) walkFrom(ctx context.Context, sb *Superblock, path string, follow bool) (*Dentry, error) {
+	if err := v.checkPerm(ctx, permission.ActionView, sb.DriveID()); err != nil {
+		return nil, err
+	}
+	root, err := v.nodeOp.Get(ctx, sb.RootNodeID())
+	if err != nil {
+		return nil, errorx.Wrap(err, "vfs: failed to get root node", errorx.KindInternal)
+	}
+	if root.Kind() != NodeKindDirectory {
+		return nil, errorx.New(errorx.KindInternal, "vfs: drive root is not a directory")
+	}
+
+	cur := &Dentry{Parent: nil, Name: "/", Node: root}
+	for _, name := range splitPath(path) {
+		next, err := v.walkStep(ctx, cur, name)
+		if err != nil {
+			return nil, err
+		}
+		cur = next
+	}
+
+	if follow && cur.Node.Kind() == NodeKindSymlink {
+		return v.followSymlink(ctx, cur, 8)
+	}
+	return cur, nil
+}
+
 // checkPerm gates a drive-level permission. walk invokes it
 // once on the starting drive (ActionView) and again on each
 // mount boundary; mutation commands layer their own check on top.
@@ -115,4 +168,3 @@ func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID u
 	}
 	return nil
 }
-

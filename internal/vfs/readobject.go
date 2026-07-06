@@ -18,7 +18,7 @@ func (v *vfs) ReadObject(ctx context.Context, driveID string, path string) (Obje
 	if err != nil {
 		return ObjectRef{}, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	dentry, err := v.walk(ctx, startDrive, path, true)
+	dentry, _, err := v.walkEntry(ctx, startDrive, path, true)
 	if err != nil {
 		return ObjectRef{}, err
 	}

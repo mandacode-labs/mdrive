@@ -53,11 +53,10 @@ func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *vfs
 	}
 	oldDir.Write(newOldDirData, int64(len(newOldDirData)))
 
-	// Check permissions for the drive.
-	if err := n.requirePerm(ctx, permission.ActionEdit, oldDir.Drive()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, oldDir.SuperblockID()); err != nil {
 		return err
 	}
-	if err := n.requirePerm(ctx, permission.ActionEdit, newDir.Drive()); err != nil {
+	if err := n.requirePerm(ctx, permission.ActionEdit, newDir.SuperblockID()); err != nil {
 		return err
 	}
 

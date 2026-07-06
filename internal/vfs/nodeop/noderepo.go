@@ -9,7 +9,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
-	"github.com/oklog/ulid/v2"
 )
 
 // NodeRepository is the data-access contract for nodes.
@@ -62,10 +61,10 @@ func (r *nodeRepo) Write(ctx context.Context, n *vfs.Node) error {
 	flags := n.Flags()
 	err := client.Node.Create().
 		SetID(n.ID()).
+		SetSuperblockID(n.SuperblockID()).
 		SetKind(entKind(n.Kind())).
 		SetData(n.Data()).
 		SetSize(n.Size()).
-		SetDriveID(n.Drive().String()).
 		SetNlink(n.NLink()).
 		SetAtime(n.ATime()).
 		SetMtime(n.MTime()).
@@ -93,16 +92,12 @@ func fromEnt(e *ent.Node) (*vfs.Node, error) {
 		return nil, errorx.New(errorx.KindNotFound, "node: not found")
 	}
 	rev := vfs.Revision(e.Revision)
-	driveID, err := ulid.Parse(e.DriveID)
-	if err != nil {
-		return nil, errorx.New(errorx.KindInternal, "invalid drive id")
-	}
 	kind := parseNodeKind(e.Kind)
 	flags := vfs.Flags(e.Flags)
 
 	n := vfs.HydrateNode(
 		e.ID,
-		driveID,
+		e.SuperblockID,
 		kind,
 		e.Size,
 		e.Nlink,

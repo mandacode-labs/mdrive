@@ -18,7 +18,7 @@ func (v *vfs) Readlink(ctx context.Context, driveID string, path string) (uuid.U
 	if err != nil {
 		return uuid.Nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	dentry, err := v.walk(ctx, startDrive, path, false)
+	dentry, _, err := v.walkEntry(ctx, startDrive, path, false)
 	if err != nil {
 		return uuid.Nil, err
 	}
