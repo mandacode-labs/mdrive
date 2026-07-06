@@ -40,6 +40,7 @@ func NewStorage(
 }
 
 func (s *Storage) DriveID() string    { return s.driveID }
+func (s *Storage) Provider() Provider { return s.provider }
 func (s *Storage) Bucket() string     { return s.bucket }
 func (s *Storage) Endpoint() *string  { return s.endpoint }
 func (s *Storage) Region() string     { return s.region }

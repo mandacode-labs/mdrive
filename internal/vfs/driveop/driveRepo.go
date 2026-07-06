@@ -11,20 +11,19 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// BlockStorage is the data-access contract for nodes.
-type BlockStorage interface {
+// DriveRepository is the data-access contract for drives.
+type DriveRepository interface {
 	Read(ctx context.Context, id ulid.ULID) (*vfs.Drive, error)
-	Write(ctx context.Context, n *vfs.Drive) error
+	Write(ctx context.Context, d *vfs.Drive) error
 	Destroy(ctx context.Context, id ulid.ULID) error
 }
 
-type blockStorage struct {
+type driveRepo struct {
 	client *ent.Client
 }
 
-// Destroy implements [BlockStorage].
-func (bs *blockStorage) Destroy(ctx context.Context, id ulid.ULID) error {
-	client := bs.client
+func (r *driveRepo) Destroy(ctx context.Context, id ulid.ULID) error {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -38,9 +37,8 @@ func (bs *blockStorage) Destroy(ctx context.Context, id ulid.ULID) error {
 	return nil
 }
 
-// Read implements [BlockStorage].
-func (bs *blockStorage) Read(ctx context.Context, id ulid.ULID) (*vfs.Drive, error) {
-	client := bs.client
+func (r *driveRepo) Read(ctx context.Context, id ulid.ULID) (*vfs.Drive, error) {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -51,12 +49,11 @@ func (bs *blockStorage) Read(ctx context.Context, id ulid.ULID) (*vfs.Drive, err
 		}
 		return nil, errorx.Wrap(err, "failed to read drive", errorx.KindInternal)
 	}
-	return fromEnt(e)
+	return driveFromEnt(e)
 }
 
-// Write implements [BlockStorage].
-func (bs *blockStorage) Write(ctx context.Context, d *vfs.Drive) error {
-	client := bs.client
+func (r *driveRepo) Write(ctx context.Context, d *vfs.Drive) error {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -87,13 +84,15 @@ func (bs *blockStorage) Write(ctx context.Context, d *vfs.Drive) error {
 	return nil
 }
 
-func NewBlockStorage(client *ent.Client) BlockStorage {
-	return &blockStorage{client: client}
+func NewDriveRepository(client *ent.Client) DriveRepository {
+	return &driveRepo{client: client}
 }
 
-func fromEnt(e *ent.Drive) (*vfs.Drive, error) {
+var _ DriveRepository = (*driveRepo)(nil)
+
+func driveFromEnt(e *ent.Drive) (*vfs.Drive, error) {
 	if e == nil {
-		return nil, errorx.New(errorx.KindNotFound, "node: not found")
+		return nil, errorx.New(errorx.KindNotFound, "drive: not found")
 	}
 
 	id, err := ulid.Parse(e.ID)
@@ -101,6 +100,9 @@ func fromEnt(e *ent.Drive) (*vfs.Drive, error) {
 		return nil, errorx.Wrap(err, "failed to parse drive ID", errorx.KindInvalidArgument)
 	}
 	ownerID, err := ulid.Parse(e.OwnerID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "failed to parse owner ID", errorx.KindInvalidArgument)
+	}
 
 	d := vfs.HydrateDrive(
 		id,

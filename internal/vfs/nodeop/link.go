@@ -54,7 +54,7 @@ func (n *nodeOperation) Link(ctx context.Context, dentry *vfs.Dentry, linkDir *v
 
 	// Save the changes to the database
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.bs.Write(ctx, linkDir); err != nil {
+		if err := n.repo.Write(ctx, linkDir); err != nil {
 			return errorx.Wrap(err, "failed to update link directory")
 		}
 		return nil

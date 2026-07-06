@@ -60,13 +60,18 @@ Dirty/untracked 정리 필요 (작업 중인 추가 변경):
 - `internal/vfs/nodeop/{block.go, operation.go}` (error wrap + perm 추가)
 - `internal/vfs/driveop/` 전체 신규 (untracked)
 
-### Phase 1 — Rename data-access layer to Repository
-- [ ] `internal/vfs/nodeop/block.go` → `nodeRepo.go`,
-      `BlockStorage` → `NodeRepository`
-- [ ] `internal/vfs/driveop/block.go` → split into `driveRepo.go`
+### Phase 1 — Rename data-access layer to Repository ✅ DONE
+- [x] `internal/vfs/nodeop/block.go` → `nodeRepo.go`,
+      `BlockStorage` → `NodeRepository` (also renamed `blockStorage` →
+      `nodeRepo`)
+- [x] `internal/vfs/driveop/block.go` → split into `driveRepo.go`
       (Drive) and `storageRepo.go` (Storage)
-- [ ] introduce `StorageRepository` interface
-- [ ] `var _ Repository = (*repo)(nil)` pattern in impl files
+- [x] introduce `StorageRepository` interface
+- [x] `var _ NodeRepository = (*nodeRepo)(nil)`,
+      `var _ DriveRepository = (*driveRepo)(nil)`,
+      `var _ StorageRepository = (*storageRepo)(nil)` in impl files
+- [x] `internal/vfs/storage.go`: add `Provider()` getter to vfs.Storage
+      so StorageRepository can map ent.provider → vfs.Storage
 
 ### Phase 2 — driveop CRUD completion
 - [ ] implement `InitializeDrive`, `GetDrive`, `DeleteDrive`

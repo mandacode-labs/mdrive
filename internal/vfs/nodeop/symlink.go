@@ -36,7 +36,7 @@ func (n *nodeOperation) Symlink(ctx context.Context, symlink *vfs.Node, target *
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.bs.Write(ctx, symlink); err != nil {
+		if err := n.repo.Write(ctx, symlink); err != nil {
 			return errorx.Wrap(err, "failed to update symlink")
 		}
 		return nil

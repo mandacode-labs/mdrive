@@ -12,16 +12,16 @@ import (
 )
 
 type driveOperation struct {
-	block BlockStorage
+	repo  DriveRepository
 	perm  permission.Authorizer
 	tm    entx.TxManager
 }
 
-func NewDriveOperation(block BlockStorage, perm permission.Authorizer, tm entx.TxManager) vfs.DriveOperation {
+func NewDriveOperation(repo DriveRepository, perm permission.Authorizer, tm entx.TxManager) vfs.DriveOperation {
 	return &driveOperation{
-		block: block,
-		perm:  perm,
-		tm:    tm,
+		repo: repo,
+		perm: perm,
+		tm:   tm,
 	}
 }
 

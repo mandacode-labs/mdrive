@@ -12,14 +12,14 @@ import (
 )
 
 type nodeOperation struct {
-	bs   BlockStorage
+	repo NodeRepository
 	perm permission.Authorizer
 	tm   entx.TxManager
 }
 
-func NewNodeOperation(bs BlockStorage, perm permission.Authorizer, tm entx.TxManager) vfs.NodeOperation {
+func NewNodeOperation(repo NodeRepository, perm permission.Authorizer, tm entx.TxManager) vfs.NodeOperation {
 	return &nodeOperation{
-		bs:   bs,
+		repo: repo,
 		perm: perm,
 		tm:   tm,
 	}

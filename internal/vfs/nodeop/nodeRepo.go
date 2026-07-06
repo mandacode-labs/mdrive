@@ -12,20 +12,19 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// BlockStorage is the data-access contract for nodes.
-type BlockStorage interface {
+// NodeRepository is the data-access contract for nodes.
+type NodeRepository interface {
 	Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error)
 	Write(ctx context.Context, n *vfs.Node) error
 	Destroy(ctx context.Context, id uuid.UUID) error
 }
 
-type blockStorage struct {
+type nodeRepo struct {
 	client *ent.Client
 }
 
-// Destroy implements [BlockStorage].
-func (bs *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
-	client := bs.client
+func (r *nodeRepo) Destroy(ctx context.Context, id uuid.UUID) error {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -39,9 +38,8 @@ func (bs *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// Read implements [BlockStorage].
-func (bs *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error) {
-	client := bs.client
+func (r *nodeRepo) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, error) {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -55,9 +53,8 @@ func (bs *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, erro
 	return fromEnt(e)
 }
 
-// Write implements [BlockStorage].
-func (bs *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
-	client := bs.client
+func (r *nodeRepo) Write(ctx context.Context, n *vfs.Node) error {
+	client := r.client
 	if tx, ok := entx.FromContext(ctx); ok {
 		client = tx.Client()
 	}
@@ -84,9 +81,11 @@ func (bs *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
 	return nil
 }
 
-func NewBlockStorage(client *ent.Client) BlockStorage {
-	return &blockStorage{client: client}
+func NewNodeRepository(client *ent.Client) NodeRepository {
+	return &nodeRepo{client: client}
 }
+
+var _ NodeRepository = (*nodeRepo)(nil)
 
 func fromEnt(e *ent.Node) (*vfs.Node, error) {
 	if e == nil {

@@ -63,10 +63,10 @@ func (n *nodeOperation) Rename(ctx context.Context, old *vfs.Dentry, newDir *vfs
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.bs.Write(ctx, oldDir); err != nil {
+		if err := n.repo.Write(ctx, oldDir); err != nil {
 			return errorx.Wrap(err, "failed to update old parent directory")
 		}
-		if err := n.bs.Write(ctx, newDir); err != nil {
+		if err := n.repo.Write(ctx, newDir); err != nil {
 			return errorx.Wrap(err, "failed to update new parent directory")
 		}
 		return nil

@@ -53,10 +53,10 @@ func (n *nodeOperation) Mknod(ctx context.Context, dir *vfs.Node, ino *vfs.Node,
 
 	// Save the changes to the database.
 	n.tm.WithTx(ctx, func(ctx context.Context) error {
-		if err := n.bs.Write(ctx, dir); err != nil {
+		if err := n.repo.Write(ctx, dir); err != nil {
 			return errorx.Wrap(err, "failed to update parent directory")
 		}
-		if err := n.bs.Write(ctx, ino); err != nil {
+		if err := n.repo.Write(ctx, ino); err != nil {
 			return errorx.Wrap(err, "failed to update new node")
 		}
 		return nil
