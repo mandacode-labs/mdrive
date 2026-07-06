@@ -31,6 +31,12 @@ func (d *Drive) DeletedAt() *time.Time { return d.deletedAt }
 func (d *Drive) CreatedAt() time.Time  { return d.createdAt }
 func (d *Drive) UpdatedAt() time.Time  { return d.updatedAt }
 
+// SetDescription records the description pointer. Caller may pass
+// nil to clear.
+func (d *Drive) SetDescription(desc *string) {
+	d.description = desc
+}
+
 func NewDrive(
 	id ulid.ULID,
 	name string,

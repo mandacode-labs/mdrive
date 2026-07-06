@@ -2,6 +2,7 @@ package driveop
 
 import (
 	"context"
+	"time"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	entdrive "github.com/mandacode-labs/mdrive/ent/drive"
@@ -15,7 +16,12 @@ import (
 type DriveRepository interface {
 	Read(ctx context.Context, id ulid.ULID) (*vfs.Drive, error)
 	Write(ctx context.Context, d *vfs.Drive) error
+	UpdateFields(ctx context.Context, id ulid.ULID, name string, description *string) (*vfs.Drive, error)
+	SoftDelete(ctx context.Context, id ulid.ULID, at time.Time) error
+	Restore(ctx context.Context, id ulid.ULID) error
 	Destroy(ctx context.Context, id ulid.ULID) error
+	ListByOwner(ctx context.Context, ownerID string) ([]*vfs.Drive, error)
+	ListDeleted(ctx context.Context, before time.Time, limit int) ([]*vfs.Drive, error)
 }
 
 type driveRepo struct {
@@ -84,6 +90,110 @@ func (r *driveRepo) Write(ctx context.Context, d *vfs.Drive) error {
 	return nil
 }
 
+func (r *driveRepo) UpdateFields(ctx context.Context, id ulid.ULID, name string, description *string) (*vfs.Drive, error) {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	upd := client.Drive.UpdateOneID(id.String()).
+		SetName(name).
+		SetUpdateTime(time.Now())
+	if description != nil {
+		upd.SetDescription(*description)
+	}
+	e, err := upd.Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errorx.New(errorx.KindNotFound, "drive: not found")
+		}
+		return nil, errorx.Wrap(err, "failed to update drive", errorx.KindInternal)
+	}
+	return driveFromEnt(e)
+}
+
+func (r *driveRepo) SoftDelete(ctx context.Context, id ulid.ULID, at time.Time) error {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	_, err := client.Drive.UpdateOneID(id.String()).
+		SetDeletedAt(at).
+		SetUpdateTime(at).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return errorx.New(errorx.KindNotFound, "drive: not found")
+		}
+		return errorx.Wrap(err, "failed to soft-delete drive", errorx.KindInternal)
+	}
+	return nil
+}
+
+func (r *driveRepo) Restore(ctx context.Context, id ulid.ULID) error {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	_, err := client.Drive.UpdateOneID(id.String()).
+		ClearDeletedAt().
+		SetUpdateTime(time.Now()).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return errorx.New(errorx.KindNotFound, "drive: not found")
+		}
+		return errorx.Wrap(err, "failed to restore drive", errorx.KindInternal)
+	}
+	return nil
+}
+
+func (r *driveRepo) ListByOwner(ctx context.Context, ownerID string) ([]*vfs.Drive, error) {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	rows, err := client.Drive.Query().
+		Where(entdrive.OwnerIDEQ(ownerID)).
+		Where(entdrive.DeletedAtIsNil()).
+		All(ctx)
+	if err != nil {
+		return nil, errorx.Wrap(err, "failed to list drives by owner", errorx.KindInternal)
+	}
+	out := make([]*vfs.Drive, 0, len(rows))
+	for _, e := range rows {
+		d, err := driveFromEnt(e)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+func (r *driveRepo) ListDeleted(ctx context.Context, before time.Time, limit int) ([]*vfs.Drive, error) {
+	client := r.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	rows, err := client.Drive.Query().
+		Where(entdrive.DeletedAtNotNil()).
+		Where(entdrive.DeletedAtLTE(before)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, errorx.Wrap(err, "failed to list deleted drives", errorx.KindInternal)
+	}
+	out := make([]*vfs.Drive, 0, len(rows))
+	for _, e := range rows {
+		d, err := driveFromEnt(e)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
 func NewDriveRepository(client *ent.Client) DriveRepository {
 	return &driveRepo{client: client}
 }
@@ -104,7 +214,7 @@ func driveFromEnt(e *ent.Drive) (*vfs.Drive, error) {
 		return nil, errorx.Wrap(err, "failed to parse owner ID", errorx.KindInvalidArgument)
 	}
 
-	d := vfs.HydrateDrive(
+	return vfs.HydrateDrive(
 		id,
 		e.Name,
 		e.Description,
@@ -113,7 +223,5 @@ func driveFromEnt(e *ent.Drive) (*vfs.Drive, error) {
 		e.DeletedAt,
 		e.CreateTime,
 		e.UpdateTime,
-	)
-
-	return d, nil
+	), nil
 }
