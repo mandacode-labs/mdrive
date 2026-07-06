@@ -4,14 +4,42 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
+// NodeKind classifies a node by storage shape, not by access
+// permissions (those are managed via OpenFGA).
+type NodeKind uint8
+
+const (
+	NodeKindFile      NodeKind = 0
+	NodeKindDirectory NodeKind = 1
+	NodeKindSymlink   NodeKind = 2
+	NodeKindObject    NodeKind = 3
+	NodeKindMount     NodeKind = 4
+)
+
+func (k NodeKind) String() string {
+	switch k {
+	case NodeKindFile:
+		return "file"
+	case NodeKindDirectory:
+		return "directory"
+	case NodeKindSymlink:
+		return "symlink"
+	case NodeKindObject:
+		return "object"
+	case NodeKindMount:
+		return "mount"
+	default:
+		return "unknown"
+	}
+}
+
 type DirEntry struct {
-	NodeID uuid.UUID     `json:"ino"`
-	Name   string        `json:"name"`
-	Kind   node.NodeKind `json:"kind"`
+	NodeID uuid.UUID `json:"ino"`
+	Name   string    `json:"name"`
+	Kind   NodeKind  `json:"kind"`
 }
 
 // DirContent is the JSON-serialized listing of a directory node.
@@ -58,3 +86,4 @@ func (d *DirContent) RemoveEntry(name string) error {
 func NewDirContent(entries []DirEntry) Content {
 	return &DirContent{Entries: entries}
 }
+
