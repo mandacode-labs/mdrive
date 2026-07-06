@@ -26,8 +26,8 @@ const (
 	FieldRegion = "region"
 	// FieldAccessKey holds the string denoting the access_key field in the database.
 	FieldAccessKey = "access_key"
-	// FieldSecretKey holds the string denoting the secret_key field in the database.
-	FieldSecretKey = "secret_key"
+	// FieldEncryptedSecretKey holds the string denoting the encrypted_secret_key field in the database.
+	FieldEncryptedSecretKey = "encrypted_secret_key"
 	// FieldUsePathStyle holds the string denoting the use_path_style field in the database.
 	FieldUsePathStyle = "use_path_style"
 	// EdgeDrive holds the string denoting the drive edge name in mutations.
@@ -52,7 +52,7 @@ var Columns = []string{
 	FieldEndpoint,
 	FieldRegion,
 	FieldAccessKey,
-	FieldSecretKey,
+	FieldEncryptedSecretKey,
 	FieldUsePathStyle,
 }
 
@@ -75,8 +75,8 @@ var (
 	RegionValidator func(string) error
 	// AccessKeyValidator is a validator for the "access_key" field. It is called by the builders before save.
 	AccessKeyValidator func(string) error
-	// SecretKeyValidator is a validator for the "secret_key" field. It is called by the builders before save.
-	SecretKeyValidator func(string) error
+	// EncryptedSecretKeyValidator is a validator for the "encrypted_secret_key" field. It is called by the builders before save.
+	EncryptedSecretKeyValidator func(string) error
 	// DefaultUsePathStyle holds the default value on creation for the "use_path_style" field.
 	DefaultUsePathStyle bool
 )
@@ -145,9 +145,9 @@ func ByAccessKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAccessKey, opts...).ToFunc()
 }
 
-// BySecretKey orders the results by the secret_key field.
-func BySecretKey(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSecretKey, opts...).ToFunc()
+// ByEncryptedSecretKey orders the results by the encrypted_secret_key field.
+func ByEncryptedSecretKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEncryptedSecretKey, opts...).ToFunc()
 }
 
 // ByUsePathStyle orders the results by the use_path_style field.

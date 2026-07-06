@@ -52,13 +52,10 @@ type DriveMutation struct {
 	clearedFields     map[string]struct{}
 	storage           *int
 	clearedstorage    bool
-	nodes             map[uuid.UUID]struct{}
-	removednodes      map[uuid.UUID]struct{}
-	clearednodes      bool
-	superblock        *uuid.UUID
-	clearedsuperblock bool
 	user              *string
 	cleareduser       bool
+	superblock        *uuid.UUID
+	clearedsuperblock bool
 	done              bool
 	oldValue          func(context.Context) (*Drive, error)
 	predicates        []predicate.Drive
@@ -449,58 +446,44 @@ func (m *DriveMutation) ResetStorage() {
 	m.clearedstorage = false
 }
 
-// AddNodeIDs adds the "nodes" edge to the Node entity by ids.
-func (m *DriveMutation) AddNodeIDs(ids ...uuid.UUID) {
-	if m.nodes == nil {
-		m.nodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.nodes[ids[i]] = struct{}{}
-	}
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *DriveMutation) SetUserID(id string) {
+	m.user = &id
 }
 
-// ClearNodes clears the "nodes" edge to the Node entity.
-func (m *DriveMutation) ClearNodes() {
-	m.clearednodes = true
+// ClearUser clears the "user" edge to the User entity.
+func (m *DriveMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[drive.FieldOwnerID] = struct{}{}
 }
 
-// NodesCleared reports if the "nodes" edge to the Node entity was cleared.
-func (m *DriveMutation) NodesCleared() bool {
-	return m.clearednodes
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *DriveMutation) UserCleared() bool {
+	return m.cleareduser
 }
 
-// RemoveNodeIDs removes the "nodes" edge to the Node entity by IDs.
-func (m *DriveMutation) RemoveNodeIDs(ids ...uuid.UUID) {
-	if m.removednodes == nil {
-		m.removednodes = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.nodes, ids[i])
-		m.removednodes[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedNodes returns the removed IDs of the "nodes" edge to the Node entity.
-func (m *DriveMutation) RemovedNodesIDs() (ids []uuid.UUID) {
-	for id := range m.removednodes {
-		ids = append(ids, id)
+// UserID returns the "user" edge ID in the mutation.
+func (m *DriveMutation) UserID() (id string, exists bool) {
+	if m.user != nil {
+		return *m.user, true
 	}
 	return
 }
 
-// NodesIDs returns the "nodes" edge IDs in the mutation.
-func (m *DriveMutation) NodesIDs() (ids []uuid.UUID) {
-	for id := range m.nodes {
-		ids = append(ids, id)
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *DriveMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetNodes resets all changes to the "nodes" edge.
-func (m *DriveMutation) ResetNodes() {
-	m.nodes = nil
-	m.clearednodes = false
-	m.removednodes = nil
+// ResetUser resets all changes to the "user" edge.
+func (m *DriveMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
 }
 
 // SetSuperblockID sets the "superblock" edge to the Superblock entity by id.
@@ -540,46 +523,6 @@ func (m *DriveMutation) SuperblockIDs() (ids []uuid.UUID) {
 func (m *DriveMutation) ResetSuperblock() {
 	m.superblock = nil
 	m.clearedsuperblock = false
-}
-
-// SetUserID sets the "user" edge to the User entity by id.
-func (m *DriveMutation) SetUserID(id string) {
-	m.user = &id
-}
-
-// ClearUser clears the "user" edge to the User entity.
-func (m *DriveMutation) ClearUser() {
-	m.cleareduser = true
-	m.clearedFields[drive.FieldOwnerID] = struct{}{}
-}
-
-// UserCleared reports if the "user" edge to the User entity was cleared.
-func (m *DriveMutation) UserCleared() bool {
-	return m.cleareduser
-}
-
-// UserID returns the "user" edge ID in the mutation.
-func (m *DriveMutation) UserID() (id string, exists bool) {
-	if m.user != nil {
-		return *m.user, true
-	}
-	return
-}
-
-// UserIDs returns the "user" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// UserID instead. It exists only for internal usage by the builders.
-func (m *DriveMutation) UserIDs() (ids []string) {
-	if id := m.user; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetUser resets all changes to the "user" edge.
-func (m *DriveMutation) ResetUser() {
-	m.user = nil
-	m.cleareduser = false
 }
 
 // Where appends a list predicates to the DriveMutation builder.
@@ -815,18 +758,15 @@ func (m *DriveMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DriveMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.storage != nil {
 		edges = append(edges, drive.EdgeStorage)
 	}
-	if m.nodes != nil {
-		edges = append(edges, drive.EdgeNodes)
+	if m.user != nil {
+		edges = append(edges, drive.EdgeUser)
 	}
 	if m.superblock != nil {
 		edges = append(edges, drive.EdgeSuperblock)
-	}
-	if m.user != nil {
-		edges = append(edges, drive.EdgeUser)
 	}
 	return edges
 }
@@ -839,18 +779,12 @@ func (m *DriveMutation) AddedIDs(name string) []ent.Value {
 		if id := m.storage; id != nil {
 			return []ent.Value{*id}
 		}
-	case drive.EdgeNodes:
-		ids := make([]ent.Value, 0, len(m.nodes))
-		for id := range m.nodes {
-			ids = append(ids, id)
-		}
-		return ids
-	case drive.EdgeSuperblock:
-		if id := m.superblock; id != nil {
-			return []ent.Value{*id}
-		}
 	case drive.EdgeUser:
 		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case drive.EdgeSuperblock:
+		if id := m.superblock; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -859,41 +793,27 @@ func (m *DriveMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DriveMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
-	if m.removednodes != nil {
-		edges = append(edges, drive.EdgeNodes)
-	}
+	edges := make([]string, 0, 3)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *DriveMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case drive.EdgeNodes:
-		ids := make([]ent.Value, 0, len(m.removednodes))
-		for id := range m.removednodes {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DriveMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.clearedstorage {
 		edges = append(edges, drive.EdgeStorage)
 	}
-	if m.clearednodes {
-		edges = append(edges, drive.EdgeNodes)
+	if m.cleareduser {
+		edges = append(edges, drive.EdgeUser)
 	}
 	if m.clearedsuperblock {
 		edges = append(edges, drive.EdgeSuperblock)
-	}
-	if m.cleareduser {
-		edges = append(edges, drive.EdgeUser)
 	}
 	return edges
 }
@@ -904,12 +824,10 @@ func (m *DriveMutation) EdgeCleared(name string) bool {
 	switch name {
 	case drive.EdgeStorage:
 		return m.clearedstorage
-	case drive.EdgeNodes:
-		return m.clearednodes
-	case drive.EdgeSuperblock:
-		return m.clearedsuperblock
 	case drive.EdgeUser:
 		return m.cleareduser
+	case drive.EdgeSuperblock:
+		return m.clearedsuperblock
 	}
 	return false
 }
@@ -921,11 +839,11 @@ func (m *DriveMutation) ClearEdge(name string) error {
 	case drive.EdgeStorage:
 		m.ClearStorage()
 		return nil
-	case drive.EdgeSuperblock:
-		m.ClearSuperblock()
-		return nil
 	case drive.EdgeUser:
 		m.ClearUser()
+		return nil
+	case drive.EdgeSuperblock:
+		m.ClearSuperblock()
 		return nil
 	}
 	return fmt.Errorf("unknown Drive unique edge %s", name)
@@ -938,14 +856,11 @@ func (m *DriveMutation) ResetEdge(name string) error {
 	case drive.EdgeStorage:
 		m.ResetStorage()
 		return nil
-	case drive.EdgeNodes:
-		m.ResetNodes()
+	case drive.EdgeUser:
+		m.ResetUser()
 		return nil
 	case drive.EdgeSuperblock:
 		m.ResetSuperblock()
-		return nil
-	case drive.EdgeUser:
-		m.ResetUser()
 		return nil
 	}
 	return fmt.Errorf("unknown Drive edge %s", name)
@@ -1538,30 +1453,30 @@ func (m *GCTombstoneMutation) ResetEdge(name string) error {
 // NodeMutation represents an operation that mutates the Node nodes in the graph.
 type NodeMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *uuid.UUID
-	create_time   *time.Time
-	update_time   *time.Time
-	kind          *node.Kind
-	size          *int64
-	addsize       *int64
-	nlink         *uint32
-	addnlink      *int32
-	data          *[]byte
-	atime         *time.Time
-	mtime         *time.Time
-	ctime         *time.Time
-	btime         *time.Time
-	flags         *uint32
-	addflags      *int32
-	revision      *string
-	clearedFields map[string]struct{}
-	drive         *string
-	cleareddrive  bool
-	done          bool
-	oldValue      func(context.Context) (*Node, error)
-	predicates    []predicate.Node
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	create_time       *time.Time
+	update_time       *time.Time
+	kind              *node.Kind
+	size              *int64
+	addsize           *int64
+	nlink             *uint32
+	addnlink          *int32
+	data              *[]byte
+	atime             *time.Time
+	mtime             *time.Time
+	ctime             *time.Time
+	btime             *time.Time
+	flags             *uint32
+	addflags          *int32
+	revision          *string
+	clearedFields     map[string]struct{}
+	superblock        *uuid.UUID
+	clearedsuperblock bool
+	done              bool
+	oldValue          func(context.Context) (*Node, error)
+	predicates        []predicate.Node
 }
 
 var _ ent.Mutation = (*NodeMutation)(nil)
@@ -1740,40 +1655,40 @@ func (m *NodeMutation) ResetUpdateTime() {
 	m.update_time = nil
 }
 
-// SetDriveID sets the "drive_id" field.
-func (m *NodeMutation) SetDriveID(s string) {
-	m.drive = &s
+// SetSuperblockID sets the "superblock_id" field.
+func (m *NodeMutation) SetSuperblockID(u uuid.UUID) {
+	m.superblock = &u
 }
 
-// DriveID returns the value of the "drive_id" field in the mutation.
-func (m *NodeMutation) DriveID() (r string, exists bool) {
-	v := m.drive
+// SuperblockID returns the value of the "superblock_id" field in the mutation.
+func (m *NodeMutation) SuperblockID() (r uuid.UUID, exists bool) {
+	v := m.superblock
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldDriveID returns the old "drive_id" field's value of the Node entity.
+// OldSuperblockID returns the old "superblock_id" field's value of the Node entity.
 // If the Node object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *NodeMutation) OldDriveID(ctx context.Context) (v string, err error) {
+func (m *NodeMutation) OldSuperblockID(ctx context.Context) (v uuid.UUID, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDriveID is only allowed on UpdateOne operations")
+		return v, errors.New("OldSuperblockID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDriveID requires an ID field in the mutation")
+		return v, errors.New("OldSuperblockID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDriveID: %w", err)
+		return v, fmt.Errorf("querying old value for OldSuperblockID: %w", err)
 	}
-	return oldValue.DriveID, nil
+	return oldValue.SuperblockID, nil
 }
 
-// ResetDriveID resets all changes to the "drive_id" field.
-func (m *NodeMutation) ResetDriveID() {
-	m.drive = nil
+// ResetSuperblockID resets all changes to the "superblock_id" field.
+func (m *NodeMutation) ResetSuperblockID() {
+	m.superblock = nil
 }
 
 // SetKind sets the "kind" field.
@@ -2209,31 +2124,31 @@ func (m *NodeMutation) ResetRevision() {
 	m.revision = nil
 }
 
-// ClearDrive clears the "drive" edge to the Drive entity.
-func (m *NodeMutation) ClearDrive() {
-	m.cleareddrive = true
-	m.clearedFields[node.FieldDriveID] = struct{}{}
+// ClearSuperblock clears the "superblock" edge to the Superblock entity.
+func (m *NodeMutation) ClearSuperblock() {
+	m.clearedsuperblock = true
+	m.clearedFields[node.FieldSuperblockID] = struct{}{}
 }
 
-// DriveCleared reports if the "drive" edge to the Drive entity was cleared.
-func (m *NodeMutation) DriveCleared() bool {
-	return m.cleareddrive
+// SuperblockCleared reports if the "superblock" edge to the Superblock entity was cleared.
+func (m *NodeMutation) SuperblockCleared() bool {
+	return m.clearedsuperblock
 }
 
-// DriveIDs returns the "drive" edge IDs in the mutation.
+// SuperblockIDs returns the "superblock" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// DriveID instead. It exists only for internal usage by the builders.
-func (m *NodeMutation) DriveIDs() (ids []string) {
-	if id := m.drive; id != nil {
+// SuperblockID instead. It exists only for internal usage by the builders.
+func (m *NodeMutation) SuperblockIDs() (ids []uuid.UUID) {
+	if id := m.superblock; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetDrive resets all changes to the "drive" edge.
-func (m *NodeMutation) ResetDrive() {
-	m.drive = nil
-	m.cleareddrive = false
+// ResetSuperblock resets all changes to the "superblock" edge.
+func (m *NodeMutation) ResetSuperblock() {
+	m.superblock = nil
+	m.clearedsuperblock = false
 }
 
 // Where appends a list predicates to the NodeMutation builder.
@@ -2277,8 +2192,8 @@ func (m *NodeMutation) Fields() []string {
 	if m.update_time != nil {
 		fields = append(fields, node.FieldUpdateTime)
 	}
-	if m.drive != nil {
-		fields = append(fields, node.FieldDriveID)
+	if m.superblock != nil {
+		fields = append(fields, node.FieldSuperblockID)
 	}
 	if m.kind != nil {
 		fields = append(fields, node.FieldKind)
@@ -2322,8 +2237,8 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.CreateTime()
 	case node.FieldUpdateTime:
 		return m.UpdateTime()
-	case node.FieldDriveID:
-		return m.DriveID()
+	case node.FieldSuperblockID:
+		return m.SuperblockID()
 	case node.FieldKind:
 		return m.Kind()
 	case node.FieldSize:
@@ -2357,8 +2272,8 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreateTime(ctx)
 	case node.FieldUpdateTime:
 		return m.OldUpdateTime(ctx)
-	case node.FieldDriveID:
-		return m.OldDriveID(ctx)
+	case node.FieldSuperblockID:
+		return m.OldSuperblockID(ctx)
 	case node.FieldKind:
 		return m.OldKind(ctx)
 	case node.FieldSize:
@@ -2402,12 +2317,12 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdateTime(v)
 		return nil
-	case node.FieldDriveID:
-		v, ok := value.(string)
+	case node.FieldSuperblockID:
+		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetDriveID(v)
+		m.SetSuperblockID(v)
 		return nil
 	case node.FieldKind:
 		v, ok := value.(node.Kind)
@@ -2582,8 +2497,8 @@ func (m *NodeMutation) ResetField(name string) error {
 	case node.FieldUpdateTime:
 		m.ResetUpdateTime()
 		return nil
-	case node.FieldDriveID:
-		m.ResetDriveID()
+	case node.FieldSuperblockID:
+		m.ResetSuperblockID()
 		return nil
 	case node.FieldKind:
 		m.ResetKind()
@@ -2622,8 +2537,8 @@ func (m *NodeMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *NodeMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.drive != nil {
-		edges = append(edges, node.EdgeDrive)
+	if m.superblock != nil {
+		edges = append(edges, node.EdgeSuperblock)
 	}
 	return edges
 }
@@ -2632,8 +2547,8 @@ func (m *NodeMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *NodeMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case node.EdgeDrive:
-		if id := m.drive; id != nil {
+	case node.EdgeSuperblock:
+		if id := m.superblock; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -2655,8 +2570,8 @@ func (m *NodeMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *NodeMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.cleareddrive {
-		edges = append(edges, node.EdgeDrive)
+	if m.clearedsuperblock {
+		edges = append(edges, node.EdgeSuperblock)
 	}
 	return edges
 }
@@ -2665,8 +2580,8 @@ func (m *NodeMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *NodeMutation) EdgeCleared(name string) bool {
 	switch name {
-	case node.EdgeDrive:
-		return m.cleareddrive
+	case node.EdgeSuperblock:
+		return m.clearedsuperblock
 	}
 	return false
 }
@@ -2675,8 +2590,8 @@ func (m *NodeMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *NodeMutation) ClearEdge(name string) error {
 	switch name {
-	case node.EdgeDrive:
-		m.ClearDrive()
+	case node.EdgeSuperblock:
+		m.ClearSuperblock()
 		return nil
 	}
 	return fmt.Errorf("unknown Node unique edge %s", name)
@@ -2686,8 +2601,8 @@ func (m *NodeMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *NodeMutation) ResetEdge(name string) error {
 	switch name {
-	case node.EdgeDrive:
-		m.ResetDrive()
+	case node.EdgeSuperblock:
+		m.ResetSuperblock()
 		return nil
 	}
 	return fmt.Errorf("unknown Node edge %s", name)
@@ -2696,22 +2611,22 @@ func (m *NodeMutation) ResetEdge(name string) error {
 // StorageMutation represents an operation that mutates the Storage nodes in the graph.
 type StorageMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *int
-	provider       *storage.Provider
-	bucket         *string
-	endpoint       *string
-	region         *string
-	access_key     *string
-	secret_key     *string
-	use_path_style *bool
-	clearedFields  map[string]struct{}
-	drive          *string
-	cleareddrive   bool
-	done           bool
-	oldValue       func(context.Context) (*Storage, error)
-	predicates     []predicate.Storage
+	op                   Op
+	typ                  string
+	id                   *int
+	provider             *storage.Provider
+	bucket               *string
+	endpoint             *string
+	region               *string
+	access_key           *string
+	encrypted_secret_key *string
+	use_path_style       *bool
+	clearedFields        map[string]struct{}
+	drive                *string
+	cleareddrive         bool
+	done                 bool
+	oldValue             func(context.Context) (*Storage, error)
+	predicates           []predicate.Storage
 }
 
 var _ ent.Mutation = (*StorageMutation)(nil)
@@ -3041,40 +2956,40 @@ func (m *StorageMutation) ResetAccessKey() {
 	m.access_key = nil
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (m *StorageMutation) SetSecretKey(s string) {
-	m.secret_key = &s
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (m *StorageMutation) SetEncryptedSecretKey(s string) {
+	m.encrypted_secret_key = &s
 }
 
-// SecretKey returns the value of the "secret_key" field in the mutation.
-func (m *StorageMutation) SecretKey() (r string, exists bool) {
-	v := m.secret_key
+// EncryptedSecretKey returns the value of the "encrypted_secret_key" field in the mutation.
+func (m *StorageMutation) EncryptedSecretKey() (r string, exists bool) {
+	v := m.encrypted_secret_key
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSecretKey returns the old "secret_key" field's value of the Storage entity.
+// OldEncryptedSecretKey returns the old "encrypted_secret_key" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldSecretKey(ctx context.Context) (v string, err error) {
+func (m *StorageMutation) OldEncryptedSecretKey(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSecretKey is only allowed on UpdateOne operations")
+		return v, errors.New("OldEncryptedSecretKey is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSecretKey requires an ID field in the mutation")
+		return v, errors.New("OldEncryptedSecretKey requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSecretKey: %w", err)
+		return v, fmt.Errorf("querying old value for OldEncryptedSecretKey: %w", err)
 	}
-	return oldValue.SecretKey, nil
+	return oldValue.EncryptedSecretKey, nil
 }
 
-// ResetSecretKey resets all changes to the "secret_key" field.
-func (m *StorageMutation) ResetSecretKey() {
-	m.secret_key = nil
+// ResetEncryptedSecretKey resets all changes to the "encrypted_secret_key" field.
+func (m *StorageMutation) ResetEncryptedSecretKey() {
+	m.encrypted_secret_key = nil
 }
 
 // SetUsePathStyle sets the "use_path_style" field.
@@ -3193,8 +3108,8 @@ func (m *StorageMutation) Fields() []string {
 	if m.access_key != nil {
 		fields = append(fields, storage.FieldAccessKey)
 	}
-	if m.secret_key != nil {
-		fields = append(fields, storage.FieldSecretKey)
+	if m.encrypted_secret_key != nil {
+		fields = append(fields, storage.FieldEncryptedSecretKey)
 	}
 	if m.use_path_style != nil {
 		fields = append(fields, storage.FieldUsePathStyle)
@@ -3219,8 +3134,8 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.Region()
 	case storage.FieldAccessKey:
 		return m.AccessKey()
-	case storage.FieldSecretKey:
-		return m.SecretKey()
+	case storage.FieldEncryptedSecretKey:
+		return m.EncryptedSecretKey()
 	case storage.FieldUsePathStyle:
 		return m.UsePathStyle()
 	}
@@ -3244,8 +3159,8 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldRegion(ctx)
 	case storage.FieldAccessKey:
 		return m.OldAccessKey(ctx)
-	case storage.FieldSecretKey:
-		return m.OldSecretKey(ctx)
+	case storage.FieldEncryptedSecretKey:
+		return m.OldEncryptedSecretKey(ctx)
 	case storage.FieldUsePathStyle:
 		return m.OldUsePathStyle(ctx)
 	}
@@ -3299,12 +3214,12 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAccessKey(v)
 		return nil
-	case storage.FieldSecretKey:
+	case storage.FieldEncryptedSecretKey:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSecretKey(v)
+		m.SetEncryptedSecretKey(v)
 		return nil
 	case storage.FieldUsePathStyle:
 		v, ok := value.(bool)
@@ -3389,8 +3304,8 @@ func (m *StorageMutation) ResetField(name string) error {
 	case storage.FieldAccessKey:
 		m.ResetAccessKey()
 		return nil
-	case storage.FieldSecretKey:
-		m.ResetSecretKey()
+	case storage.FieldEncryptedSecretKey:
+		m.ResetEncryptedSecretKey()
 		return nil
 	case storage.FieldUsePathStyle:
 		m.ResetUsePathStyle()
@@ -3485,6 +3400,9 @@ type SuperblockMutation struct {
 	clearedFields map[string]struct{}
 	drive         *string
 	cleareddrive  bool
+	nodes         map[uuid.UUID]struct{}
+	removednodes  map[uuid.UUID]struct{}
+	clearednodes  bool
 	done          bool
 	oldValue      func(context.Context) (*Superblock, error)
 	predicates    []predicate.Superblock
@@ -3666,6 +3584,42 @@ func (m *SuperblockMutation) ResetUpdateTime() {
 	m.update_time = nil
 }
 
+// SetDriveID sets the "drive_id" field.
+func (m *SuperblockMutation) SetDriveID(s string) {
+	m.drive = &s
+}
+
+// DriveID returns the value of the "drive_id" field in the mutation.
+func (m *SuperblockMutation) DriveID() (r string, exists bool) {
+	v := m.drive
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDriveID returns the old "drive_id" field's value of the Superblock entity.
+// If the Superblock object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SuperblockMutation) OldDriveID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDriveID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDriveID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDriveID: %w", err)
+	}
+	return oldValue.DriveID, nil
+}
+
+// ResetDriveID resets all changes to the "drive_id" field.
+func (m *SuperblockMutation) ResetDriveID() {
+	m.drive = nil
+}
+
 // SetRootNodeID sets the "root_node_id" field.
 func (m *SuperblockMutation) SetRootNodeID(u uuid.UUID) {
 	m.root_node_id = &u
@@ -3702,27 +3656,15 @@ func (m *SuperblockMutation) ResetRootNodeID() {
 	m.root_node_id = nil
 }
 
-// SetDriveID sets the "drive" edge to the Drive entity by id.
-func (m *SuperblockMutation) SetDriveID(id string) {
-	m.drive = &id
-}
-
 // ClearDrive clears the "drive" edge to the Drive entity.
 func (m *SuperblockMutation) ClearDrive() {
 	m.cleareddrive = true
+	m.clearedFields[superblock.FieldDriveID] = struct{}{}
 }
 
 // DriveCleared reports if the "drive" edge to the Drive entity was cleared.
 func (m *SuperblockMutation) DriveCleared() bool {
 	return m.cleareddrive
-}
-
-// DriveID returns the "drive" edge ID in the mutation.
-func (m *SuperblockMutation) DriveID() (id string, exists bool) {
-	if m.drive != nil {
-		return *m.drive, true
-	}
-	return
 }
 
 // DriveIDs returns the "drive" edge IDs in the mutation.
@@ -3739,6 +3681,60 @@ func (m *SuperblockMutation) DriveIDs() (ids []string) {
 func (m *SuperblockMutation) ResetDrive() {
 	m.drive = nil
 	m.cleareddrive = false
+}
+
+// AddNodeIDs adds the "nodes" edge to the Node entity by ids.
+func (m *SuperblockMutation) AddNodeIDs(ids ...uuid.UUID) {
+	if m.nodes == nil {
+		m.nodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.nodes[ids[i]] = struct{}{}
+	}
+}
+
+// ClearNodes clears the "nodes" edge to the Node entity.
+func (m *SuperblockMutation) ClearNodes() {
+	m.clearednodes = true
+}
+
+// NodesCleared reports if the "nodes" edge to the Node entity was cleared.
+func (m *SuperblockMutation) NodesCleared() bool {
+	return m.clearednodes
+}
+
+// RemoveNodeIDs removes the "nodes" edge to the Node entity by IDs.
+func (m *SuperblockMutation) RemoveNodeIDs(ids ...uuid.UUID) {
+	if m.removednodes == nil {
+		m.removednodes = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.nodes, ids[i])
+		m.removednodes[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedNodes returns the removed IDs of the "nodes" edge to the Node entity.
+func (m *SuperblockMutation) RemovedNodesIDs() (ids []uuid.UUID) {
+	for id := range m.removednodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// NodesIDs returns the "nodes" edge IDs in the mutation.
+func (m *SuperblockMutation) NodesIDs() (ids []uuid.UUID) {
+	for id := range m.nodes {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetNodes resets all changes to the "nodes" edge.
+func (m *SuperblockMutation) ResetNodes() {
+	m.nodes = nil
+	m.clearednodes = false
+	m.removednodes = nil
 }
 
 // Where appends a list predicates to the SuperblockMutation builder.
@@ -3775,12 +3771,15 @@ func (m *SuperblockMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SuperblockMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.create_time != nil {
 		fields = append(fields, superblock.FieldCreateTime)
 	}
 	if m.update_time != nil {
 		fields = append(fields, superblock.FieldUpdateTime)
+	}
+	if m.drive != nil {
+		fields = append(fields, superblock.FieldDriveID)
 	}
 	if m.root_node_id != nil {
 		fields = append(fields, superblock.FieldRootNodeID)
@@ -3797,6 +3796,8 @@ func (m *SuperblockMutation) Field(name string) (ent.Value, bool) {
 		return m.CreateTime()
 	case superblock.FieldUpdateTime:
 		return m.UpdateTime()
+	case superblock.FieldDriveID:
+		return m.DriveID()
 	case superblock.FieldRootNodeID:
 		return m.RootNodeID()
 	}
@@ -3812,6 +3813,8 @@ func (m *SuperblockMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldCreateTime(ctx)
 	case superblock.FieldUpdateTime:
 		return m.OldUpdateTime(ctx)
+	case superblock.FieldDriveID:
+		return m.OldDriveID(ctx)
 	case superblock.FieldRootNodeID:
 		return m.OldRootNodeID(ctx)
 	}
@@ -3836,6 +3839,13 @@ func (m *SuperblockMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdateTime(v)
+		return nil
+	case superblock.FieldDriveID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDriveID(v)
 		return nil
 	case superblock.FieldRootNodeID:
 		v, ok := value.(uuid.UUID)
@@ -3899,6 +3909,9 @@ func (m *SuperblockMutation) ResetField(name string) error {
 	case superblock.FieldUpdateTime:
 		m.ResetUpdateTime()
 		return nil
+	case superblock.FieldDriveID:
+		m.ResetDriveID()
+		return nil
 	case superblock.FieldRootNodeID:
 		m.ResetRootNodeID()
 		return nil
@@ -3908,9 +3921,12 @@ func (m *SuperblockMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SuperblockMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.drive != nil {
 		edges = append(edges, superblock.EdgeDrive)
+	}
+	if m.nodes != nil {
+		edges = append(edges, superblock.EdgeNodes)
 	}
 	return edges
 }
@@ -3923,27 +3939,47 @@ func (m *SuperblockMutation) AddedIDs(name string) []ent.Value {
 		if id := m.drive; id != nil {
 			return []ent.Value{*id}
 		}
+	case superblock.EdgeNodes:
+		ids := make([]ent.Value, 0, len(m.nodes))
+		for id := range m.nodes {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SuperblockMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removednodes != nil {
+		edges = append(edges, superblock.EdgeNodes)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *SuperblockMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case superblock.EdgeNodes:
+		ids := make([]ent.Value, 0, len(m.removednodes))
+		for id := range m.removednodes {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SuperblockMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.cleareddrive {
 		edges = append(edges, superblock.EdgeDrive)
+	}
+	if m.clearednodes {
+		edges = append(edges, superblock.EdgeNodes)
 	}
 	return edges
 }
@@ -3954,6 +3990,8 @@ func (m *SuperblockMutation) EdgeCleared(name string) bool {
 	switch name {
 	case superblock.EdgeDrive:
 		return m.cleareddrive
+	case superblock.EdgeNodes:
+		return m.clearednodes
 	}
 	return false
 }
@@ -3975,6 +4013,9 @@ func (m *SuperblockMutation) ResetEdge(name string) error {
 	switch name {
 	case superblock.EdgeDrive:
 		m.ResetDrive()
+		return nil
+	case superblock.EdgeNodes:
+		m.ResetNodes()
 		return nil
 	}
 	return fmt.Errorf("unknown Superblock edge %s", name)

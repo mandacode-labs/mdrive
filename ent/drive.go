@@ -42,15 +42,13 @@ type Drive struct {
 type DriveEdges struct {
 	// Storage holds the value of the storage edge.
 	Storage *Storage `json:"storage,omitempty"`
-	// Nodes holds the value of the nodes edge.
-	Nodes []*Node `json:"nodes,omitempty"`
-	// Superblock holds the value of the superblock edge.
-	Superblock *Superblock `json:"superblock,omitempty"`
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
+	// Superblock holds the value of the superblock edge.
+	Superblock *Superblock `json:"superblock,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [3]bool
 }
 
 // StorageOrErr returns the Storage value or an error if the edge
@@ -64,13 +62,15 @@ func (e DriveEdges) StorageOrErr() (*Storage, error) {
 	return nil, &NotLoadedError{edge: "storage"}
 }
 
-// NodesOrErr returns the Nodes value or an error if the edge
-// was not loaded in eager-loading.
-func (e DriveEdges) NodesOrErr() ([]*Node, error) {
-	if e.loadedTypes[1] {
-		return e.Nodes, nil
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DriveEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: user.Label}
 	}
-	return nil, &NotLoadedError{edge: "nodes"}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // SuperblockOrErr returns the Superblock value or an error if the edge
@@ -82,17 +82,6 @@ func (e DriveEdges) SuperblockOrErr() (*Superblock, error) {
 		return nil, &NotFoundError{label: superblock.Label}
 	}
 	return nil, &NotLoadedError{edge: "superblock"}
-}
-
-// UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e DriveEdges) UserOrErr() (*User, error) {
-	if e.User != nil {
-		return e.User, nil
-	} else if e.loadedTypes[3] {
-		return nil, &NotFoundError{label: user.Label}
-	}
-	return nil, &NotLoadedError{edge: "user"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -181,19 +170,14 @@ func (_m *Drive) QueryStorage() *StorageQuery {
 	return NewDriveClient(_m.config).QueryStorage(_m)
 }
 
-// QueryNodes queries the "nodes" edge of the Drive entity.
-func (_m *Drive) QueryNodes() *NodeQuery {
-	return NewDriveClient(_m.config).QueryNodes(_m)
+// QueryUser queries the "user" edge of the Drive entity.
+func (_m *Drive) QueryUser() *UserQuery {
+	return NewDriveClient(_m.config).QueryUser(_m)
 }
 
 // QuerySuperblock queries the "superblock" edge of the Drive entity.
 func (_m *Drive) QuerySuperblock() *SuperblockQuery {
 	return NewDriveClient(_m.config).QuerySuperblock(_m)
-}
-
-// QueryUser queries the "user" edge of the Drive entity.
-func (_m *Drive) QueryUser() *UserQuery {
-	return NewDriveClient(_m.config).QueryUser(_m)
 }
 
 // Update returns a builder for updating this Drive.

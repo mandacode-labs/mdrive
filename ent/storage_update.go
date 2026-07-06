@@ -103,16 +103,16 @@ func (_u *StorageUpdate) SetNillableAccessKey(v *string) *StorageUpdate {
 	return _u
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (_u *StorageUpdate) SetSecretKey(v string) *StorageUpdate {
-	_u.mutation.SetSecretKey(v)
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (_u *StorageUpdate) SetEncryptedSecretKey(v string) *StorageUpdate {
+	_u.mutation.SetEncryptedSecretKey(v)
 	return _u
 }
 
-// SetNillableSecretKey sets the "secret_key" field if the given value is not nil.
-func (_u *StorageUpdate) SetNillableSecretKey(v *string) *StorageUpdate {
+// SetNillableEncryptedSecretKey sets the "encrypted_secret_key" field if the given value is not nil.
+func (_u *StorageUpdate) SetNillableEncryptedSecretKey(v *string) *StorageUpdate {
 	if v != nil {
-		_u.SetSecretKey(*v)
+		_u.SetEncryptedSecretKey(*v)
 	}
 	return _u
 }
@@ -190,9 +190,9 @@ func (_u *StorageUpdate) check() error {
 			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.SecretKey(); ok {
-		if err := storage.SecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.secret_key": %w`, err)}
+	if v, ok := _u.mutation.EncryptedSecretKey(); ok {
+		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
 		}
 	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
@@ -231,8 +231,8 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AccessKey(); ok {
 		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.SecretKey(); ok {
-		_spec.SetField(storage.FieldSecretKey, field.TypeString, value)
+	if value, ok := _u.mutation.EncryptedSecretKey(); ok {
+		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
@@ -333,16 +333,16 @@ func (_u *StorageUpdateOne) SetNillableAccessKey(v *string) *StorageUpdateOne {
 	return _u
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (_u *StorageUpdateOne) SetSecretKey(v string) *StorageUpdateOne {
-	_u.mutation.SetSecretKey(v)
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (_u *StorageUpdateOne) SetEncryptedSecretKey(v string) *StorageUpdateOne {
+	_u.mutation.SetEncryptedSecretKey(v)
 	return _u
 }
 
-// SetNillableSecretKey sets the "secret_key" field if the given value is not nil.
-func (_u *StorageUpdateOne) SetNillableSecretKey(v *string) *StorageUpdateOne {
+// SetNillableEncryptedSecretKey sets the "encrypted_secret_key" field if the given value is not nil.
+func (_u *StorageUpdateOne) SetNillableEncryptedSecretKey(v *string) *StorageUpdateOne {
 	if v != nil {
-		_u.SetSecretKey(*v)
+		_u.SetEncryptedSecretKey(*v)
 	}
 	return _u
 }
@@ -433,9 +433,9 @@ func (_u *StorageUpdateOne) check() error {
 			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.SecretKey(); ok {
-		if err := storage.SecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.secret_key": %w`, err)}
+	if v, ok := _u.mutation.EncryptedSecretKey(); ok {
+		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
 		}
 	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
@@ -491,8 +491,8 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 	if value, ok := _u.mutation.AccessKey(); ok {
 		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.SecretKey(); ok {
-		_spec.SetField(storage.FieldSecretKey, field.TypeString, value)
+	if value, ok := _u.mutation.EncryptedSecretKey(); ok {
+		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)

@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
+	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 )
 
@@ -53,6 +54,12 @@ func (_c *SuperblockCreate) SetNillableUpdateTime(v *time.Time) *SuperblockCreat
 	return _c
 }
 
+// SetDriveID sets the "drive_id" field.
+func (_c *SuperblockCreate) SetDriveID(v string) *SuperblockCreate {
+	_c.mutation.SetDriveID(v)
+	return _c
+}
+
 // SetRootNodeID sets the "root_node_id" field.
 func (_c *SuperblockCreate) SetRootNodeID(v uuid.UUID) *SuperblockCreate {
 	_c.mutation.SetRootNodeID(v)
@@ -73,15 +80,24 @@ func (_c *SuperblockCreate) SetNillableID(v *uuid.UUID) *SuperblockCreate {
 	return _c
 }
 
-// SetDriveID sets the "drive" edge to the Drive entity by ID.
-func (_c *SuperblockCreate) SetDriveID(id string) *SuperblockCreate {
-	_c.mutation.SetDriveID(id)
-	return _c
-}
-
 // SetDrive sets the "drive" edge to the Drive entity.
 func (_c *SuperblockCreate) SetDrive(v *Drive) *SuperblockCreate {
 	return _c.SetDriveID(v.ID)
+}
+
+// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
+func (_c *SuperblockCreate) AddNodeIDs(ids ...uuid.UUID) *SuperblockCreate {
+	_c.mutation.AddNodeIDs(ids...)
+	return _c
+}
+
+// AddNodes adds the "nodes" edges to the Node entity.
+func (_c *SuperblockCreate) AddNodes(v ...*Node) *SuperblockCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddNodeIDs(ids...)
 }
 
 // Mutation returns the SuperblockMutation object of the builder.
@@ -140,6 +156,9 @@ func (_c *SuperblockCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Superblock.update_time"`)}
+	}
+	if _, ok := _c.mutation.DriveID(); !ok {
+		return &ValidationError{Name: "drive_id", err: errors.New(`ent: missing required field "Superblock.drive_id"`)}
 	}
 	if _, ok := _c.mutation.RootNodeID(); !ok {
 		return &ValidationError{Name: "root_node_id", err: errors.New(`ent: missing required field "Superblock.root_node_id"`)}
@@ -209,7 +228,23 @@ func (_c *SuperblockCreate) createSpec() (*Superblock, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.drive_superblock = &nodes[0]
+		_node.DriveID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.NodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -295,6 +330,9 @@ func (u *SuperblockUpsertOne) UpdateNewValues() *SuperblockUpsertOne {
 		}
 		if _, exists := u.create.mutation.CreateTime(); exists {
 			s.SetIgnore(superblock.FieldCreateTime)
+		}
+		if _, exists := u.create.mutation.DriveID(); exists {
+			s.SetIgnore(superblock.FieldDriveID)
 		}
 		if _, exists := u.create.mutation.RootNodeID(); exists {
 			s.SetIgnore(superblock.FieldRootNodeID)
@@ -529,6 +567,9 @@ func (u *SuperblockUpsertBulk) UpdateNewValues() *SuperblockUpsertBulk {
 			}
 			if _, exists := b.mutation.CreateTime(); exists {
 				s.SetIgnore(superblock.FieldCreateTime)
+			}
+			if _, exists := b.mutation.DriveID(); exists {
+				s.SetIgnore(superblock.FieldDriveID)
 			}
 			if _, exists := b.mutation.RootNodeID(); exists {
 				s.SetIgnore(superblock.FieldRootNodeID)

@@ -75,7 +75,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "flags", Type: field.TypeUint32, Default: 0},
 		{Name: "revision", Type: field.TypeString, Size: 26},
-		{Name: "drive_id", Type: field.TypeString},
+		{Name: "superblock_id", Type: field.TypeUUID},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
 	NodesTable = &schema.Table{
@@ -84,9 +84,9 @@ var (
 		PrimaryKey: []*schema.Column{NodesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "nodes_drives_nodes",
+				Symbol:     "nodes_superblocks_nodes",
 				Columns:    []*schema.Column{NodesColumns[13]},
-				RefColumns: []*schema.Column{DrivesColumns[0]},
+				RefColumns: []*schema.Column{SuperblocksColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 		},
@@ -99,7 +99,7 @@ var (
 		{Name: "endpoint", Type: field.TypeString, Nullable: true, Size: 255},
 		{Name: "region", Type: field.TypeString, Size: 32},
 		{Name: "access_key", Type: field.TypeString, Size: 255},
-		{Name: "secret_key", Type: field.TypeString, Size: 255},
+		{Name: "encrypted_secret_key", Type: field.TypeString, Size: 255},
 		{Name: "use_path_style", Type: field.TypeBool, Default: false},
 		{Name: "drive_id", Type: field.TypeString, Unique: true},
 	}
@@ -123,7 +123,7 @@ var (
 		{Name: "create_time", Type: field.TypeTime},
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "root_node_id", Type: field.TypeUUID},
-		{Name: "drive_superblock", Type: field.TypeString, Unique: true},
+		{Name: "drive_id", Type: field.TypeString, Unique: true},
 	}
 	// SuperblocksTable holds the schema information for the "superblocks" table.
 	SuperblocksTable = &schema.Table{
@@ -135,7 +135,7 @@ var (
 				Symbol:     "superblocks_drives_superblock",
 				Columns:    []*schema.Column{SuperblocksColumns[4]},
 				RefColumns: []*schema.Column{DrivesColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -182,7 +182,7 @@ func init() {
 	GcTombstonesTable.Annotation = &entsql.Annotation{
 		Table: "gc_tombstones",
 	}
-	NodesTable.ForeignKeys[0].RefTable = DrivesTable
+	NodesTable.ForeignKeys[0].RefTable = SuperblocksTable
 	NodesTable.Annotation = &entsql.Annotation{
 		Table: "nodes",
 	}

@@ -370,15 +370,15 @@ func (c *DriveClient) QueryStorage(_m *Drive) *StorageQuery {
 	return query
 }
 
-// QueryNodes queries the nodes edge of a Drive.
-func (c *DriveClient) QueryNodes(_m *Drive) *NodeQuery {
-	query := (&NodeClient{config: c.config}).Query()
+// QueryUser queries the user edge of a Drive.
+func (c *DriveClient) QueryUser(_m *Drive) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(drive.Table, drive.FieldID, id),
-			sqlgraph.To(node.Table, node.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, drive.NodesTable, drive.NodesColumn),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, drive.UserTable, drive.UserColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -395,22 +395,6 @@ func (c *DriveClient) QuerySuperblock(_m *Drive) *SuperblockQuery {
 			sqlgraph.From(drive.Table, drive.FieldID, id),
 			sqlgraph.To(superblock.Table, superblock.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, drive.SuperblockTable, drive.SuperblockColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryUser queries the user edge of a Drive.
-func (c *DriveClient) QueryUser(_m *Drive) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(drive.Table, drive.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, drive.UserTable, drive.UserColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -684,15 +668,15 @@ func (c *NodeClient) GetX(ctx context.Context, id uuid.UUID) *Node {
 	return obj
 }
 
-// QueryDrive queries the drive edge of a Node.
-func (c *NodeClient) QueryDrive(_m *Node) *DriveQuery {
-	query := (&DriveClient{config: c.config}).Query()
+// QuerySuperblock queries the superblock edge of a Node.
+func (c *NodeClient) QuerySuperblock(_m *Node) *SuperblockQuery {
+	query := (&SuperblockClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(node.Table, node.FieldID, id),
-			sqlgraph.To(drive.Table, drive.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, node.DriveTable, node.DriveColumn),
+			sqlgraph.To(superblock.Table, superblock.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, node.SuperblockTable, node.SuperblockColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -991,6 +975,22 @@ func (c *SuperblockClient) QueryDrive(_m *Superblock) *DriveQuery {
 			sqlgraph.From(superblock.Table, superblock.FieldID, id),
 			sqlgraph.To(drive.Table, drive.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, true, superblock.DriveTable, superblock.DriveColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNodes queries the nodes edge of a Superblock.
+func (c *SuperblockClient) QueryNodes(_m *Superblock) *NodeQuery {
+	query := (&NodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(superblock.Table, superblock.FieldID, id),
+			sqlgraph.To(node.Table, node.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, superblock.NodesTable, superblock.NodesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

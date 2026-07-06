@@ -28,12 +28,10 @@ const (
 	FieldDeletedAt = "deleted_at"
 	// EdgeStorage holds the string denoting the storage edge name in mutations.
 	EdgeStorage = "storage"
-	// EdgeNodes holds the string denoting the nodes edge name in mutations.
-	EdgeNodes = "nodes"
-	// EdgeSuperblock holds the string denoting the superblock edge name in mutations.
-	EdgeSuperblock = "superblock"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
+	// EdgeSuperblock holds the string denoting the superblock edge name in mutations.
+	EdgeSuperblock = "superblock"
 	// Table holds the table name of the drive in the database.
 	Table = "drives"
 	// StorageTable is the table that holds the storage relation/edge.
@@ -43,20 +41,6 @@ const (
 	StorageInverseTable = "storages"
 	// StorageColumn is the table column denoting the storage relation/edge.
 	StorageColumn = "drive_id"
-	// NodesTable is the table that holds the nodes relation/edge.
-	NodesTable = "nodes"
-	// NodesInverseTable is the table name for the Node entity.
-	// It exists in this package in order to avoid circular dependency with the "node" package.
-	NodesInverseTable = "nodes"
-	// NodesColumn is the table column denoting the nodes relation/edge.
-	NodesColumn = "drive_id"
-	// SuperblockTable is the table that holds the superblock relation/edge.
-	SuperblockTable = "superblocks"
-	// SuperblockInverseTable is the table name for the Superblock entity.
-	// It exists in this package in order to avoid circular dependency with the "superblock" package.
-	SuperblockInverseTable = "superblocks"
-	// SuperblockColumn is the table column denoting the superblock relation/edge.
-	SuperblockColumn = "drive_superblock"
 	// UserTable is the table that holds the user relation/edge.
 	UserTable = "drives"
 	// UserInverseTable is the table name for the User entity.
@@ -64,6 +48,13 @@ const (
 	UserInverseTable = "users"
 	// UserColumn is the table column denoting the user relation/edge.
 	UserColumn = "owner_id"
+	// SuperblockTable is the table that holds the superblock relation/edge.
+	SuperblockTable = "superblocks"
+	// SuperblockInverseTable is the table name for the Superblock entity.
+	// It exists in this package in order to avoid circular dependency with the "superblock" package.
+	SuperblockInverseTable = "superblocks"
+	// SuperblockColumn is the table column denoting the superblock relation/edge.
+	SuperblockColumn = "drive_id"
 )
 
 // Columns holds all SQL columns for drive fields.
@@ -147,17 +138,10 @@ func ByStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
-// ByNodesCount orders the results by nodes count.
-func ByNodesCount(opts ...sql.OrderTermOption) OrderOption {
+// ByUserField orders the results by user field.
+func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newNodesStep(), opts...)
-	}
-}
-
-// ByNodes orders the results by nodes terms.
-func ByNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
 	}
 }
 
@@ -167,13 +151,6 @@ func BySuperblockField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newSuperblockStep(), sql.OrderByField(field, opts...))
 	}
 }
-
-// ByUserField orders the results by user field.
-func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newUserStep(), sql.OrderByField(field, opts...))
-	}
-}
 func newStorageStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -181,11 +158,11 @@ func newStorageStep() *sqlgraph.Step {
 		sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
 	)
 }
-func newNodesStep() *sqlgraph.Step {
+func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(NodesInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
+		sqlgraph.To(UserInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
 }
 func newSuperblockStep() *sqlgraph.Step {
@@ -193,12 +170,5 @@ func newSuperblockStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SuperblockInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, false, SuperblockTable, SuperblockColumn),
-	)
-}
-func newUserStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(UserInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
 	)
 }

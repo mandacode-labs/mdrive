@@ -40,8 +40,9 @@ func (Node) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 
-		// Drive ID
-		field.String("drive_id"),
+		// Superblock ID
+		field.UUID("superblock_id", uuid.UUID{}).
+			Immutable(),
 
 		// Node kind (file, directory, symlink, object, mount).
 		field.Enum("kind").
@@ -81,10 +82,11 @@ func (Node) Fields() []ent.Field {
 
 func (Node) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("drive", Drive.Type).
+		edge.From("superblock", Superblock.Type).
 			Ref("nodes").
-			Field("drive_id").
+			Field("superblock_id").
 			Unique().
+			Immutable().
 			Required(),
 	}
 }

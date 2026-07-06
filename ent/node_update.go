@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
@@ -32,20 +31,6 @@ func (_u *NodeUpdate) Where(ps ...predicate.Node) *NodeUpdate {
 // SetUpdateTime sets the "update_time" field.
 func (_u *NodeUpdate) SetUpdateTime(v time.Time) *NodeUpdate {
 	_u.mutation.SetUpdateTime(v)
-	return _u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (_u *NodeUpdate) SetDriveID(v string) *NodeUpdate {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *NodeUpdate) SetNillableDriveID(v *string) *NodeUpdate {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
 	return _u
 }
 
@@ -208,20 +193,9 @@ func (_u *NodeUpdate) SetNillableRevision(v *string) *NodeUpdate {
 	return _u
 }
 
-// SetDrive sets the "drive" edge to the Drive entity.
-func (_u *NodeUpdate) SetDrive(v *Drive) *NodeUpdate {
-	return _u.SetDriveID(v.ID)
-}
-
 // Mutation returns the NodeMutation object of the builder.
 func (_u *NodeUpdate) Mutation() *NodeMutation {
 	return _u.mutation
-}
-
-// ClearDrive clears the "drive" edge to the Drive entity.
-func (_u *NodeUpdate) ClearDrive() *NodeUpdate {
-	_u.mutation.ClearDrive()
-	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -277,8 +251,8 @@ func (_u *NodeUpdate) check() error {
 			return &ValidationError{Name: "revision", err: fmt.Errorf(`ent: validator failed for field "Node.revision": %w`, err)}
 		}
 	}
-	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Node.drive"`)
+	if _u.mutation.SuperblockCleared() && len(_u.mutation.SuperblockIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Node.superblock"`)
 	}
 	return nil
 }
@@ -340,35 +314,6 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Revision(); ok {
 		_spec.SetField(node.FieldRevision, field.TypeString, value)
 	}
-	if _u.mutation.DriveCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   node.DriveTable,
-			Columns: []string{node.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DriveIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   node.DriveTable,
-			Columns: []string{node.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{node.Label}
@@ -392,20 +337,6 @@ type NodeUpdateOne struct {
 // SetUpdateTime sets the "update_time" field.
 func (_u *NodeUpdateOne) SetUpdateTime(v time.Time) *NodeUpdateOne {
 	_u.mutation.SetUpdateTime(v)
-	return _u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (_u *NodeUpdateOne) SetDriveID(v string) *NodeUpdateOne {
-	_u.mutation.SetDriveID(v)
-	return _u
-}
-
-// SetNillableDriveID sets the "drive_id" field if the given value is not nil.
-func (_u *NodeUpdateOne) SetNillableDriveID(v *string) *NodeUpdateOne {
-	if v != nil {
-		_u.SetDriveID(*v)
-	}
 	return _u
 }
 
@@ -568,20 +499,9 @@ func (_u *NodeUpdateOne) SetNillableRevision(v *string) *NodeUpdateOne {
 	return _u
 }
 
-// SetDrive sets the "drive" edge to the Drive entity.
-func (_u *NodeUpdateOne) SetDrive(v *Drive) *NodeUpdateOne {
-	return _u.SetDriveID(v.ID)
-}
-
 // Mutation returns the NodeMutation object of the builder.
 func (_u *NodeUpdateOne) Mutation() *NodeMutation {
 	return _u.mutation
-}
-
-// ClearDrive clears the "drive" edge to the Drive entity.
-func (_u *NodeUpdateOne) ClearDrive() *NodeUpdateOne {
-	_u.mutation.ClearDrive()
-	return _u
 }
 
 // Where appends a list predicates to the NodeUpdate builder.
@@ -650,8 +570,8 @@ func (_u *NodeUpdateOne) check() error {
 			return &ValidationError{Name: "revision", err: fmt.Errorf(`ent: validator failed for field "Node.revision": %w`, err)}
 		}
 	}
-	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Node.drive"`)
+	if _u.mutation.SuperblockCleared() && len(_u.mutation.SuperblockIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Node.superblock"`)
 	}
 	return nil
 }
@@ -729,35 +649,6 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	}
 	if value, ok := _u.mutation.Revision(); ok {
 		_spec.SetField(node.FieldRevision, field.TypeString, value)
-	}
-	if _u.mutation.DriveCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   node.DriveTable,
-			Columns: []string{node.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DriveIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   node.DriveTable,
-			Columns: []string{node.DriveColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Node{config: _u.config}
 	_spec.Assign = _node.assignValues

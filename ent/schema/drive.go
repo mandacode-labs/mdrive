@@ -83,17 +83,20 @@ func (Drive) Edges() []ent.Edge {
 				OnDelete: entsql.Cascade,
 			}).
 			Unique(),
-		edge.To("nodes", Node.Type).
-			Annotations(entsql.Annotation{
-				OnDelete: entsql.Cascade,
-			}),
-		// Drive has exactly one superblock (1:1) — its filesystem root.
-		edge.To("superblock", Superblock.Type).
-			Unique(),
+
+		// Drive belongs to exactly one user (1:1).
 		edge.From("user", User.Type).
 			Ref("drives").
 			Field("owner_id").
 			Unique().
 			Required(),
+
+		// Drive has exactly one superblock (1:1) — its filesystem root.
+		edge.To("superblock", Superblock.Type).
+			Unique().
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
 	}
 }
+

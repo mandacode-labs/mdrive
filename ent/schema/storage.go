@@ -42,7 +42,7 @@ func (Storage) Fields() []ent.Field {
 			MaxLen(255),
 
 		// Secret key (sensitive, never log).
-		field.String("secret_key").
+		field.String("encrypted_secret_key").
 			MaxLen(255),
 
 		// Use path-style addressing (required for MinIO).

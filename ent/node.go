@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
-	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 )
 
 // Node is the model entity for the Node schema.
@@ -23,8 +23,8 @@ type Node struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
-	// DriveID holds the value of the "drive_id" field.
-	DriveID string `json:"drive_id,omitempty"`
+	// SuperblockID holds the value of the "superblock_id" field.
+	SuperblockID uuid.UUID `json:"superblock_id,omitempty"`
 	// Kind holds the value of the "kind" field.
 	Kind node.Kind `json:"kind,omitempty"`
 	// Size holds the value of the "size" field.
@@ -53,22 +53,22 @@ type Node struct {
 
 // NodeEdges holds the relations/edges for other nodes in the graph.
 type NodeEdges struct {
-	// Drive holds the value of the drive edge.
-	Drive *Drive `json:"drive,omitempty"`
+	// Superblock holds the value of the superblock edge.
+	Superblock *Superblock `json:"superblock,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// DriveOrErr returns the Drive value or an error if the edge
+// SuperblockOrErr returns the Superblock value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e NodeEdges) DriveOrErr() (*Drive, error) {
-	if e.Drive != nil {
-		return e.Drive, nil
+func (e NodeEdges) SuperblockOrErr() (*Superblock, error) {
+	if e.Superblock != nil {
+		return e.Superblock, nil
 	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: drive.Label}
+		return nil, &NotFoundError{label: superblock.Label}
 	}
-	return nil, &NotLoadedError{edge: "drive"}
+	return nil, &NotLoadedError{edge: "superblock"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -80,11 +80,11 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case node.FieldSize, node.FieldNlink, node.FieldFlags:
 			values[i] = new(sql.NullInt64)
-		case node.FieldDriveID, node.FieldKind, node.FieldRevision:
+		case node.FieldKind, node.FieldRevision:
 			values[i] = new(sql.NullString)
 		case node.FieldCreateTime, node.FieldUpdateTime, node.FieldAtime, node.FieldMtime, node.FieldCtime, node.FieldBtime:
 			values[i] = new(sql.NullTime)
-		case node.FieldID:
+		case node.FieldID, node.FieldSuperblockID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -119,11 +119,11 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
-		case node.FieldDriveID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field drive_id", values[i])
-			} else if value.Valid {
-				_m.DriveID = value.String
+		case node.FieldSuperblockID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field superblock_id", values[i])
+			} else if value != nil {
+				_m.SuperblockID = *value
 			}
 		case node.FieldKind:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -198,9 +198,9 @@ func (_m *Node) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryDrive queries the "drive" edge of the Node entity.
-func (_m *Node) QueryDrive() *DriveQuery {
-	return NewNodeClient(_m.config).QueryDrive(_m)
+// QuerySuperblock queries the "superblock" edge of the Node entity.
+func (_m *Node) QuerySuperblock() *SuperblockQuery {
+	return NewNodeClient(_m.config).QuerySuperblock(_m)
 }
 
 // Update returns a builder for updating this Node.
@@ -232,8 +232,8 @@ func (_m *Node) String() string {
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("drive_id=")
-	builder.WriteString(_m.DriveID)
+	builder.WriteString("superblock_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SuperblockID))
 	builder.WriteString(", ")
 	builder.WriteString("kind=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Kind))

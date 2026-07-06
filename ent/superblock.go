@@ -23,22 +23,25 @@ type Superblock struct {
 	CreateTime time.Time `json:"create_time,omitempty"`
 	// UpdateTime holds the value of the "update_time" field.
 	UpdateTime time.Time `json:"update_time,omitempty"`
+	// DriveID holds the value of the "drive_id" field.
+	DriveID string `json:"drive_id,omitempty"`
 	// RootNodeID holds the value of the "root_node_id" field.
 	RootNodeID uuid.UUID `json:"root_node_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SuperblockQuery when eager-loading is set.
-	Edges            SuperblockEdges `json:"edges"`
-	drive_superblock *string
-	selectValues     sql.SelectValues
+	Edges        SuperblockEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // SuperblockEdges holds the relations/edges for other nodes in the graph.
 type SuperblockEdges struct {
 	// Drive holds the value of the drive edge.
 	Drive *Drive `json:"drive,omitempty"`
+	// Nodes holds the value of the nodes edge.
+	Nodes []*Node `json:"nodes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // DriveOrErr returns the Drive value or an error if the edge
@@ -52,17 +55,26 @@ func (e SuperblockEdges) DriveOrErr() (*Drive, error) {
 	return nil, &NotLoadedError{edge: "drive"}
 }
 
+// NodesOrErr returns the Nodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e SuperblockEdges) NodesOrErr() ([]*Node, error) {
+	if e.loadedTypes[1] {
+		return e.Nodes, nil
+	}
+	return nil, &NotLoadedError{edge: "nodes"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Superblock) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case superblock.FieldDriveID:
+			values[i] = new(sql.NullString)
 		case superblock.FieldCreateTime, superblock.FieldUpdateTime:
 			values[i] = new(sql.NullTime)
 		case superblock.FieldID, superblock.FieldRootNodeID:
 			values[i] = new(uuid.UUID)
-		case superblock.ForeignKeys[0]: // drive_superblock
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -96,18 +108,17 @@ func (_m *Superblock) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdateTime = value.Time
 			}
+		case superblock.FieldDriveID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field drive_id", values[i])
+			} else if value.Valid {
+				_m.DriveID = value.String
+			}
 		case superblock.FieldRootNodeID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
 				return fmt.Errorf("unexpected type %T for field root_node_id", values[i])
 			} else if value != nil {
 				_m.RootNodeID = *value
-			}
-		case superblock.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field drive_superblock", values[i])
-			} else if value.Valid {
-				_m.drive_superblock = new(string)
-				*_m.drive_superblock = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -125,6 +136,11 @@ func (_m *Superblock) Value(name string) (ent.Value, error) {
 // QueryDrive queries the "drive" edge of the Superblock entity.
 func (_m *Superblock) QueryDrive() *DriveQuery {
 	return NewSuperblockClient(_m.config).QueryDrive(_m)
+}
+
+// QueryNodes queries the "nodes" edge of the Superblock entity.
+func (_m *Superblock) QueryNodes() *NodeQuery {
+	return NewSuperblockClient(_m.config).QueryNodes(_m)
 }
 
 // Update returns a builder for updating this Superblock.
@@ -155,6 +171,9 @@ func (_m *Superblock) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("update_time=")
 	builder.WriteString(_m.UpdateTime.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("drive_id=")
+	builder.WriteString(_m.DriveID)
 	builder.WriteString(", ")
 	builder.WriteString("root_node_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RootNodeID))

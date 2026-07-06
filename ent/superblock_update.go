@@ -11,6 +11,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
+	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 )
@@ -34,9 +36,45 @@ func (_u *SuperblockUpdate) SetUpdateTime(v time.Time) *SuperblockUpdate {
 	return _u
 }
 
+// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
+func (_u *SuperblockUpdate) AddNodeIDs(ids ...uuid.UUID) *SuperblockUpdate {
+	_u.mutation.AddNodeIDs(ids...)
+	return _u
+}
+
+// AddNodes adds the "nodes" edges to the Node entity.
+func (_u *SuperblockUpdate) AddNodes(v ...*Node) *SuperblockUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNodeIDs(ids...)
+}
+
 // Mutation returns the SuperblockMutation object of the builder.
 func (_u *SuperblockUpdate) Mutation() *SuperblockMutation {
 	return _u.mutation
+}
+
+// ClearNodes clears all "nodes" edges to the Node entity.
+func (_u *SuperblockUpdate) ClearNodes() *SuperblockUpdate {
+	_u.mutation.ClearNodes()
+	return _u
+}
+
+// RemoveNodeIDs removes the "nodes" edge to Node entities by IDs.
+func (_u *SuperblockUpdate) RemoveNodeIDs(ids ...uuid.UUID) *SuperblockUpdate {
+	_u.mutation.RemoveNodeIDs(ids...)
+	return _u
+}
+
+// RemoveNodes removes "nodes" edges to Node entities.
+func (_u *SuperblockUpdate) RemoveNodes(v ...*Node) *SuperblockUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNodeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -98,6 +136,51 @@ func (_u *SuperblockUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(superblock.FieldUpdateTime, field.TypeTime, value)
 	}
+	if _u.mutation.NodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNodesIDs(); len(nodes) > 0 && !_u.mutation.NodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{superblock.Label}
@@ -124,9 +207,45 @@ func (_u *SuperblockUpdateOne) SetUpdateTime(v time.Time) *SuperblockUpdateOne {
 	return _u
 }
 
+// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
+func (_u *SuperblockUpdateOne) AddNodeIDs(ids ...uuid.UUID) *SuperblockUpdateOne {
+	_u.mutation.AddNodeIDs(ids...)
+	return _u
+}
+
+// AddNodes adds the "nodes" edges to the Node entity.
+func (_u *SuperblockUpdateOne) AddNodes(v ...*Node) *SuperblockUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddNodeIDs(ids...)
+}
+
 // Mutation returns the SuperblockMutation object of the builder.
 func (_u *SuperblockUpdateOne) Mutation() *SuperblockMutation {
 	return _u.mutation
+}
+
+// ClearNodes clears all "nodes" edges to the Node entity.
+func (_u *SuperblockUpdateOne) ClearNodes() *SuperblockUpdateOne {
+	_u.mutation.ClearNodes()
+	return _u
+}
+
+// RemoveNodeIDs removes the "nodes" edge to Node entities by IDs.
+func (_u *SuperblockUpdateOne) RemoveNodeIDs(ids ...uuid.UUID) *SuperblockUpdateOne {
+	_u.mutation.RemoveNodeIDs(ids...)
+	return _u
+}
+
+// RemoveNodes removes "nodes" edges to Node entities.
+func (_u *SuperblockUpdateOne) RemoveNodes(v ...*Node) *SuperblockUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveNodeIDs(ids...)
 }
 
 // Where appends a list predicates to the SuperblockUpdate builder.
@@ -217,6 +336,51 @@ func (_u *SuperblockUpdateOne) sqlSave(ctx context.Context) (_node *Superblock, 
 	}
 	if value, ok := _u.mutation.UpdateTime(); ok {
 		_spec.SetField(superblock.FieldUpdateTime, field.TypeTime, value)
+	}
+	if _u.mutation.NodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedNodesIDs(); len(nodes) > 0 && !_u.mutation.NodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.NodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   superblock.NodesTable,
+			Columns: []string{superblock.NodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Superblock{config: _u.config}
 	_spec.Assign = _node.assignValues

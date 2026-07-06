@@ -13,7 +13,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
@@ -126,19 +125,15 @@ func (_u *DriveUpdate) SetStorage(v *Storage) *DriveUpdate {
 	return _u.SetStorageID(v.ID)
 }
 
-// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
-func (_u *DriveUpdate) AddNodeIDs(ids ...uuid.UUID) *DriveUpdate {
-	_u.mutation.AddNodeIDs(ids...)
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *DriveUpdate) SetUserID(id string) *DriveUpdate {
+	_u.mutation.SetUserID(id)
 	return _u
 }
 
-// AddNodes adds the "nodes" edges to the Node entity.
-func (_u *DriveUpdate) AddNodes(v ...*Node) *DriveUpdate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddNodeIDs(ids...)
+// SetUser sets the "user" edge to the User entity.
+func (_u *DriveUpdate) SetUser(v *User) *DriveUpdate {
+	return _u.SetUserID(v.ID)
 }
 
 // SetSuperblockID sets the "superblock" edge to the Superblock entity by ID.
@@ -160,17 +155,6 @@ func (_u *DriveUpdate) SetSuperblock(v *Superblock) *DriveUpdate {
 	return _u.SetSuperblockID(v.ID)
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *DriveUpdate) SetUserID(id string) *DriveUpdate {
-	_u.mutation.SetUserID(id)
-	return _u
-}
-
-// SetUser sets the "user" edge to the User entity.
-func (_u *DriveUpdate) SetUser(v *User) *DriveUpdate {
-	return _u.SetUserID(v.ID)
-}
-
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdate) Mutation() *DriveMutation {
 	return _u.mutation
@@ -182,36 +166,15 @@ func (_u *DriveUpdate) ClearStorage() *DriveUpdate {
 	return _u
 }
 
-// ClearNodes clears all "nodes" edges to the Node entity.
-func (_u *DriveUpdate) ClearNodes() *DriveUpdate {
-	_u.mutation.ClearNodes()
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DriveUpdate) ClearUser() *DriveUpdate {
+	_u.mutation.ClearUser()
 	return _u
-}
-
-// RemoveNodeIDs removes the "nodes" edge to Node entities by IDs.
-func (_u *DriveUpdate) RemoveNodeIDs(ids ...uuid.UUID) *DriveUpdate {
-	_u.mutation.RemoveNodeIDs(ids...)
-	return _u
-}
-
-// RemoveNodes removes "nodes" edges to Node entities.
-func (_u *DriveUpdate) RemoveNodes(v ...*Node) *DriveUpdate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveNodeIDs(ids...)
 }
 
 // ClearSuperblock clears the "superblock" edge to the Superblock entity.
 func (_u *DriveUpdate) ClearSuperblock() *DriveUpdate {
 	_u.mutation.ClearSuperblock()
-	return _u
-}
-
-// ClearUser clears the "user" edge to the User entity.
-func (_u *DriveUpdate) ClearUser() *DriveUpdate {
-	_u.mutation.ClearUser()
 	return _u
 }
 
@@ -328,44 +291,28 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.NodesCleared() {
+	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedNodesIDs(); len(nodes) > 0 && !_u.mutation.NodesCleared() {
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.NodesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -395,35 +342,6 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   drive.UserTable,
-			Columns: []string{drive.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   drive.UserTable,
-			Columns: []string{drive.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -544,19 +462,15 @@ func (_u *DriveUpdateOne) SetStorage(v *Storage) *DriveUpdateOne {
 	return _u.SetStorageID(v.ID)
 }
 
-// AddNodeIDs adds the "nodes" edge to the Node entity by IDs.
-func (_u *DriveUpdateOne) AddNodeIDs(ids ...uuid.UUID) *DriveUpdateOne {
-	_u.mutation.AddNodeIDs(ids...)
+// SetUserID sets the "user" edge to the User entity by ID.
+func (_u *DriveUpdateOne) SetUserID(id string) *DriveUpdateOne {
+	_u.mutation.SetUserID(id)
 	return _u
 }
 
-// AddNodes adds the "nodes" edges to the Node entity.
-func (_u *DriveUpdateOne) AddNodes(v ...*Node) *DriveUpdateOne {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddNodeIDs(ids...)
+// SetUser sets the "user" edge to the User entity.
+func (_u *DriveUpdateOne) SetUser(v *User) *DriveUpdateOne {
+	return _u.SetUserID(v.ID)
 }
 
 // SetSuperblockID sets the "superblock" edge to the Superblock entity by ID.
@@ -578,17 +492,6 @@ func (_u *DriveUpdateOne) SetSuperblock(v *Superblock) *DriveUpdateOne {
 	return _u.SetSuperblockID(v.ID)
 }
 
-// SetUserID sets the "user" edge to the User entity by ID.
-func (_u *DriveUpdateOne) SetUserID(id string) *DriveUpdateOne {
-	_u.mutation.SetUserID(id)
-	return _u
-}
-
-// SetUser sets the "user" edge to the User entity.
-func (_u *DriveUpdateOne) SetUser(v *User) *DriveUpdateOne {
-	return _u.SetUserID(v.ID)
-}
-
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdateOne) Mutation() *DriveMutation {
 	return _u.mutation
@@ -600,36 +503,15 @@ func (_u *DriveUpdateOne) ClearStorage() *DriveUpdateOne {
 	return _u
 }
 
-// ClearNodes clears all "nodes" edges to the Node entity.
-func (_u *DriveUpdateOne) ClearNodes() *DriveUpdateOne {
-	_u.mutation.ClearNodes()
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DriveUpdateOne) ClearUser() *DriveUpdateOne {
+	_u.mutation.ClearUser()
 	return _u
-}
-
-// RemoveNodeIDs removes the "nodes" edge to Node entities by IDs.
-func (_u *DriveUpdateOne) RemoveNodeIDs(ids ...uuid.UUID) *DriveUpdateOne {
-	_u.mutation.RemoveNodeIDs(ids...)
-	return _u
-}
-
-// RemoveNodes removes "nodes" edges to Node entities.
-func (_u *DriveUpdateOne) RemoveNodes(v ...*Node) *DriveUpdateOne {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveNodeIDs(ids...)
 }
 
 // ClearSuperblock clears the "superblock" edge to the Superblock entity.
 func (_u *DriveUpdateOne) ClearSuperblock() *DriveUpdateOne {
 	_u.mutation.ClearSuperblock()
-	return _u
-}
-
-// ClearUser clears the "user" edge to the User entity.
-func (_u *DriveUpdateOne) ClearUser() *DriveUpdateOne {
-	_u.mutation.ClearUser()
 	return _u
 }
 
@@ -776,44 +658,28 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.NodesCleared() {
+	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.RemovedNodesIDs(); len(nodes) > 0 && !_u.mutation.NodesCleared() {
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   drive.UserTable,
+			Columns: []string{drive.UserColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.NodesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   drive.NodesTable,
-			Columns: []string{drive.NodesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -843,35 +709,6 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.UserCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   drive.UserTable,
-			Columns: []string{drive.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   drive.UserTable,
-			Columns: []string{drive.UserColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

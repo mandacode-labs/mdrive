@@ -44,6 +44,10 @@ func (Superblock) Fields() []ent.Field {
 			Unique().
 			Immutable(),
 
+		field.String("drive_id").
+			Unique().
+			Immutable(),
+
 		// Root node inode (UUID, references Node.id). This is
 		// what vfs uses to start path resolution.
 		field.UUID("root_node_id", uuid.UUID{}).
@@ -57,8 +61,14 @@ func (Superblock) Edges() []ent.Edge {
 		// Belongs to exactly one drive.
 		edge.From("drive", Drive.Type).
 			Ref("superblock").
+			Field("drive_id").
 			Unique().
 			Required().
 			Immutable(),
+		edge.To("nodes", Node.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
 	}
 }
+

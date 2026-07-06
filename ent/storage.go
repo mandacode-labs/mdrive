@@ -29,8 +29,8 @@ type Storage struct {
 	Region string `json:"region,omitempty"`
 	// AccessKey holds the value of the "access_key" field.
 	AccessKey string `json:"access_key,omitempty"`
-	// SecretKey holds the value of the "secret_key" field.
-	SecretKey string `json:"secret_key,omitempty"`
+	// EncryptedSecretKey holds the value of the "encrypted_secret_key" field.
+	EncryptedSecretKey string `json:"encrypted_secret_key,omitempty"`
 	// UsePathStyle holds the value of the "use_path_style" field.
 	UsePathStyle bool `json:"use_path_style,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -68,7 +68,7 @@ func (*Storage) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case storage.FieldID:
 			values[i] = new(sql.NullInt64)
-		case storage.FieldDriveID, storage.FieldProvider, storage.FieldBucket, storage.FieldEndpoint, storage.FieldRegion, storage.FieldAccessKey, storage.FieldSecretKey:
+		case storage.FieldDriveID, storage.FieldProvider, storage.FieldBucket, storage.FieldEndpoint, storage.FieldRegion, storage.FieldAccessKey, storage.FieldEncryptedSecretKey:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -128,11 +128,11 @@ func (_m *Storage) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AccessKey = value.String
 			}
-		case storage.FieldSecretKey:
+		case storage.FieldEncryptedSecretKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field secret_key", values[i])
+				return fmt.Errorf("unexpected type %T for field encrypted_secret_key", values[i])
 			} else if value.Valid {
-				_m.SecretKey = value.String
+				_m.EncryptedSecretKey = value.String
 			}
 		case storage.FieldUsePathStyle:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -201,8 +201,8 @@ func (_m *Storage) String() string {
 	builder.WriteString("access_key=")
 	builder.WriteString(_m.AccessKey)
 	builder.WriteString(", ")
-	builder.WriteString("secret_key=")
-	builder.WriteString(_m.SecretKey)
+	builder.WriteString("encrypted_secret_key=")
+	builder.WriteString(_m.EncryptedSecretKey)
 	builder.WriteString(", ")
 	builder.WriteString("use_path_style=")
 	builder.WriteString(fmt.Sprintf("%v", _m.UsePathStyle))

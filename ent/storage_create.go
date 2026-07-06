@@ -74,9 +74,9 @@ func (_c *StorageCreate) SetAccessKey(v string) *StorageCreate {
 	return _c
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (_c *StorageCreate) SetSecretKey(v string) *StorageCreate {
-	_c.mutation.SetSecretKey(v)
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (_c *StorageCreate) SetEncryptedSecretKey(v string) *StorageCreate {
+	_c.mutation.SetEncryptedSecretKey(v)
 	return _c
 }
 
@@ -186,12 +186,12 @@ func (_c *StorageCreate) check() error {
 			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.SecretKey(); !ok {
-		return &ValidationError{Name: "secret_key", err: errors.New(`ent: missing required field "Storage.secret_key"`)}
+	if _, ok := _c.mutation.EncryptedSecretKey(); !ok {
+		return &ValidationError{Name: "encrypted_secret_key", err: errors.New(`ent: missing required field "Storage.encrypted_secret_key"`)}
 	}
-	if v, ok := _c.mutation.SecretKey(); ok {
-		if err := storage.SecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.secret_key": %w`, err)}
+	if v, ok := _c.mutation.EncryptedSecretKey(); ok {
+		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
+			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.UsePathStyle(); !ok {
@@ -247,9 +247,9 @@ func (_c *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
 		_node.AccessKey = value
 	}
-	if value, ok := _c.mutation.SecretKey(); ok {
-		_spec.SetField(storage.FieldSecretKey, field.TypeString, value)
-		_node.SecretKey = value
+	if value, ok := _c.mutation.EncryptedSecretKey(); ok {
+		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
+		_node.EncryptedSecretKey = value
 	}
 	if value, ok := _c.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
@@ -390,15 +390,15 @@ func (u *StorageUpsert) UpdateAccessKey() *StorageUpsert {
 	return u
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (u *StorageUpsert) SetSecretKey(v string) *StorageUpsert {
-	u.Set(storage.FieldSecretKey, v)
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (u *StorageUpsert) SetEncryptedSecretKey(v string) *StorageUpsert {
+	u.Set(storage.FieldEncryptedSecretKey, v)
 	return u
 }
 
-// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
-func (u *StorageUpsert) UpdateSecretKey() *StorageUpsert {
-	u.SetExcluded(storage.FieldSecretKey)
+// UpdateEncryptedSecretKey sets the "encrypted_secret_key" field to the value that was provided on create.
+func (u *StorageUpsert) UpdateEncryptedSecretKey() *StorageUpsert {
+	u.SetExcluded(storage.FieldEncryptedSecretKey)
 	return u
 }
 
@@ -536,17 +536,17 @@ func (u *StorageUpsertOne) UpdateAccessKey() *StorageUpsertOne {
 	})
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (u *StorageUpsertOne) SetSecretKey(v string) *StorageUpsertOne {
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (u *StorageUpsertOne) SetEncryptedSecretKey(v string) *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
-		s.SetSecretKey(v)
+		s.SetEncryptedSecretKey(v)
 	})
 }
 
-// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
-func (u *StorageUpsertOne) UpdateSecretKey() *StorageUpsertOne {
+// UpdateEncryptedSecretKey sets the "encrypted_secret_key" field to the value that was provided on create.
+func (u *StorageUpsertOne) UpdateEncryptedSecretKey() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
-		s.UpdateSecretKey()
+		s.UpdateEncryptedSecretKey()
 	})
 }
 
@@ -852,17 +852,17 @@ func (u *StorageUpsertBulk) UpdateAccessKey() *StorageUpsertBulk {
 	})
 }
 
-// SetSecretKey sets the "secret_key" field.
-func (u *StorageUpsertBulk) SetSecretKey(v string) *StorageUpsertBulk {
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (u *StorageUpsertBulk) SetEncryptedSecretKey(v string) *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
-		s.SetSecretKey(v)
+		s.SetEncryptedSecretKey(v)
 	})
 }
 
-// UpdateSecretKey sets the "secret_key" field to the value that was provided on create.
-func (u *StorageUpsertBulk) UpdateSecretKey() *StorageUpsertBulk {
+// UpdateEncryptedSecretKey sets the "encrypted_secret_key" field to the value that was provided on create.
+func (u *StorageUpsertBulk) UpdateEncryptedSecretKey() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
-		s.UpdateSecretKey()
+		s.UpdateEncryptedSecretKey()
 	})
 }
 

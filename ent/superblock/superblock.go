@@ -19,10 +19,14 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
+	// FieldDriveID holds the string denoting the drive_id field in the database.
+	FieldDriveID = "drive_id"
 	// FieldRootNodeID holds the string denoting the root_node_id field in the database.
 	FieldRootNodeID = "root_node_id"
 	// EdgeDrive holds the string denoting the drive edge name in mutations.
 	EdgeDrive = "drive"
+	// EdgeNodes holds the string denoting the nodes edge name in mutations.
+	EdgeNodes = "nodes"
 	// Table holds the table name of the superblock in the database.
 	Table = "superblocks"
 	// DriveTable is the table that holds the drive relation/edge.
@@ -31,7 +35,14 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "drive" package.
 	DriveInverseTable = "drives"
 	// DriveColumn is the table column denoting the drive relation/edge.
-	DriveColumn = "drive_superblock"
+	DriveColumn = "drive_id"
+	// NodesTable is the table that holds the nodes relation/edge.
+	NodesTable = "nodes"
+	// NodesInverseTable is the table name for the Node entity.
+	// It exists in this package in order to avoid circular dependency with the "node" package.
+	NodesInverseTable = "nodes"
+	// NodesColumn is the table column denoting the nodes relation/edge.
+	NodesColumn = "superblock_id"
 )
 
 // Columns holds all SQL columns for superblock fields.
@@ -39,24 +50,14 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
+	FieldDriveID,
 	FieldRootNodeID,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "superblocks"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"drive_superblock",
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}
@@ -92,6 +93,11 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
+// ByDriveID orders the results by the drive_id field.
+func ByDriveID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDriveID, opts...).ToFunc()
+}
+
 // ByRootNodeID orders the results by the root_node_id field.
 func ByRootNodeID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRootNodeID, opts...).ToFunc()
@@ -103,10 +109,31 @@ func ByDriveField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDriveStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByNodesCount orders the results by nodes count.
+func ByNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNodesStep(), opts...)
+	}
+}
+
+// ByNodes orders the results by nodes terms.
+func ByNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDriveStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DriveInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, true, DriveTable, DriveColumn),
+	)
+}
+func newNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
 	)
 }

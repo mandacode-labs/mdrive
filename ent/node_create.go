@@ -13,8 +13,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 )
 
 // NodeCreate is the builder for creating a Node entity.
@@ -53,9 +53,9 @@ func (_c *NodeCreate) SetNillableUpdateTime(v *time.Time) *NodeCreate {
 	return _c
 }
 
-// SetDriveID sets the "drive_id" field.
-func (_c *NodeCreate) SetDriveID(v string) *NodeCreate {
-	_c.mutation.SetDriveID(v)
+// SetSuperblockID sets the "superblock_id" field.
+func (_c *NodeCreate) SetSuperblockID(v uuid.UUID) *NodeCreate {
+	_c.mutation.SetSuperblockID(v)
 	return _c
 }
 
@@ -165,9 +165,9 @@ func (_c *NodeCreate) SetNillableID(v *uuid.UUID) *NodeCreate {
 	return _c
 }
 
-// SetDrive sets the "drive" edge to the Drive entity.
-func (_c *NodeCreate) SetDrive(v *Drive) *NodeCreate {
-	return _c.SetDriveID(v.ID)
+// SetSuperblock sets the "superblock" edge to the Superblock entity.
+func (_c *NodeCreate) SetSuperblock(v *Superblock) *NodeCreate {
+	return _c.SetSuperblockID(v.ID)
 }
 
 // Mutation returns the NodeMutation object of the builder.
@@ -243,8 +243,8 @@ func (_c *NodeCreate) check() error {
 	if _, ok := _c.mutation.UpdateTime(); !ok {
 		return &ValidationError{Name: "update_time", err: errors.New(`ent: missing required field "Node.update_time"`)}
 	}
-	if _, ok := _c.mutation.DriveID(); !ok {
-		return &ValidationError{Name: "drive_id", err: errors.New(`ent: missing required field "Node.drive_id"`)}
+	if _, ok := _c.mutation.SuperblockID(); !ok {
+		return &ValidationError{Name: "superblock_id", err: errors.New(`ent: missing required field "Node.superblock_id"`)}
 	}
 	if _, ok := _c.mutation.Kind(); !ok {
 		return &ValidationError{Name: "kind", err: errors.New(`ent: missing required field "Node.kind"`)}
@@ -288,8 +288,8 @@ func (_c *NodeCreate) check() error {
 			return &ValidationError{Name: "revision", err: fmt.Errorf(`ent: validator failed for field "Node.revision": %w`, err)}
 		}
 	}
-	if len(_c.mutation.DriveIDs()) == 0 {
-		return &ValidationError{Name: "drive", err: errors.New(`ent: missing required edge "Node.drive"`)}
+	if len(_c.mutation.SuperblockIDs()) == 0 {
+		return &ValidationError{Name: "superblock", err: errors.New(`ent: missing required edge "Node.superblock"`)}
 	}
 	return nil
 }
@@ -375,21 +375,21 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 		_spec.SetField(node.FieldRevision, field.TypeString, value)
 		_node.Revision = value
 	}
-	if nodes := _c.mutation.DriveIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.SuperblockIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   node.DriveTable,
-			Columns: []string{node.DriveColumn},
+			Table:   node.SuperblockTable,
+			Columns: []string{node.SuperblockColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(drive.FieldID, field.TypeString),
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.DriveID = nodes[0]
+		_node.SuperblockID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -453,18 +453,6 @@ func (u *NodeUpsert) SetUpdateTime(v time.Time) *NodeUpsert {
 // UpdateUpdateTime sets the "update_time" field to the value that was provided on create.
 func (u *NodeUpsert) UpdateUpdateTime() *NodeUpsert {
 	u.SetExcluded(node.FieldUpdateTime)
-	return u
-}
-
-// SetDriveID sets the "drive_id" field.
-func (u *NodeUpsert) SetDriveID(v string) *NodeUpsert {
-	u.Set(node.FieldDriveID, v)
-	return u
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *NodeUpsert) UpdateDriveID() *NodeUpsert {
-	u.SetExcluded(node.FieldDriveID)
 	return u
 }
 
@@ -632,6 +620,9 @@ func (u *NodeUpsertOne) UpdateNewValues() *NodeUpsertOne {
 		if _, exists := u.create.mutation.CreateTime(); exists {
 			s.SetIgnore(node.FieldCreateTime)
 		}
+		if _, exists := u.create.mutation.SuperblockID(); exists {
+			s.SetIgnore(node.FieldSuperblockID)
+		}
 	}))
 	return u
 }
@@ -674,20 +665,6 @@ func (u *NodeUpsertOne) SetUpdateTime(v time.Time) *NodeUpsertOne {
 func (u *NodeUpsertOne) UpdateUpdateTime() *NodeUpsertOne {
 	return u.Update(func(s *NodeUpsert) {
 		s.UpdateUpdateTime()
-	})
-}
-
-// SetDriveID sets the "drive_id" field.
-func (u *NodeUpsertOne) SetDriveID(v string) *NodeUpsertOne {
-	return u.Update(func(s *NodeUpsert) {
-		s.SetDriveID(v)
-	})
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *NodeUpsertOne) UpdateDriveID() *NodeUpsertOne {
-	return u.Update(func(s *NodeUpsert) {
-		s.UpdateDriveID()
 	})
 }
 
@@ -1045,6 +1022,9 @@ func (u *NodeUpsertBulk) UpdateNewValues() *NodeUpsertBulk {
 			if _, exists := b.mutation.CreateTime(); exists {
 				s.SetIgnore(node.FieldCreateTime)
 			}
+			if _, exists := b.mutation.SuperblockID(); exists {
+				s.SetIgnore(node.FieldSuperblockID)
+			}
 		}
 	}))
 	return u
@@ -1088,20 +1068,6 @@ func (u *NodeUpsertBulk) SetUpdateTime(v time.Time) *NodeUpsertBulk {
 func (u *NodeUpsertBulk) UpdateUpdateTime() *NodeUpsertBulk {
 	return u.Update(func(s *NodeUpsert) {
 		s.UpdateUpdateTime()
-	})
-}
-
-// SetDriveID sets the "drive_id" field.
-func (u *NodeUpsertBulk) SetDriveID(v string) *NodeUpsertBulk {
-	return u.Update(func(s *NodeUpsert) {
-		s.SetDriveID(v)
-	})
-}
-
-// UpdateDriveID sets the "drive_id" field to the value that was provided on create.
-func (u *NodeUpsertBulk) UpdateDriveID() *NodeUpsertBulk {
-	return u.Update(func(s *NodeUpsert) {
-		s.UpdateDriveID()
 	})
 }
 

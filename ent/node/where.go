@@ -66,9 +66,9 @@ func UpdateTime(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldUpdateTime, v))
 }
 
-// DriveID applies equality check predicate on the "drive_id" field. It's identical to DriveIDEQ.
-func DriveID(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldDriveID, v))
+// SuperblockID applies equality check predicate on the "superblock_id" field. It's identical to SuperblockIDEQ.
+func SuperblockID(v uuid.UUID) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldSuperblockID, v))
 }
 
 // Size applies equality check predicate on the "size" field. It's identical to SizeEQ.
@@ -196,69 +196,24 @@ func UpdateTimeLTE(v time.Time) predicate.Node {
 	return predicate.Node(sql.FieldLTE(FieldUpdateTime, v))
 }
 
-// DriveIDEQ applies the EQ predicate on the "drive_id" field.
-func DriveIDEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldEQ(FieldDriveID, v))
+// SuperblockIDEQ applies the EQ predicate on the "superblock_id" field.
+func SuperblockIDEQ(v uuid.UUID) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldSuperblockID, v))
 }
 
-// DriveIDNEQ applies the NEQ predicate on the "drive_id" field.
-func DriveIDNEQ(v string) predicate.Node {
-	return predicate.Node(sql.FieldNEQ(FieldDriveID, v))
+// SuperblockIDNEQ applies the NEQ predicate on the "superblock_id" field.
+func SuperblockIDNEQ(v uuid.UUID) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldSuperblockID, v))
 }
 
-// DriveIDIn applies the In predicate on the "drive_id" field.
-func DriveIDIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldIn(FieldDriveID, vs...))
+// SuperblockIDIn applies the In predicate on the "superblock_id" field.
+func SuperblockIDIn(vs ...uuid.UUID) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldSuperblockID, vs...))
 }
 
-// DriveIDNotIn applies the NotIn predicate on the "drive_id" field.
-func DriveIDNotIn(vs ...string) predicate.Node {
-	return predicate.Node(sql.FieldNotIn(FieldDriveID, vs...))
-}
-
-// DriveIDGT applies the GT predicate on the "drive_id" field.
-func DriveIDGT(v string) predicate.Node {
-	return predicate.Node(sql.FieldGT(FieldDriveID, v))
-}
-
-// DriveIDGTE applies the GTE predicate on the "drive_id" field.
-func DriveIDGTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldGTE(FieldDriveID, v))
-}
-
-// DriveIDLT applies the LT predicate on the "drive_id" field.
-func DriveIDLT(v string) predicate.Node {
-	return predicate.Node(sql.FieldLT(FieldDriveID, v))
-}
-
-// DriveIDLTE applies the LTE predicate on the "drive_id" field.
-func DriveIDLTE(v string) predicate.Node {
-	return predicate.Node(sql.FieldLTE(FieldDriveID, v))
-}
-
-// DriveIDContains applies the Contains predicate on the "drive_id" field.
-func DriveIDContains(v string) predicate.Node {
-	return predicate.Node(sql.FieldContains(FieldDriveID, v))
-}
-
-// DriveIDHasPrefix applies the HasPrefix predicate on the "drive_id" field.
-func DriveIDHasPrefix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasPrefix(FieldDriveID, v))
-}
-
-// DriveIDHasSuffix applies the HasSuffix predicate on the "drive_id" field.
-func DriveIDHasSuffix(v string) predicate.Node {
-	return predicate.Node(sql.FieldHasSuffix(FieldDriveID, v))
-}
-
-// DriveIDEqualFold applies the EqualFold predicate on the "drive_id" field.
-func DriveIDEqualFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldEqualFold(FieldDriveID, v))
-}
-
-// DriveIDContainsFold applies the ContainsFold predicate on the "drive_id" field.
-func DriveIDContainsFold(v string) predicate.Node {
-	return predicate.Node(sql.FieldContainsFold(FieldDriveID, v))
+// SuperblockIDNotIn applies the NotIn predicate on the "superblock_id" field.
+func SuperblockIDNotIn(vs ...uuid.UUID) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldSuperblockID, vs...))
 }
 
 // KindEQ applies the EQ predicate on the "kind" field.
@@ -676,21 +631,21 @@ func RevisionContainsFold(v string) predicate.Node {
 	return predicate.Node(sql.FieldContainsFold(FieldRevision, v))
 }
 
-// HasDrive applies the HasEdge predicate on the "drive" edge.
-func HasDrive() predicate.Node {
+// HasSuperblock applies the HasEdge predicate on the "superblock" edge.
+func HasSuperblock() predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, DriveTable, DriveColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, SuperblockTable, SuperblockColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasDriveWith applies the HasEdge predicate on the "drive" edge with a given conditions (other predicates).
-func HasDriveWith(preds ...predicate.Drive) predicate.Node {
+// HasSuperblockWith applies the HasEdge predicate on the "superblock" edge with a given conditions (other predicates).
+func HasSuperblockWith(preds ...predicate.Superblock) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
-		step := newDriveStep()
+		step := newSuperblockStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

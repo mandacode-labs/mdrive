@@ -20,8 +20,8 @@ const (
 	FieldCreateTime = "create_time"
 	// FieldUpdateTime holds the string denoting the update_time field in the database.
 	FieldUpdateTime = "update_time"
-	// FieldDriveID holds the string denoting the drive_id field in the database.
-	FieldDriveID = "drive_id"
+	// FieldSuperblockID holds the string denoting the superblock_id field in the database.
+	FieldSuperblockID = "superblock_id"
 	// FieldKind holds the string denoting the kind field in the database.
 	FieldKind = "kind"
 	// FieldSize holds the string denoting the size field in the database.
@@ -42,17 +42,17 @@ const (
 	FieldFlags = "flags"
 	// FieldRevision holds the string denoting the revision field in the database.
 	FieldRevision = "revision"
-	// EdgeDrive holds the string denoting the drive edge name in mutations.
-	EdgeDrive = "drive"
+	// EdgeSuperblock holds the string denoting the superblock edge name in mutations.
+	EdgeSuperblock = "superblock"
 	// Table holds the table name of the node in the database.
 	Table = "nodes"
-	// DriveTable is the table that holds the drive relation/edge.
-	DriveTable = "nodes"
-	// DriveInverseTable is the table name for the Drive entity.
-	// It exists in this package in order to avoid circular dependency with the "drive" package.
-	DriveInverseTable = "drives"
-	// DriveColumn is the table column denoting the drive relation/edge.
-	DriveColumn = "drive_id"
+	// SuperblockTable is the table that holds the superblock relation/edge.
+	SuperblockTable = "nodes"
+	// SuperblockInverseTable is the table name for the Superblock entity.
+	// It exists in this package in order to avoid circular dependency with the "superblock" package.
+	SuperblockInverseTable = "superblocks"
+	// SuperblockColumn is the table column denoting the superblock relation/edge.
+	SuperblockColumn = "superblock_id"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -60,7 +60,7 @@ var Columns = []string{
 	FieldID,
 	FieldCreateTime,
 	FieldUpdateTime,
-	FieldDriveID,
+	FieldSuperblockID,
 	FieldKind,
 	FieldSize,
 	FieldNlink,
@@ -151,9 +151,9 @@ func ByUpdateTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdateTime, opts...).ToFunc()
 }
 
-// ByDriveID orders the results by the drive_id field.
-func ByDriveID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDriveID, opts...).ToFunc()
+// BySuperblockID orders the results by the superblock_id field.
+func BySuperblockID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSuperblockID, opts...).ToFunc()
 }
 
 // ByKind orders the results by the kind field.
@@ -201,16 +201,16 @@ func ByRevision(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRevision, opts...).ToFunc()
 }
 
-// ByDriveField orders the results by drive field.
-func ByDriveField(field string, opts ...sql.OrderTermOption) OrderOption {
+// BySuperblockField orders the results by superblock field.
+func BySuperblockField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newDriveStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newSuperblockStep(), sql.OrderByField(field, opts...))
 	}
 }
-func newDriveStep() *sqlgraph.Step {
+func newSuperblockStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(DriveInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, DriveTable, DriveColumn),
+		sqlgraph.To(SuperblockInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, SuperblockTable, SuperblockColumn),
 	)
 }

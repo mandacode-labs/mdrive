@@ -78,9 +78,9 @@ func AccessKey(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldAccessKey, v))
 }
 
-// SecretKey applies equality check predicate on the "secret_key" field. It's identical to SecretKeyEQ.
-func SecretKey(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldSecretKey, v))
+// EncryptedSecretKey applies equality check predicate on the "encrypted_secret_key" field. It's identical to EncryptedSecretKeyEQ.
+func EncryptedSecretKey(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldEncryptedSecretKey, v))
 }
 
 // UsePathStyle applies equality check predicate on the "use_path_style" field. It's identical to UsePathStyleEQ.
@@ -443,69 +443,69 @@ func AccessKeyContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldAccessKey, v))
 }
 
-// SecretKeyEQ applies the EQ predicate on the "secret_key" field.
-func SecretKeyEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldSecretKey, v))
+// EncryptedSecretKeyEQ applies the EQ predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyNEQ applies the NEQ predicate on the "secret_key" field.
-func SecretKeyNEQ(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldNEQ(FieldSecretKey, v))
+// EncryptedSecretKeyNEQ applies the NEQ predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyNEQ(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyIn applies the In predicate on the "secret_key" field.
-func SecretKeyIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldIn(FieldSecretKey, vs...))
+// EncryptedSecretKeyIn applies the In predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldIn(FieldEncryptedSecretKey, vs...))
 }
 
-// SecretKeyNotIn applies the NotIn predicate on the "secret_key" field.
-func SecretKeyNotIn(vs ...string) predicate.Storage {
-	return predicate.Storage(sql.FieldNotIn(FieldSecretKey, vs...))
+// EncryptedSecretKeyNotIn applies the NotIn predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyNotIn(vs ...string) predicate.Storage {
+	return predicate.Storage(sql.FieldNotIn(FieldEncryptedSecretKey, vs...))
 }
 
-// SecretKeyGT applies the GT predicate on the "secret_key" field.
-func SecretKeyGT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGT(FieldSecretKey, v))
+// EncryptedSecretKeyGT applies the GT predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyGT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGT(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyGTE applies the GTE predicate on the "secret_key" field.
-func SecretKeyGTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldGTE(FieldSecretKey, v))
+// EncryptedSecretKeyGTE applies the GTE predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyGTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldGTE(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyLT applies the LT predicate on the "secret_key" field.
-func SecretKeyLT(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLT(FieldSecretKey, v))
+// EncryptedSecretKeyLT applies the LT predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyLT(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLT(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyLTE applies the LTE predicate on the "secret_key" field.
-func SecretKeyLTE(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldLTE(FieldSecretKey, v))
+// EncryptedSecretKeyLTE applies the LTE predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyLTE(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldLTE(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyContains applies the Contains predicate on the "secret_key" field.
-func SecretKeyContains(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContains(FieldSecretKey, v))
+// EncryptedSecretKeyContains applies the Contains predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyContains(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContains(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyHasPrefix applies the HasPrefix predicate on the "secret_key" field.
-func SecretKeyHasPrefix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasPrefix(FieldSecretKey, v))
+// EncryptedSecretKeyHasPrefix applies the HasPrefix predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyHasPrefix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasPrefix(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyHasSuffix applies the HasSuffix predicate on the "secret_key" field.
-func SecretKeyHasSuffix(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldHasSuffix(FieldSecretKey, v))
+// EncryptedSecretKeyHasSuffix applies the HasSuffix predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyHasSuffix(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldHasSuffix(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyEqualFold applies the EqualFold predicate on the "secret_key" field.
-func SecretKeyEqualFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldEqualFold(FieldSecretKey, v))
+// EncryptedSecretKeyEqualFold applies the EqualFold predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyEqualFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldEqualFold(FieldEncryptedSecretKey, v))
 }
 
-// SecretKeyContainsFold applies the ContainsFold predicate on the "secret_key" field.
-func SecretKeyContainsFold(v string) predicate.Storage {
-	return predicate.Storage(sql.FieldContainsFold(FieldSecretKey, v))
+// EncryptedSecretKeyContainsFold applies the ContainsFold predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyContainsFold(v string) predicate.Storage {
+	return predicate.Storage(sql.FieldContainsFold(FieldEncryptedSecretKey, v))
 }
 
 // UsePathStyleEQ applies the EQ predicate on the "use_path_style" field.

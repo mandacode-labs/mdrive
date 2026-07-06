@@ -66,6 +66,11 @@ func UpdateTime(v time.Time) predicate.Superblock {
 	return predicate.Superblock(sql.FieldEQ(FieldUpdateTime, v))
 }
 
+// DriveID applies equality check predicate on the "drive_id" field. It's identical to DriveIDEQ.
+func DriveID(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldEQ(FieldDriveID, v))
+}
+
 // RootNodeID applies equality check predicate on the "root_node_id" field. It's identical to RootNodeIDEQ.
 func RootNodeID(v uuid.UUID) predicate.Superblock {
 	return predicate.Superblock(sql.FieldEQ(FieldRootNodeID, v))
@@ -151,6 +156,71 @@ func UpdateTimeLTE(v time.Time) predicate.Superblock {
 	return predicate.Superblock(sql.FieldLTE(FieldUpdateTime, v))
 }
 
+// DriveIDEQ applies the EQ predicate on the "drive_id" field.
+func DriveIDEQ(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldEQ(FieldDriveID, v))
+}
+
+// DriveIDNEQ applies the NEQ predicate on the "drive_id" field.
+func DriveIDNEQ(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldNEQ(FieldDriveID, v))
+}
+
+// DriveIDIn applies the In predicate on the "drive_id" field.
+func DriveIDIn(vs ...string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldIn(FieldDriveID, vs...))
+}
+
+// DriveIDNotIn applies the NotIn predicate on the "drive_id" field.
+func DriveIDNotIn(vs ...string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldNotIn(FieldDriveID, vs...))
+}
+
+// DriveIDGT applies the GT predicate on the "drive_id" field.
+func DriveIDGT(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldGT(FieldDriveID, v))
+}
+
+// DriveIDGTE applies the GTE predicate on the "drive_id" field.
+func DriveIDGTE(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldGTE(FieldDriveID, v))
+}
+
+// DriveIDLT applies the LT predicate on the "drive_id" field.
+func DriveIDLT(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldLT(FieldDriveID, v))
+}
+
+// DriveIDLTE applies the LTE predicate on the "drive_id" field.
+func DriveIDLTE(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldLTE(FieldDriveID, v))
+}
+
+// DriveIDContains applies the Contains predicate on the "drive_id" field.
+func DriveIDContains(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldContains(FieldDriveID, v))
+}
+
+// DriveIDHasPrefix applies the HasPrefix predicate on the "drive_id" field.
+func DriveIDHasPrefix(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldHasPrefix(FieldDriveID, v))
+}
+
+// DriveIDHasSuffix applies the HasSuffix predicate on the "drive_id" field.
+func DriveIDHasSuffix(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldHasSuffix(FieldDriveID, v))
+}
+
+// DriveIDEqualFold applies the EqualFold predicate on the "drive_id" field.
+func DriveIDEqualFold(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldEqualFold(FieldDriveID, v))
+}
+
+// DriveIDContainsFold applies the ContainsFold predicate on the "drive_id" field.
+func DriveIDContainsFold(v string) predicate.Superblock {
+	return predicate.Superblock(sql.FieldContainsFold(FieldDriveID, v))
+}
+
 // RootNodeIDEQ applies the EQ predicate on the "root_node_id" field.
 func RootNodeIDEQ(v uuid.UUID) predicate.Superblock {
 	return predicate.Superblock(sql.FieldEQ(FieldRootNodeID, v))
@@ -206,6 +276,29 @@ func HasDrive() predicate.Superblock {
 func HasDriveWith(preds ...predicate.Drive) predicate.Superblock {
 	return predicate.Superblock(func(s *sql.Selector) {
 		step := newDriveStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasNodes applies the HasEdge predicate on the "nodes" edge.
+func HasNodes() predicate.Superblock {
+	return predicate.Superblock(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNodesWith applies the HasEdge predicate on the "nodes" edge with a given conditions (other predicates).
+func HasNodesWith(preds ...predicate.Node) predicate.Superblock {
+	return predicate.Superblock(func(s *sql.Selector) {
+		step := newNodesStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
