@@ -19,7 +19,7 @@ func (v *vfs) Link(ctx context.Context, driveID string, srcPath string, linkPath
 	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
 		return err
 	}
-	srcTarget, _, err := v.walkEntry(ctx, startDrive, srcPath, false)
+	srcTarget, err := v.walk(ctx, startDrive, srcPath, false)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (v *vfs) Link(ctx context.Context, driveID string, srcPath string, linkPath
 	if srcTarget.Node.Kind() == NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: cannot hardlink a directory")
 	}
-	dstTarget, _, err := v.walkEntry(ctx, startDrive, linkPath, false)
+	dstTarget, err := v.walk(ctx, startDrive, linkPath, false)
 	if err != nil {
 		return err
 	}

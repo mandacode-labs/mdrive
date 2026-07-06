@@ -19,11 +19,11 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	targetDentry, _, err := v.walkEntry(ctx, startDrive, target, true)
+	targetDentry, err := v.walk(ctx, startDrive, target, true)
 	if err != nil {
 		return err
 	}
-	linkDentry, sb, err := v.walkEntry(ctx, startDrive, linkPath, false)
+	linkDentry, err := v.walk(ctx, startDrive, linkPath, false)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 	}
 
 	now := time.Now()
-	link := NewNode(uuid.New(), sb.ID(), NodeKindSymlink)
+	link := NewNode(uuid.New(), linkDentry.Parent.SuperblockID(), NodeKindSymlink)
 	link.atime = now
 	link.mtime = now
 	link.ctime = now

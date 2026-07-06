@@ -16,7 +16,7 @@ func (v *vfs) Rmdir(ctx context.Context, driveID string, path string) error {
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	dentry, _, err := v.walkEntry(ctx, startDrive, path, false)
+	dentry, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
 		return err
 	}

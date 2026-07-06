@@ -38,7 +38,7 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 		return errorx.Wrap(err, "vfs: failed to marshal object content")
 	}
 
-	if target, sb, err := v.walkEntry(ctx, startDrive, path, false); err == nil {
+	if target, err := v.walk(ctx, startDrive, path, false); err == nil {
 		if target.Parent == nil {
 			return errorx.New(errorx.KindInvalidArgument, "vfs: path has no parent")
 		}
@@ -49,7 +49,7 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 			return errorx.Wrap(err, "vfs: failed to remove existing object")
 		}
 		now := time.Now()
-		child := NewNode(uuid.New(), sb.ID(), NodeKindObject)
+		child := NewNode(uuid.New(), target.Parent.SuperblockID(), NodeKindObject)
 		child.atime = now
 		child.mtime = now
 		child.ctime = now

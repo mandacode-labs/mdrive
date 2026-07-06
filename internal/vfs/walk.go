@@ -11,10 +11,47 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// walkStep walks one component. Mount nodes cross to the source
+// walk resolves `path` from `driveID`. Mirrors Linux link_path_walk.
+//
+// ActionView is checked once on the starting drive and again on
+// each mount boundary crossed. follow controls trailing symlink
+// behavior: true → stat, false → lstat/readlink.
+func (v *vfs) walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, error) {
+	sb, err := v.superop.GetByDriveID(ctx, driveID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "vfs: failed to get superblock", errorx.KindInternal)
+	}
+	if err := v.checkPerm(ctx, permission.ActionView, sb.DriveID()); err != nil {
+		return nil, err
+	}
+
+	root, err := v.nodeOp.Get(ctx, sb.RootNodeID())
+	if err != nil {
+		return nil, errorx.Wrap(err, "vfs: failed to get root node", errorx.KindInternal)
+	}
+	if root.Kind() != NodeKindDirectory {
+		return nil, errorx.New(errorx.KindInternal, "vfs: drive root is not a directory")
+	}
+
+	cur := &Dentry{Parent: nil, Name: "/", Node: root}
+	for _, name := range splitPath(path) {
+		next, err := v.walkOne(ctx, cur, name)
+		if err != nil {
+			return nil, err
+		}
+		cur = next
+	}
+
+	if follow && cur.Node.Kind() == NodeKindSymlink {
+		return v.followSymlink(ctx, cur, 8)
+	}
+	return cur, nil
+}
+
+// walkOne walks one component. Mount nodes cross to the source
 // drive (with an ActionView check); symlinks are passed through
 // for walk to resolve at the end.
-func (v *vfs) walkStep(ctx context.Context, cur *Dentry, name string) (*Dentry, error) {
+func (v *vfs) walkOne(ctx context.Context, cur *Dentry, name string) (*Dentry, error) {
 	if name == "" || name == "." {
 		return cur, nil
 	}

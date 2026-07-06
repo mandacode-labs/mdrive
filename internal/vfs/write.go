@@ -22,7 +22,7 @@ func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byt
 	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
 		return err
 	}
-	if dentry, _, err := v.walkEntry(ctx, startDrive, path, false); err == nil {
+	if dentry, err := v.walk(ctx, startDrive, path, false); err == nil {
 		if dentry.Node.Kind() != NodeKindFile {
 			return errorx.New(errorx.KindInvalidArgument, "vfs: target exists and is not a file")
 		}
@@ -37,7 +37,7 @@ func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byt
 // the given kind, and writes inline data in one step. Used by
 // Write and WriteObject on a missing target.
 func (v *vfs) createWithData(ctx context.Context, startDrive ulid.ULID, path string, kind NodeKind, data []byte) (*Node, error) {
-	target, sb, err := v.walkEntry(ctx, startDrive, path, false)
+	target, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (v *vfs) createWithData(ctx context.Context, startDrive ulid.ULID, path str
 	}
 
 	now := time.Now()
-	child := NewNode(uuid.New(), sb.ID(), kind)
+	child := NewNode(uuid.New(), target.Parent.SuperblockID(), kind)
 	child.atime = now
 	child.mtime = now
 	child.ctime = now

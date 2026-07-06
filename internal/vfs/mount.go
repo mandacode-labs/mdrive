@@ -19,7 +19,7 @@ func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourc
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	if _, _, err := v.walkEntry(ctx, startDrive, mountPath, false); err == nil {
+	if _, err := v.walk(ctx, startDrive, mountPath, false); err == nil {
 		return errorx.New(errorx.KindAlreadyExists, "vfs: mount path already exists")
 	}
 	srcULID, err := ulid.Parse(sourceDriveID)
@@ -29,7 +29,7 @@ func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourc
 	if _, err := v.superop.GetByDriveID(ctx, srcULID); err != nil {
 		return err
 	}
-	target, _, err := v.walkEntry(ctx, startDrive, mountPath, false)
+	target, err := v.walk(ctx, startDrive, mountPath, false)
 	if err != nil {
 		return err
 	}

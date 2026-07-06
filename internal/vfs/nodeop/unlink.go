@@ -7,7 +7,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Unlink implements [NodeOperation]. Removes the directory entry
@@ -26,10 +25,6 @@ func (n *nodeOperation) Unlink(ctx context.Context, dentry *vfs.Dentry) error {
 	}
 	if dentry.Node.Kind() == vfs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: cannot unlink a directory; use Rmdir")
-	}
-
-	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.SuperblockID()); err != nil {
-		return err
 	}
 
 	dirContent := &content.DirContent{}

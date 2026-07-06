@@ -7,7 +7,6 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Rmdir implements [NodeOperation]. Removes an empty directory.
@@ -21,10 +20,6 @@ func (n *nodeOperation) Rmdir(ctx context.Context, dentry *vfs.Dentry) error {
 	}
 	if dentry.Node.Kind() != vfs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: target is not a directory")
-	}
-
-	if err := n.requirePerm(ctx, permission.ActionEdit, dentry.Parent.SuperblockID()); err != nil {
-		return err
 	}
 
 	dirContent := &content.DirContent{}
