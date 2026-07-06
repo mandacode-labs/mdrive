@@ -133,12 +133,6 @@ func (r Revision) Time() (time.Time, error) {
 	return ulid.Time(id.Time()), nil
 }
 
-func (n *Node) IsDir() bool     { return n.kind == NodeKindDirectory }
-func (n *Node) IsFile() bool    { return n.kind == NodeKindFile }
-func (n *Node) IsSymlink() bool { return n.kind == NodeKindSymlink }
-func (n *Node) IsObject() bool  { return n.kind == NodeKindObject }
-func (n *Node) IsMount() bool   { return n.kind == NodeKindMount }
-
 // MaxDataSize is the maximum size of data
 const MaxDataSize = 4096
 
@@ -256,3 +250,9 @@ func (n *Node) DecNLink() {
 		n.rev = n.rev.Next()
 	}
 }
+
+func (n *Node) IsDir() bool     { return n.kind == NodeKindDirectory }
+func (n *Node) IsFile() bool    { return n.kind == NodeKindFile }
+func (n *Node) IsSymlink() bool { return n.kind == NodeKindSymlink }
+func (n *Node) IsObject() bool  { return n.kind == NodeKindObject }
+func (n *Node) IsMount() bool   { return n.kind == NodeKindMount }
