@@ -12,12 +12,14 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Create adds a new entry under `path` inside driveID. The kind
-// selects the inode shape: file/directory/symlink/object/mount.
-// Permission: ActionEdit on the parent drive.
+// Create creates an empty inode. Linux vfs_create + vfs_mkdir +
+// vfs_mknod, unified via kind. No kind-specific data is set
+// here; that is the job of the kind-specific command
+// (Write / WriteObject / Mount / Symlink).
 //
-// Linux vfs_create + vfs_mkdir + vfs_mknod (unified via kind).
-func (v *vfs) Create(ctx context.Context, driveID string, path string, kind NodeKind, data []byte) (*Node, error) {
+// A directory-kind inode is initialized with an empty
+// DirContent so subsequent Lookup/Mknod on it succeeds.
+func (v *vfs) Create(ctx context.Context, driveID string, path string, kind NodeKind) (*Node, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
@@ -39,16 +41,9 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	child.mtime = now
 	child.ctime = now
 	child.btime = now
-	if data != nil {
-		if err := child.Write(data, int64(len(data))); err != nil {
-			return nil, err
-		}
-	}
 
-	// Special-case: directory must be initialized with an empty
-	// entry list so subsequent Mknod/Link on it don't fail.
-	if kind == NodeKindDirectory && child.Data() == nil {
-		if err := child.Write(emptyDirContent(), 0); err != nil {
+	if kind == NodeKindDirectory {
+		if err := child.Write(emptyDirContent(), int64(len(emptyDirContent()))); err != nil {
 			return nil, err
 		}
 	}
@@ -60,14 +55,14 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 }
 
 // Symlink creates a symlink at linkPath pointing at target.
-// Linux vfs_symlink.
+// vfs stores the target id inline via content.SymlinkContent.
 func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPath string) error {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	// target resolution needs View perm on its drive
-	if _, err := v.resolveTarget(ctx, driveID, target, permission.ActionView); err != nil {
+	targetDentry, err := v.resolveTarget(ctx, driveID, target, permission.ActionView)
+	if err != nil {
 		return err
 	}
 	parent, name, err := v.resolveParent(ctx, driveID, linkPath, permission.ActionEdit)
@@ -78,12 +73,6 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 		return errorx.New(errorx.KindInvalidArgument, "vfs: link parent is not a directory")
 	}
 	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
-		return err
-	}
-
-	// Look up the target so we have its id.
-	targetDentry, err := v.resolveTarget(ctx, driveID, target, permission.ActionView)
-	if err != nil {
 		return err
 	}
 
@@ -113,20 +102,18 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 }
 
 // emptyDirContent returns the JSON bytes for an empty directory's
-// inline content. Used by Create(Dir) so subsequent Lookup sees
-// a valid directory.
+// inline content.
 func emptyDirContent() []byte {
 	c := struct {
-		Entries []struct{} `json:"items"`
+		Items []struct{} `json:"items"`
 	}{}
 	b, _ := json.Marshal(c)
 	return b
 }
 
-// contentSymlinkContent mirrors content.SymlinkContent. Defined
-// here so this file doesn't have to import internal/content
-// (the resolver/walk layer imports content; this layer avoids
-// the cycle).
+// contentSymlinkContent mirrors content.SymlinkContent. Kept
+// local so this file doesn't depend on internal/content's import
+// chain.
 type contentSymlinkContent struct {
 	Target string `json:"ino"`
 }

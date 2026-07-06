@@ -16,9 +16,9 @@ import (
 )
 
 // VFS is the high-level vfs_* helper surface. Mirrors Linux VFS:
-// each command takes a path and resolves internally (perm
-// check + mount crossing + symlink follow) before dispatching
-// into NodeOperation / DriveOperation.
+// each command takes a path (or two paths) and resolves internally
+// (perm check + mount crossing + symlink follow) before
+// dispatching into NodeOperation / DriveOperation.
 //
 // syscall.FS passes through to this interface; handlers depend
 // on syscall, not vfs directly.
@@ -28,14 +28,31 @@ import (
 //     DB write). Linux separates writeback via super_operations; we don't.
 //   - Drive CRUD is mdrive-specific (multi-tenant storage unit).
 //   - Garbage collection deferred.
-//   - Walk is not exposed here. It runs inside each command's
+//   - Walk is not exposed. It runs inside each command's
 //     resolveTarget / resolveParent. Equivalent to Linux
 //     path_walk being a static function, not a syscall.
+//   - Create creates an empty inode; data is set by the
+//     kind-specific command (Write, Mount, Symlink, WriteObject).
+//     Linux's open(2, O_CREAT) creates an inode, write(2) fills
+//     it later — same shape.
+//   - The kind-specific data shape (mount content, object content,
+//     symlink target) is owned by vfs and converted from raw
+//     caller inputs (sourceDriveID, ObjectRef, target path).
 type VFS interface {
-	// Inode creation. Linux: vfs_create + vfs_mkdir + vfs_mknod
-	// (unified via kind). Symlink stays separate (vfs_symlink).
-	Create(ctx context.Context, driveID string, path string, kind NodeKind, data []byte) (*Node, error)
+	// Create an empty inode. Linux vfs_create + vfs_mkdir +
+	// vfs_mknod, unified via kind. No data is written here;
+	// use Write / WriteObject / Mount / Symlink for the
+	// kind-specific shape.
+	Create(ctx context.Context, driveID string, path string, kind NodeKind) (*Node, error)
+
+	// Symlink: target is the path the link points at. vfs
+	// stores the target id inline via content.SymlinkContent.
 	Symlink(ctx context.Context, driveID string, target string, linkPath string) error
+
+	// Mount: sourceDriveID is the drive the mount point
+	// resolves into. vfs stores the source id inline via
+	// content.MountContent.
+	Mount(ctx context.Context, driveID string, mountPath string, sourceDriveID string) error
 
 	// Inode removal. Linux: vfs_unlink + vfs_rmdir (separated).
 	Unlink(ctx context.Context, driveID string, path string) error
@@ -45,17 +62,21 @@ type VFS interface {
 	Rename(ctx context.Context, srcDriveID string, srcPath string, dstDriveID string, dstPath string) error
 	Link(ctx context.Context, driveID string, srcPath string, linkPath string) error
 
-	// Mount. Linux: vfs_mount.
-	Mount(ctx context.Context, driveID string, mountPath string, sourceDriveID string) error
-
-	// Info. Linux: vfs_stat + vfs_lstat + vfs_readlink (separated).
+	// Info. Linux: vfs_stat + vfs_lstat + vfs_readlink.
 	Stat(ctx context.Context, driveID string, path string) (*Node, error)
 	Lstat(ctx context.Context, driveID string, path string) (*Node, error)
 	Readlink(ctx context.Context, driveID string, path string) (string, error)
 
-	// Data I/O. Linux: vfs_read + vfs_write.
+	// Data I/O. Linux: vfs_read + vfs_write. Write overwrites
+	// a file-kind node's inline data.
 	Read(ctx context.Context, driveID string, path string) ([]byte, error)
 	Write(ctx context.Context, driveID string, path string, data []byte) error
+
+	// WriteObject creates or replaces an Object-kind node.
+	// ref holds the S3/MinIO location and metadata; vfs stores
+	// it inline via content.ObjectContent. Caller (handler)
+	// typically invokes this after a successful S3 upload.
+	WriteObject(ctx context.Context, driveID string, path string, ref ObjectRef) error
 
 	// Directory listing. Linux: iterate_dir.
 	IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error)
@@ -79,10 +100,7 @@ type DirEntry struct {
 	Kind    NodeKind
 }
 
-// vfs is the unexported impl. It holds the two operation
-// interfaces plus the permission authorizer. Walk (resolveTarget
-// / resolveParent) is internal — callers pass a path and each
-// command resolves it.
+// vfs is the unexported impl.
 type vfs struct {
 	nodeOp  NodeOperation
 	driveOp DriveOperation
@@ -105,10 +123,7 @@ func (v *vfs) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
-// checkPerm is the entry-level permission gate. vfs helpers call
-// it after resolveTarget has already done per-drive checks
-// during the walk. The redundant-by-design double check makes
-// the entry-level intent explicit.
+// checkPerm is the entry-level permission gate.
 func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID ulid.ULID) error {
 	uid := v.userID(ctx)
 	ok, err := v.perm.Check(ctx, uid, action, permission.ObjectTypeDrive, driveID.String())
@@ -133,9 +148,7 @@ func (v *vfs) rootOf(ctx context.Context, driveID ulid.ULID) (*Node, error) {
 	return NewNode(d.Root(), driveID, NodeKindDirectory), nil
 }
 
-// resolveTarget walks `path` from `driveID` and returns the final
-// Dentry. Mirrors Linux link_path_walk: per-component perm
-// check, mount crossing, symlink follow (depth-capped at 8).
+// resolveTarget walks `path` from `driveID`.
 func (v *vfs) resolveTarget(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
@@ -161,7 +174,6 @@ func (v *vfs) resolveTarget(ctx context.Context, driveID string, path string, ac
 }
 
 // resolveParent walks to the parent directory of `path`.
-// Returns the parent Dentry plus the basename.
 func (v *vfs) resolveParent(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, string, error) {
 	components := splitPath(path)
 	if len(components) == 0 {
@@ -219,8 +231,7 @@ func (v *vfs) step(ctx context.Context, cur *Dentry, name string, action permiss
 	return out, nil
 }
 
-// followSymlink reads the symlink's target id and recurses into
-// Lookup from the current drive's root. Depth-capped.
+// followSymlink reads the symlink's target id and recurses.
 func (v *vfs) followSymlink(ctx context.Context, cur *Dentry, depth int) (*Dentry, error) {
 	if depth == 0 {
 		return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: symlink loop")
@@ -282,7 +293,3 @@ func joinComponents(components []string) string {
 	}
 	return out
 }
-
-// silence unused imports in this file.
-var _ = strings.TrimSpace
-var _ time.Time
