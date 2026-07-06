@@ -48,6 +48,13 @@ type VFS interface {
 	// typically invokes this after a successful S3 upload.
 	WriteObject(ctx context.Context, driveID string, path string, ref ObjectRef) error
 
+	// ReadObject returns the S3 metadata stored in an Object-kind
+	// node. The caller uses the returned ref to download the
+	// actual bytes from object storage (e.g. via upload.PresignDownload).
+	// Symlinks along the path are followed; the final node must be
+	// of Object kind.
+	ReadObject(ctx context.Context, driveID string, path string) (ObjectRef, error)
+
 	// Directory listing. Linux: iterate_dir.
 	IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error)
 }
