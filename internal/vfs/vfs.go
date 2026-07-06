@@ -3,6 +3,7 @@ package vfs
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,21 +16,24 @@ import (
 )
 
 // VFS is the high-level vfs_* helper surface. Mirrors Linux VFS:
-// Walk + perm check + dispatch into NodeOperation / DriveOperation.
-// syscall.FS passes through to this interface; handlers depend on
-// syscall, not vfs directly.
+// each command takes a path and resolves internally (perm
+// check + mount crossing + symlink follow) before dispatching
+// into NodeOperation / DriveOperation.
+//
+// syscall.FS passes through to this interface; handlers depend
+// on syscall, not vfs directly.
 //
 // Differences from Linux (deliberate):
 //   - No super_operations. Node operations own their tx (in-memory +
 //     DB write). Linux separates writeback via super_operations; we don't.
 //   - Drive CRUD is mdrive-specific (multi-tenant storage unit).
 //   - Garbage collection deferred.
+//   - Walk is not exposed here. It runs inside each command's
+//     resolveTarget / resolveParent. Equivalent to Linux
+//     path_walk being a static function, not a syscall.
 type VFS interface {
-	// Path resolution. Linux: link_path_walk.
-	Walk(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, error)
-
 	// Inode creation. Linux: vfs_create + vfs_mkdir + vfs_mknod
-	// (unified via kind). Symlink stays separate (Linux vfs_symlink).
+	// (unified via kind). Symlink stays separate (vfs_symlink).
 	Create(ctx context.Context, driveID string, path string, kind NodeKind, data []byte) (*Node, error)
 	Symlink(ctx context.Context, driveID string, target string, linkPath string) error
 
@@ -76,8 +80,9 @@ type DirEntry struct {
 }
 
 // vfs is the unexported impl. It holds the two operation
-// interfaces plus the permission authorizer; Walk and helpers
-// all dispatch through them.
+// interfaces plus the permission authorizer. Walk (resolveTarget
+// / resolveParent) is internal — callers pass a path and each
+// command resolves it.
 type vfs struct {
 	nodeOp  NodeOperation
 	driveOp DriveOperation
@@ -95,21 +100,15 @@ func NewVFS(nodeOp NodeOperation, driveOp DriveOperation, perm permission.Author
 
 var _ VFS = (*vfs)(nil)
 
-// Walk resolves a path from driveID. Perm check + mount crossing
-// + symlink follow happen during the walk. See resolveTarget.
-func (v *vfs) Walk(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, error) {
-	return v.resolveTarget(ctx, driveID, path, action)
-}
-
 // userID is the caller's user id from the request context.
 func (v *vfs) userID(ctx context.Context) string {
 	return auth.UserIDFromContext(ctx)
 }
 
-// checkPerm is the entry-level permission gate that vfs
-// helpers do before dispatching into NodeOperation /
-// DriveOperation. The Walk path also does per-component checks
-// (Linux inode_operations.permission).
+// checkPerm is the entry-level permission gate. vfs helpers call
+// it after resolveTarget has already done per-drive checks
+// during the walk. The redundant-by-design double check makes
+// the entry-level intent explicit.
 func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID ulid.ULID) error {
 	uid := v.userID(ctx)
 	ok, err := v.perm.Check(ctx, uid, action, permission.ObjectTypeDrive, driveID.String())
@@ -122,8 +121,7 @@ func (v *vfs) checkPerm(ctx context.Context, action permission.Action, driveID u
 	return nil
 }
 
-// rootOf returns the root inode of a drive. The Drive model
-// stores root as a uuid.UUID; we wrap it into a synthetic Node.
+// rootOf returns the root inode of a drive.
 func (v *vfs) rootOf(ctx context.Context, driveID ulid.ULID) (*Node, error) {
 	d, err := v.driveOp.GetDrive(ctx, driveID.String())
 	if err != nil {
@@ -136,8 +134,8 @@ func (v *vfs) rootOf(ctx context.Context, driveID ulid.ULID) (*Node, error) {
 }
 
 // resolveTarget walks `path` from `driveID` and returns the final
-// Dentry. Mirrors Linux link_path_walk: per-component perm check,
-// mount crossing, symlink follow (depth-capped).
+// Dentry. Mirrors Linux link_path_walk: per-component perm
+// check, mount crossing, symlink follow (depth-capped at 8).
 func (v *vfs) resolveTarget(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
@@ -162,9 +160,8 @@ func (v *vfs) resolveTarget(ctx context.Context, driveID string, path string, ac
 	return cur, nil
 }
 
-// resolveParent walks to the parent directory of `path`. Returns
-// the parent Dentry plus the basename. parent is the result of
-// resolveTarget applied to the directory portion of the path.
+// resolveParent walks to the parent directory of `path`.
+// Returns the parent Dentry plus the basename.
 func (v *vfs) resolveParent(ctx context.Context, driveID string, path string, action permission.Action) (*Dentry, string, error) {
 	components := splitPath(path)
 	if len(components) == 0 {
@@ -178,8 +175,7 @@ func (v *vfs) resolveParent(ctx context.Context, driveID string, path string, ac
 	return parent, name, nil
 }
 
-// step walks one component under `cur`. Mount crossing and
-// symlink follow (read path only) are handled here.
+// step walks one component under `cur`.
 func (v *vfs) step(ctx context.Context, cur *Dentry, name string, action permission.Action) (*Dentry, error) {
 	if name == "" || name == "." {
 		return cur, nil
@@ -224,8 +220,7 @@ func (v *vfs) step(ctx context.Context, cur *Dentry, name string, action permiss
 }
 
 // followSymlink reads the symlink's target id and recurses into
-// Lookup from the current drive's root. Depth-capped to prevent
-// loops.
+// Lookup from the current drive's root. Depth-capped.
 func (v *vfs) followSymlink(ctx context.Context, cur *Dentry, depth int) (*Dentry, error) {
 	if depth == 0 {
 		return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: symlink loop")
@@ -247,8 +242,7 @@ func (v *vfs) followSymlink(ctx context.Context, cur *Dentry, depth int) (*Dentr
 	return v.followSymlink(ctx, resolved, depth-1)
 }
 
-// splitPath splits an absolute path into components. Empty paths
-// return an empty slice (root).
+// splitPath splits an absolute path into components.
 func splitPath(p string) []string {
 	if p == "" {
 		return nil
@@ -288,3 +282,7 @@ func joinComponents(components []string) string {
 	}
 	return out
 }
+
+// silence unused imports in this file.
+var _ = strings.TrimSpace
+var _ time.Time
