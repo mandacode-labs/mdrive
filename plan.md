@@ -19,8 +19,9 @@ operations the handler can call. Place `upload` as a peer of `syscall`
   Purge, List, Initialize, Get, Delete). No filesystem-shaped methods
   (Mkdir, Touch, Rm, Mv, Ls, Cat, Write, ...) on vfs.
 - **Data access**: `Repository` naming. `NodeRepository`,
-  `DriveRepository`, `StorageRepository`. File names `nodeRepo.go`,
-  `driveRepo.go`, `storageRepo.go`.
+  `DriveRepository`, `StorageRepository`. File names `noderepo.go`,
+  `driverepo.go`, `storagerepo.go` (Go convention: lowercase, no
+  camelCase filename boundary).
 - **Interfaces**:
   - vfs: `NodeOperation`, `DriveOperation` — public interfaces,
     unexported `nodeOperation` / `driveOperation` impls.
@@ -61,17 +62,21 @@ Dirty/untracked 정리 필요 (작업 중인 추가 변경):
 - `internal/vfs/driveop/` 전체 신규 (untracked)
 
 ### Phase 1 — Rename data-access layer to Repository ✅ DONE
-- [x] `internal/vfs/nodeop/block.go` → `nodeRepo.go`,
+- [x] `internal/vfs/nodeop/block.go` → `noderepo.go`,
       `BlockStorage` → `NodeRepository` (also renamed `blockStorage` →
       `nodeRepo`)
-- [x] `internal/vfs/driveop/block.go` → split into `driveRepo.go`
-      (Drive) and `storageRepo.go` (Storage)
+- [x] `internal/vfs/driveop/block.go` → split into `driverepo.go`
+      (Drive) and `storagerepo.go` (Storage)
 - [x] introduce `StorageRepository` interface
 - [x] `var _ NodeRepository = (*nodeRepo)(nil)`,
       `var _ DriveRepository = (*driveRepo)(nil)`,
       `var _ StorageRepository = (*storageRepo)(nil)` in impl files
 - [x] `internal/vfs/storage.go`: add `Provider()` getter to vfs.Storage
       so StorageRepository can map ent.provider → vfs.Storage
+- [x] file naming: `noderepo.go`, `driverepo.go`, `storagerepo.go`
+      (Go convention — all-lowercase, no camelCase filename boundary)
+- [x] `SetProvider(entstorage.Provider(s.Provider().String()))`
+      in storagerepo.go (use Stringer, not `string(...)` cast)
 
 ### Phase 2 — driveop CRUD completion
 - [ ] implement `InitializeDrive`, `GetDrive`, `DeleteDrive`
@@ -190,8 +195,8 @@ Dirty/untracked 정리 필요 (작업 중인 추가 변경):
 - 2026-07-06: `upload`는 syscall과 동급 패키지 (presigned URL은 fs op
   아님).
 - 2026-07-06: 데이터 저장 계층 = `Repository`. `NodeRepository`,
-  `DriveRepository`, `StorageRepository`. 파일명 `nodeRepo.go`,
-  `driveRepo.go`, `storageRepo.go`.
+  `DriveRepository`, `StorageRepository`. 파일명 `noderepo.go`,
+  `driverepo.go`, `storagerepo.go`.
 - 2026-07-06: Resolver는 `internal/vfs/resolver.go` top-level.
   nameidata-style walk state.
 - 2026-07-06: Mount crossing = read-only follow only, single-level.

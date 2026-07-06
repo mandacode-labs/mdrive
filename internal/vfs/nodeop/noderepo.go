@@ -150,3 +150,4 @@ func entKind(k vfs.NodeKind) entnode.Kind {
 		return entnode.KindFile
 	}
 }
+

@@ -40,3 +40,4 @@ func (n *nodeOperation) requirePerm(ctx context.Context, perm permission.Action,
 	}
 	return nil
 }
+

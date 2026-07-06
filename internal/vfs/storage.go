@@ -8,6 +8,10 @@ const (
 	ProviderMinio Provider = "minio"
 )
 
+func (p Provider) String() string {
+	return string(p)
+}
+
 type Storage struct {
 	driveID      string
 	provider     Provider

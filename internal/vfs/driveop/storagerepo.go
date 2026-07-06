@@ -44,9 +44,9 @@ func (r *storageRepo) Write(ctx context.Context, s *vfs.Storage) error {
 		client = tx.Client()
 	}
 
-	create := client.Storage.Create().
+create := client.Storage.Create().
 		SetDriveID(s.DriveID()).
-		SetProvider(entstorage.Provider(string(s.Provider()))).
+		SetProvider(entstorage.Provider(s.Provider().String())).
 		SetBucket(s.Bucket()).
 		SetRegion(s.Region()).
 		SetAccessKey(s.AccessKey()).
