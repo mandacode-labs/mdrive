@@ -1,0 +1,32 @@
+package vfs
+
+import (
+	"context"
+
+	"github.com/oklog/ulid/v2"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
+)
+
+// Rmdir removes an empty directory. Refuses non-empty directories.
+// Linux vfs_rmdir.
+//
+// Permission: ActionEdit on the drive.
+func (v *vfs) Rmdir(ctx context.Context, driveID string, path string) error {
+	startDrive, err := ulid.Parse(driveID)
+	if err != nil {
+		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	dentry, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
+	if err != nil {
+		return err
+	}
+	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
+		return err
+	}
+	if dentry.Node.Kind() != NodeKindDirectory {
+		return errorx.New(errorx.KindInvalidArgument, "vfs: target is not a directory")
+	}
+	return v.nodeOp.Rmdir(ctx, dentry)
+}

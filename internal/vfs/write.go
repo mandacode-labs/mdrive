@@ -8,18 +8,30 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Create creates an empty inode. Linux vfs_create + vfs_mkdir +
-// vfs_mknod, unified via kind. No kind-specific data is set
-// here; that is the job of the kind-specific command
-// (Write / WriteObject / Mount / Symlink).
-//
-// A directory-kind inode is initialized with an empty
-// DirContent so subsequent Lookup/Mknod on it succeeds.
-func (v *vfs) Create(ctx context.Context, driveID string, path string, kind NodeKind) (*Node, error) {
+// Write creates or overwrites a file-kind node with the given
+// inline data. Files larger than MaxDataSize return
+// KindInvalidArgument. Linux vfs_write.
+func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byte) error {
+	if _, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit); err == nil {
+		dentry, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
+		if err != nil {
+			return err
+		}
+		if dentry.Node.Kind() != NodeKindFile {
+			return errorx.New(errorx.KindInvalidArgument, "vfs: target exists and is not a file")
+		}
+		return dentry.Node.Write(data, int64(len(data)))
+	}
+	// Not found → create the file with data.
+	_, err := v.createWithData(ctx, driveID, path, NodeKindFile, data)
+	return err
+}
+
+// createWithData is the shared path for fresh Create + data.
+func (v *vfs) createWithData(ctx context.Context, driveID string, path string, kind NodeKind, data []byte) (*Node, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
@@ -44,18 +56,9 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	child.mtime = now
 	child.ctime = now
 	child.btime = now
-
-	if kind == NodeKindDirectory {
-		empty := &content.DirContent{}
-		data, err := empty.Marshal()
-		if err != nil {
-			return nil, errorx.Wrap(err, "vfs: failed to marshal empty dir content")
-		}
-		if err := child.Write(data, int64(len(data))); err != nil {
-			return nil, err
-		}
+	if err := child.Write(data, int64(len(data))); err != nil {
+		return nil, err
 	}
-
 	if err := v.nodeOp.Create(ctx, target.Parent, child, target.Name); err != nil {
 		return nil, err
 	}
