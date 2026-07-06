@@ -17,10 +17,11 @@ type nodeOperation struct {
 	tm   entx.TxManager
 }
 
-func NewNodeOperation(bs BlockStorage, tm entx.TxManager) vfs.NodeOperation {
+func NewNodeOperation(bs BlockStorage, perm permission.Authorizer, tm entx.TxManager) vfs.NodeOperation {
 	return &nodeOperation{
-		bs: bs,
-		tm: tm,
+		bs:   bs,
+		perm: perm,
+		tm:   tm,
 	}
 }
 

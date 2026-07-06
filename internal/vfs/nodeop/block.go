@@ -34,7 +34,7 @@ func (bs *blockStorage) Destroy(ctx context.Context, id uuid.UUID) error {
 		if ent.IsNotFound(err) {
 			return errorx.New(errorx.KindNotFound, "node: not found")
 		}
-		return err
+		return errorx.Wrap(err, "failed to delete node", errorx.KindInternal)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func (bs *blockStorage) Read(ctx context.Context, id uuid.UUID) (*vfs.Node, erro
 		if ent.IsNotFound(err) {
 			return nil, errorx.New(errorx.KindNotFound, "node: not found")
 		}
-		return nil, err
+		return nil, errorx.Wrap(err, "failed to read node", errorx.KindInternal)
 	}
 	return fromEnt(e)
 }
@@ -79,7 +79,7 @@ func (bs *blockStorage) Write(ctx context.Context, n *vfs.Node) error {
 		UpdateNewValues().
 		Exec(ctx)
 	if err != nil {
-		return err
+		return errorx.Wrap(err, "failed to write node", errorx.KindInternal)
 	}
 	return nil
 }

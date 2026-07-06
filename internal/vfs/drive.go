@@ -15,7 +15,7 @@ type Drive struct {
 	name        string
 	description *string
 	owner       ulid.ULID
-	root        *uuid.UUID
+	root        uuid.UUID
 	deletedAt   *time.Time
 	createdAt   time.Time
 	updatedAt   time.Time
@@ -25,7 +25,7 @@ type Drive struct {
 func (d *Drive) ID() ulid.ULID         { return d.id }
 func (d *Drive) Name() string          { return d.name }
 func (d *Drive) Description() *string  { return d.description }
-func (d *Drive) Root() *uuid.UUID      { return d.root }
+func (d *Drive) Root() uuid.UUID       { return d.root }
 func (d *Drive) Owner() ulid.ULID      { return d.owner }
 func (d *Drive) DeletedAt() *time.Time { return d.deletedAt }
 func (d *Drive) CreatedAt() time.Time  { return d.createdAt }
@@ -40,7 +40,7 @@ func NewDrive(
 	return &Drive{
 		id:        id,
 		name:      name,
-		root:      &root,
+		root:      root,
 		owner:     owner,
 		createdAt: time.Now(),
 		updatedAt: time.Now(),
@@ -52,7 +52,7 @@ func HydrateDrive(
 	id ulid.ULID,
 	name string,
 	description *string,
-	root *uuid.UUID,
+	root uuid.UUID,
 	owner ulid.ULID,
 	deletedAt *time.Time,
 	createdAt time.Time,

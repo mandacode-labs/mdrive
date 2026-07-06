@@ -3,7 +3,7 @@ package vfs
 import "context"
 
 type DriveOperation interface {
-	Initialize(ctx context.Context, drive *Drive) error
-	Get(ctx context.Context, driveID string) (*Drive, error)
-	Delete(ctx context.Context, drive *Drive) error
+	InitializeDrive(ctx context.Context, drive *Drive) error
+	GetDrive(ctx context.Context, driveID string) (*Drive, error)
+	DeleteDrive(ctx context.Context, drive *Drive) error
 }
