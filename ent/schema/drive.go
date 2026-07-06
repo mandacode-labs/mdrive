@@ -9,13 +9,13 @@ import (
 	"entgo.io/ent/schema/index"
 	"entgo.io/ent/schema/mixin"
 
-	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 )
 
-// Drive holds the schema for a drive (multi-tenant storage unit).
-// A drive owns its root node (root_node_id) and its storage configuration
-// (separated into drive_storage for security and reduced table size).
+// Drive holds the schema for a drive (multi-tenant storage
+// unit). The filesystem root inode lives in the Superblock
+// table; the drive itself only carries the lifecycle metadata
+// (name, owner, description, soft-delete state).
 type Drive struct {
 	ent.Schema
 }
@@ -59,10 +59,6 @@ func (Drive) Fields() []ent.Field {
 		// Owning user (ULID, references User.id).
 		field.String("owner_id"),
 
-		// Root node of this drive (UUID, references Node.id).
-		// Set when the drive's root directory is created.
-		field.UUID("root_node_id", uuid.UUID{}),
-
 		// Soft-delete timestamp. Null means active.
 		field.Time("deleted_at").
 			Optional().
@@ -74,7 +70,6 @@ func (Drive) Fields() []ent.Field {
 func (Drive) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("owner_id"),
-		index.Fields("root_node_id"),
 		index.Fields("deleted_at"),
 	}
 }
@@ -92,6 +87,9 @@ func (Drive) Edges() []ent.Edge {
 			Annotations(entsql.Annotation{
 				OnDelete: entsql.Cascade,
 			}),
+		// Drive has exactly one superblock (1:1) — its filesystem root.
+		edge.To("superblock", Superblock.Type).
+			Unique(),
 		edge.From("user", User.Type).
 			Ref("drives").
 			Field("owner_id").

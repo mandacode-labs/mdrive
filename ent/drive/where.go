@@ -7,7 +7,6 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 )
 
@@ -89,11 +88,6 @@ func Description(v string) predicate.Drive {
 // OwnerID applies equality check predicate on the "owner_id" field. It's identical to OwnerIDEQ.
 func OwnerID(v string) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldOwnerID, v))
-}
-
-// RootNodeID applies equality check predicate on the "root_node_id" field. It's identical to RootNodeIDEQ.
-func RootNodeID(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldEQ(FieldRootNodeID, v))
 }
 
 // DeletedAt applies equality check predicate on the "deleted_at" field. It's identical to DeletedAtEQ.
@@ -386,46 +380,6 @@ func OwnerIDContainsFold(v string) predicate.Drive {
 	return predicate.Drive(sql.FieldContainsFold(FieldOwnerID, v))
 }
 
-// RootNodeIDEQ applies the EQ predicate on the "root_node_id" field.
-func RootNodeIDEQ(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldEQ(FieldRootNodeID, v))
-}
-
-// RootNodeIDNEQ applies the NEQ predicate on the "root_node_id" field.
-func RootNodeIDNEQ(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldNEQ(FieldRootNodeID, v))
-}
-
-// RootNodeIDIn applies the In predicate on the "root_node_id" field.
-func RootNodeIDIn(vs ...uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldIn(FieldRootNodeID, vs...))
-}
-
-// RootNodeIDNotIn applies the NotIn predicate on the "root_node_id" field.
-func RootNodeIDNotIn(vs ...uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldNotIn(FieldRootNodeID, vs...))
-}
-
-// RootNodeIDGT applies the GT predicate on the "root_node_id" field.
-func RootNodeIDGT(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldGT(FieldRootNodeID, v))
-}
-
-// RootNodeIDGTE applies the GTE predicate on the "root_node_id" field.
-func RootNodeIDGTE(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldGTE(FieldRootNodeID, v))
-}
-
-// RootNodeIDLT applies the LT predicate on the "root_node_id" field.
-func RootNodeIDLT(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldLT(FieldRootNodeID, v))
-}
-
-// RootNodeIDLTE applies the LTE predicate on the "root_node_id" field.
-func RootNodeIDLTE(v uuid.UUID) predicate.Drive {
-	return predicate.Drive(sql.FieldLTE(FieldRootNodeID, v))
-}
-
 // DeletedAtEQ applies the EQ predicate on the "deleted_at" field.
 func DeletedAtEQ(v time.Time) predicate.Drive {
 	return predicate.Drive(sql.FieldEQ(FieldDeletedAt, v))
@@ -514,6 +468,29 @@ func HasNodes() predicate.Drive {
 func HasNodesWith(preds ...predicate.Node) predicate.Drive {
 	return predicate.Drive(func(s *sql.Selector) {
 		step := newNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasSuperblock applies the HasEdge predicate on the "superblock" edge.
+func HasSuperblock() predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, SuperblockTable, SuperblockColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSuperblockWith applies the HasEdge predicate on the "superblock" edge with a given conditions (other predicates).
+func HasSuperblockWith(preds ...predicate.Superblock) predicate.Drive {
+	return predicate.Drive(func(s *sql.Selector) {
+		step := newSuperblockStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

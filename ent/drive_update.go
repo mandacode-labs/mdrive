@@ -16,6 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -86,20 +87,6 @@ func (_u *DriveUpdate) SetNillableOwnerID(v *string) *DriveUpdate {
 	return _u
 }
 
-// SetRootNodeID sets the "root_node_id" field.
-func (_u *DriveUpdate) SetRootNodeID(v uuid.UUID) *DriveUpdate {
-	_u.mutation.SetRootNodeID(v)
-	return _u
-}
-
-// SetNillableRootNodeID sets the "root_node_id" field if the given value is not nil.
-func (_u *DriveUpdate) SetNillableRootNodeID(v *uuid.UUID) *DriveUpdate {
-	if v != nil {
-		_u.SetRootNodeID(*v)
-	}
-	return _u
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_u *DriveUpdate) SetDeletedAt(v time.Time) *DriveUpdate {
 	_u.mutation.SetDeletedAt(v)
@@ -154,6 +141,25 @@ func (_u *DriveUpdate) AddNodes(v ...*Node) *DriveUpdate {
 	return _u.AddNodeIDs(ids...)
 }
 
+// SetSuperblockID sets the "superblock" edge to the Superblock entity by ID.
+func (_u *DriveUpdate) SetSuperblockID(id uuid.UUID) *DriveUpdate {
+	_u.mutation.SetSuperblockID(id)
+	return _u
+}
+
+// SetNillableSuperblockID sets the "superblock" edge to the Superblock entity by ID if the given value is not nil.
+func (_u *DriveUpdate) SetNillableSuperblockID(id *uuid.UUID) *DriveUpdate {
+	if id != nil {
+		_u = _u.SetSuperblockID(*id)
+	}
+	return _u
+}
+
+// SetSuperblock sets the "superblock" edge to the Superblock entity.
+func (_u *DriveUpdate) SetSuperblock(v *Superblock) *DriveUpdate {
+	return _u.SetSuperblockID(v.ID)
+}
+
 // SetUserID sets the "user" edge to the User entity by ID.
 func (_u *DriveUpdate) SetUserID(id string) *DriveUpdate {
 	_u.mutation.SetUserID(id)
@@ -195,6 +201,12 @@ func (_u *DriveUpdate) RemoveNodes(v ...*Node) *DriveUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNodeIDs(ids...)
+}
+
+// ClearSuperblock clears the "superblock" edge to the Superblock entity.
+func (_u *DriveUpdate) ClearSuperblock() *DriveUpdate {
+	_u.mutation.ClearSuperblock()
+	return _u
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -281,9 +293,6 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
 	}
-	if value, ok := _u.mutation.RootNodeID(); ok {
-		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-	}
 	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
 	}
@@ -357,6 +366,35 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SuperblockCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   drive.SuperblockTable,
+			Columns: []string{drive.SuperblockColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SuperblockIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   drive.SuperblockTable,
+			Columns: []string{drive.SuperblockColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -467,20 +505,6 @@ func (_u *DriveUpdateOne) SetNillableOwnerID(v *string) *DriveUpdateOne {
 	return _u
 }
 
-// SetRootNodeID sets the "root_node_id" field.
-func (_u *DriveUpdateOne) SetRootNodeID(v uuid.UUID) *DriveUpdateOne {
-	_u.mutation.SetRootNodeID(v)
-	return _u
-}
-
-// SetNillableRootNodeID sets the "root_node_id" field if the given value is not nil.
-func (_u *DriveUpdateOne) SetNillableRootNodeID(v *uuid.UUID) *DriveUpdateOne {
-	if v != nil {
-		_u.SetRootNodeID(*v)
-	}
-	return _u
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_u *DriveUpdateOne) SetDeletedAt(v time.Time) *DriveUpdateOne {
 	_u.mutation.SetDeletedAt(v)
@@ -535,6 +559,25 @@ func (_u *DriveUpdateOne) AddNodes(v ...*Node) *DriveUpdateOne {
 	return _u.AddNodeIDs(ids...)
 }
 
+// SetSuperblockID sets the "superblock" edge to the Superblock entity by ID.
+func (_u *DriveUpdateOne) SetSuperblockID(id uuid.UUID) *DriveUpdateOne {
+	_u.mutation.SetSuperblockID(id)
+	return _u
+}
+
+// SetNillableSuperblockID sets the "superblock" edge to the Superblock entity by ID if the given value is not nil.
+func (_u *DriveUpdateOne) SetNillableSuperblockID(id *uuid.UUID) *DriveUpdateOne {
+	if id != nil {
+		_u = _u.SetSuperblockID(*id)
+	}
+	return _u
+}
+
+// SetSuperblock sets the "superblock" edge to the Superblock entity.
+func (_u *DriveUpdateOne) SetSuperblock(v *Superblock) *DriveUpdateOne {
+	return _u.SetSuperblockID(v.ID)
+}
+
 // SetUserID sets the "user" edge to the User entity by ID.
 func (_u *DriveUpdateOne) SetUserID(id string) *DriveUpdateOne {
 	_u.mutation.SetUserID(id)
@@ -576,6 +619,12 @@ func (_u *DriveUpdateOne) RemoveNodes(v ...*Node) *DriveUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveNodeIDs(ids...)
+}
+
+// ClearSuperblock clears the "superblock" edge to the Superblock entity.
+func (_u *DriveUpdateOne) ClearSuperblock() *DriveUpdateOne {
+	_u.mutation.ClearSuperblock()
+	return _u
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -692,9 +741,6 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	if _u.mutation.DescriptionCleared() {
 		_spec.ClearField(drive.FieldDescription, field.TypeString)
 	}
-	if value, ok := _u.mutation.RootNodeID(); ok {
-		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-	}
 	if value, ok := _u.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
 	}
@@ -768,6 +814,35 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.SuperblockCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   drive.SuperblockTable,
+			Columns: []string{drive.SuperblockColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SuperblockIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   drive.SuperblockTable,
+			Columns: []string{drive.SuperblockColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -11,6 +11,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/schema"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -137,6 +138,25 @@ func init() {
 	storageDescUsePathStyle := storageFields[7].Descriptor()
 	// storage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
 	storage.DefaultUsePathStyle = storageDescUsePathStyle.Default.(bool)
+	superblockMixin := schema.Superblock{}.Mixin()
+	superblockMixinFields0 := superblockMixin[0].Fields()
+	_ = superblockMixinFields0
+	superblockFields := schema.Superblock{}.Fields()
+	_ = superblockFields
+	// superblockDescCreateTime is the schema descriptor for create_time field.
+	superblockDescCreateTime := superblockMixinFields0[0].Descriptor()
+	// superblock.DefaultCreateTime holds the default value on creation for the create_time field.
+	superblock.DefaultCreateTime = superblockDescCreateTime.Default.(func() time.Time)
+	// superblockDescUpdateTime is the schema descriptor for update_time field.
+	superblockDescUpdateTime := superblockMixinFields0[1].Descriptor()
+	// superblock.DefaultUpdateTime holds the default value on creation for the update_time field.
+	superblock.DefaultUpdateTime = superblockDescUpdateTime.Default.(func() time.Time)
+	// superblock.UpdateDefaultUpdateTime holds the default value on update for the update_time field.
+	superblock.UpdateDefaultUpdateTime = superblockDescUpdateTime.UpdateDefault.(func() time.Time)
+	// superblockDescID is the schema descriptor for id field.
+	superblockDescID := superblockFields[0].Descriptor()
+	// superblock.DefaultID holds the default value on creation for the id field.
+	superblock.DefaultID = superblockDescID.Default.(func() uuid.UUID)
 	userMixin := schema.User{}.Mixin()
 	userMixinFields0 := userMixin[0].Fields()
 	_ = userMixinFields0

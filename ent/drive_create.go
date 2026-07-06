@@ -16,6 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -81,12 +82,6 @@ func (_c *DriveCreate) SetOwnerID(v string) *DriveCreate {
 	return _c
 }
 
-// SetRootNodeID sets the "root_node_id" field.
-func (_c *DriveCreate) SetRootNodeID(v uuid.UUID) *DriveCreate {
-	_c.mutation.SetRootNodeID(v)
-	return _c
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (_c *DriveCreate) SetDeletedAt(v time.Time) *DriveCreate {
 	_c.mutation.SetDeletedAt(v)
@@ -147,6 +142,25 @@ func (_c *DriveCreate) AddNodes(v ...*Node) *DriveCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddNodeIDs(ids...)
+}
+
+// SetSuperblockID sets the "superblock" edge to the Superblock entity by ID.
+func (_c *DriveCreate) SetSuperblockID(id uuid.UUID) *DriveCreate {
+	_c.mutation.SetSuperblockID(id)
+	return _c
+}
+
+// SetNillableSuperblockID sets the "superblock" edge to the Superblock entity by ID if the given value is not nil.
+func (_c *DriveCreate) SetNillableSuperblockID(id *uuid.UUID) *DriveCreate {
+	if id != nil {
+		_c = _c.SetSuperblockID(*id)
+	}
+	return _c
+}
+
+// SetSuperblock sets the "superblock" edge to the Superblock entity.
+func (_c *DriveCreate) SetSuperblock(v *Superblock) *DriveCreate {
+	return _c.SetSuperblockID(v.ID)
 }
 
 // SetUserID sets the "user" edge to the User entity by ID.
@@ -233,9 +247,6 @@ func (_c *DriveCreate) check() error {
 	if _, ok := _c.mutation.OwnerID(); !ok {
 		return &ValidationError{Name: "owner_id", err: errors.New(`ent: missing required field "Drive.owner_id"`)}
 	}
-	if _, ok := _c.mutation.RootNodeID(); !ok {
-		return &ValidationError{Name: "root_node_id", err: errors.New(`ent: missing required field "Drive.root_node_id"`)}
-	}
 	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Drive.user"`)}
 	}
@@ -291,10 +302,6 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 		_spec.SetField(drive.FieldDescription, field.TypeString, value)
 		_node.Description = &value
 	}
-	if value, ok := _c.mutation.RootNodeID(); ok {
-		_spec.SetField(drive.FieldRootNodeID, field.TypeUUID, value)
-		_node.RootNodeID = value
-	}
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
@@ -324,6 +331,22 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(node.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.SuperblockIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   drive.SuperblockTable,
+			Columns: []string{drive.SuperblockColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(superblock.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -451,18 +474,6 @@ func (u *DriveUpsert) SetOwnerID(v string) *DriveUpsert {
 // UpdateOwnerID sets the "owner_id" field to the value that was provided on create.
 func (u *DriveUpsert) UpdateOwnerID() *DriveUpsert {
 	u.SetExcluded(drive.FieldOwnerID)
-	return u
-}
-
-// SetRootNodeID sets the "root_node_id" field.
-func (u *DriveUpsert) SetRootNodeID(v uuid.UUID) *DriveUpsert {
-	u.Set(drive.FieldRootNodeID, v)
-	return u
-}
-
-// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
-func (u *DriveUpsert) UpdateRootNodeID() *DriveUpsert {
-	u.SetExcluded(drive.FieldRootNodeID)
 	return u
 }
 
@@ -595,20 +606,6 @@ func (u *DriveUpsertOne) SetOwnerID(v string) *DriveUpsertOne {
 func (u *DriveUpsertOne) UpdateOwnerID() *DriveUpsertOne {
 	return u.Update(func(s *DriveUpsert) {
 		s.UpdateOwnerID()
-	})
-}
-
-// SetRootNodeID sets the "root_node_id" field.
-func (u *DriveUpsertOne) SetRootNodeID(v uuid.UUID) *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetRootNodeID(v)
-	})
-}
-
-// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
-func (u *DriveUpsertOne) UpdateRootNodeID() *DriveUpsertOne {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdateRootNodeID()
 	})
 }
 
@@ -911,20 +908,6 @@ func (u *DriveUpsertBulk) SetOwnerID(v string) *DriveUpsertBulk {
 func (u *DriveUpsertBulk) UpdateOwnerID() *DriveUpsertBulk {
 	return u.Update(func(s *DriveUpsert) {
 		s.UpdateOwnerID()
-	})
-}
-
-// SetRootNodeID sets the "root_node_id" field.
-func (u *DriveUpsertBulk) SetRootNodeID(v uuid.UUID) *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.SetRootNodeID(v)
-	})
-}
-
-// UpdateRootNodeID sets the "root_node_id" field to the value that was provided on create.
-func (u *DriveUpsertBulk) UpdateRootNodeID() *DriveUpsertBulk {
-	return u.Update(func(s *DriveUpsert) {
-		s.UpdateRootNodeID()
 	})
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -36,6 +37,8 @@ type Client struct {
 	Node *NodeClient
 	// Storage is the client for interacting with the Storage builders.
 	Storage *StorageClient
+	// Superblock is the client for interacting with the Superblock builders.
+	Superblock *SuperblockClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -53,6 +56,7 @@ func (c *Client) init() {
 	c.GCTombstone = NewGCTombstoneClient(c.config)
 	c.Node = NewNodeClient(c.config)
 	c.Storage = NewStorageClient(c.config)
+	c.Superblock = NewSuperblockClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -150,6 +154,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		GCTombstone: NewGCTombstoneClient(cfg),
 		Node:        NewNodeClient(cfg),
 		Storage:     NewStorageClient(cfg),
+		Superblock:  NewSuperblockClient(cfg),
 		User:        NewUserClient(cfg),
 	}, nil
 }
@@ -174,6 +179,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		GCTombstone: NewGCTombstoneClient(cfg),
 		Node:        NewNodeClient(cfg),
 		Storage:     NewStorageClient(cfg),
+		Superblock:  NewSuperblockClient(cfg),
 		User:        NewUserClient(cfg),
 	}, nil
 }
@@ -203,21 +209,21 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Drive.Use(hooks...)
-	c.GCTombstone.Use(hooks...)
-	c.Node.Use(hooks...)
-	c.Storage.Use(hooks...)
-	c.User.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Drive, c.GCTombstone, c.Node, c.Storage, c.Superblock, c.User,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.Drive.Intercept(interceptors...)
-	c.GCTombstone.Intercept(interceptors...)
-	c.Node.Intercept(interceptors...)
-	c.Storage.Intercept(interceptors...)
-	c.User.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Drive, c.GCTombstone, c.Node, c.Storage, c.Superblock, c.User,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -231,6 +237,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Node.mutate(ctx, m)
 	case *StorageMutation:
 		return c.Storage.mutate(ctx, m)
+	case *SuperblockMutation:
+		return c.Superblock.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -371,6 +379,22 @@ func (c *DriveClient) QueryNodes(_m *Drive) *NodeQuery {
 			sqlgraph.From(drive.Table, drive.FieldID, id),
 			sqlgraph.To(node.Table, node.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, drive.NodesTable, drive.NodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QuerySuperblock queries the superblock edge of a Drive.
+func (c *DriveClient) QuerySuperblock(_m *Drive) *SuperblockQuery {
+	query := (&SuperblockClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(drive.Table, drive.FieldID, id),
+			sqlgraph.To(superblock.Table, superblock.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, drive.SuperblockTable, drive.SuperblockColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -850,6 +874,155 @@ func (c *StorageClient) mutate(ctx context.Context, m *StorageMutation) (Value, 
 	}
 }
 
+// SuperblockClient is a client for the Superblock schema.
+type SuperblockClient struct {
+	config
+}
+
+// NewSuperblockClient returns a client for the Superblock from the given config.
+func NewSuperblockClient(c config) *SuperblockClient {
+	return &SuperblockClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `superblock.Hooks(f(g(h())))`.
+func (c *SuperblockClient) Use(hooks ...Hook) {
+	c.hooks.Superblock = append(c.hooks.Superblock, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `superblock.Intercept(f(g(h())))`.
+func (c *SuperblockClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Superblock = append(c.inters.Superblock, interceptors...)
+}
+
+// Create returns a builder for creating a Superblock entity.
+func (c *SuperblockClient) Create() *SuperblockCreate {
+	mutation := newSuperblockMutation(c.config, OpCreate)
+	return &SuperblockCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Superblock entities.
+func (c *SuperblockClient) CreateBulk(builders ...*SuperblockCreate) *SuperblockCreateBulk {
+	return &SuperblockCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SuperblockClient) MapCreateBulk(slice any, setFunc func(*SuperblockCreate, int)) *SuperblockCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SuperblockCreateBulk{err: fmt.Errorf("calling to SuperblockClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SuperblockCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SuperblockCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Superblock.
+func (c *SuperblockClient) Update() *SuperblockUpdate {
+	mutation := newSuperblockMutation(c.config, OpUpdate)
+	return &SuperblockUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SuperblockClient) UpdateOne(_m *Superblock) *SuperblockUpdateOne {
+	mutation := newSuperblockMutation(c.config, OpUpdateOne, withSuperblock(_m))
+	return &SuperblockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SuperblockClient) UpdateOneID(id uuid.UUID) *SuperblockUpdateOne {
+	mutation := newSuperblockMutation(c.config, OpUpdateOne, withSuperblockID(id))
+	return &SuperblockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Superblock.
+func (c *SuperblockClient) Delete() *SuperblockDelete {
+	mutation := newSuperblockMutation(c.config, OpDelete)
+	return &SuperblockDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SuperblockClient) DeleteOne(_m *Superblock) *SuperblockDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SuperblockClient) DeleteOneID(id uuid.UUID) *SuperblockDeleteOne {
+	builder := c.Delete().Where(superblock.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SuperblockDeleteOne{builder}
+}
+
+// Query returns a query builder for Superblock.
+func (c *SuperblockClient) Query() *SuperblockQuery {
+	return &SuperblockQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSuperblock},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Superblock entity by its id.
+func (c *SuperblockClient) Get(ctx context.Context, id uuid.UUID) (*Superblock, error) {
+	return c.Query().Where(superblock.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SuperblockClient) GetX(ctx context.Context, id uuid.UUID) *Superblock {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDrive queries the drive edge of a Superblock.
+func (c *SuperblockClient) QueryDrive(_m *Superblock) *DriveQuery {
+	query := (&DriveClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(superblock.Table, superblock.FieldID, id),
+			sqlgraph.To(drive.Table, drive.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, superblock.DriveTable, superblock.DriveColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SuperblockClient) Hooks() []Hook {
+	return c.hooks.Superblock
+}
+
+// Interceptors returns the client interceptors.
+func (c *SuperblockClient) Interceptors() []Interceptor {
+	return c.inters.Superblock
+}
+
+func (c *SuperblockClient) mutate(ctx context.Context, m *SuperblockMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SuperblockCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SuperblockUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SuperblockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SuperblockDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Superblock mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -1002,9 +1175,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Drive, GCTombstone, Node, Storage, User []ent.Hook
+		Drive, GCTombstone, Node, Storage, Superblock, User []ent.Hook
 	}
 	inters struct {
-		Drive, GCTombstone, Node, Storage, User []ent.Interceptor
+		Drive, GCTombstone, Node, Storage, Superblock, User []ent.Interceptor
 	}
 )

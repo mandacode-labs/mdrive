@@ -18,5 +18,8 @@ type Node func(*sql.Selector)
 // Storage is the predicate function for storage builders.
 type Storage func(*sql.Selector)
 
+// Superblock is the predicate function for superblock builders.
+type Superblock func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

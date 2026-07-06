@@ -9,9 +9,9 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -30,8 +30,6 @@ type Drive struct {
 	Description *string `json:"description,omitempty"`
 	// OwnerID holds the value of the "owner_id" field.
 	OwnerID string `json:"owner_id,omitempty"`
-	// RootNodeID holds the value of the "root_node_id" field.
-	RootNodeID uuid.UUID `json:"root_node_id,omitempty"`
 	// DeletedAt holds the value of the "deleted_at" field.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -46,11 +44,13 @@ type DriveEdges struct {
 	Storage *Storage `json:"storage,omitempty"`
 	// Nodes holds the value of the nodes edge.
 	Nodes []*Node `json:"nodes,omitempty"`
+	// Superblock holds the value of the superblock edge.
+	Superblock *Superblock `json:"superblock,omitempty"`
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // StorageOrErr returns the Storage value or an error if the edge
@@ -73,12 +73,23 @@ func (e DriveEdges) NodesOrErr() ([]*Node, error) {
 	return nil, &NotLoadedError{edge: "nodes"}
 }
 
+// SuperblockOrErr returns the Superblock value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DriveEdges) SuperblockOrErr() (*Superblock, error) {
+	if e.Superblock != nil {
+		return e.Superblock, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: superblock.Label}
+	}
+	return nil, &NotLoadedError{edge: "superblock"}
+}
+
 // UserOrErr returns the User value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e DriveEdges) UserOrErr() (*User, error) {
 	if e.User != nil {
 		return e.User, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: user.Label}
 	}
 	return nil, &NotLoadedError{edge: "user"}
@@ -93,8 +104,6 @@ func (*Drive) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case drive.FieldCreateTime, drive.FieldUpdateTime, drive.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
-		case drive.FieldRootNodeID:
-			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -147,12 +156,6 @@ func (_m *Drive) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.OwnerID = value.String
 			}
-		case drive.FieldRootNodeID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field root_node_id", values[i])
-			} else if value != nil {
-				_m.RootNodeID = *value
-			}
 		case drive.FieldDeletedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
@@ -181,6 +184,11 @@ func (_m *Drive) QueryStorage() *StorageQuery {
 // QueryNodes queries the "nodes" edge of the Drive entity.
 func (_m *Drive) QueryNodes() *NodeQuery {
 	return NewDriveClient(_m.config).QueryNodes(_m)
+}
+
+// QuerySuperblock queries the "superblock" edge of the Drive entity.
+func (_m *Drive) QuerySuperblock() *SuperblockQuery {
+	return NewDriveClient(_m.config).QuerySuperblock(_m)
 }
 
 // QueryUser queries the "user" edge of the Drive entity.
@@ -227,9 +235,6 @@ func (_m *Drive) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("owner_id=")
 	builder.WriteString(_m.OwnerID)
-	builder.WriteString(", ")
-	builder.WriteString("root_node_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.RootNodeID))
 	builder.WriteString(", ")
 	if v := _m.DeletedAt; v != nil {
 		builder.WriteString("deleted_at=")

@@ -16,7 +16,6 @@ var (
 		{Name: "update_time", Type: field.TypeTime},
 		{Name: "name", Type: field.TypeString, Size: 64},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "root_node_id", Type: field.TypeUUID},
 		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "owner_id", Type: field.TypeString},
 	}
@@ -28,7 +27,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "drives_users_drives",
-				Columns:    []*schema.Column{DrivesColumns[7]},
+				Columns:    []*schema.Column{DrivesColumns[6]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -37,17 +36,12 @@ var (
 			{
 				Name:    "drive_owner_id",
 				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[7]},
-			},
-			{
-				Name:    "drive_root_node_id",
-				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[5]},
+				Columns: []*schema.Column{DrivesColumns[6]},
 			},
 			{
 				Name:    "drive_deleted_at",
 				Unique:  false,
-				Columns: []*schema.Column{DrivesColumns[6]},
+				Columns: []*schema.Column{DrivesColumns[5]},
 			},
 		},
 	}
@@ -123,6 +117,28 @@ var (
 			},
 		},
 	}
+	// SuperblocksColumns holds the columns for the "superblocks" table.
+	SuperblocksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID, Unique: true},
+		{Name: "create_time", Type: field.TypeTime},
+		{Name: "update_time", Type: field.TypeTime},
+		{Name: "root_node_id", Type: field.TypeUUID},
+		{Name: "drive_superblock", Type: field.TypeString, Unique: true},
+	}
+	// SuperblocksTable holds the schema information for the "superblocks" table.
+	SuperblocksTable = &schema.Table{
+		Name:       "superblocks",
+		Columns:    SuperblocksColumns,
+		PrimaryKey: []*schema.Column{SuperblocksColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "superblocks_drives_superblock",
+				Columns:    []*schema.Column{SuperblocksColumns[4]},
+				RefColumns: []*schema.Column{DrivesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -153,6 +169,7 @@ var (
 		GcTombstonesTable,
 		NodesTable,
 		StoragesTable,
+		SuperblocksTable,
 		UsersTable,
 	}
 )
@@ -170,6 +187,10 @@ func init() {
 		Table: "nodes",
 	}
 	StoragesTable.ForeignKeys[0].RefTable = DrivesTable
+	SuperblocksTable.ForeignKeys[0].RefTable = DrivesTable
+	SuperblocksTable.Annotation = &entsql.Annotation{
+		Table: "superblocks",
+	}
 	UsersTable.Annotation = &entsql.Annotation{
 		Table: "users",
 	}

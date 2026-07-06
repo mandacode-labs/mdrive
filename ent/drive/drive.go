@@ -24,14 +24,14 @@ const (
 	FieldDescription = "description"
 	// FieldOwnerID holds the string denoting the owner_id field in the database.
 	FieldOwnerID = "owner_id"
-	// FieldRootNodeID holds the string denoting the root_node_id field in the database.
-	FieldRootNodeID = "root_node_id"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
 	// EdgeStorage holds the string denoting the storage edge name in mutations.
 	EdgeStorage = "storage"
 	// EdgeNodes holds the string denoting the nodes edge name in mutations.
 	EdgeNodes = "nodes"
+	// EdgeSuperblock holds the string denoting the superblock edge name in mutations.
+	EdgeSuperblock = "superblock"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// Table holds the table name of the drive in the database.
@@ -50,6 +50,13 @@ const (
 	NodesInverseTable = "nodes"
 	// NodesColumn is the table column denoting the nodes relation/edge.
 	NodesColumn = "drive_id"
+	// SuperblockTable is the table that holds the superblock relation/edge.
+	SuperblockTable = "superblocks"
+	// SuperblockInverseTable is the table name for the Superblock entity.
+	// It exists in this package in order to avoid circular dependency with the "superblock" package.
+	SuperblockInverseTable = "superblocks"
+	// SuperblockColumn is the table column denoting the superblock relation/edge.
+	SuperblockColumn = "drive_superblock"
 	// UserTable is the table that holds the user relation/edge.
 	UserTable = "drives"
 	// UserInverseTable is the table name for the User entity.
@@ -67,7 +74,6 @@ var Columns = []string{
 	FieldName,
 	FieldDescription,
 	FieldOwnerID,
-	FieldRootNodeID,
 	FieldDeletedAt,
 }
 
@@ -129,11 +135,6 @@ func ByOwnerID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldOwnerID, opts...).ToFunc()
 }
 
-// ByRootNodeID orders the results by the root_node_id field.
-func ByRootNodeID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldRootNodeID, opts...).ToFunc()
-}
-
 // ByDeletedAt orders the results by the deleted_at field.
 func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
@@ -160,6 +161,13 @@ func ByNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// BySuperblockField orders the results by superblock field.
+func BySuperblockField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSuperblockStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByUserField orders the results by user field.
 func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -178,6 +186,13 @@ func newNodesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(NodesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, NodesTable, NodesColumn),
+	)
+}
+func newSuperblockStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SuperblockInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, SuperblockTable, SuperblockColumn),
 	)
 }
 func newUserStep() *sqlgraph.Step {

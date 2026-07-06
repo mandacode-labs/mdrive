@@ -17,6 +17,7 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
 	"github.com/mandacode-labs/mdrive/ent/storage"
+	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
 
@@ -33,32 +34,34 @@ const (
 	TypeGCTombstone = "GCTombstone"
 	TypeNode        = "Node"
 	TypeStorage     = "Storage"
+	TypeSuperblock  = "Superblock"
 	TypeUser        = "User"
 )
 
 // DriveMutation represents an operation that mutates the Drive nodes in the graph.
 type DriveMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *string
-	create_time    *time.Time
-	update_time    *time.Time
-	name           *string
-	description    *string
-	root_node_id   *uuid.UUID
-	deleted_at     *time.Time
-	clearedFields  map[string]struct{}
-	storage        *int
-	clearedstorage bool
-	nodes          map[uuid.UUID]struct{}
-	removednodes   map[uuid.UUID]struct{}
-	clearednodes   bool
-	user           *string
-	cleareduser    bool
-	done           bool
-	oldValue       func(context.Context) (*Drive, error)
-	predicates     []predicate.Drive
+	op                Op
+	typ               string
+	id                *string
+	create_time       *time.Time
+	update_time       *time.Time
+	name              *string
+	description       *string
+	deleted_at        *time.Time
+	clearedFields     map[string]struct{}
+	storage           *int
+	clearedstorage    bool
+	nodes             map[uuid.UUID]struct{}
+	removednodes      map[uuid.UUID]struct{}
+	clearednodes      bool
+	superblock        *uuid.UUID
+	clearedsuperblock bool
+	user              *string
+	cleareduser       bool
+	done              bool
+	oldValue          func(context.Context) (*Drive, error)
+	predicates        []predicate.Drive
 }
 
 var _ ent.Mutation = (*DriveMutation)(nil)
@@ -358,42 +361,6 @@ func (m *DriveMutation) ResetOwnerID() {
 	m.user = nil
 }
 
-// SetRootNodeID sets the "root_node_id" field.
-func (m *DriveMutation) SetRootNodeID(u uuid.UUID) {
-	m.root_node_id = &u
-}
-
-// RootNodeID returns the value of the "root_node_id" field in the mutation.
-func (m *DriveMutation) RootNodeID() (r uuid.UUID, exists bool) {
-	v := m.root_node_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldRootNodeID returns the old "root_node_id" field's value of the Drive entity.
-// If the Drive object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DriveMutation) OldRootNodeID(ctx context.Context) (v uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRootNodeID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRootNodeID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRootNodeID: %w", err)
-	}
-	return oldValue.RootNodeID, nil
-}
-
-// ResetRootNodeID resets all changes to the "root_node_id" field.
-func (m *DriveMutation) ResetRootNodeID() {
-	m.root_node_id = nil
-}
-
 // SetDeletedAt sets the "deleted_at" field.
 func (m *DriveMutation) SetDeletedAt(t time.Time) {
 	m.deleted_at = &t
@@ -536,6 +503,45 @@ func (m *DriveMutation) ResetNodes() {
 	m.removednodes = nil
 }
 
+// SetSuperblockID sets the "superblock" edge to the Superblock entity by id.
+func (m *DriveMutation) SetSuperblockID(id uuid.UUID) {
+	m.superblock = &id
+}
+
+// ClearSuperblock clears the "superblock" edge to the Superblock entity.
+func (m *DriveMutation) ClearSuperblock() {
+	m.clearedsuperblock = true
+}
+
+// SuperblockCleared reports if the "superblock" edge to the Superblock entity was cleared.
+func (m *DriveMutation) SuperblockCleared() bool {
+	return m.clearedsuperblock
+}
+
+// SuperblockID returns the "superblock" edge ID in the mutation.
+func (m *DriveMutation) SuperblockID() (id uuid.UUID, exists bool) {
+	if m.superblock != nil {
+		return *m.superblock, true
+	}
+	return
+}
+
+// SuperblockIDs returns the "superblock" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SuperblockID instead. It exists only for internal usage by the builders.
+func (m *DriveMutation) SuperblockIDs() (ids []uuid.UUID) {
+	if id := m.superblock; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSuperblock resets all changes to the "superblock" edge.
+func (m *DriveMutation) ResetSuperblock() {
+	m.superblock = nil
+	m.clearedsuperblock = false
+}
+
 // SetUserID sets the "user" edge to the User entity by id.
 func (m *DriveMutation) SetUserID(id string) {
 	m.user = &id
@@ -610,7 +616,7 @@ func (m *DriveMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DriveMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 6)
 	if m.create_time != nil {
 		fields = append(fields, drive.FieldCreateTime)
 	}
@@ -625,9 +631,6 @@ func (m *DriveMutation) Fields() []string {
 	}
 	if m.user != nil {
 		fields = append(fields, drive.FieldOwnerID)
-	}
-	if m.root_node_id != nil {
-		fields = append(fields, drive.FieldRootNodeID)
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, drive.FieldDeletedAt)
@@ -650,8 +653,6 @@ func (m *DriveMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case drive.FieldOwnerID:
 		return m.OwnerID()
-	case drive.FieldRootNodeID:
-		return m.RootNodeID()
 	case drive.FieldDeletedAt:
 		return m.DeletedAt()
 	}
@@ -673,8 +674,6 @@ func (m *DriveMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldDescription(ctx)
 	case drive.FieldOwnerID:
 		return m.OldOwnerID(ctx)
-	case drive.FieldRootNodeID:
-		return m.OldRootNodeID(ctx)
 	case drive.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
 	}
@@ -720,13 +719,6 @@ func (m *DriveMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetOwnerID(v)
-		return nil
-	case drive.FieldRootNodeID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetRootNodeID(v)
 		return nil
 	case drive.FieldDeletedAt:
 		v, ok := value.(time.Time)
@@ -814,9 +806,6 @@ func (m *DriveMutation) ResetField(name string) error {
 	case drive.FieldOwnerID:
 		m.ResetOwnerID()
 		return nil
-	case drive.FieldRootNodeID:
-		m.ResetRootNodeID()
-		return nil
 	case drive.FieldDeletedAt:
 		m.ResetDeletedAt()
 		return nil
@@ -826,12 +815,15 @@ func (m *DriveMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DriveMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.storage != nil {
 		edges = append(edges, drive.EdgeStorage)
 	}
 	if m.nodes != nil {
 		edges = append(edges, drive.EdgeNodes)
+	}
+	if m.superblock != nil {
+		edges = append(edges, drive.EdgeSuperblock)
 	}
 	if m.user != nil {
 		edges = append(edges, drive.EdgeUser)
@@ -853,6 +845,10 @@ func (m *DriveMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case drive.EdgeSuperblock:
+		if id := m.superblock; id != nil {
+			return []ent.Value{*id}
+		}
 	case drive.EdgeUser:
 		if id := m.user; id != nil {
 			return []ent.Value{*id}
@@ -863,7 +859,7 @@ func (m *DriveMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DriveMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removednodes != nil {
 		edges = append(edges, drive.EdgeNodes)
 	}
@@ -886,12 +882,15 @@ func (m *DriveMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DriveMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedstorage {
 		edges = append(edges, drive.EdgeStorage)
 	}
 	if m.clearednodes {
 		edges = append(edges, drive.EdgeNodes)
+	}
+	if m.clearedsuperblock {
+		edges = append(edges, drive.EdgeSuperblock)
 	}
 	if m.cleareduser {
 		edges = append(edges, drive.EdgeUser)
@@ -907,6 +906,8 @@ func (m *DriveMutation) EdgeCleared(name string) bool {
 		return m.clearedstorage
 	case drive.EdgeNodes:
 		return m.clearednodes
+	case drive.EdgeSuperblock:
+		return m.clearedsuperblock
 	case drive.EdgeUser:
 		return m.cleareduser
 	}
@@ -919,6 +920,9 @@ func (m *DriveMutation) ClearEdge(name string) error {
 	switch name {
 	case drive.EdgeStorage:
 		m.ClearStorage()
+		return nil
+	case drive.EdgeSuperblock:
+		m.ClearSuperblock()
 		return nil
 	case drive.EdgeUser:
 		m.ClearUser()
@@ -936,6 +940,9 @@ func (m *DriveMutation) ResetEdge(name string) error {
 		return nil
 	case drive.EdgeNodes:
 		m.ResetNodes()
+		return nil
+	case drive.EdgeSuperblock:
+		m.ResetSuperblock()
 		return nil
 	case drive.EdgeUser:
 		m.ResetUser()
@@ -3464,6 +3471,513 @@ func (m *StorageMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Storage edge %s", name)
+}
+
+// SuperblockMutation represents an operation that mutates the Superblock nodes in the graph.
+type SuperblockMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	create_time   *time.Time
+	update_time   *time.Time
+	root_node_id  *uuid.UUID
+	clearedFields map[string]struct{}
+	drive         *string
+	cleareddrive  bool
+	done          bool
+	oldValue      func(context.Context) (*Superblock, error)
+	predicates    []predicate.Superblock
+}
+
+var _ ent.Mutation = (*SuperblockMutation)(nil)
+
+// superblockOption allows management of the mutation configuration using functional options.
+type superblockOption func(*SuperblockMutation)
+
+// newSuperblockMutation creates new mutation for the Superblock entity.
+func newSuperblockMutation(c config, op Op, opts ...superblockOption) *SuperblockMutation {
+	m := &SuperblockMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSuperblock,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSuperblockID sets the ID field of the mutation.
+func withSuperblockID(id uuid.UUID) superblockOption {
+	return func(m *SuperblockMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Superblock
+		)
+		m.oldValue = func(ctx context.Context) (*Superblock, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Superblock.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSuperblock sets the old Superblock of the mutation.
+func withSuperblock(node *Superblock) superblockOption {
+	return func(m *SuperblockMutation) {
+		m.oldValue = func(context.Context) (*Superblock, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SuperblockMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SuperblockMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Superblock entities.
+func (m *SuperblockMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SuperblockMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SuperblockMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Superblock.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreateTime sets the "create_time" field.
+func (m *SuperblockMutation) SetCreateTime(t time.Time) {
+	m.create_time = &t
+}
+
+// CreateTime returns the value of the "create_time" field in the mutation.
+func (m *SuperblockMutation) CreateTime() (r time.Time, exists bool) {
+	v := m.create_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreateTime returns the old "create_time" field's value of the Superblock entity.
+// If the Superblock object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SuperblockMutation) OldCreateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreateTime: %w", err)
+	}
+	return oldValue.CreateTime, nil
+}
+
+// ResetCreateTime resets all changes to the "create_time" field.
+func (m *SuperblockMutation) ResetCreateTime() {
+	m.create_time = nil
+}
+
+// SetUpdateTime sets the "update_time" field.
+func (m *SuperblockMutation) SetUpdateTime(t time.Time) {
+	m.update_time = &t
+}
+
+// UpdateTime returns the value of the "update_time" field in the mutation.
+func (m *SuperblockMutation) UpdateTime() (r time.Time, exists bool) {
+	v := m.update_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdateTime returns the old "update_time" field's value of the Superblock entity.
+// If the Superblock object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SuperblockMutation) OldUpdateTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdateTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdateTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdateTime: %w", err)
+	}
+	return oldValue.UpdateTime, nil
+}
+
+// ResetUpdateTime resets all changes to the "update_time" field.
+func (m *SuperblockMutation) ResetUpdateTime() {
+	m.update_time = nil
+}
+
+// SetRootNodeID sets the "root_node_id" field.
+func (m *SuperblockMutation) SetRootNodeID(u uuid.UUID) {
+	m.root_node_id = &u
+}
+
+// RootNodeID returns the value of the "root_node_id" field in the mutation.
+func (m *SuperblockMutation) RootNodeID() (r uuid.UUID, exists bool) {
+	v := m.root_node_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRootNodeID returns the old "root_node_id" field's value of the Superblock entity.
+// If the Superblock object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SuperblockMutation) OldRootNodeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRootNodeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRootNodeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRootNodeID: %w", err)
+	}
+	return oldValue.RootNodeID, nil
+}
+
+// ResetRootNodeID resets all changes to the "root_node_id" field.
+func (m *SuperblockMutation) ResetRootNodeID() {
+	m.root_node_id = nil
+}
+
+// SetDriveID sets the "drive" edge to the Drive entity by id.
+func (m *SuperblockMutation) SetDriveID(id string) {
+	m.drive = &id
+}
+
+// ClearDrive clears the "drive" edge to the Drive entity.
+func (m *SuperblockMutation) ClearDrive() {
+	m.cleareddrive = true
+}
+
+// DriveCleared reports if the "drive" edge to the Drive entity was cleared.
+func (m *SuperblockMutation) DriveCleared() bool {
+	return m.cleareddrive
+}
+
+// DriveID returns the "drive" edge ID in the mutation.
+func (m *SuperblockMutation) DriveID() (id string, exists bool) {
+	if m.drive != nil {
+		return *m.drive, true
+	}
+	return
+}
+
+// DriveIDs returns the "drive" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// DriveID instead. It exists only for internal usage by the builders.
+func (m *SuperblockMutation) DriveIDs() (ids []string) {
+	if id := m.drive; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetDrive resets all changes to the "drive" edge.
+func (m *SuperblockMutation) ResetDrive() {
+	m.drive = nil
+	m.cleareddrive = false
+}
+
+// Where appends a list predicates to the SuperblockMutation builder.
+func (m *SuperblockMutation) Where(ps ...predicate.Superblock) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SuperblockMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SuperblockMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Superblock, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SuperblockMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SuperblockMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Superblock).
+func (m *SuperblockMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SuperblockMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.create_time != nil {
+		fields = append(fields, superblock.FieldCreateTime)
+	}
+	if m.update_time != nil {
+		fields = append(fields, superblock.FieldUpdateTime)
+	}
+	if m.root_node_id != nil {
+		fields = append(fields, superblock.FieldRootNodeID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SuperblockMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case superblock.FieldCreateTime:
+		return m.CreateTime()
+	case superblock.FieldUpdateTime:
+		return m.UpdateTime()
+	case superblock.FieldRootNodeID:
+		return m.RootNodeID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SuperblockMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case superblock.FieldCreateTime:
+		return m.OldCreateTime(ctx)
+	case superblock.FieldUpdateTime:
+		return m.OldUpdateTime(ctx)
+	case superblock.FieldRootNodeID:
+		return m.OldRootNodeID(ctx)
+	}
+	return nil, fmt.Errorf("unknown Superblock field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SuperblockMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case superblock.FieldCreateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreateTime(v)
+		return nil
+	case superblock.FieldUpdateTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdateTime(v)
+		return nil
+	case superblock.FieldRootNodeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRootNodeID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Superblock field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SuperblockMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SuperblockMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SuperblockMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Superblock numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SuperblockMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SuperblockMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SuperblockMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Superblock nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SuperblockMutation) ResetField(name string) error {
+	switch name {
+	case superblock.FieldCreateTime:
+		m.ResetCreateTime()
+		return nil
+	case superblock.FieldUpdateTime:
+		m.ResetUpdateTime()
+		return nil
+	case superblock.FieldRootNodeID:
+		m.ResetRootNodeID()
+		return nil
+	}
+	return fmt.Errorf("unknown Superblock field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SuperblockMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.drive != nil {
+		edges = append(edges, superblock.EdgeDrive)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SuperblockMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case superblock.EdgeDrive:
+		if id := m.drive; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SuperblockMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SuperblockMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SuperblockMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.cleareddrive {
+		edges = append(edges, superblock.EdgeDrive)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SuperblockMutation) EdgeCleared(name string) bool {
+	switch name {
+	case superblock.EdgeDrive:
+		return m.cleareddrive
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SuperblockMutation) ClearEdge(name string) error {
+	switch name {
+	case superblock.EdgeDrive:
+		m.ClearDrive()
+		return nil
+	}
+	return fmt.Errorf("unknown Superblock unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SuperblockMutation) ResetEdge(name string) error {
+	switch name {
+	case superblock.EdgeDrive:
+		m.ResetDrive()
+		return nil
+	}
+	return fmt.Errorf("unknown Superblock edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.
