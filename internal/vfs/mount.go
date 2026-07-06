@@ -9,12 +9,13 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Mount installs a mount point at mountPath that resolves into
 // sourceDriveID's root. The mount-kind node's inline content is
-// a content.MountContent ({"drv": sourceDriveID}). Linux vfs_mount.
+// a content.MountContent. Linux vfs_mount.
 //
 // Source drive existence is verified via the superblock (which
 // returns NotFound if the drive has no superblock yet).
@@ -43,8 +44,8 @@ func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourc
 	mount.mtime = now
 	mount.ctime = now
 	mount.btime = now
-	mc := contentMountContent{DriveID: sourceDriveID}
-	mcData, err := json.Marshal(mc)
+	mc := &content.MountContent{DriveID: sourceDriveID}
+	mcData, err := mc.Marshal()
 	if err != nil {
 		return errorx.Wrap(err, "vfs: failed to marshal mount content")
 	}
@@ -52,9 +53,4 @@ func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourc
 		return err
 	}
 	return v.nodeOp.Create(ctx, parent.Node, mount, name)
-}
-
-// contentMountContent mirrors content.MountContent.
-type contentMountContent struct {
-	DriveID string `json:"drv"`
 }

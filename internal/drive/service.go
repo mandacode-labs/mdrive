@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/oklog/ulid/v2"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Service is the public surface for drive lifecycle. Handlers
@@ -39,17 +41,17 @@ var _ Service = (*service)(nil)
 
 func (s *service) Create(ctx context.Context, ownerID string, name string, description string, storage *Storage) (*Drive, error) {
 	if name == "" {
-		return nil, errorxKindInvalidArgument("drive: name is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: name is required")
 	}
 	if ownerID == "" {
-		return nil, errorxKindInvalidArgument("drive: owner_id is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: owner_id is required")
 	}
 	if storage == nil {
-		return nil, errorxKindInvalidArgument("drive: storage is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: storage is required")
 	}
 	ownerULID, err := ulid.Parse(ownerID)
 	if err != nil {
-		return nil, errorxKindInvalidArgument("drive: invalid owner id")
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: invalid owner id")
 	}
 	id := ulid.Make()
 
@@ -86,9 +88,9 @@ func (s *service) Create(ctx context.Context, ownerID string, name string, descr
 }
 
 func (s *service) Get(ctx context.Context, driveID string) (*Drive, error) {
-	id, err := parseDriveID(driveID)
+	id, err := ulid.Parse(driveID)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, "drive: invalid drive id", errorx.KindInvalidArgument)
 	}
 	return s.repo.Read(ctx, id)
 }
@@ -98,7 +100,10 @@ func (s *service) GetStorage(ctx context.Context, driveID string) (*Storage, err
 }
 
 func (s *service) Update(ctx context.Context, driveID string, name string, description string) (*Drive, error) {
-	id, err := parseDriveID(driveID)
+	id, err := ulid.Parse(driveID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "drive: invalid drive id", errorx.KindInvalidArgument)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +112,7 @@ func (s *service) Update(ctx context.Context, driveID string, name string, descr
 		return nil, err
 	}
 	if existing == nil {
-		return nil, errorxKindNotFound("drive: not found")
+		return nil, errorx.New(errorx.KindNotFound, "drive: not found")
 	}
 	newName := existing.Name()
 	if name != "" {
@@ -121,9 +126,9 @@ func (s *service) Update(ctx context.Context, driveID string, name string, descr
 }
 
 func (s *service) SoftDelete(ctx context.Context, driveID string) error {
-	id, err := parseDriveID(driveID)
+	id, err := ulid.Parse(driveID)
 	if err != nil {
-		return err
+		return errorx.Wrap(err, "drive: invalid drive id", errorx.KindInvalidArgument)
 	}
 	if _, err := s.repo.Read(ctx, id); err != nil {
 		return err
@@ -132,7 +137,10 @@ func (s *service) SoftDelete(ctx context.Context, driveID string) error {
 }
 
 func (s *service) Restore(ctx context.Context, driveID string) (*Drive, error) {
-	id, err := parseDriveID(driveID)
+	id, err := ulid.Parse(driveID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "drive: invalid drive id", errorx.KindInvalidArgument)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +149,7 @@ func (s *service) Restore(ctx context.Context, driveID string) (*Drive, error) {
 		return nil, err
 	}
 	if existing.DeletedAt() == nil {
-		return nil, errorxKindFailedPrecondition("drive: not deleted")
+		return nil, errorx.New(errorx.KindFailedPrecondition, "drive: not deleted")
 	}
 	if err := s.repo.Restore(ctx, id); err != nil {
 		return nil, err
@@ -150,16 +158,16 @@ func (s *service) Restore(ctx context.Context, driveID string) (*Drive, error) {
 }
 
 func (s *service) Purge(ctx context.Context, driveID string) error {
-	id, err := parseDriveID(driveID)
+	id, err := ulid.Parse(driveID)
 	if err != nil {
-		return err
+		return errorx.Wrap(err, "drive: invalid drive id", errorx.KindInvalidArgument)
 	}
 	return s.repo.Destroy(ctx, id)
 }
 
 func (s *service) ListByOwner(ctx context.Context, ownerID string) ([]*Drive, error) {
 	if ownerID == "" {
-		return nil, errorxKindInvalidArgument("drive: owner_id is required")
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: owner_id is required")
 	}
 	return s.repo.ListByOwner(ctx, ownerID)
 }

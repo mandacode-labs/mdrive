@@ -9,6 +9,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
@@ -43,7 +44,12 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	child.btime = now
 
 	if kind == NodeKindDirectory {
-		if err := child.Write(emptyDirContent(), int64(len(emptyDirContent()))); err != nil {
+		empty := &content.DirContent{}
+		data, err := empty.Marshal()
+		if err != nil {
+			return nil, errorx.Wrap(err, "vfs: failed to marshal empty dir content")
+		}
+		if err := child.Write(data, int64(len(data))); err != nil {
 			return nil, err
 		}
 	}
@@ -82,8 +88,8 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 	link.mtime = now
 	link.ctime = now
 	link.btime = now
-	sc := contentSymlinkContent{Target: targetDentry.Node.ID().String()}
-	scData, err := json.Marshal(sc)
+	sc := &content.SymlinkContent{NodeID: targetDentry.Node.ID()}
+	scData, err := sc.Marshal()
 	if err != nil {
 		return errorx.Wrap(err, "vfs: failed to marshal symlink content")
 	}
@@ -99,21 +105,4 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 		Name:   name,
 		Node:   targetDentry.Node,
 	})
-}
-
-// emptyDirContent returns the JSON bytes for an empty directory's
-// inline content.
-func emptyDirContent() []byte {
-	c := struct {
-		Items []struct{} `json:"items"`
-	}{}
-	b, _ := json.Marshal(c)
-	return b
-}
-
-// contentSymlinkContent mirrors content.SymlinkContent. Kept
-// local so this file doesn't depend on internal/content's import
-// chain.
-type contentSymlinkContent struct {
-	Target string `json:"ino"`
 }

@@ -89,6 +89,14 @@ type DirEntry struct {
 	Kind    NodeKind
 }
 
+// ObjectRef is the public input for WriteObject. The caller
+type ObjectRef struct {
+	Bucket   string
+	Key      string
+	Mime     string
+	Checksum string
+}
+
 // vfs is the unexported impl.
 type vfs struct {
 	nodeOp  NodeOperation
@@ -104,8 +112,6 @@ func NewVFS(nodeOp NodeOperation, superop SuperOperation, perm permission.Author
 		perm:    perm,
 	}
 }
-
-var _ VFS = (*vfs)(nil)
 
 // userID is the caller's user id from the request context.
 func (v *vfs) userID(ctx context.Context) string {
@@ -278,4 +284,14 @@ func joinComponents(components []string) string {
 		out += "/" + c
 	}
 	return out
+}
+
+// nodeKindFromContent converts a content.NodeKind to vfs.NodeKind.
+func nodeKindFromContent(k content.NodeKind) NodeKind {
+	return NodeKind(k)
+}
+
+// nodeKindToContent converts a vfs.NodeKind to content.NodeKind.
+func nodeKindToContent(k NodeKind) content.NodeKind {
+	return content.NodeKind(k)
 }
