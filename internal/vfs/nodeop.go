@@ -1,16 +1,14 @@
 package vfs
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 // NodeOperation is the inode-level primitive set. Mirrors Linux
-// inode_operations: each callback mutates the inode tree in a
-// single step. High-level fs commands (Mkdir, Ls, Cat, ...) live
-// in the vfs layer, not here.
-//
-// Each callback takes ctx explicitly so vfs can thread it from
-// the system call layer. The data-access layer uses
-// entx.FromContext to pick the right client (tx or non-tx).
 type NodeOperation interface {
+	Get(ctx context.Context, id uuid.UUID) (*Node, error)
 	Lookup(ctx context.Context, dir *Node, name string) (*Dentry, error)
 	Create(ctx context.Context, parent *Node, child *Node, name string) error
 	Link(ctx context.Context, dentry *Dentry, linkDir *Node, linkName string) error

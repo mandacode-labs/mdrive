@@ -86,4 +86,3 @@ func (d *DirContent) RemoveEntry(name string) error {
 func NewDirContent(entries []DirEntry) Content {
 	return &DirContent{Entries: entries}
 }
-

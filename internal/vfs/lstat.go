@@ -3,21 +3,19 @@ package vfs
 import (
 	"context"
 
+	"github.com/oklog/ulid/v2"
+
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // Lstat does not follow the final symlink. Linux vfs_lstat /
 // lstat(2).
 func (v *vfs) Lstat(ctx context.Context, driveID string, path string) (*Node, error) {
-	target, err := v.resolveTarget(ctx, driveID, path, permission.ActionView)
+	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
-		return nil, err
+		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	if target.Parent == nil {
-		return nil, errorx.New(errorx.KindInvalidArgument, "vfs: path has no parent")
-	}
-	dentry, err := v.nodeOp.Lookup(ctx, target.Parent, target.Name)
+	dentry, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}

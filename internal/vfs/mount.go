@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,17 +18,21 @@ import (
 //
 // Source drive existence is verified via the superblock.
 func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourceDriveID string) error {
-	if _, err := v.resolveTarget(ctx, driveID, mountPath, permission.ActionView); err == nil {
+	startDrive, err := ulid.Parse(driveID)
+	if err != nil {
+		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	if _, err := v.walk(ctx, startDrive, mountPath, false); err == nil {
 		return errorx.New(errorx.KindAlreadyExists, "vfs: mount path already exists")
 	}
 	srcULID, err := ulid.Parse(sourceDriveID)
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid source drive id", errorx.KindInvalidArgument)
 	}
-	if _, err := v.superop.GetRootNodeID(ctx, srcULID); err != nil {
+	if _, err := v.superop.GetByDriveID(ctx, srcULID); err != nil {
 		return err
 	}
-	target, err := v.resolveTarget(ctx, driveID, mountPath, permission.ActionEdit)
+	target, err := v.walk(ctx, startDrive, mountPath, false)
 	if err != nil {
 		return err
 	}
@@ -38,6 +41,9 @@ func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourc
 	}
 	if target.Parent.Kind() != NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: mount parent is not a directory")
+	}
+	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
+		return err
 	}
 
 	now := time.Now()

@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/oklog/ulid/v2"
+
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
 // IterateDir returns the entries of a directory. Linux
@@ -16,7 +17,11 @@ import (
 // DirContent is read inline (Node.Data()), so no further DB
 // lookups are needed.
 func (v *vfs) IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error) {
-	dentry, err := v.resolveTarget(ctx, driveID, path, permission.ActionView)
+	startDrive, err := ulid.Parse(driveID)
+	if err != nil {
+		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	dentry, err := v.walk(ctx, startDrive, path, true)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +37,7 @@ func (v *vfs) IterateDir(ctx context.Context, driveID string, path string) ([]Di
 		out = append(out, DirEntry{
 			InodeID: e.NodeID,
 			Name:    e.Name,
-			Kind:    ParseNodeKind(e.Kind),
+			Kind:    NodeKind(e.Kind),
 		})
 	}
 	return out, nil

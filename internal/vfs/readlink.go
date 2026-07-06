@@ -4,31 +4,31 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
+
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
-	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Readlink returns the symlink target's inode id as a string.
-// Linux vfs_readlink.
-func (v *vfs) Readlink(ctx context.Context, driveID string, path string) (string, error) {
-	target, err := v.resolveTarget(ctx, driveID, path, permission.ActionView)
+// Readlink returns the symlink target's inode id. Linux
+// vfs_readlink. The caller converts the id back to a *Node via
+// nodeOp.Get if needed.
+func (v *vfs) Readlink(ctx context.Context, driveID string, path string) (uuid.UUID, error) {
+	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
-		return "", err
+		return uuid.Nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	if target.Parent == nil {
-		return "", errorx.New(errorx.KindInvalidArgument, "vfs: path has no parent")
-	}
-	dentry, err := v.nodeOp.Lookup(ctx, target.Parent, target.Name)
+	dentry, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
-		return "", err
+		return uuid.Nil, err
 	}
 	if dentry.Node.Kind() != NodeKindSymlink {
-		return "", errorx.New(errorx.KindInvalidArgument, "vfs: not a symlink")
+		return uuid.Nil, errorx.New(errorx.KindInvalidArgument, "vfs: not a symlink")
 	}
 	var sc content.SymlinkContent
 	if err := json.Unmarshal(dentry.Node.Data(), &sc); err != nil {
-		return "", errorx.Wrap(err, "vfs: invalid symlink content")
+		return uuid.Nil, errorx.Wrap(err, "vfs: invalid symlink content", errorx.KindInternal)
 	}
-	return sc.NodeID.String(), nil
+	return sc.NodeID, nil
 }

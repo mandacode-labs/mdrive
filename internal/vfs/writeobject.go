@@ -20,6 +20,13 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 	if ref.Bucket == "" || ref.Key == "" {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: object ref requires bucket and key")
 	}
+	startDrive, err := ulid.Parse(driveID)
+	if err != nil {
+		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
+		return err
+	}
 
 	oc := &content.ObjectContent{
 		Bucket:   ref.Bucket,
@@ -32,12 +39,7 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 		return errorx.Wrap(err, "vfs: failed to marshal object content")
 	}
 
-	// Try replace first, else create.
-	if _, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit); err == nil {
-		target, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
-		if err != nil {
-			return err
-		}
+	if target, err := v.walk(ctx, startDrive, path, false); err == nil {
 		if target.Parent == nil {
 			return errorx.New(errorx.KindInvalidArgument, "vfs: path has no parent")
 		}
@@ -46,10 +48,6 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 		}
 		if err := v.nodeOp.Unlink(ctx, target); err != nil {
 			return errorx.Wrap(err, "vfs: failed to remove existing object")
-		}
-		startDrive, err := ulid.Parse(driveID)
-		if err != nil {
-			return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 		}
 		now := time.Now()
 		child := NewNode(uuid.New(), startDrive, NodeKindObject)
@@ -62,7 +60,6 @@ func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref 
 		}
 		return v.nodeOp.Create(ctx, target.Parent, child, target.Name)
 	}
-	// Not found → create fresh.
-	_, err = v.createWithData(ctx, driveID, path, NodeKindObject, data)
+	_, err = v.createWithData(ctx, startDrive, path, NodeKindObject, data)
 	return err
 }

@@ -24,7 +24,7 @@ func (v *vfs) Create(ctx context.Context, driveID string, path string, kind Node
 	if err != nil {
 		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	target, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
+	target, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}

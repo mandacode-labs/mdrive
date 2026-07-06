@@ -8,6 +8,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 )
 
 // NodeKind classifies a node by storage shape, not by access
@@ -36,6 +37,23 @@ func (k NodeKind) String() string {
 		return "mount"
 	default:
 		return "unknown"
+	}
+}
+
+func parseContentNodeKind(k content.NodeKind) NodeKind {
+	switch k {
+	case content.NodeKindFile:
+		return NodeKindFile
+	case content.NodeKindDirectory:
+		return NodeKindDirectory
+	case content.NodeKindSymlink:
+		return NodeKindSymlink
+	case content.NodeKindObject:
+		return NodeKindObject
+	case content.NodeKindMount:
+		return NodeKindMount
+	default:
+		return NodeKindFile // default to file if unknown
 	}
 }
 

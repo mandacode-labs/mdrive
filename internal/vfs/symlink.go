@@ -19,18 +19,18 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 	if err != nil {
 		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
 	}
-	targetDentry, err := v.resolveTarget(ctx, driveID, target, permission.ActionView)
+	targetDentry, err := v.walk(ctx, startDrive, target, true)
 	if err != nil {
 		return err
 	}
-	target, err := v.resolveTarget(ctx, driveID, linkPath, permission.ActionEdit)
+	linkDentry, err := v.walk(ctx, startDrive, linkPath, false)
 	if err != nil {
 		return err
 	}
-	if target.Parent == nil {
+	if linkDentry.Parent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: link path has no parent")
 	}
-	if target.Parent.Kind() != NodeKindDirectory {
+	if linkDentry.Parent.Kind() != NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: link parent is not a directory")
 	}
 	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
@@ -52,12 +52,12 @@ func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPa
 		return err
 	}
 
-	if err := v.nodeOp.Create(ctx, target.Parent, link, target.Name); err != nil {
+	if err := v.nodeOp.Create(ctx, linkDentry.Parent, link, linkDentry.Name); err != nil {
 		return err
 	}
 	return v.nodeOp.Symlink(ctx, link, &Dentry{
 		Parent: targetDentry.Node,
-		Name:   target.Name,
+		Name:   target,
 		Node:   targetDentry.Node,
 	})
 }

@@ -15,28 +15,27 @@ import (
 // inline data. Files larger than MaxDataSize return
 // KindInvalidArgument. Linux vfs_write.
 func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byte) error {
-	if _, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit); err == nil {
-		dentry, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
-		if err != nil {
-			return err
-		}
+	startDrive, err := ulid.Parse(driveID)
+	if err != nil {
+		return errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
+	}
+	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
+		return err
+	}
+	if dentry, err := v.walk(ctx, startDrive, path, false); err == nil {
 		if dentry.Node.Kind() != NodeKindFile {
 			return errorx.New(errorx.KindInvalidArgument, "vfs: target exists and is not a file")
 		}
 		return dentry.Node.Write(data, int64(len(data)))
 	}
 	// Not found → create the file with data.
-	_, err := v.createWithData(ctx, driveID, path, NodeKindFile, data)
+	_, err = v.createWithData(ctx, startDrive, path, NodeKindFile, data)
 	return err
 }
 
 // createWithData is the shared path for fresh Create + data.
-func (v *vfs) createWithData(ctx context.Context, driveID string, path string, kind NodeKind, data []byte) (*Node, error) {
-	startDrive, err := ulid.Parse(driveID)
-	if err != nil {
-		return nil, errorx.Wrap(err, "vfs: invalid drive id", errorx.KindInvalidArgument)
-	}
-	target, err := v.resolveTarget(ctx, driveID, path, permission.ActionEdit)
+func (v *vfs) createWithData(ctx context.Context, startDrive ulid.ULID, path string, kind NodeKind, data []byte) (*Node, error) {
+	target, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +44,6 @@ func (v *vfs) createWithData(ctx context.Context, driveID string, path string, k
 	}
 	if target.Parent.Kind() != NodeKindDirectory {
 		return nil, errorx.New(errorx.KindInvalidArgument, "vfs: parent is not a directory")
-	}
-	if err := v.checkPerm(ctx, permission.ActionEdit, startDrive); err != nil {
-		return nil, err
 	}
 
 	now := time.Now()
