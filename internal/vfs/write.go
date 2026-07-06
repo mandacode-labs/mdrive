@@ -11,9 +11,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Write creates or overwrites a file-kind node with the given
-// inline data. Files larger than MaxDataSize return
-// KindInvalidArgument. Linux vfs_write.
+// Write creates or overwrites a file-kind node with inline data.
+// Files larger than MaxDataSize return KindInvalidArgument.
+// Linux vfs_write.
 func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byte) error {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
@@ -33,7 +33,9 @@ func (v *vfs) Write(ctx context.Context, driveID string, path string, data []byt
 	return err
 }
 
-// createWithData is the shared path for fresh Create + data.
+// createWithData walks to the parent, creates a fresh inode of
+// the given kind, and writes inline data in one step. Used by
+// Write and WriteObject on a missing target.
 func (v *vfs) createWithData(ctx context.Context, startDrive ulid.ULID, path string, kind NodeKind, data []byte) (*Node, error) {
 	target, err := v.walk(ctx, startDrive, path, false)
 	if err != nil {

@@ -6,7 +6,8 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// Purge implements [vfs.SuperOperation].
+// Purge is a stub — should remove the superblock and all its
+// data. Destructive.
 func (s *superOperation) Purge(ctx context.Context, id ulid.ULID) error {
 	panic("unimplemented")
 }

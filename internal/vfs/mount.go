@@ -12,11 +12,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Mount installs a mount point at mountPath that resolves into
-// sourceDriveID's root. The mount-kind node's inline content is
-// a content.MountContent. Linux vfs_mount.
-//
-// Source drive existence is verified via the superblock.
+// Mount installs a mount point at mountPath into sourceDriveID's
+// root. Source drive is verified via its superblock.
 func (v *vfs) Mount(ctx context.Context, driveID string, mountPath string, sourceDriveID string) error {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

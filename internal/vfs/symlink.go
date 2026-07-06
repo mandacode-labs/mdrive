@@ -12,8 +12,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Symlink creates a symlink at linkPath pointing at target.
-// vfs stores the target id inline via content.SymlinkContent.
+// Symlink creates a link at linkPath pointing at target. Target
+// id is stored inline via content.SymlinkContent.
 func (v *vfs) Symlink(ctx context.Context, driveID string, target string, linkPath string) error {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

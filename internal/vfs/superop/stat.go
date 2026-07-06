@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
-// Stat implements [vfs.SuperOperation].
+// Stat is a stub — should delegate to Repository.Read.
 func (s *superOperation) Stat(ctx context.Context, id uuid.UUID) (*vfs.Superblock, error) {
 	panic("unimplemented")
 }

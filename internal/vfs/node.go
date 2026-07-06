@@ -8,11 +8,10 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 )
 
-// NodeKind classifies a node by storage shape, not by access
-// permissions (those are managed via OpenFGA).
+// NodeKind classifies a node by storage shape. Permissions are
+// managed separately via OpenFGA.
 type NodeKind uint8
 
 const (
@@ -40,24 +39,8 @@ func (k NodeKind) String() string {
 	}
 }
 
-func parseContentNodeKind(k content.NodeKind) NodeKind {
-	switch k {
-	case content.NodeKindFile:
-		return NodeKindFile
-	case content.NodeKindDirectory:
-		return NodeKindDirectory
-	case content.NodeKindSymlink:
-		return NodeKindSymlink
-	case content.NodeKindObject:
-		return NodeKindObject
-	case content.NodeKindMount:
-		return NodeKindMount
-	default:
-		return NodeKindFile // default to file if unknown
-	}
-}
-
 // Flags is a bitmask of node-level flags (ext2-style i_flags).
+// Currently unused on the read path; reserved for fs semantics.
 type Flags uint32
 
 const (
@@ -119,8 +102,9 @@ func (f Flags) String() string {
 	return fmt.Sprintf("%v", flags)
 }
 
-// Revision is a ULID-based generation identifier for the node.
-// Used for optimistic concurrency control (analogous to inode i_generation in Linux).
+// Revision is a ULID-based generation counter for the node.
+// Used for optimistic concurrency control (analogous to Linux
+// inode i_generation).
 type Revision string
 
 func newRevision() Revision {
@@ -151,10 +135,11 @@ func (r Revision) Time() (time.Time, error) {
 	return ulid.Time(id.Time()), nil
 }
 
-// MaxDataSize is the maximum size of data
+// MaxDataSize bounds the inline data of a file-kind node.
 const MaxDataSize = 4096
 
-// Node represents a file system node
+// Node is the inode-like record: identity, drive, kind, sizes,
+// timestamps, flags, and revision.
 type Node struct {
 	id    uuid.UUID
 	drv   ulid.ULID
@@ -237,9 +222,8 @@ func HydrateNode(
 	}
 }
 
-// Node domain logics
-
-// Write writes data to the node, updating its size and timestamps.
+// Write sets the node's inline data, size, mtime, ctime, and
+// bumps revision. Enforces MaxDataSize.
 func (n *Node) Write(data []byte, size int64) error {
 	if len(data) > MaxDataSize {
 		return errorx.New(errorx.KindInvalidArgument, "node: content exceeds maximum size")

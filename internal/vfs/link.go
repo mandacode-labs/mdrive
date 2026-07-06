@@ -9,7 +9,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Link creates a hardlink: linkPath becomes a second directory
+// Link creates a hard link. linkPath becomes a second directory
 // entry pointing at the same inode as srcPath. Linux vfs_link.
 func (v *vfs) Link(ctx context.Context, driveID string, srcPath string, linkPath string) error {
 	startDrive, err := ulid.Parse(driveID)

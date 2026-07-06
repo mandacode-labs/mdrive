@@ -11,9 +11,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 )
 
-// Readlink returns the symlink target's inode id. Linux
-// vfs_readlink. The caller converts the id back to a *Node via
-// nodeOp.Get if needed.
+// Readlink returns the symlink target's inode id. Linux readlink(2),
+// adapted: graph-based (target's uuid.UUID) rather than raw path.
 func (v *vfs) Readlink(ctx context.Context, driveID string, path string) (uuid.UUID, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

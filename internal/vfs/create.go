@@ -13,12 +13,8 @@ import (
 )
 
 // Create creates an empty inode. Linux vfs_create + vfs_mkdir +
-// vfs_mknod, unified via kind. No kind-specific data is set
-// here; that is the job of the kind-specific command
-// (Write / WriteObject / Mount / Symlink).
-//
-// A directory-kind inode is initialized with an empty
-// DirContent so subsequent Lookup/Mknod on it succeeds.
+// vfs_mknod, unified via kind. Kind-specific data is set by
+// Write / WriteObject / Mount / Symlink.
 func (v *vfs) Create(ctx context.Context, driveID string, path string, kind NodeKind) (*Node, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

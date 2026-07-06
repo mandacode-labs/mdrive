@@ -11,15 +11,11 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// walk resolves `path` from `driveID` and returns the final
-// Dentry. It mirrors Linux `link_path_walk`.
+// walk resolves `path` from `driveID`. Mirrors Linux link_path_walk.
 //
-// Permission is checked against the starting drive once (ActionView),
-// and again on ActionView for each mount boundary crossed.
-//
-// follow selects trailing symlink semantics:
-//   - true  → stat (follow the chain to its target)
-//   - false → lstat/readlink (return the symlink node itself)
+// ActionView is checked once on the starting drive and again on
+// each mount boundary crossed. follow controls trailing symlink
+// behavior: true → stat, false → lstat/readlink.
 func (v *vfs) walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, error) {
 	sb, err := v.superop.GetByDriveID(ctx, driveID)
 	if err != nil {
@@ -52,10 +48,9 @@ func (v *vfs) walk(ctx context.Context, driveID ulid.ULID, path string, follow b
 	return cur, nil
 }
 
-// walkStep walks one component under `cur`. Handles "." / "" fast-path,
-// mount crossing (with source-drive ActionView check), and returns the
-// new Dentry. Mid-path symlinks are passed through unchanged; final
-// symlink resolution is done in walk via followSymlink.
+// walkStep walks one component. Mount nodes cross to the source
+// drive (with an ActionView check); symlinks are passed through
+// for walk to resolve at the end.
 func (v *vfs) walkStep(ctx context.Context, cur *Dentry, name string) (*Dentry, error) {
 	if name == "" || name == "." {
 		return cur, nil
@@ -84,8 +79,8 @@ func (v *vfs) walkStep(ctx context.Context, cur *Dentry, name string) (*Dentry, 
 	return &Dentry{Parent: cur.Node, Name: name, Node: child}, nil
 }
 
-// walkMount resolves a mount-kind node to the source drive's root,
-// checking the source drive ActionView permission first.
+// walkMount resolves a mount node to the source drive's root
+// after an ActionView check on the source drive.
 func (v *vfs) walkMount(ctx context.Context, mount *Node) (*Dentry, error) {
 	var mc content.MountContent
 	if err := json.Unmarshal(mount.Data(), &mc); err != nil {
@@ -112,9 +107,7 @@ func (v *vfs) walkMount(ctx context.Context, mount *Node) (*Dentry, error) {
 	return &Dentry{Parent: srcRoot, Name: "/", Node: srcRoot}, nil
 }
 
-// followSymlink resolves a symlink chain depth-capped to break loops.
-// Mirrors the trailing-follow step in Linux `path_walk` when
-// LOOKUP_FOLLOW is set.
+// followSymlink resolves a symlink chain, depth-capped to break loops.
 func (v *vfs) followSymlink(ctx context.Context, cur *Dentry, depth int) (*Dentry, error) {
 	if depth == 0 {
 		return nil, errorx.New(errorx.KindFailedPrecondition, "vfs: symlink loop")

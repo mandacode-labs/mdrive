@@ -19,6 +19,7 @@ type NodeRepository interface {
 	Destroy(ctx context.Context, id uuid.UUID) error
 }
 
+// nodeRepo is the ent-backed impl.
 type nodeRepo struct {
 	client *ent.Client
 }

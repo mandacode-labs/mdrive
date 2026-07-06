@@ -8,8 +8,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// Stat follows symlinks and returns the resolved node. Linux
-// vfs_stat / stat(2).
+// Stat follows the trailing symlink. Linux stat(2).
 func (v *vfs) Stat(ctx context.Context, driveID string, path string) (*Node, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

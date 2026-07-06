@@ -9,9 +9,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Rename moves an entry from srcDriveID/srcPath to
-// dstDriveID/dstPath. Cross-drive rename is not supported;
-// src and dst drives must match. Linux vfs_rename.
+// Rename moves an entry. Cross-drive rename is not supported.
+// Linux vfs_rename.
 func (v *vfs) Rename(ctx context.Context, srcDriveID string, srcPath string, dstDriveID string, dstPath string) error {
 	if srcDriveID != dstDriveID {
 		return errorx.New(errorx.KindFailedPrecondition, "vfs: cross-drive rename not supported")

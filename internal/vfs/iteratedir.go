@@ -10,12 +10,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 )
 
-// IterateDir returns the entries of a directory. Linux
-// iterate_dir / getdents64.
-//
-// Only direct children are returned. The parent dir's
-// DirContent is read inline (Node.Data()), so no further DB
-// lookups are needed.
+// IterateDir returns the direct children of a directory-kind
+// node. DirContent is read inline; no extra DB lookups.
+// Linux iterate_dir / getdents64.
 func (v *vfs) IterateDir(ctx context.Context, driveID string, path string) ([]DirEntry, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

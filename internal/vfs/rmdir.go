@@ -9,9 +9,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Rmdir removes an empty directory. Refuses non-empty directories.
-// Linux vfs_rmdir.
-//
+// Rmdir removes an empty directory. POSIX semantics. Linux vfs_rmdir.
 // Permission: ActionEdit on the drive.
 func (v *vfs) Rmdir(ctx context.Context, driveID string, path string) error {
 	startDrive, err := ulid.Parse(driveID)

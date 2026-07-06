@@ -9,8 +9,7 @@ import (
 )
 
 // Read returns the inline data of a file-kind node. Object-kind
-// nodes return an error (use upload.PresignDownload for those).
-// Linux vfs_read.
+// reads use ReadObject. Linux vfs_read.
 func (v *vfs) Read(ctx context.Context, driveID string, path string) ([]byte, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

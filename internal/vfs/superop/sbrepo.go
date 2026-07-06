@@ -12,6 +12,8 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+// Repository is the broader CRUD surface for superblocks,
+// used by drive lifecycle callers that own the tx boundary.
 type Repository interface {
 	Create(ctx context.Context, sb *vfs.Superblock) error
 	Read(ctx context.Context, id uuid.UUID) (*vfs.Superblock, error)
@@ -22,7 +24,8 @@ type entRepository struct {
 	client *ent.Client
 }
 
-// Create implements [Repository].
+// Create persists a new superblock. Returns an error if the
+// superblock is already present (id is taken from the input).
 func (e *entRepository) Create(ctx context.Context, sb *vfs.Superblock) error {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {
@@ -31,9 +34,6 @@ func (e *entRepository) Create(ctx context.Context, sb *vfs.Superblock) error {
 	if sb == nil {
 		return errorx.New(errorx.KindInvalidArgument, "superblock: cannot create nil superblock")
 	}
-
-	// Create the superblock entity in the database
-	// If sb is already present in the database, this will return an error
 	_, err := client.Superblock.Create().
 		SetID(sb.ID()).
 		SetDriveID(sb.DriveID().String()).
@@ -47,7 +47,7 @@ func (e *entRepository) Create(ctx context.Context, sb *vfs.Superblock) error {
 	return nil
 }
 
-// Delete implements [Repository].
+// Delete removes a superblock by id.
 func (e *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {
@@ -63,7 +63,7 @@ func (e *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// Read implements [Repository].
+// Read loads a superblock by id.
 func (e *entRepository) Read(ctx context.Context, id uuid.UUID) (*vfs.Superblock, error) {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {

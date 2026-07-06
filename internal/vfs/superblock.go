@@ -7,11 +7,9 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
-// Superblock is the filesystem root inode carrier. Mirrors
-// Linux struct super_block: holds the root inode id and a
-// back-reference to its drive. The drive_id is surfaced as
-// ulid (matching Drive.ID()) so vfs can join without going
-// through ent.
+// Superblock is the per-drive inode carrier. Mirrors Linux
+// struct super_block: holds the root inode id and a back-ref
+// to its drive.
 type Superblock struct {
 	id         uuid.UUID
 	driveID    ulid.ULID
@@ -26,8 +24,7 @@ func (s *Superblock) RootNodeID() uuid.UUID { return s.rootNodeID }
 func (s *Superblock) CreatedAt() time.Time  { return s.createdAt }
 func (s *Superblock) UpdatedAt() time.Time  { return s.updatedAt }
 
-// NewSuperblock constructs a fresh Superblock. The id is
-// generated; the caller provides rootNodeID and driveID.
+// NewSuperblock constructs a fresh Superblock with a new id.
 func NewSuperblock(driveID ulid.ULID, rootNodeID uuid.UUID) *Superblock {
 	now := time.Now()
 	return &Superblock{
@@ -39,8 +36,7 @@ func NewSuperblock(driveID ulid.ULID, rootNodeID uuid.UUID) *Superblock {
 	}
 }
 
-// HydrateSuperblock reconstructs a Superblock from its
-// persisted fields. Used by the ent-backed repository on load.
+// HydrateSuperblock reconstructs a Superblock from persisted fields.
 func HydrateSuperblock(
 	id uuid.UUID,
 	driveID ulid.ULID,

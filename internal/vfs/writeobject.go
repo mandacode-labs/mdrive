@@ -12,10 +12,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// WriteObject creates or replaces an Object-kind node. vfs
-// stores the ref inline as content.ObjectContent. Caller
-// (typically the handler after a successful S3 PUT) supplies
-// the bucket, key, mime type, and optional checksum.
+// WriteObject creates or replaces an Object-kind node from the
+// ref returned by a completed S3 upload. Stored inline as
+// content.ObjectContent.
 func (v *vfs) WriteObject(ctx context.Context, driveID string, path string, ref ObjectRef) error {
 	if ref.Bucket == "" || ref.Key == "" {
 		return errorx.New(errorx.KindInvalidArgument, "vfs: object ref requires bucket and key")

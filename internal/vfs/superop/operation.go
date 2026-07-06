@@ -8,11 +8,15 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs"
 )
 
+// superOperation is the ent-backed impl of vfs.SuperOperation.
+// Create / Stat / Purge are stubbed; see superop/sbrepo.go for
+// the actual CRUD that the ent repository exposes.
 type superOperation struct {
 	repo Repository
 	tm   entx.TxManager
 }
 
+// NewSuperblockOperation wires the canonical impl.
 func NewSuperblockOperation(repo Repository, tm entx.TxManager) vfs.SuperOperation {
 	return &superOperation{
 		repo: repo,

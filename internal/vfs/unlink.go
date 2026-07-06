@@ -9,11 +9,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/permission"
 )
 
-// Unlink removes a non-directory entry. If the resulting nlink
-// reaches zero, the inode is destroyed inside the same tx. Linux
-// vfs_unlink.
-//
-// Permission: ActionEdit on the drive.
+// Unlink removes a non-directory entry. nlink==0 destroys the
+// inode. Linux vfs_unlink. Permission: ActionEdit on the drive.
 func (v *vfs) Unlink(ctx context.Context, driveID string, path string) error {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

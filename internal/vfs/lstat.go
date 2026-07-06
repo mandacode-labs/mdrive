@@ -8,8 +8,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// Lstat does not follow the final symlink. Linux vfs_lstat /
-// lstat(2).
+// Lstat returns the symlink itself without following it.
+// Linux lstat(2).
 func (v *vfs) Lstat(ctx context.Context, driveID string, path string) (*Node, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {

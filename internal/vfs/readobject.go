@@ -10,15 +10,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/vfs/content"
 )
 
-// ReadObject retrieves the S3 metadata stored in an Object-kind
-// inode. Linux vfs_read on an object backend has the same shape:
-// walk to the inode, hand back a handle for the caller to issue
-// the actual GET. mdrive returns the ObjectRef; the caller
-// (handler, upload service) is responsible for translating it
-// into a presigned download URL.
-//
-// Symlinks along the path are followed (stat semantics). The
-// final node must be of Object kind.
+// ReadObject returns the S3 metadata of an Object-kind node.
+// Caller hands it to upload.PresignDownload. Symlinks are
+// followed; final node must be Object kind.
 func (v *vfs) ReadObject(ctx context.Context, driveID string, path string) (ObjectRef, error) {
 	startDrive, err := ulid.Parse(driveID)
 	if err != nil {
