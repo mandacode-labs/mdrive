@@ -17,5 +17,3 @@ type nodeOperation struct {
 func NewNodeOperation(repo NodeRepository, tm entx.TxManager) fs.NodeOperation {
 	return &nodeOperation{repo: repo, tm: tm}
 }
-
-var _ fs.NodeOperation = (*nodeOperation)(nil)

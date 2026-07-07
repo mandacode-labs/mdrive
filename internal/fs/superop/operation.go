@@ -15,5 +15,3 @@ type superOperation struct {
 func NewSuperblockOperation(repo Repository, tm entx.TxManager) fs.SuperOperation {
 	return &superOperation{repo: repo, tm: tm}
 }
-
-var _ fs.SuperOperation = (*superOperation)(nil)

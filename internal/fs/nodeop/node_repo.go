@@ -85,8 +85,6 @@ func NewNodeRepository(client *ent.Client) NodeRepository {
 	return &nodeRepo{client: client}
 }
 
-var _ NodeRepository = (*nodeRepo)(nil)
-
 func fromEnt(e *ent.Node) (*fs.Node, error) {
 	if e == nil {
 		return nil, errorx.New(errorx.KindNotFound, "node: not found")

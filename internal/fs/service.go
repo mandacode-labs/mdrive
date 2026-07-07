@@ -76,5 +76,3 @@ func New(cfg Config) Service {
 		perm: cfg.Perm,
 	}
 }
-
-var _ Service = (*fs)(nil)

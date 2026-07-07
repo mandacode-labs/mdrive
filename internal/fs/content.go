@@ -108,4 +108,3 @@ func (d *DirContent) RemoveEntry(name string) error {
 	}
 	return errorx.New(errorx.KindNotFound, "entry not found")
 }
-

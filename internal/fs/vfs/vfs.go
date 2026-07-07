@@ -14,5 +14,3 @@ type vfs struct {
 func New(nodeOp fs.NodeOperation, superop fs.SuperOperation) fs.VFS {
 	return &vfs{nodeOp: nodeOp, superop: superop}
 }
-
-var _ fs.VFS = (*vfs)(nil)
