@@ -7,8 +7,7 @@ import (
 )
 
 // LinkAt creates a hard link. Mirrors linkat(2). Refuses
-// directories. ActionEdit on both source and destination
-// parents.
+// directories. ActionEdit on source and destination.
 func (f *fs) LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Stat, error) {
 	srcParent, srcName, err := f.doPathParent(ctx, driveID, srcPath)
 	if err != nil {
@@ -38,7 +37,7 @@ func (f *fs) LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Sta
 }
 
 // Unlink removes a non-directory entry. Mirrors unlink(2).
-// ActionEdit on the parent drive.
+// ActionEdit.
 func (f *fs) Unlink(ctx context.Context, driveID, path string) error {
 	parent, name, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
@@ -51,7 +50,7 @@ func (f *fs) Unlink(ctx context.Context, driveID, path string) error {
 }
 
 // Rmdir removes an empty directory. Mirrors rmdir(2).
-// ActionEdit on the parent drive.
+// ActionEdit.
 func (f *fs) Rmdir(ctx context.Context, driveID, path string) error {
 	parent, name, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
@@ -65,8 +64,7 @@ func (f *fs) Rmdir(ctx context.Context, driveID, path string) error {
 
 // RenameAt moves a single entry. Mirrors renameat(2).
 // Cross-drive rename is rejected (parents must share a
-// superblock, like Linux vfs_rename). ActionEdit on both
-// parent drives.
+// superblock). ActionEdit on source and destination.
 func (f *fs) RenameAt(ctx context.Context, driveID, srcPath, dstDriveID, dstPath string) error {
 	srcParent, srcName, err := f.doPathParent(ctx, driveID, srcPath)
 	if err != nil {

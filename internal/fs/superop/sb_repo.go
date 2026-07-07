@@ -25,7 +25,6 @@ type entRepository struct {
 	client *ent.Client
 }
 
-// Create persists a new superblock.
 func (e *entRepository) Create(ctx context.Context, sb *fs.Superblock) error {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {
@@ -47,7 +46,6 @@ func (e *entRepository) Create(ctx context.Context, sb *fs.Superblock) error {
 	return nil
 }
 
-// Delete removes a superblock by id.
 func (e *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {
@@ -63,7 +61,6 @@ func (e *entRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// Read loads a superblock by id.
 func (e *entRepository) Read(ctx context.Context, id uuid.UUID) (*fs.Superblock, error) {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {
@@ -79,7 +76,6 @@ func (e *entRepository) Read(ctx context.Context, id uuid.UUID) (*fs.Superblock,
 	return fromEnt(sb)
 }
 
-// ReadByDriveID loads a superblock by drive id.
 func (e *entRepository) ReadByDriveID(ctx context.Context, driveID ulid.ULID) (*fs.Superblock, error) {
 	client := e.client
 	if tx, ok := entx.FromContext(ctx); ok {

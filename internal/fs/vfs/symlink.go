@@ -11,9 +11,8 @@ import (
 
 // Symlink — Linux vfs_symlink.
 //
-// Builds the symlink node in-memory (with the target id
-// encoded as content) and delegates dir-entry creation +
-// persistence to nodeOp.Create. We do NOT call nodeOp.Symlink
+// Builds the symlink node in-memory and delegates dir-entry
+// creation to nodeOp.Create. We do NOT call nodeOp.Symlink
 // separately — that would re-marshal and re-write the body
 // we just set.
 func (v *vfs) Symlink(ctx context.Context, linkParent *fs.Dentry, linkName string, targetID uuid.UUID) (*fs.Node, error) {

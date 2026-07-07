@@ -8,9 +8,7 @@ import (
 )
 
 // Create — Linux vfs_create. Inserts a pre-constructed child
-// inode into `parent` under `name`. Used by Service when the
-// caller has already built the inode (CreateFile /
-// CreateObject / Symlink).
+// inode into parent under name.
 func (v *vfs) Create(ctx context.Context, parent *fs.Dentry, child *fs.Node, name string) error {
 	if parent == nil || name == "" || child == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: create requires parent, child, name")

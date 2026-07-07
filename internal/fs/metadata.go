@@ -9,8 +9,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// Stat returns inode metadata. Mirrors newfstatat(2) with
-// follow (true → stat, false → lstat).
+// Stat returns inode metadata. Mirrors newfstatat(2); follow
+// follows trailing symlinks (stat), false doesn't (lstat).
 func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat, error) {
 	id, err := ulid.Parse(driveID)
 	if err != nil {
@@ -27,7 +27,8 @@ func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat,
 }
 
 // SetTimes updates atime/mtime on the resolved node.
-// Mirrors utimensat(2). ActionEdit on the resolved drive.
+// Mirrors utimensat(2). ActionEdit.
+//
 // Ctime is bumped by the storage layer; not user-settable.
 func (f *fs) SetTimes(ctx context.Context, driveID, path string, atime, mtime time.Time) error {
 	id, err := ulid.Parse(driveID)

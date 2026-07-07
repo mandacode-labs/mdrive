@@ -8,10 +8,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// BindMount attaches another drive at `mountPath`. Mirrors
-// sys_mount. ActionEdit on the parent drive, ActionView on
-// the source drive (so a non-viewable source cannot be
-// mounted).
+// BindMount attaches another drive at mountPath. Mirrors
+// sys_mount. ActionEdit on parent, ActionView on source
+// (so a non-viewable source cannot be mounted).
 func (f *fs) BindMount(ctx context.Context, driveID, mountPath, sourceDriveID string) error {
 	mountParent, mountName, err := f.doPathParent(ctx, driveID, mountPath)
 	if err != nil {
@@ -31,11 +30,10 @@ func (f *fs) BindMount(ctx context.Context, driveID, mountPath, sourceDriveID st
 }
 
 // Unmount detaches a bind mount. Mirrors sys_umount2.
-// ActionEdit on the parent drive.
+// ActionEdit.
 //
-// The Linux counterpart also requires CAP_SYS_ADMIN; we
-// leave the elevated-privilege check to the OpenFGA model
-// and the caller's requireEdit.
+// The Linux counterpart requires CAP_SYS_ADMIN; we leave
+// the elevated-privilege check to OpenFGA.
 func (f *fs) Unmount(ctx context.Context, driveID, mountPath string) error {
 	mountParent, mountName, err := f.doPathParent(ctx, driveID, mountPath)
 	if err != nil {

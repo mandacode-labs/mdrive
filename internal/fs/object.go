@@ -11,7 +11,7 @@ import (
 
 // CreateObject registers an S3 object as a file-like node.
 // Payload lives in S3; the node carries only metadata.
-// ActionEdit on the parent drive.
+// ActionEdit on parent drive.
 func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *ObjectContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: CreateObject requires content")
@@ -37,8 +37,8 @@ func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *ObjectCo
 	return NodeToStat(node), nil
 }
 
-// ReadObject returns the S3 metadata of an object-kind node.
-// ActionView on the resolved drive.
+// ReadObject returns an object-kind node's S3 metadata.
+// ActionView.
 func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*ObjectContent, error) {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindObject)
 	if err != nil {

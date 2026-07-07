@@ -8,9 +8,7 @@ import (
 )
 
 // SymlinkAt creates a symbolic link. Mirrors symlinkat(2).
-// `target` is resolved to its node id; the symlink node
-// stores it as SymlinkContent. ActionEdit on link's parent
-// drive.
+// ActionEdit on link's parent drive.
 func (f *fs) SymlinkAt(ctx context.Context, driveID, target, linkPath string) (Stat, error) {
 	linkParent, linkName, err := f.doPathParent(ctx, driveID, linkPath)
 	if err != nil {
@@ -33,10 +31,9 @@ func (f *fs) SymlinkAt(ctx context.Context, driveID, target, linkPath string) (S
 	return NodeToStat(link), nil
 }
 
-// ReadlinkAt returns the symlink target's stored content.
-// The caller can inspect TargetID and follow it via
-// Stat(driveID, targetID, true) if needed.
-// ActionView on the link's parent drive.
+// ReadlinkAt returns the symlink's stored SymlinkContent.
+// Inspect TargetID and follow via Stat if needed.
+// ActionView.
 func (f *fs) ReadlinkAt(ctx context.Context, driveID, path string) (*SymlinkContent, error) {
 	linkParent, linkName, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {

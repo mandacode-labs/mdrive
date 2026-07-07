@@ -10,9 +10,7 @@ import (
 )
 
 // Mkdir — Linux vfs_mkdir. Builds a fresh directory inode
-// and delegates dir-entry creation + persistence to
-// nodeOp.Create. Kept separate from vfs.Create since the
-// inode is constructed here (no caller-provided child).
+// and delegates dir-entry creation to nodeOp.Create.
 func (v *vfs) Mkdir(ctx context.Context, parent *fs.Dentry, name string) (*fs.Node, error) {
 	if parent == nil || name == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: mkdir requires parent and name")

@@ -9,18 +9,16 @@ import (
 )
 
 // Content is the JSON-marshaled inline payload of a node.
-// Each NodeKind (defined in node.go) has its own concrete
-// payload type; the kind field on the parent Node picks the
-// decoder.
+// Each NodeKind has its own concrete payload type; the kind
+// field on the parent Node picks the decoder.
 type Content interface {
 	Marshal() ([]byte, error)
 }
 
-// FileContent is the inline payload of a small file-kind
-// node, stored JSON-marshaled in the node's data field up
-// to MaxDataSize (4KB). Mime / Encoding / Checksum ride
-// along with the body so callers don't need a second
-// roundtrip to stat the file.
+// FileContent is the inline payload of a file-kind node,
+// JSON-marshaled in the node's data field up to MaxDataSize
+// (4KB). Mime/Encoding/Checksum ride with the body so callers
+// don't need a second roundtrip to stat the file.
 type FileContent struct {
 	Raw      string `json:"raw"`
 	Mime     string `json:"mime,omitempty"`
@@ -30,10 +28,9 @@ type FileContent struct {
 
 func (f *FileContent) Marshal() ([]byte, error) { return json.Marshal(f) }
 
-// ObjectContent is the inline payload of an object-kind
-// node. The actual blob lives in S3; this struct carries
-// the S3 reference plus the metadata callers need without
-// a second roundtrip to the bucket.
+// ObjectContent is the inline payload of an object-kind node.
+// The actual blob lives in S3; this struct carries the S3
+// reference plus the metadata callers need.
 type ObjectContent struct {
 	Bucket   string `json:"bucket"`
 	Key      string `json:"key"`
@@ -44,9 +41,8 @@ type ObjectContent struct {
 
 func (o *ObjectContent) Marshal() ([]byte, error) { return json.Marshal(o) }
 
-// SymlinkContent is the inline payload of a symlink-kind
-// node: just the target's inode id. The VFS layer is
-// responsible for resolving it.
+// SymlinkContent is the inline payload of a symlink-kind node:
+// the target's inode id. The VFS layer resolves it.
 type SymlinkContent struct {
 	NodeID uuid.UUID `json:"target"`
 }
@@ -54,18 +50,15 @@ type SymlinkContent struct {
 func (s *SymlinkContent) Marshal() ([]byte, error) { return json.Marshal(s) }
 
 // MountContent is the inline payload of a mount-kind node:
-// the source drive id this node points at. The VFS layer
-// looks up the source's superblock and follows.
+// the source drive id. The VFS layer looks up the source's
+// superblock and follows.
 type MountContent struct {
 	DriveID string `json:"src"`
 }
 
 func (m *MountContent) Marshal() ([]byte, error) { return json.Marshal(m) }
 
-// DirEntry is a single directory listing row. Same shape
-// on disk (via DirContent) and over the wire
-// (Service.Getdents returns *DirContent whose Entries are
-// []DirEntry).
+// DirEntry is a single directory listing row.
 type DirEntry struct {
 	NodeID uuid.UUID `json:"id"`
 	Name   string    `json:"name"`

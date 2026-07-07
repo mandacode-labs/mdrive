@@ -9,9 +9,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// doPathParent resolves the parent of `path` and returns
-// (parent *Dentry, leafName, error). Mirrors filename_lookup
-// + path_parentat. Mutating ops add ActionEdit on top.
+// doPathParent resolves the parent of path and returns
+// (parent *Dentry, leafName). Mirrors filename_lookup +
+// path_parentat.
 func (f *fs) doPathParent(ctx context.Context, driveID, path string) (*Dentry, string, error) {
 	driveULID, err := ulid.Parse(driveID)
 	if err != nil {
@@ -46,9 +46,7 @@ func splitParent(p string) (parent, name string) {
 	return p[:i], p[i+1:]
 }
 
-// walkResolve resolves a path string into a Dentry with
-// follow=true. Used by Service methods that target an
-// existing leaf (ReadFile, Stat, etc.).
+// walkResolve resolves a path into a Dentry with follow=true.
 func (f *fs) walkResolve(ctx context.Context, driveID, path string) (*Dentry, error) {
 	id, err := ulid.Parse(driveID)
 	if err != nil {
@@ -57,9 +55,8 @@ func (f *fs) walkResolve(ctx context.Context, driveID, path string) (*Dentry, er
 	return f.vfs.Walk(ctx, id, path, true)
 }
 
-// walkForKind resolves a path and checks that the leaf is
-// of the expected kind. Used by kind-specific reads/writes
-// (ReadFile expects NodeKindFile, etc.).
+// walkForKind resolves a path and checks the leaf is of the
+// expected kind.
 func (f *fs) walkForKind(ctx context.Context, driveID, path string, kind NodeKind) (*Dentry, error) {
 	dentry, err := f.walkResolve(ctx, driveID, path)
 	if err != nil {

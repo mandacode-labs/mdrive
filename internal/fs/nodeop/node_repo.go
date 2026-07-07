@@ -89,14 +89,10 @@ func fromEnt(e *ent.Node) (*fs.Node, error) {
 	if e == nil {
 		return nil, errorx.New(errorx.KindNotFound, "node: not found")
 	}
-	rev := fs.Revision(e.Revision)
-	kind := parseNodeKind(e.Kind)
-	flags := fs.Flags(e.Flags)
-
-	n := fs.HydrateNode(
+	return fs.HydrateNode(
 		e.ID,
 		e.SuperblockID,
-		kind,
+		parseNodeKind(e.Kind),
 		e.Size,
 		e.Nlink,
 		e.Data,
@@ -104,10 +100,9 @@ func fromEnt(e *ent.Node) (*fs.Node, error) {
 		e.Mtime,
 		e.Ctime,
 		e.Btime,
-		flags,
-		rev,
-	)
-	return n, nil
+		fs.Flags(e.Flags),
+		fs.Revision(e.Revision),
+	), nil
 }
 
 func parseNodeKind(s entnode.Kind) fs.NodeKind {

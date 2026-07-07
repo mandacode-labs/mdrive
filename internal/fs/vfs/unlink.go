@@ -17,9 +17,8 @@ func (v *vfs) Rmdir(ctx context.Context, parent *fs.Dentry, name string) error {
 	return v.remove(ctx, parent, name, true)
 }
 
-// remove is the shared body of Unlink and Rmdir — mirrors
-// how Linux's vfs_unlink / vfs_rmdir share their dir-hash
-// bookkeeping. `removeDir` toggles the kind check.
+// remove is the shared body of Unlink and Rmdir. removeDir
+// toggles the kind check.
 func (v *vfs) remove(ctx context.Context, parent *fs.Dentry, name string, removeDir bool) error {
 	if parent == nil || name == "" {
 		return errorx.New(errorx.KindInvalidArgument, "fs: remove requires parent and name")

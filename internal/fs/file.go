@@ -9,8 +9,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// CreateFile inserts a file-kind node with the given content.
-// Mirrors creat(2) + write(2). ActionEdit on parent drive.
+// CreateFile inserts a file-kind node. Mirrors creat(2)+write(2).
+// ActionEdit on parent drive.
 func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: CreateFile requires content")
@@ -36,9 +36,7 @@ func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *FileConten
 	return NodeToStat(node), nil
 }
 
-// ReadFile returns the inline payload of a file-kind node
-// decoded as *FileContent. ActionView on the
-// resolved drive.
+// ReadFile returns a file-kind node's payload. ActionView.
 func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*FileContent, error) {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindFile)
 	if err != nil {
@@ -54,8 +52,7 @@ func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*FileContent, 
 	return &fc, nil
 }
 
-// WriteFile replaces the inline payload of an existing
-// file-kind node. ActionEdit on the resolved drive.
+// WriteFile replaces a file-kind node's payload. ActionEdit.
 func (f *fs) WriteFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: WriteFile requires content")
@@ -77,9 +74,8 @@ func (f *fs) WriteFile(ctx context.Context, driveID, path string, c *FileContent
 	return NodeToStat(dentry.Node), nil
 }
 
-// Truncate sets the size of a file-kind node. Currently a
-// no-op on the byte stream — inline data is wholly
-// replaced by WriteFile. ActionEdit on the resolved drive.
+// Truncate sets the size of a file-kind node. ActionEdit.
+// (Inline data is replaced wholesale by WriteFile.)
 func (f *fs) Truncate(ctx context.Context, driveID, path string, size int64) error {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindFile)
 	if err != nil {

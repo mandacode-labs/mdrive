@@ -10,9 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// NodeKind classifies an inode by storage shape. The kind
-// decides how the node's data field is decoded on read and
-// what content shape is accepted on write.
+// NodeKind classifies an inode by storage shape.
 type NodeKind uint8
 
 const (
@@ -70,8 +68,7 @@ func (r Revision) Next() Revision { return newRevision() }
 const MaxDataSize = 4096
 
 // Node is the inode-like record. All nodes of a drive share
-// the same superblock id; the drive is reached via
-// superblock → drive (one-to-one).
+// the same superblock id.
 type Node struct {
 	id    uuid.UUID
 	sb    uuid.UUID
@@ -150,9 +147,7 @@ func (n *Node) Write(data []byte, size int64) error {
 }
 
 // SetTimes is the user-visible timestamp setter (utimensat).
-// Internal ops use NewNode/Write/IncNLink, which set their
-// own timestamps. Service.SetTimes is the only legitimate
-// caller.
+// Service.SetTimes is the only legitimate caller.
 func (n *Node) SetTimes(atime, mtime, ctime, btime time.Time) {
 	n.atime = atime
 	n.mtime = mtime
@@ -179,8 +174,7 @@ func (n *Node) DecNLink() {
 
 // NodeOperation is the inode-level callback set. Mirrors
 // Linux inode_operations. Methods that need parent context
-// take *Dentry (matching Linux's parent dentry); operations
-// that only need the inode take *Node.
+// take *Dentry; operations that only need the inode take *Node.
 type NodeOperation interface {
 	Get(ctx context.Context, id uuid.UUID) (*Node, error)
 	Lookup(ctx context.Context, parent *Dentry, name string) (*Dentry, error)

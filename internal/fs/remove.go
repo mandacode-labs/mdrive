@@ -3,8 +3,7 @@ package fs
 import "context"
 
 // Remove is mdrive's `rm -rf` equivalent. Cascades
-// vfs.RemoveRecursive for non-empty trees. ActionEdit on
-// the parent drive.
+// vfs.RemoveRecursive for non-empty trees. ActionEdit.
 //
 // Not a single Linux syscall — corresponds to userspace
 // `rm -rf`, which loops unlinkat(2) over the tree.

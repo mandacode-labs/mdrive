@@ -7,11 +7,9 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs/permission"
 )
 
-// Service is the syscall surface for the fs subsystem. Each
-// method maps to one or more Linux syscalls; the body of the
-// method walks the path, checks permission, dispatches into
-// the vfs layer, and decodes the returned payload into a
-// typed content value.
+// Service is the syscall surface for the fs subsystem.
+// Methods walk the path, check permission, dispatch into
+// the vfs layer, and decode payloads into typed content.
 type Service interface {
 	// === File ops (NodeKindFile) — inline payload up to 4KB ===
 	CreateFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error)
@@ -54,16 +52,13 @@ type RemoveOpts struct {
 	Recursive bool
 }
 
-// fs is the concrete Service. The vfs field carries the
-// inode layer (concrete type lives in the vfs subpackage).
+// fs is the concrete Service.
 type fs struct {
 	vfs  VFS
 	perm permission.Authorizer
 }
 
-// Config groups the dependencies of New. The caller must
-// construct the VFS (typically vfs.New) and pass it in to
-// keep the parent fs decoupled from the vfs subpackage.
+// Config groups the dependencies of New.
 type Config struct {
 	VFS  VFS
 	Perm permission.Authorizer

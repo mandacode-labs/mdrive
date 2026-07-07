@@ -11,9 +11,8 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// Walk — Linux link_path_walk. Resolves a path string into
-// a Dentry, following mount points and (optionally) trailing
-// symlinks.
+// Walk — Linux link_path_walk. Resolves a path into a Dentry,
+// following mount points and (optionally) trailing symlinks.
 func (v *vfs) Walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*fs.Dentry, error) {
 	sb, err := v.superop.GetByDriveID(ctx, driveID)
 	if err != nil {
