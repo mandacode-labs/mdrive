@@ -55,6 +55,12 @@ func (_u *StorageUpdate) SetNillableBucket(v *string) *StorageUpdate {
 	return _u
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (_u *StorageUpdate) ClearBucket() *StorageUpdate {
+	_u.mutation.ClearBucket()
+	return _u
+}
+
 // SetEndpoint sets the "endpoint" field.
 func (_u *StorageUpdate) SetEndpoint(v string) *StorageUpdate {
 	_u.mutation.SetEndpoint(v)
@@ -66,12 +72,6 @@ func (_u *StorageUpdate) SetNillableEndpoint(v *string) *StorageUpdate {
 	if v != nil {
 		_u.SetEndpoint(*v)
 	}
-	return _u
-}
-
-// ClearEndpoint clears the value of the "endpoint" field.
-func (_u *StorageUpdate) ClearEndpoint() *StorageUpdate {
-	_u.mutation.ClearEndpoint()
 	return _u
 }
 
@@ -89,6 +89,32 @@ func (_u *StorageUpdate) SetNillableRegion(v *string) *StorageUpdate {
 	return _u
 }
 
+// ClearRegion clears the value of the "region" field.
+func (_u *StorageUpdate) ClearRegion() *StorageUpdate {
+	_u.mutation.ClearRegion()
+	return _u
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (_u *StorageUpdate) SetUsePathStyle(v bool) *StorageUpdate {
+	_u.mutation.SetUsePathStyle(v)
+	return _u
+}
+
+// SetNillableUsePathStyle sets the "use_path_style" field if the given value is not nil.
+func (_u *StorageUpdate) SetNillableUsePathStyle(v *bool) *StorageUpdate {
+	if v != nil {
+		_u.SetUsePathStyle(*v)
+	}
+	return _u
+}
+
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (_u *StorageUpdate) ClearUsePathStyle() *StorageUpdate {
+	_u.mutation.ClearUsePathStyle()
+	return _u
+}
+
 // SetAccessKey sets the "access_key" field.
 func (_u *StorageUpdate) SetAccessKey(v string) *StorageUpdate {
 	_u.mutation.SetAccessKey(v)
@@ -100,6 +126,12 @@ func (_u *StorageUpdate) SetNillableAccessKey(v *string) *StorageUpdate {
 	if v != nil {
 		_u.SetAccessKey(*v)
 	}
+	return _u
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (_u *StorageUpdate) ClearAccessKey() *StorageUpdate {
+	_u.mutation.ClearAccessKey()
 	return _u
 }
 
@@ -117,17 +149,9 @@ func (_u *StorageUpdate) SetNillableEncryptedSecretKey(v *string) *StorageUpdate
 	return _u
 }
 
-// SetUsePathStyle sets the "use_path_style" field.
-func (_u *StorageUpdate) SetUsePathStyle(v bool) *StorageUpdate {
-	_u.mutation.SetUsePathStyle(v)
-	return _u
-}
-
-// SetNillableUsePathStyle sets the "use_path_style" field if the given value is not nil.
-func (_u *StorageUpdate) SetNillableUsePathStyle(v *bool) *StorageUpdate {
-	if v != nil {
-		_u.SetUsePathStyle(*v)
-	}
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (_u *StorageUpdate) ClearEncryptedSecretKey() *StorageUpdate {
+	_u.mutation.ClearEncryptedSecretKey()
 	return _u
 }
 
@@ -170,31 +194,6 @@ func (_u *StorageUpdate) check() error {
 			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Storage.provider": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Bucket(); ok {
-		if err := storage.BucketValidator(v); err != nil {
-			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "Storage.bucket": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Endpoint(); ok {
-		if err := storage.EndpointValidator(v); err != nil {
-			return &ValidationError{Name: "endpoint", err: fmt.Errorf(`ent: validator failed for field "Storage.endpoint": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Region(); ok {
-		if err := storage.RegionValidator(v); err != nil {
-			return &ValidationError{Name: "region", err: fmt.Errorf(`ent: validator failed for field "Storage.region": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AccessKey(); ok {
-		if err := storage.AccessKeyValidator(v); err != nil {
-			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.EncryptedSecretKey(); ok {
-		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
-		}
-	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.drive"`)
 	}
@@ -219,23 +218,35 @@ func (_u *StorageUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Bucket(); ok {
 		_spec.SetField(storage.FieldBucket, field.TypeString, value)
 	}
+	if _u.mutation.BucketCleared() {
+		_spec.ClearField(storage.FieldBucket, field.TypeString)
+	}
 	if value, ok := _u.mutation.Endpoint(); ok {
 		_spec.SetField(storage.FieldEndpoint, field.TypeString, value)
-	}
-	if _u.mutation.EndpointCleared() {
-		_spec.ClearField(storage.FieldEndpoint, field.TypeString)
 	}
 	if value, ok := _u.mutation.Region(); ok {
 		_spec.SetField(storage.FieldRegion, field.TypeString, value)
 	}
+	if _u.mutation.RegionCleared() {
+		_spec.ClearField(storage.FieldRegion, field.TypeString)
+	}
+	if value, ok := _u.mutation.UsePathStyle(); ok {
+		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
+	}
+	if _u.mutation.UsePathStyleCleared() {
+		_spec.ClearField(storage.FieldUsePathStyle, field.TypeBool)
+	}
 	if value, ok := _u.mutation.AccessKey(); ok {
 		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
+	}
+	if _u.mutation.AccessKeyCleared() {
+		_spec.ClearField(storage.FieldAccessKey, field.TypeString)
 	}
 	if value, ok := _u.mutation.EncryptedSecretKey(); ok {
 		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.UsePathStyle(); ok {
-		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
+	if _u.mutation.EncryptedSecretKeyCleared() {
+		_spec.ClearField(storage.FieldEncryptedSecretKey, field.TypeString)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -285,6 +296,12 @@ func (_u *StorageUpdateOne) SetNillableBucket(v *string) *StorageUpdateOne {
 	return _u
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (_u *StorageUpdateOne) ClearBucket() *StorageUpdateOne {
+	_u.mutation.ClearBucket()
+	return _u
+}
+
 // SetEndpoint sets the "endpoint" field.
 func (_u *StorageUpdateOne) SetEndpoint(v string) *StorageUpdateOne {
 	_u.mutation.SetEndpoint(v)
@@ -296,12 +313,6 @@ func (_u *StorageUpdateOne) SetNillableEndpoint(v *string) *StorageUpdateOne {
 	if v != nil {
 		_u.SetEndpoint(*v)
 	}
-	return _u
-}
-
-// ClearEndpoint clears the value of the "endpoint" field.
-func (_u *StorageUpdateOne) ClearEndpoint() *StorageUpdateOne {
-	_u.mutation.ClearEndpoint()
 	return _u
 }
 
@@ -319,6 +330,32 @@ func (_u *StorageUpdateOne) SetNillableRegion(v *string) *StorageUpdateOne {
 	return _u
 }
 
+// ClearRegion clears the value of the "region" field.
+func (_u *StorageUpdateOne) ClearRegion() *StorageUpdateOne {
+	_u.mutation.ClearRegion()
+	return _u
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (_u *StorageUpdateOne) SetUsePathStyle(v bool) *StorageUpdateOne {
+	_u.mutation.SetUsePathStyle(v)
+	return _u
+}
+
+// SetNillableUsePathStyle sets the "use_path_style" field if the given value is not nil.
+func (_u *StorageUpdateOne) SetNillableUsePathStyle(v *bool) *StorageUpdateOne {
+	if v != nil {
+		_u.SetUsePathStyle(*v)
+	}
+	return _u
+}
+
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (_u *StorageUpdateOne) ClearUsePathStyle() *StorageUpdateOne {
+	_u.mutation.ClearUsePathStyle()
+	return _u
+}
+
 // SetAccessKey sets the "access_key" field.
 func (_u *StorageUpdateOne) SetAccessKey(v string) *StorageUpdateOne {
 	_u.mutation.SetAccessKey(v)
@@ -330,6 +367,12 @@ func (_u *StorageUpdateOne) SetNillableAccessKey(v *string) *StorageUpdateOne {
 	if v != nil {
 		_u.SetAccessKey(*v)
 	}
+	return _u
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (_u *StorageUpdateOne) ClearAccessKey() *StorageUpdateOne {
+	_u.mutation.ClearAccessKey()
 	return _u
 }
 
@@ -347,17 +390,9 @@ func (_u *StorageUpdateOne) SetNillableEncryptedSecretKey(v *string) *StorageUpd
 	return _u
 }
 
-// SetUsePathStyle sets the "use_path_style" field.
-func (_u *StorageUpdateOne) SetUsePathStyle(v bool) *StorageUpdateOne {
-	_u.mutation.SetUsePathStyle(v)
-	return _u
-}
-
-// SetNillableUsePathStyle sets the "use_path_style" field if the given value is not nil.
-func (_u *StorageUpdateOne) SetNillableUsePathStyle(v *bool) *StorageUpdateOne {
-	if v != nil {
-		_u.SetUsePathStyle(*v)
-	}
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (_u *StorageUpdateOne) ClearEncryptedSecretKey() *StorageUpdateOne {
+	_u.mutation.ClearEncryptedSecretKey()
 	return _u
 }
 
@@ -413,31 +448,6 @@ func (_u *StorageUpdateOne) check() error {
 			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Storage.provider": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Bucket(); ok {
-		if err := storage.BucketValidator(v); err != nil {
-			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "Storage.bucket": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Endpoint(); ok {
-		if err := storage.EndpointValidator(v); err != nil {
-			return &ValidationError{Name: "endpoint", err: fmt.Errorf(`ent: validator failed for field "Storage.endpoint": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.Region(); ok {
-		if err := storage.RegionValidator(v); err != nil {
-			return &ValidationError{Name: "region", err: fmt.Errorf(`ent: validator failed for field "Storage.region": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.AccessKey(); ok {
-		if err := storage.AccessKeyValidator(v); err != nil {
-			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.EncryptedSecretKey(); ok {
-		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
-		}
-	}
 	if _u.mutation.DriveCleared() && len(_u.mutation.DriveIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Storage.drive"`)
 	}
@@ -479,23 +489,35 @@ func (_u *StorageUpdateOne) sqlSave(ctx context.Context) (_node *Storage, err er
 	if value, ok := _u.mutation.Bucket(); ok {
 		_spec.SetField(storage.FieldBucket, field.TypeString, value)
 	}
+	if _u.mutation.BucketCleared() {
+		_spec.ClearField(storage.FieldBucket, field.TypeString)
+	}
 	if value, ok := _u.mutation.Endpoint(); ok {
 		_spec.SetField(storage.FieldEndpoint, field.TypeString, value)
-	}
-	if _u.mutation.EndpointCleared() {
-		_spec.ClearField(storage.FieldEndpoint, field.TypeString)
 	}
 	if value, ok := _u.mutation.Region(); ok {
 		_spec.SetField(storage.FieldRegion, field.TypeString, value)
 	}
+	if _u.mutation.RegionCleared() {
+		_spec.ClearField(storage.FieldRegion, field.TypeString)
+	}
+	if value, ok := _u.mutation.UsePathStyle(); ok {
+		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
+	}
+	if _u.mutation.UsePathStyleCleared() {
+		_spec.ClearField(storage.FieldUsePathStyle, field.TypeBool)
+	}
 	if value, ok := _u.mutation.AccessKey(); ok {
 		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
+	}
+	if _u.mutation.AccessKeyCleared() {
+		_spec.ClearField(storage.FieldAccessKey, field.TypeString)
 	}
 	if value, ok := _u.mutation.EncryptedSecretKey(); ok {
 		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.UsePathStyle(); ok {
-		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
+	if _u.mutation.EncryptedSecretKeyCleared() {
+		_spec.ClearField(storage.FieldEncryptedSecretKey, field.TypeString)
 	}
 	_node = &Storage{config: _u.config}
 	_spec.Assign = _node.assignValues

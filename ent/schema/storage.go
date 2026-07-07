@@ -25,29 +25,32 @@ func (Storage) Fields() []ent.Field {
 
 		// Bucket name.
 		field.String("bucket").
-			MaxLen(128),
+			Optional().
+			Nillable(),
 
 		// S3 endpoint (optional for AWS S3).
-		field.String("endpoint").
-			Optional().
-			Nillable().
-			MaxLen(255),
+		field.String("endpoint"),
 
 		// AWS region.
 		field.String("region").
-			MaxLen(32),
+			Optional().
+			Nillable(),
+
+		field.Bool("use_path_style").
+			Optional().
+			Nillable(),
 
 		// Access key.
 		field.String("access_key").
-			MaxLen(255),
+			Sensitive().
+			Optional().
+			Nillable(),
 
 		// Secret key (sensitive, never log).
 		field.String("encrypted_secret_key").
-			MaxLen(255),
-
-		// Use path-style addressing (required for MinIO).
-		field.Bool("use_path_style").
-			Default(false),
+			Sensitive().
+			Optional().
+			Nillable(),
 	}
 }
 

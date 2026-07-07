@@ -73,6 +73,11 @@ func Region(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldRegion, v))
 }
 
+// UsePathStyle applies equality check predicate on the "use_path_style" field. It's identical to UsePathStyleEQ.
+func UsePathStyle(v bool) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldUsePathStyle, v))
+}
+
 // AccessKey applies equality check predicate on the "access_key" field. It's identical to AccessKeyEQ.
 func AccessKey(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldAccessKey, v))
@@ -81,11 +86,6 @@ func AccessKey(v string) predicate.Storage {
 // EncryptedSecretKey applies equality check predicate on the "encrypted_secret_key" field. It's identical to EncryptedSecretKeyEQ.
 func EncryptedSecretKey(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEQ(FieldEncryptedSecretKey, v))
-}
-
-// UsePathStyle applies equality check predicate on the "use_path_style" field. It's identical to UsePathStyleEQ.
-func UsePathStyle(v bool) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldUsePathStyle, v))
 }
 
 // DriveIDEQ applies the EQ predicate on the "drive_id" field.
@@ -228,6 +228,16 @@ func BucketHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldBucket, v))
 }
 
+// BucketIsNil applies the IsNil predicate on the "bucket" field.
+func BucketIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldBucket))
+}
+
+// BucketNotNil applies the NotNil predicate on the "bucket" field.
+func BucketNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldBucket))
+}
+
 // BucketEqualFold applies the EqualFold predicate on the "bucket" field.
 func BucketEqualFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEqualFold(FieldBucket, v))
@@ -291,16 +301,6 @@ func EndpointHasPrefix(v string) predicate.Storage {
 // EndpointHasSuffix applies the HasSuffix predicate on the "endpoint" field.
 func EndpointHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldEndpoint, v))
-}
-
-// EndpointIsNil applies the IsNil predicate on the "endpoint" field.
-func EndpointIsNil() predicate.Storage {
-	return predicate.Storage(sql.FieldIsNull(FieldEndpoint))
-}
-
-// EndpointNotNil applies the NotNil predicate on the "endpoint" field.
-func EndpointNotNil() predicate.Storage {
-	return predicate.Storage(sql.FieldNotNull(FieldEndpoint))
 }
 
 // EndpointEqualFold applies the EqualFold predicate on the "endpoint" field.
@@ -368,6 +368,16 @@ func RegionHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldRegion, v))
 }
 
+// RegionIsNil applies the IsNil predicate on the "region" field.
+func RegionIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldRegion))
+}
+
+// RegionNotNil applies the NotNil predicate on the "region" field.
+func RegionNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldRegion))
+}
+
 // RegionEqualFold applies the EqualFold predicate on the "region" field.
 func RegionEqualFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEqualFold(FieldRegion, v))
@@ -376,6 +386,26 @@ func RegionEqualFold(v string) predicate.Storage {
 // RegionContainsFold applies the ContainsFold predicate on the "region" field.
 func RegionContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldRegion, v))
+}
+
+// UsePathStyleEQ applies the EQ predicate on the "use_path_style" field.
+func UsePathStyleEQ(v bool) predicate.Storage {
+	return predicate.Storage(sql.FieldEQ(FieldUsePathStyle, v))
+}
+
+// UsePathStyleNEQ applies the NEQ predicate on the "use_path_style" field.
+func UsePathStyleNEQ(v bool) predicate.Storage {
+	return predicate.Storage(sql.FieldNEQ(FieldUsePathStyle, v))
+}
+
+// UsePathStyleIsNil applies the IsNil predicate on the "use_path_style" field.
+func UsePathStyleIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldUsePathStyle))
+}
+
+// UsePathStyleNotNil applies the NotNil predicate on the "use_path_style" field.
+func UsePathStyleNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldUsePathStyle))
 }
 
 // AccessKeyEQ applies the EQ predicate on the "access_key" field.
@@ -431,6 +461,16 @@ func AccessKeyHasPrefix(v string) predicate.Storage {
 // AccessKeyHasSuffix applies the HasSuffix predicate on the "access_key" field.
 func AccessKeyHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldAccessKey, v))
+}
+
+// AccessKeyIsNil applies the IsNil predicate on the "access_key" field.
+func AccessKeyIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldAccessKey))
+}
+
+// AccessKeyNotNil applies the NotNil predicate on the "access_key" field.
+func AccessKeyNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldAccessKey))
 }
 
 // AccessKeyEqualFold applies the EqualFold predicate on the "access_key" field.
@@ -498,6 +538,16 @@ func EncryptedSecretKeyHasSuffix(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldHasSuffix(FieldEncryptedSecretKey, v))
 }
 
+// EncryptedSecretKeyIsNil applies the IsNil predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyIsNil() predicate.Storage {
+	return predicate.Storage(sql.FieldIsNull(FieldEncryptedSecretKey))
+}
+
+// EncryptedSecretKeyNotNil applies the NotNil predicate on the "encrypted_secret_key" field.
+func EncryptedSecretKeyNotNil() predicate.Storage {
+	return predicate.Storage(sql.FieldNotNull(FieldEncryptedSecretKey))
+}
+
 // EncryptedSecretKeyEqualFold applies the EqualFold predicate on the "encrypted_secret_key" field.
 func EncryptedSecretKeyEqualFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldEqualFold(FieldEncryptedSecretKey, v))
@@ -506,16 +556,6 @@ func EncryptedSecretKeyEqualFold(v string) predicate.Storage {
 // EncryptedSecretKeyContainsFold applies the ContainsFold predicate on the "encrypted_secret_key" field.
 func EncryptedSecretKeyContainsFold(v string) predicate.Storage {
 	return predicate.Storage(sql.FieldContainsFold(FieldEncryptedSecretKey, v))
-}
-
-// UsePathStyleEQ applies the EQ predicate on the "use_path_style" field.
-func UsePathStyleEQ(v bool) predicate.Storage {
-	return predicate.Storage(sql.FieldEQ(FieldUsePathStyle, v))
-}
-
-// UsePathStyleNEQ applies the NEQ predicate on the "use_path_style" field.
-func UsePathStyleNEQ(v bool) predicate.Storage {
-	return predicate.Storage(sql.FieldNEQ(FieldUsePathStyle, v))
 }
 
 // HasDrive applies the HasEdge predicate on the "drive" edge.

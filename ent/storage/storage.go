@@ -24,12 +24,12 @@ const (
 	FieldEndpoint = "endpoint"
 	// FieldRegion holds the string denoting the region field in the database.
 	FieldRegion = "region"
+	// FieldUsePathStyle holds the string denoting the use_path_style field in the database.
+	FieldUsePathStyle = "use_path_style"
 	// FieldAccessKey holds the string denoting the access_key field in the database.
 	FieldAccessKey = "access_key"
 	// FieldEncryptedSecretKey holds the string denoting the encrypted_secret_key field in the database.
 	FieldEncryptedSecretKey = "encrypted_secret_key"
-	// FieldUsePathStyle holds the string denoting the use_path_style field in the database.
-	FieldUsePathStyle = "use_path_style"
 	// EdgeDrive holds the string denoting the drive edge name in mutations.
 	EdgeDrive = "drive"
 	// Table holds the table name of the storage in the database.
@@ -51,9 +51,9 @@ var Columns = []string{
 	FieldBucket,
 	FieldEndpoint,
 	FieldRegion,
+	FieldUsePathStyle,
 	FieldAccessKey,
 	FieldEncryptedSecretKey,
-	FieldUsePathStyle,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -65,21 +65,6 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
-
-var (
-	// BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
-	BucketValidator func(string) error
-	// EndpointValidator is a validator for the "endpoint" field. It is called by the builders before save.
-	EndpointValidator func(string) error
-	// RegionValidator is a validator for the "region" field. It is called by the builders before save.
-	RegionValidator func(string) error
-	// AccessKeyValidator is a validator for the "access_key" field. It is called by the builders before save.
-	AccessKeyValidator func(string) error
-	// EncryptedSecretKeyValidator is a validator for the "encrypted_secret_key" field. It is called by the builders before save.
-	EncryptedSecretKeyValidator func(string) error
-	// DefaultUsePathStyle holds the default value on creation for the "use_path_style" field.
-	DefaultUsePathStyle bool
-)
 
 // Provider defines the type for the "provider" enum field.
 type Provider string
@@ -140,6 +125,11 @@ func ByRegion(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRegion, opts...).ToFunc()
 }
 
+// ByUsePathStyle orders the results by the use_path_style field.
+func ByUsePathStyle(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUsePathStyle, opts...).ToFunc()
+}
+
 // ByAccessKey orders the results by the access_key field.
 func ByAccessKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAccessKey, opts...).ToFunc()
@@ -148,11 +138,6 @@ func ByAccessKey(opts ...sql.OrderTermOption) OrderOption {
 // ByEncryptedSecretKey orders the results by the encrypted_secret_key field.
 func ByEncryptedSecretKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEncryptedSecretKey, opts...).ToFunc()
-}
-
-// ByUsePathStyle orders the results by the use_path_style field.
-func ByUsePathStyle(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUsePathStyle, opts...).ToFunc()
 }
 
 // ByDriveField orders the results by drive field.

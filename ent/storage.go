@@ -22,17 +22,17 @@ type Storage struct {
 	// Provider holds the value of the "provider" field.
 	Provider storage.Provider `json:"provider,omitempty"`
 	// Bucket holds the value of the "bucket" field.
-	Bucket string `json:"bucket,omitempty"`
+	Bucket *string `json:"bucket,omitempty"`
 	// Endpoint holds the value of the "endpoint" field.
-	Endpoint *string `json:"endpoint,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
 	// Region holds the value of the "region" field.
-	Region string `json:"region,omitempty"`
-	// AccessKey holds the value of the "access_key" field.
-	AccessKey string `json:"access_key,omitempty"`
-	// EncryptedSecretKey holds the value of the "encrypted_secret_key" field.
-	EncryptedSecretKey string `json:"encrypted_secret_key,omitempty"`
+	Region *string `json:"region,omitempty"`
 	// UsePathStyle holds the value of the "use_path_style" field.
-	UsePathStyle bool `json:"use_path_style,omitempty"`
+	UsePathStyle *bool `json:"use_path_style,omitempty"`
+	// AccessKey holds the value of the "access_key" field.
+	AccessKey *string `json:"-"`
+	// EncryptedSecretKey holds the value of the "encrypted_secret_key" field.
+	EncryptedSecretKey *string `json:"-"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the StorageQuery when eager-loading is set.
 	Edges        StorageEdges `json:"edges"`
@@ -107,38 +107,42 @@ func (_m *Storage) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field bucket", values[i])
 			} else if value.Valid {
-				_m.Bucket = value.String
+				_m.Bucket = new(string)
+				*_m.Bucket = value.String
 			}
 		case storage.FieldEndpoint:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field endpoint", values[i])
 			} else if value.Valid {
-				_m.Endpoint = new(string)
-				*_m.Endpoint = value.String
+				_m.Endpoint = value.String
 			}
 		case storage.FieldRegion:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field region", values[i])
 			} else if value.Valid {
-				_m.Region = value.String
-			}
-		case storage.FieldAccessKey:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field access_key", values[i])
-			} else if value.Valid {
-				_m.AccessKey = value.String
-			}
-		case storage.FieldEncryptedSecretKey:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field encrypted_secret_key", values[i])
-			} else if value.Valid {
-				_m.EncryptedSecretKey = value.String
+				_m.Region = new(string)
+				*_m.Region = value.String
 			}
 		case storage.FieldUsePathStyle:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field use_path_style", values[i])
 			} else if value.Valid {
-				_m.UsePathStyle = value.Bool
+				_m.UsePathStyle = new(bool)
+				*_m.UsePathStyle = value.Bool
+			}
+		case storage.FieldAccessKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field access_key", values[i])
+			} else if value.Valid {
+				_m.AccessKey = new(string)
+				*_m.AccessKey = value.String
+			}
+		case storage.FieldEncryptedSecretKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field encrypted_secret_key", values[i])
+			} else if value.Valid {
+				_m.EncryptedSecretKey = new(string)
+				*_m.EncryptedSecretKey = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -187,25 +191,27 @@ func (_m *Storage) String() string {
 	builder.WriteString("provider=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Provider))
 	builder.WriteString(", ")
-	builder.WriteString("bucket=")
-	builder.WriteString(_m.Bucket)
-	builder.WriteString(", ")
-	if v := _m.Endpoint; v != nil {
-		builder.WriteString("endpoint=")
+	if v := _m.Bucket; v != nil {
+		builder.WriteString("bucket=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
-	builder.WriteString("region=")
-	builder.WriteString(_m.Region)
+	builder.WriteString("endpoint=")
+	builder.WriteString(_m.Endpoint)
 	builder.WriteString(", ")
-	builder.WriteString("access_key=")
-	builder.WriteString(_m.AccessKey)
+	if v := _m.Region; v != nil {
+		builder.WriteString("region=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
-	builder.WriteString("encrypted_secret_key=")
-	builder.WriteString(_m.EncryptedSecretKey)
+	if v := _m.UsePathStyle; v != nil {
+		builder.WriteString("use_path_style=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
-	builder.WriteString("use_path_style=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UsePathStyle))
+	builder.WriteString("access_key=<sensitive>")
+	builder.WriteString(", ")
+	builder.WriteString("encrypted_secret_key=<sensitive>")
 	builder.WriteByte(')')
 	return builder.String()
 }

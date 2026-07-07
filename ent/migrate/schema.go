@@ -95,12 +95,12 @@ var (
 	StoragesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
-		{Name: "bucket", Type: field.TypeString, Size: 128},
-		{Name: "endpoint", Type: field.TypeString, Nullable: true, Size: 255},
-		{Name: "region", Type: field.TypeString, Size: 32},
-		{Name: "access_key", Type: field.TypeString, Size: 255},
-		{Name: "encrypted_secret_key", Type: field.TypeString, Size: 255},
-		{Name: "use_path_style", Type: field.TypeBool, Default: false},
+		{Name: "bucket", Type: field.TypeString, Nullable: true},
+		{Name: "endpoint", Type: field.TypeString},
+		{Name: "region", Type: field.TypeString, Nullable: true},
+		{Name: "use_path_style", Type: field.TypeBool, Nullable: true},
+		{Name: "access_key", Type: field.TypeString, Nullable: true},
+		{Name: "encrypted_secret_key", Type: field.TypeString, Nullable: true},
 		{Name: "drive_id", Type: field.TypeString, Unique: true},
 	}
 	// StoragesTable holds the schema information for the "storages" table.

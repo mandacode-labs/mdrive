@@ -10,7 +10,6 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
 	"github.com/mandacode-labs/mdrive/ent/schema"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -114,30 +113,6 @@ func init() {
 	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
 	storageFields := schema.Storage{}.Fields()
 	_ = storageFields
-	// storageDescBucket is the schema descriptor for bucket field.
-	storageDescBucket := storageFields[2].Descriptor()
-	// storage.BucketValidator is a validator for the "bucket" field. It is called by the builders before save.
-	storage.BucketValidator = storageDescBucket.Validators[0].(func(string) error)
-	// storageDescEndpoint is the schema descriptor for endpoint field.
-	storageDescEndpoint := storageFields[3].Descriptor()
-	// storage.EndpointValidator is a validator for the "endpoint" field. It is called by the builders before save.
-	storage.EndpointValidator = storageDescEndpoint.Validators[0].(func(string) error)
-	// storageDescRegion is the schema descriptor for region field.
-	storageDescRegion := storageFields[4].Descriptor()
-	// storage.RegionValidator is a validator for the "region" field. It is called by the builders before save.
-	storage.RegionValidator = storageDescRegion.Validators[0].(func(string) error)
-	// storageDescAccessKey is the schema descriptor for access_key field.
-	storageDescAccessKey := storageFields[5].Descriptor()
-	// storage.AccessKeyValidator is a validator for the "access_key" field. It is called by the builders before save.
-	storage.AccessKeyValidator = storageDescAccessKey.Validators[0].(func(string) error)
-	// storageDescEncryptedSecretKey is the schema descriptor for encrypted_secret_key field.
-	storageDescEncryptedSecretKey := storageFields[6].Descriptor()
-	// storage.EncryptedSecretKeyValidator is a validator for the "encrypted_secret_key" field. It is called by the builders before save.
-	storage.EncryptedSecretKeyValidator = storageDescEncryptedSecretKey.Validators[0].(func(string) error)
-	// storageDescUsePathStyle is the schema descriptor for use_path_style field.
-	storageDescUsePathStyle := storageFields[7].Descriptor()
-	// storage.DefaultUsePathStyle holds the default value on creation for the use_path_style field.
-	storage.DefaultUsePathStyle = storageDescUsePathStyle.Default.(bool)
 	superblockMixin := schema.Superblock{}.Mixin()
 	superblockMixinFields0 := superblockMixin[0].Fields()
 	_ = superblockMixinFields0

@@ -2618,9 +2618,9 @@ type StorageMutation struct {
 	bucket               *string
 	endpoint             *string
 	region               *string
+	use_path_style       *bool
 	access_key           *string
 	encrypted_secret_key *string
-	use_path_style       *bool
 	clearedFields        map[string]struct{}
 	drive                *string
 	cleareddrive         bool
@@ -2816,7 +2816,7 @@ func (m *StorageMutation) Bucket() (r string, exists bool) {
 // OldBucket returns the old "bucket" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldBucket(ctx context.Context) (v string, err error) {
+func (m *StorageMutation) OldBucket(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldBucket is only allowed on UpdateOne operations")
 	}
@@ -2830,9 +2830,22 @@ func (m *StorageMutation) OldBucket(ctx context.Context) (v string, err error) {
 	return oldValue.Bucket, nil
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (m *StorageMutation) ClearBucket() {
+	m.bucket = nil
+	m.clearedFields[storage.FieldBucket] = struct{}{}
+}
+
+// BucketCleared returns if the "bucket" field was cleared in this mutation.
+func (m *StorageMutation) BucketCleared() bool {
+	_, ok := m.clearedFields[storage.FieldBucket]
+	return ok
+}
+
 // ResetBucket resets all changes to the "bucket" field.
 func (m *StorageMutation) ResetBucket() {
 	m.bucket = nil
+	delete(m.clearedFields, storage.FieldBucket)
 }
 
 // SetEndpoint sets the "endpoint" field.
@@ -2852,7 +2865,7 @@ func (m *StorageMutation) Endpoint() (r string, exists bool) {
 // OldEndpoint returns the old "endpoint" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldEndpoint(ctx context.Context) (v *string, err error) {
+func (m *StorageMutation) OldEndpoint(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldEndpoint is only allowed on UpdateOne operations")
 	}
@@ -2866,22 +2879,9 @@ func (m *StorageMutation) OldEndpoint(ctx context.Context) (v *string, err error
 	return oldValue.Endpoint, nil
 }
 
-// ClearEndpoint clears the value of the "endpoint" field.
-func (m *StorageMutation) ClearEndpoint() {
-	m.endpoint = nil
-	m.clearedFields[storage.FieldEndpoint] = struct{}{}
-}
-
-// EndpointCleared returns if the "endpoint" field was cleared in this mutation.
-func (m *StorageMutation) EndpointCleared() bool {
-	_, ok := m.clearedFields[storage.FieldEndpoint]
-	return ok
-}
-
 // ResetEndpoint resets all changes to the "endpoint" field.
 func (m *StorageMutation) ResetEndpoint() {
 	m.endpoint = nil
-	delete(m.clearedFields, storage.FieldEndpoint)
 }
 
 // SetRegion sets the "region" field.
@@ -2901,7 +2901,7 @@ func (m *StorageMutation) Region() (r string, exists bool) {
 // OldRegion returns the old "region" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldRegion(ctx context.Context) (v string, err error) {
+func (m *StorageMutation) OldRegion(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldRegion is only allowed on UpdateOne operations")
 	}
@@ -2915,81 +2915,22 @@ func (m *StorageMutation) OldRegion(ctx context.Context) (v string, err error) {
 	return oldValue.Region, nil
 }
 
+// ClearRegion clears the value of the "region" field.
+func (m *StorageMutation) ClearRegion() {
+	m.region = nil
+	m.clearedFields[storage.FieldRegion] = struct{}{}
+}
+
+// RegionCleared returns if the "region" field was cleared in this mutation.
+func (m *StorageMutation) RegionCleared() bool {
+	_, ok := m.clearedFields[storage.FieldRegion]
+	return ok
+}
+
 // ResetRegion resets all changes to the "region" field.
 func (m *StorageMutation) ResetRegion() {
 	m.region = nil
-}
-
-// SetAccessKey sets the "access_key" field.
-func (m *StorageMutation) SetAccessKey(s string) {
-	m.access_key = &s
-}
-
-// AccessKey returns the value of the "access_key" field in the mutation.
-func (m *StorageMutation) AccessKey() (r string, exists bool) {
-	v := m.access_key
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAccessKey returns the old "access_key" field's value of the Storage entity.
-// If the Storage object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldAccessKey(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAccessKey is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAccessKey requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAccessKey: %w", err)
-	}
-	return oldValue.AccessKey, nil
-}
-
-// ResetAccessKey resets all changes to the "access_key" field.
-func (m *StorageMutation) ResetAccessKey() {
-	m.access_key = nil
-}
-
-// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
-func (m *StorageMutation) SetEncryptedSecretKey(s string) {
-	m.encrypted_secret_key = &s
-}
-
-// EncryptedSecretKey returns the value of the "encrypted_secret_key" field in the mutation.
-func (m *StorageMutation) EncryptedSecretKey() (r string, exists bool) {
-	v := m.encrypted_secret_key
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldEncryptedSecretKey returns the old "encrypted_secret_key" field's value of the Storage entity.
-// If the Storage object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldEncryptedSecretKey(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldEncryptedSecretKey is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldEncryptedSecretKey requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldEncryptedSecretKey: %w", err)
-	}
-	return oldValue.EncryptedSecretKey, nil
-}
-
-// ResetEncryptedSecretKey resets all changes to the "encrypted_secret_key" field.
-func (m *StorageMutation) ResetEncryptedSecretKey() {
-	m.encrypted_secret_key = nil
+	delete(m.clearedFields, storage.FieldRegion)
 }
 
 // SetUsePathStyle sets the "use_path_style" field.
@@ -3009,7 +2950,7 @@ func (m *StorageMutation) UsePathStyle() (r bool, exists bool) {
 // OldUsePathStyle returns the old "use_path_style" field's value of the Storage entity.
 // If the Storage object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *StorageMutation) OldUsePathStyle(ctx context.Context) (v bool, err error) {
+func (m *StorageMutation) OldUsePathStyle(ctx context.Context) (v *bool, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUsePathStyle is only allowed on UpdateOne operations")
 	}
@@ -3023,9 +2964,120 @@ func (m *StorageMutation) OldUsePathStyle(ctx context.Context) (v bool, err erro
 	return oldValue.UsePathStyle, nil
 }
 
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (m *StorageMutation) ClearUsePathStyle() {
+	m.use_path_style = nil
+	m.clearedFields[storage.FieldUsePathStyle] = struct{}{}
+}
+
+// UsePathStyleCleared returns if the "use_path_style" field was cleared in this mutation.
+func (m *StorageMutation) UsePathStyleCleared() bool {
+	_, ok := m.clearedFields[storage.FieldUsePathStyle]
+	return ok
+}
+
 // ResetUsePathStyle resets all changes to the "use_path_style" field.
 func (m *StorageMutation) ResetUsePathStyle() {
 	m.use_path_style = nil
+	delete(m.clearedFields, storage.FieldUsePathStyle)
+}
+
+// SetAccessKey sets the "access_key" field.
+func (m *StorageMutation) SetAccessKey(s string) {
+	m.access_key = &s
+}
+
+// AccessKey returns the value of the "access_key" field in the mutation.
+func (m *StorageMutation) AccessKey() (r string, exists bool) {
+	v := m.access_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccessKey returns the old "access_key" field's value of the Storage entity.
+// If the Storage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageMutation) OldAccessKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccessKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccessKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccessKey: %w", err)
+	}
+	return oldValue.AccessKey, nil
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (m *StorageMutation) ClearAccessKey() {
+	m.access_key = nil
+	m.clearedFields[storage.FieldAccessKey] = struct{}{}
+}
+
+// AccessKeyCleared returns if the "access_key" field was cleared in this mutation.
+func (m *StorageMutation) AccessKeyCleared() bool {
+	_, ok := m.clearedFields[storage.FieldAccessKey]
+	return ok
+}
+
+// ResetAccessKey resets all changes to the "access_key" field.
+func (m *StorageMutation) ResetAccessKey() {
+	m.access_key = nil
+	delete(m.clearedFields, storage.FieldAccessKey)
+}
+
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (m *StorageMutation) SetEncryptedSecretKey(s string) {
+	m.encrypted_secret_key = &s
+}
+
+// EncryptedSecretKey returns the value of the "encrypted_secret_key" field in the mutation.
+func (m *StorageMutation) EncryptedSecretKey() (r string, exists bool) {
+	v := m.encrypted_secret_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEncryptedSecretKey returns the old "encrypted_secret_key" field's value of the Storage entity.
+// If the Storage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StorageMutation) OldEncryptedSecretKey(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEncryptedSecretKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEncryptedSecretKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEncryptedSecretKey: %w", err)
+	}
+	return oldValue.EncryptedSecretKey, nil
+}
+
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (m *StorageMutation) ClearEncryptedSecretKey() {
+	m.encrypted_secret_key = nil
+	m.clearedFields[storage.FieldEncryptedSecretKey] = struct{}{}
+}
+
+// EncryptedSecretKeyCleared returns if the "encrypted_secret_key" field was cleared in this mutation.
+func (m *StorageMutation) EncryptedSecretKeyCleared() bool {
+	_, ok := m.clearedFields[storage.FieldEncryptedSecretKey]
+	return ok
+}
+
+// ResetEncryptedSecretKey resets all changes to the "encrypted_secret_key" field.
+func (m *StorageMutation) ResetEncryptedSecretKey() {
+	m.encrypted_secret_key = nil
+	delete(m.clearedFields, storage.FieldEncryptedSecretKey)
 }
 
 // ClearDrive clears the "drive" edge to the Drive entity.
@@ -3105,14 +3157,14 @@ func (m *StorageMutation) Fields() []string {
 	if m.region != nil {
 		fields = append(fields, storage.FieldRegion)
 	}
+	if m.use_path_style != nil {
+		fields = append(fields, storage.FieldUsePathStyle)
+	}
 	if m.access_key != nil {
 		fields = append(fields, storage.FieldAccessKey)
 	}
 	if m.encrypted_secret_key != nil {
 		fields = append(fields, storage.FieldEncryptedSecretKey)
-	}
-	if m.use_path_style != nil {
-		fields = append(fields, storage.FieldUsePathStyle)
 	}
 	return fields
 }
@@ -3132,12 +3184,12 @@ func (m *StorageMutation) Field(name string) (ent.Value, bool) {
 		return m.Endpoint()
 	case storage.FieldRegion:
 		return m.Region()
+	case storage.FieldUsePathStyle:
+		return m.UsePathStyle()
 	case storage.FieldAccessKey:
 		return m.AccessKey()
 	case storage.FieldEncryptedSecretKey:
 		return m.EncryptedSecretKey()
-	case storage.FieldUsePathStyle:
-		return m.UsePathStyle()
 	}
 	return nil, false
 }
@@ -3157,12 +3209,12 @@ func (m *StorageMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldEndpoint(ctx)
 	case storage.FieldRegion:
 		return m.OldRegion(ctx)
+	case storage.FieldUsePathStyle:
+		return m.OldUsePathStyle(ctx)
 	case storage.FieldAccessKey:
 		return m.OldAccessKey(ctx)
 	case storage.FieldEncryptedSecretKey:
 		return m.OldEncryptedSecretKey(ctx)
-	case storage.FieldUsePathStyle:
-		return m.OldUsePathStyle(ctx)
 	}
 	return nil, fmt.Errorf("unknown Storage field %s", name)
 }
@@ -3207,6 +3259,13 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRegion(v)
 		return nil
+	case storage.FieldUsePathStyle:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsePathStyle(v)
+		return nil
 	case storage.FieldAccessKey:
 		v, ok := value.(string)
 		if !ok {
@@ -3220,13 +3279,6 @@ func (m *StorageMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEncryptedSecretKey(v)
-		return nil
-	case storage.FieldUsePathStyle:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetUsePathStyle(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Storage field %s", name)
@@ -3258,8 +3310,20 @@ func (m *StorageMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *StorageMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(storage.FieldEndpoint) {
-		fields = append(fields, storage.FieldEndpoint)
+	if m.FieldCleared(storage.FieldBucket) {
+		fields = append(fields, storage.FieldBucket)
+	}
+	if m.FieldCleared(storage.FieldRegion) {
+		fields = append(fields, storage.FieldRegion)
+	}
+	if m.FieldCleared(storage.FieldUsePathStyle) {
+		fields = append(fields, storage.FieldUsePathStyle)
+	}
+	if m.FieldCleared(storage.FieldAccessKey) {
+		fields = append(fields, storage.FieldAccessKey)
+	}
+	if m.FieldCleared(storage.FieldEncryptedSecretKey) {
+		fields = append(fields, storage.FieldEncryptedSecretKey)
 	}
 	return fields
 }
@@ -3275,8 +3339,20 @@ func (m *StorageMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *StorageMutation) ClearField(name string) error {
 	switch name {
-	case storage.FieldEndpoint:
-		m.ClearEndpoint()
+	case storage.FieldBucket:
+		m.ClearBucket()
+		return nil
+	case storage.FieldRegion:
+		m.ClearRegion()
+		return nil
+	case storage.FieldUsePathStyle:
+		m.ClearUsePathStyle()
+		return nil
+	case storage.FieldAccessKey:
+		m.ClearAccessKey()
+		return nil
+	case storage.FieldEncryptedSecretKey:
+		m.ClearEncryptedSecretKey()
 		return nil
 	}
 	return fmt.Errorf("unknown Storage nullable field %s", name)
@@ -3301,14 +3377,14 @@ func (m *StorageMutation) ResetField(name string) error {
 	case storage.FieldRegion:
 		m.ResetRegion()
 		return nil
+	case storage.FieldUsePathStyle:
+		m.ResetUsePathStyle()
+		return nil
 	case storage.FieldAccessKey:
 		m.ResetAccessKey()
 		return nil
 	case storage.FieldEncryptedSecretKey:
 		m.ResetEncryptedSecretKey()
-		return nil
-	case storage.FieldUsePathStyle:
-		m.ResetUsePathStyle()
 		return nil
 	}
 	return fmt.Errorf("unknown Storage field %s", name)

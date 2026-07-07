@@ -48,17 +48,17 @@ func (_c *StorageCreate) SetBucket(v string) *StorageCreate {
 	return _c
 }
 
-// SetEndpoint sets the "endpoint" field.
-func (_c *StorageCreate) SetEndpoint(v string) *StorageCreate {
-	_c.mutation.SetEndpoint(v)
+// SetNillableBucket sets the "bucket" field if the given value is not nil.
+func (_c *StorageCreate) SetNillableBucket(v *string) *StorageCreate {
+	if v != nil {
+		_c.SetBucket(*v)
+	}
 	return _c
 }
 
-// SetNillableEndpoint sets the "endpoint" field if the given value is not nil.
-func (_c *StorageCreate) SetNillableEndpoint(v *string) *StorageCreate {
-	if v != nil {
-		_c.SetEndpoint(*v)
-	}
+// SetEndpoint sets the "endpoint" field.
+func (_c *StorageCreate) SetEndpoint(v string) *StorageCreate {
+	_c.mutation.SetEndpoint(v)
 	return _c
 }
 
@@ -68,15 +68,11 @@ func (_c *StorageCreate) SetRegion(v string) *StorageCreate {
 	return _c
 }
 
-// SetAccessKey sets the "access_key" field.
-func (_c *StorageCreate) SetAccessKey(v string) *StorageCreate {
-	_c.mutation.SetAccessKey(v)
-	return _c
-}
-
-// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
-func (_c *StorageCreate) SetEncryptedSecretKey(v string) *StorageCreate {
-	_c.mutation.SetEncryptedSecretKey(v)
+// SetNillableRegion sets the "region" field if the given value is not nil.
+func (_c *StorageCreate) SetNillableRegion(v *string) *StorageCreate {
+	if v != nil {
+		_c.SetRegion(*v)
+	}
 	return _c
 }
 
@@ -90,6 +86,34 @@ func (_c *StorageCreate) SetUsePathStyle(v bool) *StorageCreate {
 func (_c *StorageCreate) SetNillableUsePathStyle(v *bool) *StorageCreate {
 	if v != nil {
 		_c.SetUsePathStyle(*v)
+	}
+	return _c
+}
+
+// SetAccessKey sets the "access_key" field.
+func (_c *StorageCreate) SetAccessKey(v string) *StorageCreate {
+	_c.mutation.SetAccessKey(v)
+	return _c
+}
+
+// SetNillableAccessKey sets the "access_key" field if the given value is not nil.
+func (_c *StorageCreate) SetNillableAccessKey(v *string) *StorageCreate {
+	if v != nil {
+		_c.SetAccessKey(*v)
+	}
+	return _c
+}
+
+// SetEncryptedSecretKey sets the "encrypted_secret_key" field.
+func (_c *StorageCreate) SetEncryptedSecretKey(v string) *StorageCreate {
+	_c.mutation.SetEncryptedSecretKey(v)
+	return _c
+}
+
+// SetNillableEncryptedSecretKey sets the "encrypted_secret_key" field if the given value is not nil.
+func (_c *StorageCreate) SetNillableEncryptedSecretKey(v *string) *StorageCreate {
+	if v != nil {
+		_c.SetEncryptedSecretKey(*v)
 	}
 	return _c
 }
@@ -138,10 +162,6 @@ func (_c *StorageCreate) defaults() {
 		v := storage.DefaultProvider
 		_c.mutation.SetProvider(v)
 	}
-	if _, ok := _c.mutation.UsePathStyle(); !ok {
-		v := storage.DefaultUsePathStyle
-		_c.mutation.SetUsePathStyle(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -157,45 +177,8 @@ func (_c *StorageCreate) check() error {
 			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Storage.provider": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Bucket(); !ok {
-		return &ValidationError{Name: "bucket", err: errors.New(`ent: missing required field "Storage.bucket"`)}
-	}
-	if v, ok := _c.mutation.Bucket(); ok {
-		if err := storage.BucketValidator(v); err != nil {
-			return &ValidationError{Name: "bucket", err: fmt.Errorf(`ent: validator failed for field "Storage.bucket": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.Endpoint(); ok {
-		if err := storage.EndpointValidator(v); err != nil {
-			return &ValidationError{Name: "endpoint", err: fmt.Errorf(`ent: validator failed for field "Storage.endpoint": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.Region(); !ok {
-		return &ValidationError{Name: "region", err: errors.New(`ent: missing required field "Storage.region"`)}
-	}
-	if v, ok := _c.mutation.Region(); ok {
-		if err := storage.RegionValidator(v); err != nil {
-			return &ValidationError{Name: "region", err: fmt.Errorf(`ent: validator failed for field "Storage.region": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.AccessKey(); !ok {
-		return &ValidationError{Name: "access_key", err: errors.New(`ent: missing required field "Storage.access_key"`)}
-	}
-	if v, ok := _c.mutation.AccessKey(); ok {
-		if err := storage.AccessKeyValidator(v); err != nil {
-			return &ValidationError{Name: "access_key", err: fmt.Errorf(`ent: validator failed for field "Storage.access_key": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.EncryptedSecretKey(); !ok {
-		return &ValidationError{Name: "encrypted_secret_key", err: errors.New(`ent: missing required field "Storage.encrypted_secret_key"`)}
-	}
-	if v, ok := _c.mutation.EncryptedSecretKey(); ok {
-		if err := storage.EncryptedSecretKeyValidator(v); err != nil {
-			return &ValidationError{Name: "encrypted_secret_key", err: fmt.Errorf(`ent: validator failed for field "Storage.encrypted_secret_key": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.UsePathStyle(); !ok {
-		return &ValidationError{Name: "use_path_style", err: errors.New(`ent: missing required field "Storage.use_path_style"`)}
+	if _, ok := _c.mutation.Endpoint(); !ok {
+		return &ValidationError{Name: "endpoint", err: errors.New(`ent: missing required field "Storage.endpoint"`)}
 	}
 	if len(_c.mutation.DriveIDs()) == 0 {
 		return &ValidationError{Name: "drive", err: errors.New(`ent: missing required edge "Storage.drive"`)}
@@ -233,27 +216,27 @@ func (_c *StorageCreate) createSpec() (*Storage, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.Bucket(); ok {
 		_spec.SetField(storage.FieldBucket, field.TypeString, value)
-		_node.Bucket = value
+		_node.Bucket = &value
 	}
 	if value, ok := _c.mutation.Endpoint(); ok {
 		_spec.SetField(storage.FieldEndpoint, field.TypeString, value)
-		_node.Endpoint = &value
+		_node.Endpoint = value
 	}
 	if value, ok := _c.mutation.Region(); ok {
 		_spec.SetField(storage.FieldRegion, field.TypeString, value)
-		_node.Region = value
-	}
-	if value, ok := _c.mutation.AccessKey(); ok {
-		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
-		_node.AccessKey = value
-	}
-	if value, ok := _c.mutation.EncryptedSecretKey(); ok {
-		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
-		_node.EncryptedSecretKey = value
+		_node.Region = &value
 	}
 	if value, ok := _c.mutation.UsePathStyle(); ok {
 		_spec.SetField(storage.FieldUsePathStyle, field.TypeBool, value)
-		_node.UsePathStyle = value
+		_node.UsePathStyle = &value
+	}
+	if value, ok := _c.mutation.AccessKey(); ok {
+		_spec.SetField(storage.FieldAccessKey, field.TypeString, value)
+		_node.AccessKey = &value
+	}
+	if value, ok := _c.mutation.EncryptedSecretKey(); ok {
+		_spec.SetField(storage.FieldEncryptedSecretKey, field.TypeString, value)
+		_node.EncryptedSecretKey = &value
 	}
 	if nodes := _c.mutation.DriveIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -348,6 +331,12 @@ func (u *StorageUpsert) UpdateBucket() *StorageUpsert {
 	return u
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (u *StorageUpsert) ClearBucket() *StorageUpsert {
+	u.SetNull(storage.FieldBucket)
+	return u
+}
+
 // SetEndpoint sets the "endpoint" field.
 func (u *StorageUpsert) SetEndpoint(v string) *StorageUpsert {
 	u.Set(storage.FieldEndpoint, v)
@@ -357,12 +346,6 @@ func (u *StorageUpsert) SetEndpoint(v string) *StorageUpsert {
 // UpdateEndpoint sets the "endpoint" field to the value that was provided on create.
 func (u *StorageUpsert) UpdateEndpoint() *StorageUpsert {
 	u.SetExcluded(storage.FieldEndpoint)
-	return u
-}
-
-// ClearEndpoint clears the value of the "endpoint" field.
-func (u *StorageUpsert) ClearEndpoint() *StorageUpsert {
-	u.SetNull(storage.FieldEndpoint)
 	return u
 }
 
@@ -378,6 +361,30 @@ func (u *StorageUpsert) UpdateRegion() *StorageUpsert {
 	return u
 }
 
+// ClearRegion clears the value of the "region" field.
+func (u *StorageUpsert) ClearRegion() *StorageUpsert {
+	u.SetNull(storage.FieldRegion)
+	return u
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *StorageUpsert) SetUsePathStyle(v bool) *StorageUpsert {
+	u.Set(storage.FieldUsePathStyle, v)
+	return u
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *StorageUpsert) UpdateUsePathStyle() *StorageUpsert {
+	u.SetExcluded(storage.FieldUsePathStyle)
+	return u
+}
+
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (u *StorageUpsert) ClearUsePathStyle() *StorageUpsert {
+	u.SetNull(storage.FieldUsePathStyle)
+	return u
+}
+
 // SetAccessKey sets the "access_key" field.
 func (u *StorageUpsert) SetAccessKey(v string) *StorageUpsert {
 	u.Set(storage.FieldAccessKey, v)
@@ -387,6 +394,12 @@ func (u *StorageUpsert) SetAccessKey(v string) *StorageUpsert {
 // UpdateAccessKey sets the "access_key" field to the value that was provided on create.
 func (u *StorageUpsert) UpdateAccessKey() *StorageUpsert {
 	u.SetExcluded(storage.FieldAccessKey)
+	return u
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (u *StorageUpsert) ClearAccessKey() *StorageUpsert {
+	u.SetNull(storage.FieldAccessKey)
 	return u
 }
 
@@ -402,15 +415,9 @@ func (u *StorageUpsert) UpdateEncryptedSecretKey() *StorageUpsert {
 	return u
 }
 
-// SetUsePathStyle sets the "use_path_style" field.
-func (u *StorageUpsert) SetUsePathStyle(v bool) *StorageUpsert {
-	u.Set(storage.FieldUsePathStyle, v)
-	return u
-}
-
-// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
-func (u *StorageUpsert) UpdateUsePathStyle() *StorageUpsert {
-	u.SetExcluded(storage.FieldUsePathStyle)
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (u *StorageUpsert) ClearEncryptedSecretKey() *StorageUpsert {
+	u.SetNull(storage.FieldEncryptedSecretKey)
 	return u
 }
 
@@ -487,6 +494,13 @@ func (u *StorageUpsertOne) UpdateBucket() *StorageUpsertOne {
 	})
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (u *StorageUpsertOne) ClearBucket() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearBucket()
+	})
+}
+
 // SetEndpoint sets the "endpoint" field.
 func (u *StorageUpsertOne) SetEndpoint(v string) *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
@@ -498,13 +512,6 @@ func (u *StorageUpsertOne) SetEndpoint(v string) *StorageUpsertOne {
 func (u *StorageUpsertOne) UpdateEndpoint() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateEndpoint()
-	})
-}
-
-// ClearEndpoint clears the value of the "endpoint" field.
-func (u *StorageUpsertOne) ClearEndpoint() *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearEndpoint()
 	})
 }
 
@@ -522,6 +529,34 @@ func (u *StorageUpsertOne) UpdateRegion() *StorageUpsertOne {
 	})
 }
 
+// ClearRegion clears the value of the "region" field.
+func (u *StorageUpsertOne) ClearRegion() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearRegion()
+	})
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *StorageUpsertOne) SetUsePathStyle(v bool) *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetUsePathStyle(v)
+	})
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *StorageUpsertOne) UpdateUsePathStyle() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdateUsePathStyle()
+	})
+}
+
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (u *StorageUpsertOne) ClearUsePathStyle() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearUsePathStyle()
+	})
+}
+
 // SetAccessKey sets the "access_key" field.
 func (u *StorageUpsertOne) SetAccessKey(v string) *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
@@ -533,6 +568,13 @@ func (u *StorageUpsertOne) SetAccessKey(v string) *StorageUpsertOne {
 func (u *StorageUpsertOne) UpdateAccessKey() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateAccessKey()
+	})
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (u *StorageUpsertOne) ClearAccessKey() *StorageUpsertOne {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearAccessKey()
 	})
 }
 
@@ -550,17 +592,10 @@ func (u *StorageUpsertOne) UpdateEncryptedSecretKey() *StorageUpsertOne {
 	})
 }
 
-// SetUsePathStyle sets the "use_path_style" field.
-func (u *StorageUpsertOne) SetUsePathStyle(v bool) *StorageUpsertOne {
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (u *StorageUpsertOne) ClearEncryptedSecretKey() *StorageUpsertOne {
 	return u.Update(func(s *StorageUpsert) {
-		s.SetUsePathStyle(v)
-	})
-}
-
-// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
-func (u *StorageUpsertOne) UpdateUsePathStyle() *StorageUpsertOne {
-	return u.Update(func(s *StorageUpsert) {
-		s.UpdateUsePathStyle()
+		s.ClearEncryptedSecretKey()
 	})
 }
 
@@ -803,6 +838,13 @@ func (u *StorageUpsertBulk) UpdateBucket() *StorageUpsertBulk {
 	})
 }
 
+// ClearBucket clears the value of the "bucket" field.
+func (u *StorageUpsertBulk) ClearBucket() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearBucket()
+	})
+}
+
 // SetEndpoint sets the "endpoint" field.
 func (u *StorageUpsertBulk) SetEndpoint(v string) *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
@@ -814,13 +856,6 @@ func (u *StorageUpsertBulk) SetEndpoint(v string) *StorageUpsertBulk {
 func (u *StorageUpsertBulk) UpdateEndpoint() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateEndpoint()
-	})
-}
-
-// ClearEndpoint clears the value of the "endpoint" field.
-func (u *StorageUpsertBulk) ClearEndpoint() *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.ClearEndpoint()
 	})
 }
 
@@ -838,6 +873,34 @@ func (u *StorageUpsertBulk) UpdateRegion() *StorageUpsertBulk {
 	})
 }
 
+// ClearRegion clears the value of the "region" field.
+func (u *StorageUpsertBulk) ClearRegion() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearRegion()
+	})
+}
+
+// SetUsePathStyle sets the "use_path_style" field.
+func (u *StorageUpsertBulk) SetUsePathStyle(v bool) *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.SetUsePathStyle(v)
+	})
+}
+
+// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
+func (u *StorageUpsertBulk) UpdateUsePathStyle() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.UpdateUsePathStyle()
+	})
+}
+
+// ClearUsePathStyle clears the value of the "use_path_style" field.
+func (u *StorageUpsertBulk) ClearUsePathStyle() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearUsePathStyle()
+	})
+}
+
 // SetAccessKey sets the "access_key" field.
 func (u *StorageUpsertBulk) SetAccessKey(v string) *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
@@ -849,6 +912,13 @@ func (u *StorageUpsertBulk) SetAccessKey(v string) *StorageUpsertBulk {
 func (u *StorageUpsertBulk) UpdateAccessKey() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
 		s.UpdateAccessKey()
+	})
+}
+
+// ClearAccessKey clears the value of the "access_key" field.
+func (u *StorageUpsertBulk) ClearAccessKey() *StorageUpsertBulk {
+	return u.Update(func(s *StorageUpsert) {
+		s.ClearAccessKey()
 	})
 }
 
@@ -866,17 +936,10 @@ func (u *StorageUpsertBulk) UpdateEncryptedSecretKey() *StorageUpsertBulk {
 	})
 }
 
-// SetUsePathStyle sets the "use_path_style" field.
-func (u *StorageUpsertBulk) SetUsePathStyle(v bool) *StorageUpsertBulk {
+// ClearEncryptedSecretKey clears the value of the "encrypted_secret_key" field.
+func (u *StorageUpsertBulk) ClearEncryptedSecretKey() *StorageUpsertBulk {
 	return u.Update(func(s *StorageUpsert) {
-		s.SetUsePathStyle(v)
-	})
-}
-
-// UpdateUsePathStyle sets the "use_path_style" field to the value that was provided on create.
-func (u *StorageUpsertBulk) UpdateUsePathStyle() *StorageUpsertBulk {
-	return u.Update(func(s *StorageUpsert) {
-		s.UpdateUsePathStyle()
+		s.ClearEncryptedSecretKey()
 	})
 }
 
