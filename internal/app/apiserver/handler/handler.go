@@ -16,12 +16,12 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
 type Handler struct {
-	fs             vfs.Service
+	fs             fs.Service
 	drive          drive.Service
 	users          user.Service
 	upload         upload.Service
@@ -35,7 +35,7 @@ type Handler struct {
 
 type CookieConfig = config.CookieConfig
 
-func New(fs vfs.Service, drive drive.Service, users user.Service, upload upload.Service, authorizer permission.Authorizer, redirectURI string, opts ...Option) *Handler {
+func New(fs fs.Service, drive drive.Service, users user.Service, upload upload.Service, authorizer permission.Authorizer, redirectURI string, opts ...Option) *Handler {
 	h := &Handler{
 		fs:          fs,
 		drive:       drive,

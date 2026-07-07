@@ -25,7 +25,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 	"github.com/mandacode-labs/mdrive/pkg/api"
 )
 
@@ -35,13 +35,13 @@ type Server struct {
 	addr string
 }
 
-func NewServer(a *app.App, fs vfs.Service, driveSvc drive.Service, uploadSvc upload.Service, userSvc user.Service, perm permission.Authorizer) (*Server, error) {
+func NewServer(a *app.App, fsSvc fs.Service, driveSvc drive.Service, uploadSvc upload.Service, userSvc user.Service, perm permission.Authorizer) (*Server, error) {
 	cookieCfg := a.Config.HTTP.Cookie
 	healthDeps := handler.HealthDeps{DB: a.DB}
 	if perm != nil {
 		healthDeps.Authorizer = perm
 	}
-	h := handler.New(fs, driveSvc, userSvc, uploadSvc, perm, a.Config.Auth.RedirectURI,
+	h := handler.New(fsSvc, driveSvc, userSvc, uploadSvc, perm, a.Config.Auth.RedirectURI,
 		handler.WithDefaultStorage(drive.StorageConfig{
 			Bucket:       a.Config.Storage.Bucket,
 			Region:       a.Config.Storage.Region,

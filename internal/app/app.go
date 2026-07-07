@@ -16,6 +16,8 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/fs/superop"
+	"github.com/mandacode-labs/mdrive/internal/fs/vfs"
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/internal/app/gc"
@@ -29,7 +31,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/internal/upload"
 	"github.com/mandacode-labs/mdrive/internal/upload/s3"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
 // App holds all wired components. Fields are grouped loosely
@@ -52,7 +54,7 @@ type App struct {
 	OwnerChecker drive.OwnerChecker
 	UploadToken  upload.TokenRegistry
 	UploadSvc    upload.Service
-	VFS          vfs.Service
+	VFS          fs.Service
 	Garbage      *gc.Recorder
 	Auth         *auth.Service
 	Security     *auth.Service
@@ -127,7 +129,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		OwnerChecker: repos.OwnerChecker,
 		UploadToken:  uploadReg,
 		UploadSvc:    newUpload(repos, s3Client, uploadReg),
-		VFS:          newVFS(repos, garbage),
+		VFS:          newFS(repos, garbage, permClient),
 		Garbage:      garbage,
 		Auth:         authenticator,
 		Security:     sec,
@@ -200,6 +202,7 @@ func newCrypto(ctx context.Context, cfg *config.Config) (cryptopkg.Cipher, error
 // construction step is one assignment in New.
 type repositories struct {
 	NodeSvc      node.NodeOperation
+	SuperSvc     fs.SuperOperation
 	DriveSvc     drive.Service
 	UserSvc      user.Service
 	OwnerChecker drive.OwnerChecker
@@ -215,6 +218,9 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 	nodeRepo := node.NewRepository(entClient)
 	nodeSvc := node.NewNodeOperation(nodeRepo, txMgr)
 
+	sbRepo := superop.NewRepository(entClient)
+	superSvc := superop.NewSuperblockOperation(sbRepo, txMgr)
+
 	userRepo := user.NewRepository(entClient)
 	userSvc := user.NewService(userRepo)
 
@@ -224,6 +230,7 @@ func newRepositories(entClient *ent.Client, cipher cryptopkg.Cipher) repositorie
 
 	return repositories{
 		NodeSvc:      nodeSvc,
+		SuperSvc:     superSvc,
 		DriveSvc:     driveSvc,
 		UserSvc:      userSvc,
 		OwnerChecker: userRepo,
@@ -291,15 +298,16 @@ func newAuth(ctx context.Context, cfg *config.Config, users user.Service) (*auth
 	return authenticator, sec, nil
 }
 
-// newVFS builds the inode-tree manager. vfs has no S3 or HTTP
+// newFS builds the inode-tree manager. fs has no S3 or HTTP
 // dependency: it manages paths, links, and the tree; it
-// notifies Garbage when object nodes go away.
-func newVFS(repos repositories, garbage *gc.Recorder) vfs.Service {
-	return vfs.NewService(vfs.Config{
-		NodeClient:      repos.NodeSvc,
-		DriveClient:     repos.DriveSvc,
-		GarbageRecorder: garbage,
-		TxManager:       repos.TxMgr,
+// notifies Garbage when object nodes go away. The vfs
+// subpackage holds the inode layer; we construct it here so
+// the parent fs package stays decoupled.
+func newFS(repos repositories, garbage *gc.Recorder, perm permission.Authorizer) fs.Service {
+	return fs.New(fs.Config{
+		VFS:     vfs.New(repos.NodeSvc, repos.SuperSvc),
+		Perm:    perm,
+		Garbage: garbage,
 	})
 }
 

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"path/filepath"
 
-	"github.com/mandacode-labs/mdrive/internal/core/node"
+	"github.com/google/uuid"
+	"github.com/oklog/ulid/v2"
+
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 	"github.com/mandacode-labs/mdrive/internal/logx"
 	"github.com/mandacode-labs/mdrive/internal/permission"
 	"github.com/mandacode-labs/mdrive/pkg/api"
@@ -14,9 +18,10 @@ import (
 
 // --- FS (filesystem) handlers ---
 //
-// Permission checks live here in the handler. vfs is filesystem-only;
-// each op here is preceded by a permission check on the drive
-// (and on the resolved drive for read ops that may cross mounts).
+// Permission checks live here in the handler. fs is filesystem-
+// only; each op here is preceded by a permission check on the
+// drive (and on the resolved drive for read ops that may cross
+// mounts).
 
 func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.MkdirParams) (api.MkdirRes, error) {
 	r := req.Value
@@ -33,7 +38,7 @@ func (h *Handler) Mkdir(ctx context.Context, req api.OptMkdirReq, params api.Mkd
 		)
 		return nil, err
 	}
-	if _, err := h.fs.Mkdir(ctx, params.DriveID, r.Path); err != nil {
+	if _, err := h.fs.Create(ctx, params.DriveID, r.Path, fs.NodeKindDirectory); err != nil {
 		logx.Debug(ctx, "handler.fs.mkdir.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("path", r.Path),
@@ -57,7 +62,7 @@ func (h *Handler) Touch(ctx context.Context, req api.OptTouchReq, params api.Tou
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if _, err := h.fs.Touch(ctx, params.DriveID, r.Path); err != nil {
+	if _, err := h.fs.Create(ctx, params.DriveID, r.Path, fs.NodeKindFile); err != nil {
 		logx.Debug(ctx, "handler.fs.touch.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("path", r.Path),
@@ -86,7 +91,7 @@ func (h *Handler) Rm(ctx context.Context, req api.OptRmReq, params api.RmParams)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if err := h.fs.Rm(ctx, params.DriveID, r.Paths, recursiveVal); err != nil {
+	if err := h.fs.Remove(ctx, params.DriveID, r.Paths, fs.RemoveOpts{Recursive: recursiveVal}); err != nil {
 		logx.Debug(ctx, "handler.fs.rm.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("err", err.Error()),
@@ -107,37 +112,42 @@ func (h *Handler) Mv(ctx context.Context, req api.OptMvReq, params api.MvParams)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if err := h.fs.Mv(ctx, params.DriveID, r.Sources, params.DriveID, r.Destination); err != nil {
-		logx.Debug(ctx, "handler.fs.mv.err",
-			slog.String("drive_id", params.DriveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
+	for _, src := range r.Sources {
+		if err := h.fs.RenameAt(ctx, params.DriveID, src, params.DriveID, r.Destination); err != nil {
+			logx.Debug(ctx, "handler.fs.mv.err",
+				slog.String("drive_id", params.DriveID),
+				slog.String("src", src),
+				slog.String("err", err.Error()),
+			)
+			return nil, err
+		}
 	}
 	logx.Debug(ctx, "handler.fs.mv.ok", slog.String("drive_id", params.DriveID))
 	return &api.MvOK{}, nil
 }
 
-// resolveRead encapsulates the five-step preamble of every read
-// handler that may cross a mount: ResolveForPermission, then
-// requirePerm on the resolved drive, then compute a finalPath
-// that includes a leading "/" when the resolved drive differs
-// from the requested one. Returns the drive and final path to
-// pass to vfs.* (and the absolute path the user requested) for
-// any caller that needs it.
+// resolveRead walks the path and gates ActionView on the
+// resolved drive. Returns the drive id and the final path
+// the caller should pass to fs.* (a leading "/" is prepended
+// when the resolved drive differs from the requested one).
 func (h *Handler) resolveRead(ctx context.Context, driveID, path string) (string, string, error) {
-	res, err := h.fs.ResolveForPermission(ctx, driveID, path)
+	driveULID, err := ulid.Parse(driveID)
+	if err != nil {
+		return "", "", errorx.New(errorx.KindInvalidArgument, "handler: invalid drive id")
+	}
+	dentry, err := h.fs.Walk(ctx, driveID, path)
 	if err != nil {
 		return "", "", err
 	}
-	if err := h.requirePerm(ctx, permission.ActionView, res.DriveID); err != nil {
+	resolvedDrive := dentry.DriveID
+	if err := h.requirePerm(ctx, permission.ActionView, resolvedDrive.String()); err != nil {
 		return "", "", err
 	}
-	finalPath := res.Path
-	if res.DriveID != driveID {
-		finalPath = "/" + res.Path
+	finalPath := path
+	if resolvedDrive != driveULID {
+		finalPath = "/" + path
 	}
-	return res.DriveID, finalPath, nil
+	return resolvedDrive.String(), finalPath, nil
 }
 
 func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error) {
@@ -149,33 +159,33 @@ func (h *Handler) Ls(ctx context.Context, params api.LsParams) (api.LsRes, error
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", path),
 	)
-	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, path)
+	resolvedDrive, finalPath, err := h.resolveRead(ctx, params.DriveID, path)
 	if err != nil {
 		return nil, err
 	}
-	dc, err := h.fs.Ls(ctx, driveID, finalPath)
+	entries, err := h.fs.Getdents(ctx, resolvedDrive, finalPath)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.ls.err",
-			slog.String("drive_id", driveID),
+			slog.String("drive_id", resolvedDrive),
 			slog.String("path", finalPath),
 			slog.String("err", err.Error()),
 		)
 		return nil, err
 	}
-	entries := make([]api.DirEntry, len(dc.Entries))
-	for i, e := range dc.Entries {
-		entries[i] = api.DirEntry{
+	out := make([]api.DirEntry, len(entries))
+	for i, e := range entries {
+		out[i] = api.DirEntry{
 			InodeID: optString(e.InodeID.String()),
 			Name:    optString(e.Name),
 			Kind:    optString(e.Kind.String()),
 		}
 	}
 	logx.Debug(ctx, "handler.fs.ls.ok",
-		slog.String("drive_id", driveID),
+		slog.String("drive_id", resolvedDrive),
 		slog.String("path", finalPath),
-		slog.Int("entry_count", len(entries)),
+		slog.Int("entry_count", len(out)),
 	)
-	return &api.DirContent{Entries: entries}, nil
+	return &api.DirContent{Entries: out}, nil
 }
 
 func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatRes, error) {
@@ -183,21 +193,21 @@ func (h *Handler) Cat(ctx context.Context, params api.CatParams) (api.CatRes, er
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", params.Path),
 	)
-	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
+	resolvedDrive, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	data, err := h.fs.Cat(ctx, driveID, finalPath)
+	data, err := h.fs.Read(ctx, resolvedDrive, finalPath)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.cat.err",
-			slog.String("drive_id", driveID),
+			slog.String("drive_id", resolvedDrive),
 			slog.String("path", finalPath),
 			slog.String("err", err.Error()),
 		)
 		return nil, err
 	}
 	logx.Debug(ctx, "handler.fs.cat.ok",
-		slog.String("drive_id", driveID),
+		slog.String("drive_id", resolvedDrive),
 		slog.Int("bytes", len(data)),
 	)
 	return &api.CatOK{Data: bytes.NewReader(data)}, nil
@@ -237,7 +247,7 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 	if r.Object.Checksum.Set {
 		cs = r.Object.Checksum.Value
 	}
-	obj := node.ObjectContent{
+	ref := fs.ObjectRef{
 		Bucket:   r.Object.Bucket,
 		Key:      r.Object.Key,
 		Mime:     ct,
@@ -246,13 +256,13 @@ func (h *Handler) WriteLarge(ctx context.Context, req api.OptWriteLargeReq, para
 	logx.Debug(ctx, "handler.fs.write_large.enter",
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", r.Path),
-		slog.String("bucket", obj.Bucket),
+		slog.String("bucket", ref.Bucket),
 		slog.Int64("size", r.Size),
 	)
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if err := h.fs.WriteLarge(ctx, params.DriveID, r.Path, obj, r.Size); err != nil {
+	if _, err := h.fs.CreateObject(ctx, params.DriveID, r.Path, ref, r.Size); err != nil {
 		logx.Debug(ctx, "handler.fs.write_large.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("err", err.Error()),
@@ -273,7 +283,7 @@ func (h *Handler) Symlink(ctx context.Context, req api.OptSymlinkReq, params api
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if _, err := h.fs.Symlink(ctx, params.DriveID, r.Target, r.LinkPath); err != nil {
+	if _, err := h.fs.SymlinkAt(ctx, params.DriveID, r.Target, r.LinkPath); err != nil {
 		logx.Debug(ctx, "handler.fs.symlink.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("err", err.Error()),
@@ -294,7 +304,7 @@ func (h *Handler) Hardlink(ctx context.Context, req api.OptHardlinkReq, params a
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	if _, err := h.fs.Hardlink(ctx, params.DriveID, r.SrcPath, r.LinkPath); err != nil {
+	if _, err := h.fs.LinkAt(ctx, params.DriveID, r.SrcPath, r.LinkPath); err != nil {
 		logx.Debug(ctx, "handler.fs.hardlink.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("err", err.Error()),
@@ -315,14 +325,10 @@ func (h *Handler) Mount(ctx context.Context, req api.OptMountReq, params api.Mou
 	if err := h.requirePerm(ctx, permission.ActionEdit, params.DriveID); err != nil {
 		return nil, err
 	}
-	// View perm on the source drive: the mount makes the source's
-	// root resolvable from this drive, so a non-viewable source
-	// would leak the source's existence to anyone who can see
-	// the mount point.
 	if err := h.requirePerm(ctx, permission.ActionView, r.SourceDriveID); err != nil {
 		return nil, err
 	}
-	if err := h.fs.Mount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
+	if err := h.fs.BindMount(ctx, params.DriveID, r.MountPath, r.SourceDriveID); err != nil {
 		logx.Debug(ctx, "handler.fs.mount.err",
 			slog.String("drive_id", params.DriveID),
 			slog.String("err", err.Error()),
@@ -360,7 +366,7 @@ func (h *Handler) Realpath(ctx context.Context, params api.RealpathParams) (api.
 	if err := h.requirePerm(ctx, permission.ActionView, params.DriveID); err != nil {
 		return nil, err
 	}
-	res, err := h.fs.ResolveForPermission(ctx, params.DriveID, params.Path)
+	dentry, err := h.fs.Walk(ctx, params.DriveID, params.Path)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.realpath.err",
 			slog.String("drive_id", params.DriveID),
@@ -370,10 +376,10 @@ func (h *Handler) Realpath(ctx context.Context, params api.RealpathParams) (api.
 	}
 	logx.Debug(ctx, "handler.fs.realpath.ok",
 		slog.String("drive_id", params.DriveID),
-		slog.String("resolved_drive", res.DriveID),
-		slog.String("resolved_path", res.Path),
+		slog.String("resolved_drive", dentry.DriveID.String()),
+		slog.String("resolved_path", params.Path),
 	)
-	return &api.RealpathOK{DriveID: res.DriveID, Path: res.Path}, nil
+	return &api.RealpathOK{DriveID: dentry.DriveID.String(), Path: params.Path}, nil
 }
 
 func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes, error) {
@@ -381,97 +387,87 @@ func (h *Handler) Stat(ctx context.Context, params api.StatParams) (api.StatRes,
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", params.Path),
 	)
-	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
+	resolvedDrive, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	n, err := h.fs.Stat(ctx, driveID, finalPath)
+	st, err := h.fs.Stat(ctx, resolvedDrive, finalPath, true)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.stat.err",
-			slog.String("drive_id", driveID),
+			slog.String("drive_id", resolvedDrive),
 			slog.String("path", finalPath),
 			slog.String("err", err.Error()),
 		)
 		return nil, err
 	}
-	logx.Debug(ctx, "handler.fs.stat.ok", slog.String("drive_id", driveID))
-	return statToAPI(n), nil
+	logx.Debug(ctx, "handler.fs.stat.ok", slog.String("drive_id", resolvedDrive))
+	return statToAPI(st), nil
 }
 
-// Lstat is the no-symlink-follow variant of Stat (POSIX lstat(2)).
-// If the path resolves to a symlink, the returned metadata describes
-// the symlink itself, not its target.
 func (h *Handler) Lstat(ctx context.Context, params api.LstatParams) (api.LstatRes, error) {
 	logx.Debug(ctx, "handler.fs.lstat.enter",
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", params.Path),
 	)
-	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
+	resolvedDrive, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	res, err := h.fs.Lstat(ctx, driveID, finalPath)
+	st, err := h.fs.Stat(ctx, resolvedDrive, finalPath, false)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.lstat.err",
-			slog.String("drive_id", driveID),
+			slog.String("drive_id", resolvedDrive),
 			slog.String("err", err.Error()),
 		)
 		return nil, err
 	}
-	logx.Debug(ctx, "handler.fs.lstat.ok", slog.String("drive_id", driveID))
-	return lstatToAPI(res.Node), nil
+	logx.Debug(ctx, "handler.fs.lstat.ok", slog.String("drive_id", resolvedDrive))
+	return statToAPI(st), nil
 }
 
-// Readlink returns the target path of a symbolic link (POSIX
-// readlink(2)). The path must resolve to a symlink; otherwise
-// ErrInvalidType is returned.
 func (h *Handler) Readlink(ctx context.Context, params api.ReadlinkParams) (api.ReadlinkRes, error) {
 	logx.Debug(ctx, "handler.fs.readlink.enter",
 		slog.String("drive_id", params.DriveID),
 		slog.String("path", params.Path),
 	)
-	driveID, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
+	resolvedDrive, finalPath, err := h.resolveRead(ctx, params.DriveID, params.Path)
 	if err != nil {
 		return nil, err
 	}
-	out, err := h.fs.Lstat(ctx, driveID, finalPath)
+	target, err := h.fs.ReadlinkAt(ctx, resolvedDrive, finalPath)
 	if err != nil {
 		logx.Debug(ctx, "handler.fs.readlink.err",
-			slog.String("drive_id", driveID),
-			slog.String("err", err.Error()),
-		)
-		return nil, err
-	}
-	target, err := out.Node.Readlink()
-	if err != nil {
-		logx.Debug(ctx, "handler.fs.readlink.invalid_type",
-			slog.String("drive_id", driveID),
+			slog.String("drive_id", resolvedDrive),
 			slog.String("err", err.Error()),
 		)
 		return nil, err
 	}
 	logx.Debug(ctx, "handler.fs.readlink.ok",
-		slog.String("drive_id", driveID),
+		slog.String("drive_id", resolvedDrive),
 		slog.String("target", target),
 	)
 	return &api.ReadlinkOK{Target: target}, nil
 }
 
-func statToAPI(n *node.Node) *api.NodeStat {
+func statToAPI(s fs.Stat) *api.NodeStat {
 	return &api.NodeStat{
-		Type:     n.Kind().String(),
-		Size:     n.Size(),
-		Nlink:    n.NLink(),
-		Ino:      n.ID(),
-		Atime:    n.ATime(),
-		Mtime:    n.MTime(),
-		Ctime:    n.CTime(),
-		Crtime:   n.CRTime(),
-		Flags:    optString(n.Flags().String()),
-		Revision: optString(n.Revision().String()),
+		Type:     s.Kind.String(),
+		Size:     s.Size,
+		Nlink:    s.NLink,
+		Ino:      s.InodeID,
+		Atime:    s.ATime,
+		Mtime:    s.MTime,
+		Ctime:    s.CTime,
+		Crtime:   s.BTime,
+		Flags:    optString(s.Flags.String()),
+		Revision: optString(s.Revision.String()),
 	}
 }
 
-func lstatToAPI(n *node.Node) api.LstatRes {
-	return statToAPI(n)
-}
+// ensure filepath and uuid stay imported even if the toolchain
+// trims them from a future pass; they document the dependency
+// on parent-path handling and inode id round-tripping.
+var (
+	_ = filepath.Base
+	_ = uuid.Nil
+)

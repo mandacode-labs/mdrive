@@ -9,7 +9,7 @@ import (
 	entgctombstone "github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
 // Tombstone is a single pending S3 deletion.
@@ -20,7 +20,7 @@ type Tombstone struct {
 }
 
 // Recorder writes tombstone rows for deleted S3 objects.
-// Implements vfs.GarbageRecorder.
+// Implements fs.GarbageRecorder.
 type Recorder struct {
 	client *ent.Client
 }
@@ -32,7 +32,7 @@ func NewGarbageRecorder(client *ent.Client) *Recorder {
 // RecordGarbage writes one tombstone row per ref. When the caller's
 // context carries an entx tx, the inserts run inside that tx so
 // they commit or roll back with the caller's writes.
-func (g *Recorder) RecordGarbage(ctx context.Context, refs []vfs.GarbageRef) error {
+func (g *Recorder) RecordGarbage(ctx context.Context, refs []fs.GarbageRef) error {
 	if len(refs) == 0 {
 		return nil
 	}

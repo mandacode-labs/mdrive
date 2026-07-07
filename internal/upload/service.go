@@ -13,7 +13,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/core/node"
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/vfs"
+	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
 // PresignInfo is the result of initiating or presigning a download URL.
@@ -60,7 +60,7 @@ type service struct {
 	StorageLookup coredrive.Service
 	NodeLifecycle node.NodeOperation
 	ObjectStore   ObjectStore
-	Path          vfs.Service
+	Path          fs.Service
 	tm            entx.TxManager
 }
 
@@ -70,7 +70,7 @@ type Config struct {
 	StorageLookup coredrive.Service
 	NodeLifecycle node.NodeOperation
 	ObjectStore   ObjectStore
-	Path          vfs.Service
+	Path          fs.Service
 	TxManager     entx.TxManager
 }
 
@@ -163,13 +163,15 @@ func (s *service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 
 	var n *node.Node
 	if err := s.tm.WithTx(ctx, func(ctx context.Context) error {
-		parentID, name, err := s.Path.ResolveParentNodeID(ctx, driveID, meta.Path)
+		dirPath := path.Dir(meta.Path)
+		name := path.Base(meta.Path)
+		parentDentry, err := s.Path.Walk(ctx, driveID, dirPath)
 		if err != nil {
 			return errorx.Wrap(err, fmt.Sprintf("upload: complete resolve parent (path=%s)", meta.Path))
 		}
-		parent, err := s.NodeLifecycle.GetByID(ctx, parentID)
+		parent, err := s.NodeLifecycle.GetByID(ctx, parentDentry.Node.ID())
 		if err != nil {
-			return errorx.Wrap(err, fmt.Sprintf("upload: complete load parent (parent_id=%s)", parentID))
+			return errorx.Wrap(err, fmt.Sprintf("upload: complete load parent (parent_id=%s)", parentDentry.Node.ID()))
 		}
 
 		var ct string
@@ -210,23 +212,23 @@ func (s *service) CompleteUpload(ctx context.Context, userID, driveID, uploadID 
 
 func (s *service) PresignDownload(ctx context.Context, userID, driveID, filePath string, expiry time.Duration) (PresignInfo, error) {
 	_ = userID
-	nodeID, err := s.Path.ResolveNodeID(ctx, driveID, filePath)
+	dentry, err := s.Path.Walk(ctx, driveID, filePath)
 	if err != nil {
 		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download resolve (path=%s)", filePath))
 	}
-	n, err := s.NodeLifecycle.GetByID(ctx, nodeID)
+	n, err := s.NodeLifecycle.GetByID(ctx, denty.Node.ID())
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download load node (node_id=%s)", nodeID))
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download load node (node_id=%s)", denty.Node.ID()))
 	}
 	if n == nil {
-		return PresignInfo{}, errorx.New(errorx.KindNotFound, fmt.Sprintf("upload: presign download node not found (node_id=%s)", nodeID))
+		return PresignInfo{}, errorx.New(errorx.KindNotFound, fmt.Sprintf("upload: presign download node not found (node_id=%s)", denty.Node.ID()))
 	}
 	if !n.IsObject() {
 		return PresignInfo{}, errorx.New(errorx.KindInvalidArgument, "upload: presign download target is not an object (type="+string(n.Kind())+")")
 	}
 	oc, err := n.ReadObject()
 	if err != nil {
-		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download read object (node_id=%s)", nodeID))
+		return PresignInfo{}, errorx.Wrap(err, fmt.Sprintf("upload: presign download read object (node_id=%s)", denty.Node.ID()))
 	}
 	url, err := s.ObjectStore.GetPresignedDownloadURL(ctx, oc.Bucket, oc.Key, expiry)
 	if err != nil {
