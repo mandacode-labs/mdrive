@@ -22,21 +22,21 @@ func (f *fs) doRemove(ctx context.Context, driveID, path string, opts RemoveOpts
 	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
 		return err
 	}
-	dentry, err := f.vfs.walkOne(ctx, parent, name)
+	dentry, err := f.vfs.WalkOne(ctx, parent, name)
 	if err != nil {
 		return err
 	}
 	if !opts.Recursive {
 		if dentry.Node.Kind() == NodeKindDirectory {
-			return f.vfs.rmdir(ctx, parent, name)
+			return f.vfs.Rmdir(ctx, parent, name)
 		}
-		return f.vfs.unlink(ctx, parent, name)
+		return f.vfs.Unlink(ctx, parent, name)
 	}
-	if err := f.vfs.removeRecursive(ctx, dentry); err != nil {
+	if err := f.vfs.RemoveRecursive(ctx, dentry); err != nil {
 		return err
 	}
 	if dentry.Node.Kind() == NodeKindDirectory {
-		return f.vfs.rmdir(ctx, parent, name)
+		return f.vfs.Rmdir(ctx, parent, name)
 	}
-	return f.vfs.unlink(ctx, parent, name)
+	return f.vfs.Unlink(ctx, parent, name)
 }

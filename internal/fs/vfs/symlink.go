@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -12,7 +11,7 @@ import (
 )
 
 // symlink — Linux vfs_symlink.
-func (v *vfs) symlink(ctx context.Context, linkParent *fs.Dentry, linkName string, targetID uuid.UUID) (*fs.Node, error) {
+func (v *vfs) Symlink(ctx context.Context, linkParent *fs.Dentry, linkName string, targetID uuid.UUID) (*fs.Node, error) {
 	if linkParent == nil || linkName == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: symlink requires parent and name")
 	}
@@ -24,12 +23,7 @@ func (v *vfs) symlink(ctx context.Context, linkParent *fs.Dentry, linkName strin
 	if err != nil {
 		return nil, errorx.Wrap(err, "fs: symlink content", errorx.KindInternal)
 	}
-	now := time.Now()
 	link := fs.NewNode(uuid.New(), linkParent.Node.SuperblockID(), fs.NodeKindSymlink)
-	link.atime = now
-	link.mtime = now
-	link.ctime = now
-	link.btime = now
 	if err := link.Write(data, int64(len(data))); err != nil {
 		return nil, err
 	}
@@ -38,7 +32,7 @@ func (v *vfs) symlink(ctx context.Context, linkParent *fs.Dentry, linkName strin
 	}
 	if err := v.nodeOp.Symlink(ctx, link, &fs.Dentry{
 		DriveID: linkParent.DriveID,
-		Parent:  linkParent.Node,
+		Parent:  linkParent,
 		Name:    linkName,
 		Node:    link,
 	}); err != nil {

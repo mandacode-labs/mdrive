@@ -31,7 +31,7 @@ func (f *fs) doBindMount(ctx context.Context, driveID, mountPath, sourceDriveID 
 	if err := f.requireView(ctx, srcULID); err != nil {
 		return err
 	}
-	return f.vfs.mount(ctx, mountParent, mountName, srcULID)
+	return f.vfs.Mount(ctx, mountParent, mountName, srcULID)
 }
 
 // Unmount detaches a bind mount. Mirrors sys_umount2.

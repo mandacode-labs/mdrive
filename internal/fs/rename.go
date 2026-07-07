@@ -25,5 +25,5 @@ func (f *fs) doRename(ctx context.Context, driveID, srcPath, dstDriveID, dstPath
 	if err := f.requireEdit(ctx, dstParent.DriveID); err != nil {
 		return err
 	}
-	return f.vfs.rename(ctx, srcParent, srcName, dstParent, dstName)
+	return f.vfs.Rename(ctx, srcParent, srcName, dstParent, dstName)
 }

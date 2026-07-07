@@ -16,7 +16,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"golang.org/x/oauth2"
 
-	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/user"
 )
 
 // Config wires the auth service. EncryptionKey must be exactly 16,

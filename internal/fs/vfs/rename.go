@@ -8,7 +8,7 @@ import (
 )
 
 // rename — Linux vfs_rename.
-func (v *vfs) rename(ctx context.Context, oldParent *fs.Dentry, oldName string, newParent *fs.Dentry, newName string) error {
+func (v *vfs) Rename(ctx context.Context, oldParent *fs.Dentry, oldName string, newParent *fs.Dentry, newName string) error {
 	if oldParent == nil || newParent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: rename requires parent entries")
 	}
@@ -21,9 +21,9 @@ func (v *vfs) rename(ctx context.Context, oldParent *fs.Dentry, oldName string, 
 	if oldParent.Node.Kind() != fs.NodeKindDirectory || newParent.Node.Kind() != fs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "fs: rename parents must be directories")
 	}
-	old, err := v.nodeOp.Lookup(ctx, oldParent.Node, oldName)
+	old, err := v.nodeOp.Lookup(ctx, oldParent, oldName)
 	if err != nil {
 		return err
 	}
-	return v.nodeOp.Rename(ctx, old, newParent.Node, newName)
+	return v.nodeOp.Rename(ctx, old, newParent, newName)
 }

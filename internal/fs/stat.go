@@ -51,12 +51,12 @@ func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat,
 	if err != nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
 	}
-	dentry, err := f.vfs.lookup(ctx, id, path, follow)
+	dentry, err := f.vfs.Lookup(ctx, id, path, follow)
 	if err != nil {
 		return Stat{}, err
 	}
 	if err := f.requireView(ctx, dentry.DriveID); err != nil {
 		return Stat{}, err
 	}
-	return f.vfs.getattr(ctx, dentry)
+	return f.vfs.Getattr(ctx, dentry)
 }

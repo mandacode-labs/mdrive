@@ -8,14 +8,14 @@ import (
 )
 
 // unlink — Linux vfs_unlink.
-func (v *vfs) unlink(ctx context.Context, parent *fs.Dentry, name string) error {
+func (v *vfs) Unlink(ctx context.Context, parent *fs.Dentry, name string) error {
 	if parent == nil || name == "" {
 		return errorx.New(errorx.KindInvalidArgument, "fs: unlink requires parent and name")
 	}
 	if parent.Node.Kind() != fs.NodeKindDirectory {
 		return errorx.New(errorx.KindInternal, "fs: unlink parent is not a directory")
 	}
-	dentry, err := v.nodeOp.Lookup(ctx, parent.Node, name)
+	dentry, err := v.nodeOp.Lookup(ctx, parent, name)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/core/user"
+	"github.com/mandacode-labs/mdrive/internal/user"
 )
 
 // NewForTest returns a Service with the parts HandleCookieAuth needs

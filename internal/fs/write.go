@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/oklog/ulid/v2"
-
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
 // Write replaces the inline data of a file-kind node.
@@ -20,12 +18,12 @@ func (f *fs) doWrite(ctx context.Context, driveID, path string, data []byte) err
 	if err != nil {
 		return err
 	}
-	dentry, err := f.vfs.lookup(ctx, id, path, true)
+	dentry, err := f.vfs.Lookup(ctx, id, path, true)
 	if err != nil {
 		return err
 	}
 	if err := f.requireEdit(ctx, dentry.DriveID); err != nil {
 		return err
 	}
-	return f.vfs.write(ctx, dentry, data)
+	return f.vfs.Write(ctx, dentry, data)
 }

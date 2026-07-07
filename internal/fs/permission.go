@@ -51,7 +51,7 @@ func (f *fs) doPathParent(ctx context.Context, driveID, path string) (*Dentry, s
 	if parentPath == "" {
 		parentPath = "/"
 	}
-	parent, err := f.vfs.lookup(ctx, driveULID, parentPath, true)
+	parent, err := f.vfs.Lookup(ctx, driveULID, parentPath, true)
 	if err != nil {
 		return nil, "", err
 	}

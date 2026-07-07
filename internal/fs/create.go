@@ -28,7 +28,7 @@ func (f *fs) doCreate(ctx context.Context, driveID, path string, kind NodeKind, 
 	}
 
 	if kind == NodeKindDirectory {
-		node, err := f.vfs.mkdir(ctx, parent, name)
+		node, err := f.vfs.Mkdir(ctx, parent, name)
 		if err != nil {
 			return Stat{}, err
 		}
@@ -51,7 +51,7 @@ func (f *fs) doCreate(ctx context.Context, driveID, path string, kind NodeKind, 
 			return Stat{}, err
 		}
 	}
-	if err := f.vfs.create(ctx, parent, child, name); err != nil {
+	if err := f.vfs.Create(ctx, parent, child, name); err != nil {
 		return Stat{}, err
 	}
 	return NodeToStat(child), nil

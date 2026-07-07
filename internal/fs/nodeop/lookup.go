@@ -6,13 +6,14 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
-// Lookup resolves `name` under `dir` to a Dentry.
-func (n *nodeOperation) Lookup(ctx context.Context, dir *fs.Node, name string) (*fs.Dentry, error) {
-	dirContent := &content.DirContent{}
-	if err := json.Unmarshal(dir.Data(), dirContent); err != nil {
+// Lookup resolves `name` under `parent` to a Dentry. The
+// returned Dentry chains Parent = parent so callers can walk
+// upward (e.g., for `..`).
+func (n *nodeOperation) Lookup(ctx context.Context, parent *fs.Dentry, name string) (*fs.Dentry, error) {
+	dirContent := &fs.DirContent{}
+	if err := json.Unmarshal(parent.Node.Data(), dirContent); err != nil {
 		return nil, err
 	}
 	entry := dirContent.FindEntry(name)
@@ -23,5 +24,5 @@ func (n *nodeOperation) Lookup(ctx context.Context, dir *fs.Node, name string) (
 	if err != nil {
 		return nil, errorx.Wrap(err, "nodeop: read node")
 	}
-	return &fs.Dentry{Node: node, Name: entry.Name, Parent: dir}, nil
+	return &fs.Dentry{Node: node, Name: entry.Name, Parent: parent}, nil
 }

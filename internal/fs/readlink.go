@@ -17,11 +17,11 @@ func (f *fs) doReadlink(ctx context.Context, driveID, path string) (string, erro
 	if err := f.requireView(ctx, linkParent.DriveID); err != nil {
 		return "", err
 	}
-	dentry, err := f.vfs.walkOne(ctx, linkParent, linkName)
+	dentry, err := f.vfs.WalkOne(ctx, linkParent, linkName)
 	if err != nil {
 		return "", err
 	}
-	targetID, err := f.vfs.readlink(ctx, dentry)
+	targetID, err := f.vfs.Readlink(ctx, dentry)
 	if err != nil {
 		return "", err
 	}

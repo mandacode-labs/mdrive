@@ -16,5 +16,5 @@ func (f *fs) doRmdir(ctx context.Context, driveID, path string) error {
 	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
 		return err
 	}
-	return f.vfs.rmdir(ctx, parent, name)
+	return f.vfs.Rmdir(ctx, parent, name)
 }

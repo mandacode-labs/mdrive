@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent"
+	entsb "github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/internal/entx"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
@@ -16,6 +17,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, sb *fs.Superblock) error
 	Read(ctx context.Context, id uuid.UUID) (*fs.Superblock, error)
+	ReadByDriveID(ctx context.Context, driveID ulid.ULID) (*fs.Superblock, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -73,6 +75,22 @@ func (e *entRepository) Read(ctx context.Context, id uuid.UUID) (*fs.Superblock,
 			return nil, errorx.New(errorx.KindNotFound, "superblock: not found")
 		}
 		return nil, errorx.Wrap(err, "superblock: read")
+	}
+	return fromEnt(sb)
+}
+
+// ReadByDriveID loads a superblock by drive id.
+func (e *entRepository) ReadByDriveID(ctx context.Context, driveID ulid.ULID) (*fs.Superblock, error) {
+	client := e.client
+	if tx, ok := entx.FromContext(ctx); ok {
+		client = tx.Client()
+	}
+	sb, err := client.Superblock.Query().Where(entsb.DriveIDEQ(driveID.String())).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errorx.New(errorx.KindNotFound, "superblock: not found")
+		}
+		return nil, errorx.Wrap(err, "superblock: read by drive id")
 	}
 	return fromEnt(sb)
 }

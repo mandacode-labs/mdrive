@@ -8,7 +8,7 @@ import (
 )
 
 // link — Linux vfs_link.
-func (v *vfs) link(ctx context.Context, oldDentry *fs.Dentry, linkParent *fs.Dentry, linkName string) error {
+func (v *vfs) Link(ctx context.Context, oldDentry *fs.Dentry, linkParent *fs.Dentry, linkName string) error {
 	if oldDentry == nil || linkParent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: link requires oldDentry, linkParent")
 	}
@@ -21,5 +21,5 @@ func (v *vfs) link(ctx context.Context, oldDentry *fs.Dentry, linkParent *fs.Den
 	if oldDentry.Node.Kind() == fs.NodeKindDirectory {
 		return errorx.New(errorx.KindInvalidArgument, "fs: cannot hardlink a directory")
 	}
-	return v.nodeOp.Link(ctx, oldDentry, linkParent.Node, linkName)
+	return v.nodeOp.Link(ctx, oldDentry, linkParent, linkName)
 }

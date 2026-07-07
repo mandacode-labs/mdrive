@@ -48,11 +48,12 @@ type RemoveOpts struct {
 	Recursive bool
 }
 
-// DirEntry is one entry from Getdents.
+// DirEntry is one entry from Getdents. Also the on-disk shape
+// stored inside a directory node's data field via DirContent.
 type DirEntry struct {
-	InodeID uuid.UUID
-	Name    string
-	Kind    NodeKind
+	NodeID uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Kind   NodeKind  `json:"kind"`
 }
 
 // ObjectRef is the public S3 metadata envelope for

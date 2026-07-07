@@ -8,7 +8,7 @@ import (
 )
 
 // write — Linux vfs_write.
-func (v *vfs) write(_ context.Context, dentry *fs.Dentry, data []byte) error {
+func (v *vfs) Write(_ context.Context, dentry *fs.Dentry, data []byte) error {
 	if dentry == nil || dentry.Node == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: write requires a dentry")
 	}

@@ -14,11 +14,11 @@ func (f *fs) Walk(ctx context.Context, driveID, path string) (*Dentry, error) {
 	if err != nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
 	}
-	return f.vfs.lookup(ctx, id, path, true)
+	return f.vfs.Lookup(ctx, id, path, true)
 }
 
 // WalkOne resolves a single component under `parent`.
 // Mirrors lookup_one. Permission is the caller's job.
 func (f *fs) WalkOne(ctx context.Context, parent *Dentry, name string) (*Dentry, error) {
-	return f.vfs.walkOne(ctx, parent, name)
+	return f.vfs.WalkOne(ctx, parent, name)
 }

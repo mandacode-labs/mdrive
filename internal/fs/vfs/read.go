@@ -8,7 +8,7 @@ import (
 )
 
 // read — Linux vfs_read.
-func (v *vfs) read(_ context.Context, dentry *fs.Dentry) ([]byte, error) {
+func (v *vfs) Read(_ context.Context, dentry *fs.Dentry) ([]byte, error) {
 	if dentry == nil || dentry.Node == nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: read requires a dentry")
 	}

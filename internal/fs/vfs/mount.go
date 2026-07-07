@@ -2,7 +2,6 @@ package vfs
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
@@ -13,7 +12,7 @@ import (
 )
 
 // mount — Linux bind-mount.
-func (v *vfs) mount(ctx context.Context, mountParent *fs.Dentry, mountName string, sourceDriveID ulid.ULID) error {
+func (v *vfs) Mount(ctx context.Context, mountParent *fs.Dentry, mountName string, sourceDriveID ulid.ULID) error {
 	if mountParent == nil || mountName == "" {
 		return errorx.New(errorx.KindInvalidArgument, "fs: mount requires parent and name")
 	}
@@ -23,12 +22,7 @@ func (v *vfs) mount(ctx context.Context, mountParent *fs.Dentry, mountName strin
 	if _, err := v.superop.GetByDriveID(ctx, sourceDriveID); err != nil {
 		return errorx.Wrap(err, "fs: source drive not found", errorx.KindInvalidArgument)
 	}
-	now := time.Now()
 	mount := fs.NewNode(uuid.New(), mountParent.Node.SuperblockID(), fs.NodeKindMount)
-	mount.atime = now
-	mount.mtime = now
-	mount.ctime = now
-	mount.btime = now
 	mc := &content.MountContent{DriveID: sourceDriveID.String()}
 	data, err := mc.Marshal()
 	if err != nil {

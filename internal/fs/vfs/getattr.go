@@ -8,7 +8,7 @@ import (
 )
 
 // getattr — Linux inode_getattr.
-func (v *vfs) getattr(_ context.Context, dentry *fs.Dentry) (fs.Stat, error) {
+func (v *vfs) Getattr(_ context.Context, dentry *fs.Dentry) (fs.Stat, error) {
 	if dentry == nil {
 		return fs.Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: getattr requires a dentry")
 	}

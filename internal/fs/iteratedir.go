@@ -19,12 +19,12 @@ func (f *fs) doGetdents(ctx context.Context, driveID, path string) ([]DirEntry, 
 	if err != nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
 	}
-	dentry, err := f.vfs.lookup(ctx, id, path, true)
+	dentry, err := f.vfs.Lookup(ctx, id, path, true)
 	if err != nil {
 		return nil, err
 	}
 	if err := f.requireView(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
-	return f.vfs.iterate(ctx, dentry)
+	return f.vfs.Iterate(ctx, dentry)
 }
