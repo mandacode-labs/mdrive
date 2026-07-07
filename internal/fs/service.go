@@ -21,6 +21,15 @@ type Service interface {
 	CreateObject(ctx context.Context, driveID, path string, c *ObjectContent) (Stat, error)
 	ReadObject(ctx context.Context, driveID, path string) (*ObjectContent, error)
 
+	// === Storage ops (S3 presign) ===
+	// Download returns a presigned GET URL. ActionRead.
+	Download(ctx context.Context, driveID, path string, expiry time.Duration) (string, error)
+	// Upload returns a presigned PUT URL + Key. ActionWrite + ActionUpload.
+	Upload(ctx context.Context, driveID, path, contentType string, expiry time.Duration) (UploadInfo, error)
+	// Complete verifies the S3 object (size from backend) and
+	// creates the object-kind node. ActionUpload.
+	Complete(ctx context.Context, driveID, path, key string) (Stat, error)
+
 	// === Directory ops (NodeKindDirectory) ===
 	Mkdir(ctx context.Context, driveID, path string) (Stat, error)
 	Getdents(ctx context.Context, driveID, path string) (*DirContent, error)
@@ -54,23 +63,22 @@ type RemoveOpts struct {
 
 // fs is the concrete Service.
 type fs struct {
-	vfs     VFS
-	perm    perm.Service
-	storage StorageResolver
+	vfs  VFS
+	perm perm.Service
 }
 
-// Config groups the dependencies of New.
+// Config groups the dependencies of New. Storage handling
+// lives inside the VFS layer (vfs.Config.StorageOp +
+// vfs.Config.DefaultS3).
 type Config struct {
-	VFS     VFS
-	Perm    perm.Service
-	Storage StorageResolver
+	VFS  VFS
+	Perm perm.Service
 }
 
 // New wires a Service.
 func New(cfg Config) Service {
 	return &fs{
-		vfs:     cfg.VFS,
-		perm:    cfg.Perm,
-		storage: cfg.Storage,
+		vfs:  cfg.VFS,
+		perm: cfg.Perm,
 	}
 }
