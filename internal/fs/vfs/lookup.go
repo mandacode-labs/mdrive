@@ -55,7 +55,7 @@ func (v *vfs) WalkOne(ctx context.Context, cur *fs.Dentry, name string) (*fs.Den
 	if cur.Node.Kind() != fs.NodeKindDirectory {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: walk over non-directory")
 	}
-	var dc fs.DirContent
+	var dc content.DirContent
 	if err := json.Unmarshal(cur.Node.Data(), &dc); err != nil {
 		return nil, errorx.Wrap(err, "fs: dir content", errorx.KindInternal)
 	}

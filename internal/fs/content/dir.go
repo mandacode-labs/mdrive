@@ -1,4 +1,4 @@
-package fs
+package content
 
 import (
 	"encoding/json"
@@ -8,8 +8,38 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// DirEntry is a single directory listing row. Same shape on
-// disk (via DirContent) and over the wire (Service.Getdents
+// NodeKind classifies an inode by storage shape. fs.NodeKind
+// is a type alias for this so the rest of the codebase can
+// keep one name (fs.NodeKind) without an import cycle.
+type NodeKind uint8
+
+const (
+	NodeKindFile      NodeKind = 0
+	NodeKindDirectory NodeKind = 1
+	NodeKindSymlink   NodeKind = 2
+	NodeKindObject    NodeKind = 3
+	NodeKindMount     NodeKind = 4
+)
+
+func (k NodeKind) String() string {
+	switch k {
+	case NodeKindFile:
+		return "file"
+	case NodeKindDirectory:
+		return "directory"
+	case NodeKindSymlink:
+		return "symlink"
+	case NodeKindObject:
+		return "object"
+	case NodeKindMount:
+		return "mount"
+	default:
+		return "unknown"
+	}
+}
+
+// DirEntry is a single directory listing row. Same shape
+// on disk (via DirContent) and over the wire (Service.Getdents
 // returns *DirContent whose Entries are []DirEntry).
 type DirEntry struct {
 	NodeID uuid.UUID `json:"id"`

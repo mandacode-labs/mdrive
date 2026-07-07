@@ -6,6 +6,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Rmdir removes an empty directory. POSIX: refuse if
@@ -21,7 +22,7 @@ func (n *nodeOperation) Rmdir(ctx context.Context, dentry *fs.Dentry) error {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: target is not a directory")
 	}
 
-	dirContent := &fs.DirContent{}
+	dirContent := &content.DirContent{}
 	if err := json.Unmarshal(dentry.Node.Data(), dirContent); err != nil {
 		return errorx.Wrap(err, "nodeop: target dir content")
 	}
@@ -29,7 +30,7 @@ func (n *nodeOperation) Rmdir(ctx context.Context, dentry *fs.Dentry) error {
 		return errorx.New(errorx.KindFailedPrecondition, "nodeop: directory not empty")
 	}
 
-	parentContent := &fs.DirContent{}
+	parentContent := &content.DirContent{}
 	if err := json.Unmarshal(dentry.Parent.Node.Data(), parentContent); err != nil {
 		return errorx.Wrap(err, "nodeop: parent dir content")
 	}

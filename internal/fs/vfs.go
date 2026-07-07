@@ -15,6 +15,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
+
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // VFS is the inode layer (Linux vfs_*). Methods take an
@@ -36,7 +38,7 @@ type VFS interface {
 	Readlink(ctx context.Context, dentry *Dentry) (uuid.UUID, error)
 	Getattr(ctx context.Context, dentry *Dentry) (Stat, error)
 	SetTimes(ctx context.Context, dentry *Dentry) error
-	Iterate(ctx context.Context, parent *Dentry) ([]DirEntry, error)
+	Iterate(ctx context.Context, parent *Dentry) ([]content.DirEntry, error)
 	Mount(ctx context.Context, parent *Dentry, name string, sourceDriveID ulid.ULID) error
 	Unmount(ctx context.Context, parent *Dentry, name string) error
 	RemoveRecursive(ctx context.Context, dentry *Dentry) error

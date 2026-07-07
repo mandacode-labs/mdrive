@@ -9,35 +9,22 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
-// NodeKind classifies a node by storage shape.
-type NodeKind uint8
+// NodeKind classifies a node by storage shape. Aliased to
+// content.NodeKind so DirEntry (which lives in content and
+// can't import fs) can hold the same value as Node.Kind()
+// without conversion.
+type NodeKind = content.NodeKind
 
 const (
-	NodeKindFile      NodeKind = 0
-	NodeKindDirectory NodeKind = 1
-	NodeKindSymlink   NodeKind = 2
-	NodeKindObject    NodeKind = 3
-	NodeKindMount     NodeKind = 4
+	NodeKindFile      = content.NodeKindFile
+	NodeKindDirectory = content.NodeKindDirectory
+	NodeKindSymlink   = content.NodeKindSymlink
+	NodeKindObject    = content.NodeKindObject
+	NodeKindMount     = content.NodeKindMount
 )
-
-func (k NodeKind) String() string {
-	switch k {
-	case NodeKindFile:
-		return "file"
-	case NodeKindDirectory:
-		return "directory"
-	case NodeKindSymlink:
-		return "symlink"
-	case NodeKindObject:
-		return "object"
-	case NodeKindMount:
-		return "mount"
-	default:
-		return "unknown"
-	}
-}
 
 // Flags is a bitmask of node-level flags.
 type Flags uint32

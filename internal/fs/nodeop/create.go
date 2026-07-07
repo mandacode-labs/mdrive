@@ -6,6 +6,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Create inserts `child` into `parent`'s directory listing
@@ -19,11 +20,11 @@ func (n *nodeOperation) Create(ctx context.Context, parent *fs.Node, child *fs.N
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: child superblock mismatch")
 	}
 
-	dirContent := &fs.DirContent{}
+	dirContent := &content.DirContent{}
 	if err := json.Unmarshal(parent.Data(), dirContent); err != nil {
 		return errorx.Wrap(err, "nodeop: parent dir content")
 	}
-	if err := dirContent.AddEntry(fs.DirEntry{
+	if err := dirContent.AddEntry(content.DirEntry{
 		NodeID: child.ID(),
 		Name:   name,
 		Kind:   child.Kind(),

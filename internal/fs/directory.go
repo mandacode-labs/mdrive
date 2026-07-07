@@ -2,6 +2,8 @@ package fs
 
 import (
 	"context"
+
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Mkdir creates a directory. Mirrors mkdir(2).
@@ -23,7 +25,7 @@ func (f *fs) Mkdir(ctx context.Context, driveID, path string) (Stat, error) {
 
 // Getdents lists the entries of a directory. Mirrors
 // getdents64. ActionView on the resolved drive.
-func (f *fs) Getdents(ctx context.Context, driveID, path string) (*DirContent, error) {
+func (f *fs) Getdents(ctx context.Context, driveID, path string) (*content.DirContent, error) {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindDirectory)
 	if err != nil {
 		return nil, err
@@ -36,7 +38,7 @@ func (f *fs) Getdents(ctx context.Context, driveID, path string) (*DirContent, e
 		return nil, err
 	}
 	if entries == nil {
-		entries = []DirEntry{}
+		entries = []content.DirEntry{}
 	}
-	return &DirContent{Entries: entries}, nil
+	return &content.DirContent{Entries: entries}, nil
 }

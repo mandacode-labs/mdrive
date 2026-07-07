@@ -40,7 +40,7 @@ type Service interface {
 
 	// === Directory ops (NodeKindDirectory) ===
 	Mkdir(ctx context.Context, driveID, path string) (Stat, error)
-	Getdents(ctx context.Context, driveID, path string) (*DirContent, error)
+	Getdents(ctx context.Context, driveID, path string) (*content.DirContent, error)
 
 	// === Symlink ops ===
 	SymlinkAt(ctx context.Context, driveID, target, linkPath string) (Stat, error)

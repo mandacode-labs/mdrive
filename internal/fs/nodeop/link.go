@@ -6,6 +6,7 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Link adds a directory entry pointing at the same inode as
@@ -16,11 +17,11 @@ func (n *nodeOperation) Link(ctx context.Context, dentry *fs.Dentry, linkDir *fs
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: linkDir is not a directory")
 	}
 
-	dir := &fs.DirContent{}
+	dir := &content.DirContent{}
 	if err := json.Unmarshal(linkDir.Node.Data(), dir); err != nil {
 		return errorx.Wrap(err, "nodeop: link dir content")
 	}
-	if err := dir.AddEntry(fs.DirEntry{
+	if err := dir.AddEntry(content.DirEntry{
 		NodeID: dentry.Node.ID(),
 		Name:   linkName,
 		Kind:   dentry.Node.Kind(),
