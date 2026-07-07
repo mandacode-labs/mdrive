@@ -5,17 +5,21 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
 // storageOperation is the ent-backed impl of fs.StorageOperation.
 type storageOperation struct {
-	repo StorageRepository
+	repo      StorageRepository
+	decryptor crypto.Decryptor // may be nil if no storage has encrypted keys
 }
 
-// NewStorageOperation wires the canonical impl.
-func NewStorageOperation(repo StorageRepository) fs.StorageOperation {
-	return &storageOperation{repo: repo}
+// NewStorageOperation wires the canonical impl. decryptor
+// may be nil — only used when a storage row has an
+// encrypted_secret_key to decrypt.
+func NewStorageOperation(repo StorageRepository, decryptor crypto.Decryptor) fs.StorageOperation {
+	return &storageOperation{repo: repo, decryptor: decryptor}
 }
 
 // GetBySuperblock returns the storage bound to a superblock.

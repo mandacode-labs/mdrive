@@ -1,92 +1,63 @@
-// Package crypto provides at-rest encryption helpers used by
-// repositories to protect sensitive fields (e.g. the S3 secret
-// key stored on each drive's storage row). Object bodies are
-// encrypted at rest by S3 itself via SSE-S3 (AES256); this
-// package does not handle object encryption.
 package crypto
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
-
 	"crypto/rand"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"fmt"
 	"io"
+	"os"
 )
 
-// Cipher encrypts and decrypts small secrets at the repository boundary.
-type Cipher interface {
-	Encrypt(plaintext []byte) ([]byte, error)
-	Decrypt(ciphertext []byte) ([]byte, error)
-}
-
-// AESGCM implements Cipher with AES-256-GCM.
-// Ciphertext format: base64(nonce(12) || ciphertext || gcmTag(16)).
-type AESGCM struct {
+// aesGCM is the standard AES-GCM (authenticated encryption)
+// implementation. Output format: nonce (12) || ciphertext.
+type aesGCM struct {
 	gcm cipher.AEAD
 }
 
-// NewAESGCM creates a Cipher from a 64-character hex-encoded 32-byte key.
-func NewAESGCM(masterKeyHex string) (*AESGCM, error) {
-	if len(masterKeyHex) != 64 {
-		return nil, errors.New("crypto: master key must be 64 hex characters (32 bytes)")
+// NewFromEnvKey creates a crypto pair from the MD_CRYPT_KEY
+// env var (32 bytes raw). Returns both Encryptor and
+// Decryptor (they share the same AEAD instance).
+func NewFromEnvKey() (Encryptor, Decryptor, error) {
+	keyStr := os.Getenv("MD_CRYPT_KEY")
+	if keyStr == "" {
+		return nil, nil, errors.New("crypto: MD_CRYPT_KEY env var is required (32 bytes)")
 	}
-	key, err := hex.DecodeString(masterKeyHex)
-	if err != nil {
-		return nil, errorx.Wrap(err, "crypto: decode master key")
+	if len(keyStr) < 32 {
+		return nil, nil, fmt.Errorf("crypto: MD_CRYPT_KEY must be at least 32 bytes (got %d)", len(keyStr))
 	}
+	key := []byte(keyStr[:32])
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errorx.Wrap(err, "crypto: create aes cipher")
+		return nil, nil, fmt.Errorf("crypto: new cipher: %w", err)
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, errorx.Wrap(err, "crypto: create gcm")
+		return nil, nil, fmt.Errorf("crypto: new gcm: %w", err)
 	}
-	return &AESGCM{gcm: gcm}, nil
+	a := &aesGCM{gcm: gcm}
+	return a, a, nil
 }
 
-// GenerateMasterKey returns a fresh 64-character hex-encoded 32-byte key.
-func GenerateMasterKey() (string, error) {
-	b := make([]byte, 32)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-// Encrypt encrypts plaintext and returns base64-encoded ciphertext.
-func (a *AESGCM) Encrypt(plaintext []byte) ([]byte, error) {
+// Encrypt seals plaintext with a random nonce.
+func (a *aesGCM) Encrypt(plaintext []byte) ([]byte, error) {
 	nonce := make([]byte, a.gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, errorx.Wrap(err, "crypto: generate nonce")
+		return nil, fmt.Errorf("crypto: read nonce: %w", err)
 	}
-	out := a.gcm.Seal(nonce, nonce, plaintext, nil)
-	return []byte(base64.StdEncoding.EncodeToString(out)), nil
+	// Seal appends ciphertext+tag to nonce; result is
+	// nonce || ciphertext || tag.
+	return a.gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
-// Decrypt decodes base64 ciphertext and returns plaintext.
-func (a *AESGCM) Decrypt(ciphertext []byte) ([]byte, error) {
-	if len(ciphertext) == 0 {
-		return nil, errors.New("crypto: empty ciphertext")
-	}
-	data, err := base64.StdEncoding.DecodeString(string(ciphertext))
-	if err != nil {
-		return nil, errorx.Wrap(err, "crypto: decode ciphertext")
-	}
-	nonceSize := a.gcm.NonceSize()
-	if len(data) < nonceSize {
+// Decrypt opens a nonce-prefixed ciphertext.
+func (a *aesGCM) Decrypt(ciphertext []byte) ([]byte, error) {
+	ns := a.gcm.NonceSize()
+	if len(ciphertext) < ns {
 		return nil, errors.New("crypto: ciphertext too short")
 	}
-	nonce, ct := data[:nonceSize], data[nonceSize:]
+	nonce, ct := ciphertext[:ns], ciphertext[ns:]
 	return a.gcm.Open(nil, nonce, ct, nil)
 }
-
-// NoOp is a Cipher that does nothing. Useful for tests.
-type NoOp struct{}
-
-func (NoOp) Encrypt(p []byte) ([]byte, error) { return p, nil }
-func (NoOp) Decrypt(c []byte) ([]byte, error) { return c, nil }
