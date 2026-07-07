@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -106,25 +105,6 @@ func (_u *DriveUpdate) ClearDeletedAt() *DriveUpdate {
 	return _u
 }
 
-// SetStorageID sets the "storage" edge to the Storage entity by ID.
-func (_u *DriveUpdate) SetStorageID(id int) *DriveUpdate {
-	_u.mutation.SetStorageID(id)
-	return _u
-}
-
-// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
-func (_u *DriveUpdate) SetNillableStorageID(id *int) *DriveUpdate {
-	if id != nil {
-		_u = _u.SetStorageID(*id)
-	}
-	return _u
-}
-
-// SetStorage sets the "storage" edge to the Storage entity.
-func (_u *DriveUpdate) SetStorage(v *Storage) *DriveUpdate {
-	return _u.SetStorageID(v.ID)
-}
-
 // SetUserID sets the "user" edge to the User entity by ID.
 func (_u *DriveUpdate) SetUserID(id string) *DriveUpdate {
 	_u.mutation.SetUserID(id)
@@ -158,12 +138,6 @@ func (_u *DriveUpdate) SetSuperblock(v *Superblock) *DriveUpdate {
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdate) Mutation() *DriveMutation {
 	return _u.mutation
-}
-
-// ClearStorage clears the "storage" edge to the Storage entity.
-func (_u *DriveUpdate) ClearStorage() *DriveUpdate {
-	_u.mutation.ClearStorage()
-	return _u
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -261,35 +235,6 @@ func (_u *DriveUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(drive.FieldDeletedAt, field.TypeTime)
-	}
-	if _u.mutation.StorageCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   drive.StorageTable,
-			Columns: []string{drive.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.StorageIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   drive.StorageTable,
-			Columns: []string{drive.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -443,25 +388,6 @@ func (_u *DriveUpdateOne) ClearDeletedAt() *DriveUpdateOne {
 	return _u
 }
 
-// SetStorageID sets the "storage" edge to the Storage entity by ID.
-func (_u *DriveUpdateOne) SetStorageID(id int) *DriveUpdateOne {
-	_u.mutation.SetStorageID(id)
-	return _u
-}
-
-// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
-func (_u *DriveUpdateOne) SetNillableStorageID(id *int) *DriveUpdateOne {
-	if id != nil {
-		_u = _u.SetStorageID(*id)
-	}
-	return _u
-}
-
-// SetStorage sets the "storage" edge to the Storage entity.
-func (_u *DriveUpdateOne) SetStorage(v *Storage) *DriveUpdateOne {
-	return _u.SetStorageID(v.ID)
-}
-
 // SetUserID sets the "user" edge to the User entity by ID.
 func (_u *DriveUpdateOne) SetUserID(id string) *DriveUpdateOne {
 	_u.mutation.SetUserID(id)
@@ -495,12 +421,6 @@ func (_u *DriveUpdateOne) SetSuperblock(v *Superblock) *DriveUpdateOne {
 // Mutation returns the DriveMutation object of the builder.
 func (_u *DriveUpdateOne) Mutation() *DriveMutation {
 	return _u.mutation
-}
-
-// ClearStorage clears the "storage" edge to the Storage entity.
-func (_u *DriveUpdateOne) ClearStorage() *DriveUpdateOne {
-	_u.mutation.ClearStorage()
-	return _u
 }
 
 // ClearUser clears the "user" edge to the User entity.
@@ -628,35 +548,6 @@ func (_u *DriveUpdateOne) sqlSave(ctx context.Context) (_node *Drive, err error)
 	}
 	if _u.mutation.DeletedAtCleared() {
 		_spec.ClearField(drive.FieldDeletedAt, field.TypeTime)
-	}
-	if _u.mutation.StorageCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   drive.StorageTable,
-			Columns: []string{drive.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.StorageIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   drive.StorageTable,
-			Columns: []string{drive.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

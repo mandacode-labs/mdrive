@@ -26,21 +26,12 @@ const (
 	FieldOwnerID = "owner_id"
 	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
 	FieldDeletedAt = "deleted_at"
-	// EdgeStorage holds the string denoting the storage edge name in mutations.
-	EdgeStorage = "storage"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeSuperblock holds the string denoting the superblock edge name in mutations.
 	EdgeSuperblock = "superblock"
 	// Table holds the table name of the drive in the database.
 	Table = "drives"
-	// StorageTable is the table that holds the storage relation/edge.
-	StorageTable = "storages"
-	// StorageInverseTable is the table name for the Storage entity.
-	// It exists in this package in order to avoid circular dependency with the "storage" package.
-	StorageInverseTable = "storages"
-	// StorageColumn is the table column denoting the storage relation/edge.
-	StorageColumn = "drive_id"
 	// UserTable is the table that holds the user relation/edge.
 	UserTable = "drives"
 	// UserInverseTable is the table name for the User entity.
@@ -131,13 +122,6 @@ func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
-// ByStorageField orders the results by storage field.
-func ByStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newStorageStep(), sql.OrderByField(field, opts...))
-	}
-}
-
 // ByUserField orders the results by user field.
 func ByUserField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -150,13 +134,6 @@ func BySuperblockField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newSuperblockStep(), sql.OrderByField(field, opts...))
 	}
-}
-func newStorageStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(StorageInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
-	)
 }
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

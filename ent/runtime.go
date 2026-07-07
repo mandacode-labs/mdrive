@@ -111,8 +111,6 @@ func init() {
 	nodeDescID := nodeFields[0].Descriptor()
 	// node.DefaultID holds the default value on creation for the id field.
 	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
-	storageFields := schema.Storage{}.Fields()
-	_ = storageFields
 	superblockMixin := schema.Superblock{}.Mixin()
 	superblockMixinFields0 := superblockMixin[0].Fields()
 	_ = superblockMixinFields0

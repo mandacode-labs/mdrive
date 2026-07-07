@@ -18,8 +18,6 @@ type Tx struct {
 	GCTombstone *GCTombstoneClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
-	// Storage is the client for interacting with the Storage builders.
-	Storage *StorageClient
 	// Superblock is the client for interacting with the Superblock builders.
 	Superblock *SuperblockClient
 	// User is the client for interacting with the User builders.
@@ -158,7 +156,6 @@ func (tx *Tx) init() {
 	tx.Drive = NewDriveClient(tx.config)
 	tx.GCTombstone = NewGCTombstoneClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
-	tx.Storage = NewStorageClient(tx.config)
 	tx.Superblock = NewSuperblockClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

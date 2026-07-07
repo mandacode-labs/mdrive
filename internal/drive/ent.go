@@ -6,7 +6,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/ent"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/oklog/ulid/v2"
 )
@@ -117,12 +116,6 @@ func (r *entRepository) Restore(ctx context.Context, id ulid.ULID) error {
 }
 
 func (r *entRepository) Destroy(ctx context.Context, id ulid.ULID) error {
-	// Cascade on storage fires (set in schema). Superblock is
-	// deleted via the superblock package's caller; the cascade
-	// here only covers the storage row.
-	if _, err := r.client.Storage.Delete().Where(storage.DriveIDEQ(id.String())).Exec(ctx); err != nil {
-		return errorx.Wrap(err, "drive: failed to delete storage")
-	}
 	if err := r.client.Drive.DeleteOneID(id.String()).Exec(ctx); err != nil {
 		return errorx.Wrap(err, "drive: failed to delete drive")
 	}
@@ -166,63 +159,6 @@ func (r *entRepository) ListDeleted(ctx context.Context, before time.Time, limit
 		out = append(out, d)
 	}
 	return out, nil
-}
-
-func (r *entRepository) ReadStorage(ctx context.Context, driveID string) (*Storage, error) {
-	e, err := r.client.Storage.Query().Where(storage.DriveIDEQ(driveID)).Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, errorx.New(errorx.KindNotFound, "drive: storage not found")
-		}
-		return nil, errorx.Wrap(err, "drive: failed to load storage")
-	}
-	return NewStorage(
-		e.DriveID,
-		strDeref(e.Bucket),
-		strDeref(e.Region),
-		&e.Endpoint, // endpoint is required (not Nillable in schema)
-		strDeref(e.AccessKey),
-		strDeref(e.EncryptedSecretKey),
-		boolDeref(e.UsePathStyle),
-	), nil
-}
-
-func (r *entRepository) CreateStorage(ctx context.Context, s *Storage) error {
-	create := r.client.Storage.Create().
-		SetDriveID(s.DriveID()).
-		SetProvider(storage.Provider(s.Provider().String())).
-		SetBucket(s.Bucket()).
-		SetRegion(s.Region()).
-		SetAccessKey(s.AccessKey()).
-		SetEncryptedSecretKey(s.EncryptedSecret()).
-		SetUsePathStyle(s.UsePathStyle()).
-		SetEndpoint(derefStr(s.Endpoint()))
-	_, err := create.Save(ctx)
-	if err != nil {
-		return errorx.Wrap(err, "drive: failed to create storage")
-	}
-	return nil
-}
-
-func strDeref(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
-func boolDeref(p *bool) bool {
-	if p == nil {
-		return false
-	}
-	return *p
-}
-
-func derefStr(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }
 
 // driveFromEnt is a shared loader.

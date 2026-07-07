@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/mandacode-labs/mdrive/internal/provider"
 )
 
 // Download returns a presigned GET URL for an object-kind node
@@ -24,16 +26,16 @@ func (f *fs) Download(ctx context.Context, driveID, path string, expiry time.Dur
 // Upload returns a presigned PUT URL for a new object at path.
 // The returned Key must be passed to Complete after the PUT.
 // ActionWrite + ActionUpload on parent drive.
-func (f *fs) Upload(ctx context.Context, driveID, path, contentType string, expiry time.Duration) (UploadInfo, error) {
+func (f *fs) Upload(ctx context.Context, driveID, path, contentType string, expiry time.Duration) (provider.UploadInfo, error) {
 	parent, _, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
-		return UploadInfo{}, err
+		return provider.UploadInfo{}, err
 	}
 	if err := f.requireWrite(ctx, parent.DriveID); err != nil {
-		return UploadInfo{}, err
+		return provider.UploadInfo{}, err
 	}
 	if err := f.requireUpload(ctx, parent.DriveID); err != nil {
-		return UploadInfo{}, err
+		return provider.UploadInfo{}, err
 	}
 	key := generateUploadKey(driveID)
 	return f.vfs.Upload(ctx, parent, key, contentType, expiry)
@@ -50,7 +52,7 @@ func (f *fs) Complete(ctx context.Context, driveID, path, key string) (Stat, err
 		return Stat{}, err
 	}
 
-	meta, err := f.vfs.VerifyByKey(ctx, parent.Node.SuperblockID(), key)
+	meta, err := f.vfs.VerifyByKey(ctx, key)
 	if err != nil {
 		return Stat{}, err
 	}
@@ -60,7 +62,7 @@ func (f *fs) Complete(ctx context.Context, driveID, path, key string) (Stat, err
 		Key:    key,
 		Size:   meta.Size,
 	}
-	_ = meta.ETag // could store as Checksum later
+	_ = meta.ETag
 
 	data, err := oc.Marshal()
 	if err != nil {

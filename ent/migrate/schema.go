@@ -91,32 +91,6 @@ var (
 			},
 		},
 	}
-	// StoragesColumns holds the columns for the "storages" table.
-	StoragesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "provider", Type: field.TypeEnum, Enums: []string{"s3", "minio"}, Default: "s3"},
-		{Name: "bucket", Type: field.TypeString, Nullable: true},
-		{Name: "endpoint", Type: field.TypeString},
-		{Name: "region", Type: field.TypeString, Nullable: true},
-		{Name: "use_path_style", Type: field.TypeBool, Nullable: true},
-		{Name: "access_key", Type: field.TypeString, Nullable: true},
-		{Name: "encrypted_secret_key", Type: field.TypeString, Nullable: true},
-		{Name: "drive_id", Type: field.TypeString, Unique: true},
-	}
-	// StoragesTable holds the schema information for the "storages" table.
-	StoragesTable = &schema.Table{
-		Name:       "storages",
-		Columns:    StoragesColumns,
-		PrimaryKey: []*schema.Column{StoragesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "storages_drives_storage",
-				Columns:    []*schema.Column{StoragesColumns[8]},
-				RefColumns: []*schema.Column{DrivesColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// SuperblocksColumns holds the columns for the "superblocks" table.
 	SuperblocksColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID, Unique: true},
@@ -168,7 +142,6 @@ var (
 		DrivesTable,
 		GcTombstonesTable,
 		NodesTable,
-		StoragesTable,
 		SuperblocksTable,
 		UsersTable,
 	}
@@ -186,7 +159,6 @@ func init() {
 	NodesTable.Annotation = &entsql.Annotation{
 		Table: "nodes",
 	}
-	StoragesTable.ForeignKeys[0].RefTable = DrivesTable
 	SuperblocksTable.ForeignKeys[0].RefTable = DrivesTable
 	SuperblocksTable.Annotation = &entsql.Annotation{
 		Table: "superblocks",

@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
+
+	"github.com/mandacode-labs/mdrive/internal/provider"
 )
 
 // VFS is the inode layer (Linux vfs_*). Methods take an
@@ -32,13 +34,9 @@ type VFS interface {
 	Unmount(ctx context.Context, parent *Dentry, name string) error
 	RemoveRecursive(ctx context.Context, dentry *Dentry) error
 
-	// Storage-backed ops (dentry-keyed). The presigner is
-	// resolved internally from the dentry's superblock.
+	// Storage-backed ops (provider-based, no per-drive state).
 	Download(ctx context.Context, dentry *Dentry, expiry time.Duration) (string, error)
-	Upload(ctx context.Context, parent *Dentry, key, contentType string, expiry time.Duration) (UploadInfo, error)
-	Verify(ctx context.Context, dentry *Dentry) (ObjectMetadata, error)
-
-	// Storage-backed ops (key-keyed, for pre-creation flows
-	// like CompleteUpload). Uses parent sbID directly.
-	VerifyByKey(ctx context.Context, sbID uuid.UUID, key string) (ObjectMetadata, error)
+	Upload(ctx context.Context, parent *Dentry, key, contentType string, expiry time.Duration) (provider.UploadInfo, error)
+	Verify(ctx context.Context, dentry *Dentry) (provider.ObjectMetadata, error)
+	VerifyByKey(ctx context.Context, key string) (provider.ObjectMetadata, error)
 }

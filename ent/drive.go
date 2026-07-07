@@ -10,7 +10,6 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -40,26 +39,13 @@ type Drive struct {
 
 // DriveEdges holds the relations/edges for other nodes in the graph.
 type DriveEdges struct {
-	// Storage holds the value of the storage edge.
-	Storage *Storage `json:"storage,omitempty"`
 	// User holds the value of the user edge.
 	User *User `json:"user,omitempty"`
 	// Superblock holds the value of the superblock edge.
 	Superblock *Superblock `json:"superblock,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
-}
-
-// StorageOrErr returns the Storage value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e DriveEdges) StorageOrErr() (*Storage, error) {
-	if e.Storage != nil {
-		return e.Storage, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: storage.Label}
-	}
-	return nil, &NotLoadedError{edge: "storage"}
+	loadedTypes [2]bool
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -67,7 +53,7 @@ func (e DriveEdges) StorageOrErr() (*Storage, error) {
 func (e DriveEdges) UserOrErr() (*User, error) {
 	if e.User != nil {
 		return e.User, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[0] {
 		return nil, &NotFoundError{label: user.Label}
 	}
 	return nil, &NotLoadedError{edge: "user"}
@@ -78,7 +64,7 @@ func (e DriveEdges) UserOrErr() (*User, error) {
 func (e DriveEdges) SuperblockOrErr() (*Superblock, error) {
 	if e.Superblock != nil {
 		return e.Superblock, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[1] {
 		return nil, &NotFoundError{label: superblock.Label}
 	}
 	return nil, &NotLoadedError{edge: "superblock"}
@@ -163,11 +149,6 @@ func (_m *Drive) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Drive) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
-}
-
-// QueryStorage queries the "storage" edge of the Drive entity.
-func (_m *Drive) QueryStorage() *StorageQuery {
-	return NewDriveClient(_m.config).QueryStorage(_m)
 }
 
 // QueryUser queries the "user" edge of the Drive entity.

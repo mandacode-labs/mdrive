@@ -45,18 +45,6 @@ func (f NodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NodeMutation", m)
 }
 
-// The StorageFunc type is an adapter to allow the use of ordinary
-// function as Storage mutator.
-type StorageFunc func(context.Context, *ent.StorageMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f StorageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.StorageMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.StorageMutation", m)
-}
-
 // The SuperblockFunc type is an adapter to allow the use of ordinary
 // function as Superblock mutator.
 type SuperblockFunc func(context.Context, *ent.SuperblockMutation) (ent.Value, error)

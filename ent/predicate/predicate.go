@@ -15,9 +15,6 @@ type GCTombstone func(*sql.Selector)
 // Node is the predicate function for node builders.
 type Node func(*sql.Selector)
 
-// Storage is the predicate function for storage builders.
-type Storage func(*sql.Selector)
-
 // Superblock is the predicate function for superblock builders.
 type Superblock func(*sql.Selector)
 

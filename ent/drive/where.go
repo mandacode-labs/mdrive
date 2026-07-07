@@ -430,29 +430,6 @@ func DeletedAtNotNil() predicate.Drive {
 	return predicate.Drive(sql.FieldNotNull(FieldDeletedAt))
 }
 
-// HasStorage applies the HasEdge predicate on the "storage" edge.
-func HasStorage() predicate.Drive {
-	return predicate.Drive(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, StorageTable, StorageColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasStorageWith applies the HasEdge predicate on the "storage" edge with a given conditions (other predicates).
-func HasStorageWith(preds ...predicate.Storage) predicate.Drive {
-	return predicate.Drive(func(s *sql.Selector) {
-		step := newStorageStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // HasUser applies the HasEdge predicate on the "user" edge.
 func HasUser() predicate.Drive {
 	return predicate.Drive(func(s *sql.Selector) {

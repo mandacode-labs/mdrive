@@ -15,7 +15,6 @@ import (
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/gctombstone"
 	"github.com/mandacode-labs/mdrive/ent/node"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -81,7 +80,6 @@ func checkColumn(t, c string) error {
 			drive.Table:       drive.ValidColumn,
 			gctombstone.Table: gctombstone.ValidColumn,
 			node.Table:        node.ValidColumn,
-			storage.Table:     storage.ValidColumn,
 			superblock.Table:  superblock.ValidColumn,
 			user.Table:        user.ValidColumn,
 		})

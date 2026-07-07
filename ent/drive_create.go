@@ -14,7 +14,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/mandacode-labs/mdrive/ent/drive"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -107,25 +106,6 @@ func (_c *DriveCreate) SetNillableID(v *string) *DriveCreate {
 		_c.SetID(*v)
 	}
 	return _c
-}
-
-// SetStorageID sets the "storage" edge to the Storage entity by ID.
-func (_c *DriveCreate) SetStorageID(id int) *DriveCreate {
-	_c.mutation.SetStorageID(id)
-	return _c
-}
-
-// SetNillableStorageID sets the "storage" edge to the Storage entity by ID if the given value is not nil.
-func (_c *DriveCreate) SetNillableStorageID(id *int) *DriveCreate {
-	if id != nil {
-		_c = _c.SetStorageID(*id)
-	}
-	return _c
-}
-
-// SetStorage sets the "storage" edge to the Storage entity.
-func (_c *DriveCreate) SetStorage(v *Storage) *DriveCreate {
-	return _c.SetStorageID(v.ID)
 }
 
 // SetUserID sets the "user" edge to the User entity by ID.
@@ -289,22 +269,6 @@ func (_c *DriveCreate) createSpec() (*Drive, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DeletedAt(); ok {
 		_spec.SetField(drive.FieldDeletedAt, field.TypeTime, value)
 		_node.DeletedAt = &value
-	}
-	if nodes := _c.mutation.StorageIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2O,
-			Inverse: false,
-			Table:   drive.StorageTable,
-			Columns: []string{drive.StorageColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(storage.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

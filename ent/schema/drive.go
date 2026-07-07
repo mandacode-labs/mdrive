@@ -77,13 +77,6 @@ func (Drive) Indexes() []ent.Index {
 // Edges of the Drive.
 func (Drive) Edges() []ent.Edge {
 	return []ent.Edge{
-		// Drive has one storage configuration.
-		edge.To("storage", Storage.Type).
-			Annotations(entsql.Annotation{
-				OnDelete: entsql.Cascade,
-			}).
-			Unique(),
-
 		// Drive belongs to exactly one user (1:1).
 		edge.From("user", User.Type).
 			Ref("drives").

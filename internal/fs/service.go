@@ -5,11 +5,10 @@ import (
 	"time"
 
 	"github.com/mandacode-labs/mdrive/internal/perm"
+	"github.com/mandacode-labs/mdrive/internal/provider"
 )
 
 // Service is the syscall surface for the fs subsystem.
-// Methods walk the path, check permission, dispatch into
-// the vfs layer, and decode payloads into typed content.
 type Service interface {
 	// === File ops (NodeKindFile) — inline payload up to 4KB ===
 	CreateFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error)
@@ -22,12 +21,8 @@ type Service interface {
 	ReadObject(ctx context.Context, driveID, path string) (*ObjectContent, error)
 
 	// === Storage ops (S3 presign) ===
-	// Download returns a presigned GET URL. ActionRead.
 	Download(ctx context.Context, driveID, path string, expiry time.Duration) (string, error)
-	// Upload returns a presigned PUT URL + Key. ActionWrite + ActionUpload.
-	Upload(ctx context.Context, driveID, path, contentType string, expiry time.Duration) (UploadInfo, error)
-	// Complete verifies the S3 object (size from backend) and
-	// creates the object-kind node. ActionUpload.
+	Upload(ctx context.Context, driveID, path, contentType string, expiry time.Duration) (provider.UploadInfo, error)
 	Complete(ctx context.Context, driveID, path, key string) (Stat, error)
 
 	// === Directory ops (NodeKindDirectory) ===
@@ -63,22 +58,24 @@ type RemoveOpts struct {
 
 // fs is the concrete Service.
 type fs struct {
-	vfs  VFS
-	perm perm.Service
+	vfs      VFS
+	perm     perm.Service
+	provider provider.StorageProvider
 }
 
-// Config groups the dependencies of New. Storage handling
-// lives inside the VFS layer (vfs.Config.StorageOp +
-// vfs.Config.DefaultS3).
+// Config groups the dependencies of New. Storage is server-
+// level; vfs delegates directly to the provider.
 type Config struct {
-	VFS  VFS
-	Perm perm.Service
+	VFS      VFS
+	Perm     perm.Service
+	Provider provider.StorageProvider
 }
 
 // New wires a Service.
 func New(cfg Config) Service {
 	return &fs{
-		vfs:  cfg.VFS,
-		perm: cfg.Perm,
+		vfs:      cfg.VFS,
+		perm:     cfg.Perm,
+		provider: cfg.Provider,
 	}
 }

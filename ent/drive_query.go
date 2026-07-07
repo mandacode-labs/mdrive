@@ -14,7 +14,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/mandacode-labs/mdrive/ent/drive"
 	"github.com/mandacode-labs/mdrive/ent/predicate"
-	"github.com/mandacode-labs/mdrive/ent/storage"
 	"github.com/mandacode-labs/mdrive/ent/superblock"
 	"github.com/mandacode-labs/mdrive/ent/user"
 )
@@ -26,7 +25,6 @@ type DriveQuery struct {
 	order          []drive.OrderOption
 	inters         []Interceptor
 	predicates     []predicate.Drive
-	withStorage    *StorageQuery
 	withUser       *UserQuery
 	withSuperblock *SuperblockQuery
 	// intermediate query (i.e. traversal path).
@@ -63,28 +61,6 @@ func (_q *DriveQuery) Unique(unique bool) *DriveQuery {
 func (_q *DriveQuery) Order(o ...drive.OrderOption) *DriveQuery {
 	_q.order = append(_q.order, o...)
 	return _q
-}
-
-// QueryStorage chains the current query on the "storage" edge.
-func (_q *DriveQuery) QueryStorage() *StorageQuery {
-	query := (&StorageClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(drive.Table, drive.FieldID, selector),
-			sqlgraph.To(storage.Table, storage.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, drive.StorageTable, drive.StorageColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
 }
 
 // QueryUser chains the current query on the "user" edge.
@@ -323,24 +299,12 @@ func (_q *DriveQuery) Clone() *DriveQuery {
 		order:          append([]drive.OrderOption{}, _q.order...),
 		inters:         append([]Interceptor{}, _q.inters...),
 		predicates:     append([]predicate.Drive{}, _q.predicates...),
-		withStorage:    _q.withStorage.Clone(),
 		withUser:       _q.withUser.Clone(),
 		withSuperblock: _q.withSuperblock.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
-}
-
-// WithStorage tells the query-builder to eager-load the nodes that are connected to
-// the "storage" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DriveQuery) WithStorage(opts ...func(*StorageQuery)) *DriveQuery {
-	query := (&StorageClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withStorage = query
-	return _q
 }
 
 // WithUser tells the query-builder to eager-load the nodes that are connected to
@@ -443,8 +407,7 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	var (
 		nodes       = []*Drive{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
-			_q.withStorage != nil,
+		loadedTypes = [2]bool{
 			_q.withUser != nil,
 			_q.withSuperblock != nil,
 		}
@@ -467,12 +430,6 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withStorage; query != nil {
-		if err := _q.loadStorage(ctx, query, nodes, nil,
-			func(n *Drive, e *Storage) { n.Edges.Storage = e }); err != nil {
-			return nil, err
-		}
-	}
 	if query := _q.withUser; query != nil {
 		if err := _q.loadUser(ctx, query, nodes, nil,
 			func(n *Drive, e *User) { n.Edges.User = e }); err != nil {
@@ -488,33 +445,6 @@ func (_q *DriveQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Drive,
 	return nodes, nil
 }
 
-func (_q *DriveQuery) loadStorage(ctx context.Context, query *StorageQuery, nodes []*Drive, init func(*Drive), assign func(*Drive, *Storage)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*Drive)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(storage.FieldDriveID)
-	}
-	query.Where(predicate.Storage(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(drive.StorageColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.DriveID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "drive_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
 func (_q *DriveQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Drive, init func(*Drive), assign func(*Drive, *User)) error {
 	ids := make([]string, 0, len(nodes))
 	nodeids := make(map[string][]*Drive)
