@@ -1,4 +1,4 @@
-package permission
+package perm
 
 import (
 	"testing"

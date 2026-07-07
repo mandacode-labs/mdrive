@@ -1,4 +1,4 @@
-package permission
+package perm
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"github.com/openfga/go-sdk/credentials"
 )
 
-// FGAChecker implements Authorizer using an OpenFGA client.
-type FGAChecker struct {
+// OpenFGAService implements Service using an OpenFGA client.
+type OpenFGAService struct {
 	client *client.OpenFgaClient
 }
 
@@ -27,7 +27,7 @@ const (
 	AuthModeNone              AuthMode = "none"
 )
 
-// Config for FGAChecker.
+// Config for OpenFGAService.
 type Config struct {
 	AuthMode             AuthMode
 	APIURL               string
@@ -42,13 +42,11 @@ type Config struct {
 	Timeout              time.Duration
 }
 
-// NewFGAChecker creates a new FGAChecker.
-// StoreID is required. Use fga CLI to create it: fga store create --name "mdrive"
-// AuthorizationModelID is optional. If empty, the embedded model is written and used.
+// NewOpenFGAService creates a new OpenFGA-backed Service.
 //
-// AuthMode is required and must be one of AuthModeAPIToken, AuthModeClientCredentials,
-// or AuthModeNone. Mixing credentials across modes is a configuration error.
-func NewFGAChecker(ctx context.Context, cfg Config) (*FGAChecker, error) {
+// StoreID is required. AuthorizationModelID is optional — if
+// empty, the embedded model is written and used.
+func NewOpenFGAService(ctx context.Context, cfg Config) (*OpenFGAService, error) {
 	if cfg.StoreID == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, `openfga: store_id is required; create one with: fga store create --name "mdrive"`)
 	}
@@ -92,61 +90,25 @@ func NewFGAChecker(ctx context.Context, cfg Config) (*FGAChecker, error) {
 		}
 	}
 
-	return &FGAChecker{client: c}, nil
+	return &OpenFGAService{client: c}, nil
 }
 
-// Grant creates a (user, relation, object) tuple.
-func (c *FGAChecker) Grant(ctx context.Context, user, relation string, objectType ObjectType, objectID string) error {
-	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
-		Writes: []client.ClientTupleKey{{
-			User:     "user:" + user,
-			Relation: relation,
-			Object:   string(objectType) + ":" + objectID,
-		}},
-	}).Execute()
-	return err
-}
-
-// Revoke deletes a (user, relation, object) tuple.
-func (c *FGAChecker) Revoke(ctx context.Context, user, relation string, objectType ObjectType, objectID string) error {
-	_, err := c.client.Write(ctx).Body(client.ClientWriteRequest{
-		Deletes: []client.ClientTupleKeyWithoutCondition{{
-			User:     "user:" + user,
-			Relation: relation,
-			Object:   string(objectType) + ":" + objectID,
-		}},
-	}).Execute()
-	return err
-}
-
-// Check returns true if the user has the given permission on the object.
-func (c *FGAChecker) Check(ctx context.Context, user string, perm Action, objectType ObjectType, objectID string) (bool, error) {
-	resp, err := c.client.Check(ctx).Body(client.ClientCheckRequest{
-		User:     "user:" + user,
-		Relation: string(perm),
+// Check returns nil if user holds `action` on (objectType, objectID).
+func (s *OpenFGAService) Check(ctx context.Context, userID string, action Action, objectType ObjectType, objectID string) error {
+	resp, err := s.client.Check(ctx).Body(client.ClientCheckRequest{
+		User:     "user:" + userID,
+		Relation: string(action),
 		Object:   string(objectType) + ":" + objectID,
 	}).Execute()
 	if err != nil {
-		return false, errorx.Wrap(err, fmt.Sprintf("openfga: check (user=%s, perm=%s, type=%s, id=%s)", user, perm, objectType, objectID))
+		return errorx.Wrap(err, fmt.Sprintf("openfga: check (user=%s, action=%s, type=%s, id=%s)", userID, action, objectType, objectID))
 	}
-	return resp.GetAllowed(), nil
+	if !resp.GetAllowed() {
+		return errorx.New(errorx.KindPermissionDenied, fmt.Sprintf("perm: denied (user=%s, action=%s, type=%s, id=%s)", userID, action, objectType, objectID))
+	}
+	return nil
 }
 
-// ListObjects returns the IDs of objects of the given type that the user has the given permission on.
-func (c *FGAChecker) ListObjects(ctx context.Context, user string, perm Action, objectType ObjectType) ([]string, error) {
-	resp, err := c.client.ListObjects(ctx).Body(client.ClientListObjectsRequest{
-		User:     "user:" + user,
-		Relation: string(perm),
-		Type:     string(objectType),
-	}).Execute()
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetObjects(), nil
-}
-
-// buildCredentials validates AuthMode and constructs the appropriate
-// SDK credentials. Extracted for testability.
 func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, error) {
 	if mode != AuthModeAPIToken && mode != AuthModeClientCredentials && mode != AuthModeNone {
 		return nil, errorx.New(errorx.KindInvalidArgument, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
@@ -166,7 +128,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 			},
 		})
 		if err != nil {
-			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", cfg.AuthMode))
+			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", mode))
 		}
 		return creds, nil
 	case AuthModeClientCredentials:
@@ -190,7 +152,7 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 			},
 		})
 		if err != nil {
-			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", cfg.AuthMode))
+			return nil, errorx.Wrap(err, fmt.Sprintf("openfga: credentials (auth_mode=%s)", mode))
 		}
 		return creds, nil
 	case AuthModeNone:
@@ -202,7 +164,6 @@ func buildCredentials(cfg Config, mode AuthMode) (*credentials.Credentials, erro
 	return nil, errorx.New(errorx.KindInvalidArgument, "permission: invalid openfga auth_mode (allowed: api_token, client_credentials, none)")
 }
 
-// writeModel writes the embedded authorization model and returns the new model ID.
 func writeModel(ctx context.Context, c *client.OpenFgaClient) (string, error) {
 	var req client.ClientWriteAuthorizationModelRequest
 	if err := json.Unmarshal(ModelJSON, &req); err != nil {
@@ -214,5 +175,3 @@ func writeModel(ctx context.Context, c *client.OpenFgaClient) (string, error) {
 	}
 	return resp.AuthorizationModelId, nil
 }
-
-var _ Authorizer = (*FGAChecker)(nil)

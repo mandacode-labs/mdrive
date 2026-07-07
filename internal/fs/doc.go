@@ -11,6 +11,7 @@
 // in/out). The vfs subpackage operates on already-resolved
 // *Dentry and never appears in Service signatures.
 //
-// Permission checks live in internal/fs/permission.go;
-// path resolution helpers in internal/fs/path.go.
+// Permission checks live in internal/fs/perm.go and use the
+// perm.Service interface from internal/perm.
+// Path resolution helpers live in internal/fs/path.go.
 package fs

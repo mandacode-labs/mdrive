@@ -3,7 +3,7 @@ package fs
 import "context"
 
 // Remove is mdrive's `rm -rf` equivalent. Cascades
-// vfs.RemoveRecursive for non-empty trees. ActionEdit.
+// vfs.RemoveRecursive for non-empty trees. ActionDelete.
 //
 // Not a single Linux syscall — corresponds to userspace
 // `rm -rf`, which loops unlinkat(2) over the tree.
@@ -21,7 +21,7 @@ func (f *fs) doRemove(ctx context.Context, driveID, path string, opts RemoveOpts
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireDelete(ctx, parent.DriveID); err != nil {
 		return err
 	}
 	dentry, err := f.vfs.WalkOne(ctx, parent, name)

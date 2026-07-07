@@ -1,5 +1,5 @@
-// Package permission provides authorization primitives backed by OpenFGA.
-package permission
+// Package perm provides authorization primitives backed by OpenFGA.
+package perm
 
 import (
 	_ "embed"

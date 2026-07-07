@@ -20,7 +20,7 @@ func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *ObjectCo
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, parent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	data, err := c.Marshal()
@@ -44,7 +44,7 @@ func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*ObjectConte
 	if err != nil {
 		return nil, err
 	}
-	if err := f.requireView(ctx, dentry.DriveID); err != nil {
+	if err := f.requireRead(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
 	var oc ObjectContent

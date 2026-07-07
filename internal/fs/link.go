@@ -13,14 +13,14 @@ func (f *fs) LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Sta
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, srcParent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, srcParent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	linkParent, linkName, err := f.doPathParent(ctx, driveID, linkPath)
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, linkParent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, linkParent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	srcDentry, err := f.vfs.WalkOne(ctx, srcParent, srcName)
@@ -37,26 +37,26 @@ func (f *fs) LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Sta
 }
 
 // Unlink removes a non-directory entry. Mirrors unlink(2).
-// ActionEdit.
+// ActionDelete.
 func (f *fs) Unlink(ctx context.Context, driveID, path string) error {
 	parent, name, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireDelete(ctx, parent.DriveID); err != nil {
 		return err
 	}
 	return f.vfs.Unlink(ctx, parent, name)
 }
 
 // Rmdir removes an empty directory. Mirrors rmdir(2).
-// ActionEdit.
+// ActionDelete.
 func (f *fs) Rmdir(ctx context.Context, driveID, path string) error {
 	parent, name, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireDelete(ctx, parent.DriveID); err != nil {
 		return err
 	}
 	return f.vfs.Rmdir(ctx, parent, name)
@@ -70,14 +70,14 @@ func (f *fs) RenameAt(ctx context.Context, driveID, srcPath, dstDriveID, dstPath
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, srcParent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, srcParent.DriveID); err != nil {
 		return err
 	}
 	dstParent, dstName, err := f.doPathParent(ctx, dstDriveID, dstPath)
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, dstParent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, dstParent.DriveID); err != nil {
 		return err
 	}
 	return f.vfs.Rename(ctx, srcParent, srcName, dstParent, dstName)

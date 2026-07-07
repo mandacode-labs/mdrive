@@ -14,14 +14,14 @@ func (f *fs) SymlinkAt(ctx context.Context, driveID, target, linkPath string) (S
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, linkParent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, linkParent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	targetDentry, err := f.walkResolve(ctx, linkParent.DriveID.String(), target)
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireView(ctx, targetDentry.DriveID); err != nil {
+	if err := f.requireRead(ctx, targetDentry.DriveID); err != nil {
 		return Stat{}, err
 	}
 	link, err := f.vfs.Symlink(ctx, linkParent, linkName, targetDentry.Node.ID())
@@ -39,7 +39,7 @@ func (f *fs) ReadlinkAt(ctx context.Context, driveID, path string) (*SymlinkCont
 	if err != nil {
 		return nil, err
 	}
-	if err := f.requireView(ctx, linkParent.DriveID); err != nil {
+	if err := f.requireRead(ctx, linkParent.DriveID); err != nil {
 		return nil, err
 	}
 	dentry, err := f.vfs.WalkOne(ctx, linkParent, linkName)

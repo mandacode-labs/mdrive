@@ -19,7 +19,7 @@ func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *FileConten
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, parent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	data, err := c.Marshal()
@@ -42,7 +42,7 @@ func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*FileContent, 
 	if err != nil {
 		return nil, err
 	}
-	if err := f.requireView(ctx, dentry.DriveID); err != nil {
+	if err := f.requireRead(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
 	var fc FileContent
@@ -61,7 +61,7 @@ func (f *fs) WriteFile(ctx context.Context, driveID, path string, c *FileContent
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, dentry.DriveID); err != nil {
+	if err := f.requireWrite(ctx, dentry.DriveID); err != nil {
 		return Stat{}, err
 	}
 	data, err := c.Marshal()
@@ -81,7 +81,7 @@ func (f *fs) Truncate(ctx context.Context, driveID, path string, size int64) err
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, dentry.DriveID); err != nil {
+	if err := f.requireWrite(ctx, dentry.DriveID); err != nil {
 		return err
 	}
 	if size < 0 {

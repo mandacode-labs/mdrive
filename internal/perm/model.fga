@@ -1,0 +1,17 @@
+model
+  schema 1.1
+
+type user
+
+type drive
+  relations
+    define owner: [user]
+    define editor: [user] or owner
+    define viewer: [user] or editor or owner
+
+    define can_read:          viewer or owner
+    define can_write:         editor or owner
+    define can_delete:        owner
+    define can_upload:        editor or owner
+    define can_manage_storage: owner
+    define can_share_storage:  owner

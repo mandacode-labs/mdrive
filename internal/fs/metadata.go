@@ -20,7 +20,7 @@ func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat,
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireView(ctx, dentry.DriveID); err != nil {
+	if err := f.requireRead(ctx, dentry.DriveID); err != nil {
 		return Stat{}, err
 	}
 	return f.vfs.Getattr(ctx, dentry)
@@ -39,7 +39,7 @@ func (f *fs) SetTimes(ctx context.Context, driveID, path string, atime, mtime ti
 	if err != nil {
 		return err
 	}
-	if err := f.requireEdit(ctx, dentry.DriveID); err != nil {
+	if err := f.requireWrite(ctx, dentry.DriveID); err != nil {
 		return err
 	}
 	dentry.Node.SetTimes(atime, mtime, time.Now(), dentry.Node.BTime())

@@ -25,7 +25,7 @@ func (f *fs) doPathParent(ctx context.Context, driveID, path string) (*Dentry, s
 	if err != nil {
 		return nil, "", err
 	}
-	if err := f.requireView(ctx, parent.DriveID); err != nil {
+	if err := f.requireRead(ctx, parent.DriveID); err != nil {
 		return nil, "", err
 	}
 	return parent, name, nil

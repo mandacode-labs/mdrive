@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/fs/permission"
+	"github.com/mandacode-labs/mdrive/internal/perm"
 )
 
 // Service is the syscall surface for the fs subsystem.
@@ -54,20 +54,23 @@ type RemoveOpts struct {
 
 // fs is the concrete Service.
 type fs struct {
-	vfs  VFS
-	perm permission.Authorizer
+	vfs     VFS
+	perm    perm.Service
+	storage StorageResolver
 }
 
 // Config groups the dependencies of New.
 type Config struct {
-	VFS  VFS
-	Perm permission.Authorizer
+	VFS     VFS
+	Perm    perm.Service
+	Storage StorageResolver
 }
 
 // New wires a Service.
 func New(cfg Config) Service {
 	return &fs{
-		vfs:  cfg.VFS,
-		perm: cfg.Perm,
+		vfs:     cfg.VFS,
+		perm:    cfg.Perm,
+		storage: cfg.Storage,
 	}
 }

@@ -9,7 +9,7 @@ func (f *fs) Mkdir(ctx context.Context, driveID, path string) (Stat, error) {
 	if err != nil {
 		return Stat{}, err
 	}
-	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+	if err := f.requireWrite(ctx, parent.DriveID); err != nil {
 		return Stat{}, err
 	}
 	node, err := f.vfs.Mkdir(ctx, parent, name)
@@ -26,7 +26,7 @@ func (f *fs) Getdents(ctx context.Context, driveID, path string) (*DirContent, e
 	if err != nil {
 		return nil, err
 	}
-	if err := f.requireView(ctx, dentry.DriveID); err != nil {
+	if err := f.requireRead(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
 	entries, err := f.vfs.Iterate(ctx, dentry)
