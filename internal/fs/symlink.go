@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // SymlinkAt creates a symbolic link. Mirrors symlinkat(2).
@@ -38,7 +37,7 @@ func (f *fs) SymlinkAt(ctx context.Context, driveID, target, linkPath string) (S
 // The caller can inspect TargetID and follow it via
 // Stat(driveID, targetID, true) if needed.
 // ActionView on the link's parent drive.
-func (f *fs) ReadlinkAt(ctx context.Context, driveID, path string) (*content.SymlinkContent, error) {
+func (f *fs) ReadlinkAt(ctx context.Context, driveID, path string) (*SymlinkContent, error) {
 	linkParent, linkName, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
 		return nil, err
@@ -53,7 +52,7 @@ func (f *fs) ReadlinkAt(ctx context.Context, driveID, path string) (*content.Sym
 	if dentry.Node.Kind() != NodeKindSymlink {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: not a symlink")
 	}
-	var sc content.SymlinkContent
+	var sc SymlinkContent
 	if err := json.Unmarshal(dentry.Node.Data(), &sc); err != nil {
 		return nil, errorx.Wrap(err, "fs: symlink content", errorx.KindInternal)
 	}

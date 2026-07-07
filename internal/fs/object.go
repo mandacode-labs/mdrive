@@ -7,13 +7,12 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // CreateObject registers an S3 object as a file-like node.
 // Payload lives in S3; the node carries only metadata.
 // ActionEdit on the parent drive.
-func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *content.ObjectContent) (Stat, error) {
+func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *ObjectContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: CreateObject requires content")
 	}
@@ -40,7 +39,7 @@ func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *content.
 
 // ReadObject returns the S3 metadata of an object-kind node.
 // ActionView on the resolved drive.
-func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*content.ObjectContent, error) {
+func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*ObjectContent, error) {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindObject)
 	if err != nil {
 		return nil, err
@@ -48,7 +47,7 @@ func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*content.Obj
 	if err := f.requireView(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
-	var oc content.ObjectContent
+	var oc ObjectContent
 	if err := json.Unmarshal(dentry.Node.Data(), &oc); err != nil {
 		return nil, errorx.Wrap(err, "fs: object content", errorx.KindInternal)
 	}

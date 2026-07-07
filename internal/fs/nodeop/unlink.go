@@ -6,7 +6,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Unlink removes the directory entry pointing at
@@ -26,7 +25,7 @@ func (n *nodeOperation) Unlink(ctx context.Context, dentry *fs.Dentry) error {
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: cannot unlink a directory")
 	}
 
-	dirContent := &content.DirContent{}
+	dirContent := &fs.DirContent{}
 	if err := json.Unmarshal(dentry.Parent.Node.Data(), dirContent); err != nil {
 		return errorx.Wrap(err, "nodeop: parent dir content")
 	}

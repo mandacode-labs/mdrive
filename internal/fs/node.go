@@ -9,24 +9,10 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
-// NodeKind classifies a node by storage shape. Aliased to
-// content.NodeKind so DirEntry (which lives in content and
-// can't import fs) can hold the same value as Node.Kind()
-// without conversion.
-type NodeKind = content.NodeKind
-
-const (
-	NodeKindFile      = content.NodeKindFile
-	NodeKindDirectory = content.NodeKindDirectory
-	NodeKindSymlink   = content.NodeKindSymlink
-	NodeKindObject    = content.NodeKindObject
-	NodeKindMount     = content.NodeKindMount
-)
-
-// Flags is a bitmask of node-level flags.
+// NodeKind + Content types live in content.go (single file
+// in this package). Flags is a bitmask of node-level flags.
 type Flags uint32
 
 const (

@@ -6,7 +6,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Rename moves a directory entry from old.Parent to newParent
@@ -23,11 +22,11 @@ func (n *nodeOperation) Rename(ctx context.Context, old *fs.Dentry, newParent *f
 		return errorx.New(errorx.KindInvalidArgument, "nodeop: old dentry has no parent")
 	}
 
-	newDirContent := &content.DirContent{}
+	newDirContent := &fs.DirContent{}
 	if err := json.Unmarshal(newParent.Node.Data(), newDirContent); err != nil {
 		return errorx.Wrap(err, "nodeop: new dir content")
 	}
-	if err := newDirContent.AddEntry(content.DirEntry{
+	if err := newDirContent.AddEntry(fs.DirEntry{
 		NodeID: old.Node.ID(),
 		Name:   newName,
 		Kind:   old.Node.Kind(),
@@ -40,7 +39,7 @@ func (n *nodeOperation) Rename(ctx context.Context, old *fs.Dentry, newParent *f
 	}
 	newParent.Node.Write(newData, int64(len(newData)))
 
-	oldDirContent := &content.DirContent{}
+	oldDirContent := &fs.DirContent{}
 	if err := json.Unmarshal(old.Parent.Node.Data(), oldDirContent); err != nil {
 		return errorx.Wrap(err, "nodeop: old dir content")
 	}

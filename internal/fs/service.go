@@ -18,7 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 	"github.com/mandacode-labs/mdrive/internal/fs/permission"
 )
 
@@ -29,22 +28,22 @@ import (
 // typed content value.
 type Service interface {
 	// === File ops (NodeKindFile) — inline payload up to 4KB ===
-	CreateFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error)
-	ReadFile(ctx context.Context, driveID, path string) (*content.FileContent, error)
-	WriteFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error)
+	CreateFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error)
+	ReadFile(ctx context.Context, driveID, path string) (*FileContent, error)
+	WriteFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error)
 	Truncate(ctx context.Context, driveID, path string, size int64) error
 
 	// === Object ops (NodeKindObject) — S3-backed ===
-	CreateObject(ctx context.Context, driveID, path string, c *content.ObjectContent) (Stat, error)
-	ReadObject(ctx context.Context, driveID, path string) (*content.ObjectContent, error)
+	CreateObject(ctx context.Context, driveID, path string, c *ObjectContent) (Stat, error)
+	ReadObject(ctx context.Context, driveID, path string) (*ObjectContent, error)
 
 	// === Directory ops (NodeKindDirectory) ===
 	Mkdir(ctx context.Context, driveID, path string) (Stat, error)
-	Getdents(ctx context.Context, driveID, path string) (*content.DirContent, error)
+	Getdents(ctx context.Context, driveID, path string) (*DirContent, error)
 
 	// === Symlink ops ===
 	SymlinkAt(ctx context.Context, driveID, target, linkPath string) (Stat, error)
-	ReadlinkAt(ctx context.Context, driveID, path string) (*content.SymlinkContent, error)
+	ReadlinkAt(ctx context.Context, driveID, path string) (*SymlinkContent, error)
 
 	// === Link ops ===
 	LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Stat, error)

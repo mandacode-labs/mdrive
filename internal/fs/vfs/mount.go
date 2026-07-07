@@ -8,7 +8,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // mount — Linux bind-mount.
@@ -23,7 +22,7 @@ func (v *vfs) Mount(ctx context.Context, mountParent *fs.Dentry, mountName strin
 		return errorx.Wrap(err, "fs: source drive not found", errorx.KindInvalidArgument)
 	}
 	mount := fs.NewNode(uuid.New(), mountParent.Node.SuperblockID(), fs.NodeKindMount)
-	mc := &content.MountContent{DriveID: sourceDriveID.String()}
+	mc := &fs.MountContent{DriveID: sourceDriveID.String()}
 	data, err := mc.Marshal()
 	if err != nil {
 		return errorx.Wrap(err, "fs: mount content", errorx.KindInternal)

@@ -7,12 +7,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // CreateFile inserts a file-kind node with the given content.
 // Mirrors creat(2) + write(2). ActionEdit on parent drive.
-func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error) {
+func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: CreateFile requires content")
 	}
@@ -38,9 +37,9 @@ func (f *fs) CreateFile(ctx context.Context, driveID, path string, c *content.Fi
 }
 
 // ReadFile returns the inline payload of a file-kind node
-// decoded as *content.FileContent. ActionView on the
+// decoded as *FileContent. ActionView on the
 // resolved drive.
-func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*content.FileContent, error) {
+func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*FileContent, error) {
 	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindFile)
 	if err != nil {
 		return nil, err
@@ -48,7 +47,7 @@ func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*content.FileC
 	if err := f.requireView(ctx, dentry.DriveID); err != nil {
 		return nil, err
 	}
-	var fc content.FileContent
+	var fc FileContent
 	if err := json.Unmarshal(dentry.Node.Data(), &fc); err != nil {
 		return nil, errorx.Wrap(err, "fs: file content", errorx.KindInternal)
 	}
@@ -57,7 +56,7 @@ func (f *fs) ReadFile(ctx context.Context, driveID, path string) (*content.FileC
 
 // WriteFile replaces the inline payload of an existing
 // file-kind node. ActionEdit on the resolved drive.
-func (f *fs) WriteFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error) {
+func (f *fs) WriteFile(ctx context.Context, driveID, path string, c *FileContent) (Stat, error) {
 	if c == nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: WriteFile requires content")
 	}

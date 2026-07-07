@@ -7,7 +7,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Symlink — Linux vfs_symlink.
@@ -24,7 +23,7 @@ func (v *vfs) Symlink(ctx context.Context, linkParent *fs.Dentry, linkName strin
 	if linkParent.Node.Kind() != fs.NodeKindDirectory {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: link parent is not a directory")
 	}
-	sc := &content.SymlinkContent{NodeID: targetID}
+	sc := &fs.SymlinkContent{NodeID: targetID}
 	data, err := sc.Marshal()
 	if err != nil {
 		return nil, errorx.Wrap(err, "fs: symlink content", errorx.KindInternal)

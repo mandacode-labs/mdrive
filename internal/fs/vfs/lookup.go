@@ -9,7 +9,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // Walk — Linux link_path_walk. Resolves a path string into
@@ -55,7 +54,7 @@ func (v *vfs) WalkOne(ctx context.Context, cur *fs.Dentry, name string) (*fs.Den
 	if cur.Node.Kind() != fs.NodeKindDirectory {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: walk over non-directory")
 	}
-	var dc content.DirContent
+	var dc fs.DirContent
 	if err := json.Unmarshal(cur.Node.Data(), &dc); err != nil {
 		return nil, errorx.Wrap(err, "fs: dir content", errorx.KindInternal)
 	}
@@ -75,7 +74,7 @@ func (v *vfs) WalkOne(ctx context.Context, cur *fs.Dentry, name string) (*fs.Den
 
 // followMount — Linux <fs>_follow_link for mounts.
 func (v *vfs) FollowMount(ctx context.Context, parent *fs.Dentry, mount *fs.Node) (*fs.Dentry, error) {
-	var mc content.MountContent
+	var mc fs.MountContent
 	if err := json.Unmarshal(mount.Data(), &mc); err != nil {
 		return nil, errorx.Wrap(err, "fs: mount content", errorx.KindInternal)
 	}
@@ -105,7 +104,7 @@ func (v *vfs) FollowSymlink(ctx context.Context, cur *fs.Dentry, depth int) (*fs
 	if cur.Node.Kind() != fs.NodeKindSymlink {
 		return cur, nil
 	}
-	var sc content.SymlinkContent
+	var sc fs.SymlinkContent
 	if err := json.Unmarshal(cur.Node.Data(), &sc); err != nil {
 		return nil, errorx.Wrap(err, "fs: symlink content", errorx.KindInternal)
 	}

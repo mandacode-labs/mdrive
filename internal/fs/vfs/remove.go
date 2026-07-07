@@ -6,7 +6,6 @@ import (
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
 // removeRecursive empties a directory tree.
@@ -24,7 +23,7 @@ func (v *vfs) RemoveRecursive(ctx context.Context, dentry *fs.Dentry) error {
 	if dentry.Node.Kind() != fs.NodeKindDirectory {
 		return nil
 	}
-	var dc content.DirContent
+	var dc fs.DirContent
 	if err := json.Unmarshal(dentry.Node.Data(), &dc); err != nil {
 		return errorx.Wrap(err, "fs: dir content", errorx.KindInternal)
 	}
