@@ -1,9 +1,6 @@
 package fs
 
-import (
-	"context"
-
-)
+import "context"
 
 // Mkdir creates a directory. Mirrors mkdir(2).
 // ActionEdit on the parent drive.

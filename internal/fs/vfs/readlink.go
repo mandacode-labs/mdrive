@@ -10,7 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// readlink — Linux vfs_readlink.
+// Readlink — Linux vfs_readlink.
 func (v *vfs) Readlink(_ context.Context, dentry *fs.Dentry) (uuid.UUID, error) {
 	if dentry == nil || dentry.Node == nil {
 		return uuid.Nil, errorx.New(errorx.KindInvalidArgument, "fs: readlink requires a dentry")

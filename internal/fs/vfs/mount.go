@@ -10,7 +10,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// mount — Linux bind-mount.
+// Mount — Linux bind-mount.
 func (v *vfs) Mount(ctx context.Context, mountParent *fs.Dentry, mountName string, sourceDriveID ulid.ULID) error {
 	if mountParent == nil || mountName == "" {
 		return errorx.New(errorx.KindInvalidArgument, "fs: mount requires parent and name")

@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// read — Linux vfs_read.
+// Read — Linux vfs_read.
 func (v *vfs) Read(_ context.Context, dentry *fs.Dentry) ([]byte, error) {
 	if dentry == nil || dentry.Node == nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: read requires a dentry")

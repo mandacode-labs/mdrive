@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// rename — Linux vfs_rename.
+// Rename — Linux vfs_rename.
 func (v *vfs) Rename(ctx context.Context, oldParent *fs.Dentry, oldName string, newParent *fs.Dentry, newName string) error {
 	if oldParent == nil || newParent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: rename requires parent entries")

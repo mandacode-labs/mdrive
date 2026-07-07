@@ -6,9 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
 
-	"github.com/mandacode-labs/mdrive/internal/auth"
 	"github.com/mandacode-labs/mdrive/internal/entx"
-	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
@@ -21,10 +19,6 @@ type superOperation struct {
 // NewSuperblockOperation wires the canonical impl.
 func NewSuperblockOperation(repo Repository, tm entx.TxManager) fs.SuperOperation {
 	return &superOperation{repo: repo, tm: tm}
-}
-
-func (s *superOperation) userID(ctx context.Context) string {
-	return auth.UserIDFromContext(ctx)
 }
 
 // Create persists a new superblock.
@@ -49,10 +43,4 @@ func (s *superOperation) Purge(ctx context.Context, id ulid.ULID) error {
 		return err
 	}
 	return s.repo.Delete(ctx, sb.ID())
-}
-
-// wrap is a helper for typed error wrapping (kept for symmetry
-// with nodeop; not currently used outside).
-func (s *superOperation) wrap(err error, kind errorx.Kind, msg string) error {
-	return errorx.Wrap(err, msg, kind)
 }

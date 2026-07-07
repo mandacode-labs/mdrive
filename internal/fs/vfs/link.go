@@ -7,7 +7,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// link — Linux vfs_link.
+// Link — Linux vfs_link.
 func (v *vfs) Link(ctx context.Context, oldDentry *fs.Dentry, linkParent *fs.Dentry, linkName string) error {
 	if oldDentry == nil || linkParent == nil {
 		return errorx.New(errorx.KindInvalidArgument, "fs: link requires oldDentry, linkParent")

@@ -8,7 +8,7 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs"
 )
 
-// iterate — Linux iterate_dir.
+// Iterate — Linux iterate_dir.
 func (v *vfs) Iterate(_ context.Context, parent *fs.Dentry) ([]fs.DirEntry, error) {
 	if parent == nil || parent.Node == nil {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: iteratedir requires a parent")
