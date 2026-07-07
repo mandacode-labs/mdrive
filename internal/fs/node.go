@@ -11,8 +11,37 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// NodeKind + Content types live in content.go (single file
-// in this package). Flags is a bitmask of node-level flags.
+// NodeKind classifies an inode by storage shape. The kind
+// decides how the node's data field is decoded on read and
+// what content shape is accepted on write.
+type NodeKind uint8
+
+const (
+	NodeKindFile      NodeKind = 0
+	NodeKindDirectory NodeKind = 1
+	NodeKindSymlink   NodeKind = 2
+	NodeKindObject    NodeKind = 3
+	NodeKindMount     NodeKind = 4
+)
+
+func (k NodeKind) String() string {
+	switch k {
+	case NodeKindFile:
+		return "file"
+	case NodeKindDirectory:
+		return "directory"
+	case NodeKindSymlink:
+		return "symlink"
+	case NodeKindObject:
+		return "object"
+	case NodeKindMount:
+		return "mount"
+	default:
+		return "unknown"
+	}
+}
+
+// Flags is a bitmask of node-level flags.
 type Flags uint32
 
 const (
