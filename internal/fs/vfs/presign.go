@@ -3,15 +3,47 @@ package vfs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
-	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	awss3 "github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 	"github.com/mandacode-labs/mdrive/internal/fs"
-	"github.com/mandacode-labs/mdrive/internal/provider/s3"
 )
+
+// vfs is the concrete implementation of fs.VFS.
+type vfs struct {
+	nodeOp    fs.NodeOperation
+	superop   fs.SuperOperation
+	storageOp fs.StorageOperation
+	// defaultS3 is the app-level default *s3.Client (IRSA
+	// fallback). nil = SDK default chain at call time.
+	defaultS3 *s3.Client
+}
+
+// Config groups the dependencies of vfs.
+type Config struct {
+	NodeOp    fs.NodeOperation
+	SuperOp   fs.SuperOperation
+	StorageOp fs.StorageOperation
+	DefaultS3 *s3.Client
+}
+
+// New constructs an fs.VFS implementation.
+func New(cfg Config) fs.VFS {
+	return &vfs{
+		nodeOp:    cfg.NodeOp,
+		superop:   cfg.SuperOp,
+		storageOp: cfg.StorageOp,
+		defaultS3: cfg.DefaultS3,
+	}
+}
 
 func strDeref(p *string) string {
 	if p == nil {
@@ -20,30 +52,71 @@ func strDeref(p *string) string {
 	return *p
 }
 
+// buildClient returns an *s3.Client for the given storage.
+// nil storage → returns v.defaultS3 (caller should fall
+// back to SDK default if defaultS3 is also nil).
+func (v *vfs) buildClient(ctx context.Context, storage *fs.Storage) (*s3.Client, string, error) {
+	if storage == nil {
+		return v.defaultS3, "", nil
+	}
+	awsCfg, err := buildAWSConfig(ctx, storage.Region(), storage.AccessKey(), storage.SecretKey())
+	if err != nil {
+		return nil, "", err
+	}
+	api := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		if ep := strDeref(storage.Endpoint()); ep != "" {
+			o.BaseEndpoint = awss3.String(ep)
+		}
+		o.UsePathStyle = storage.UsePathStyle()
+	})
+	return api, storage.Bucket(), nil
+}
+
+// buildAWSConfig assembles the AWS SDK config from region +
+// credentials. Both empty → SDK default chain (IRSA / env).
+// One set, the other empty → error.
+func buildAWSConfig(ctx context.Context, region, accessKey, secretKey string) (awss3.Config, error) {
+	if region == "" {
+		return awss3.Config{}, errS3Missing("region is required")
+	}
+	opts := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(region),
+	}
+	hasAK := accessKey != ""
+	hasSK := secretKey != ""
+	if hasAK != hasSK {
+		return awss3.Config{}, errS3Missing("access_key and secret_key must be both set or both empty")
+	}
+	if hasAK {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
+		))
+	}
+	return awsconfig.LoadDefaultConfig(ctx, opts...)
+}
+
+type s3ConfigError struct{ msg string }
+
+func (e *s3ConfigError) Error() string { return "s3: " + e.msg }
+func errS3Missing(msg string) error  { return &s3ConfigError{msg: msg} }
+
 // resolveBackend returns the S3 client + bucket for a given
 // superblock. Lookup order:
-//  1. per-superblock Storage (if set)
-//  2. app-level default Storage (if set)
-//  3. nil client + empty bucket = SDK default chain (IRSA)
-//     — caller should fail at presign time if it needs creds.
-func (v *vfs) resolveBackend(ctx context.Context, sbID uuid.UUID) (*awss3.Client, string, error) {
+//  1. per-superblock Storage
+//  2. app-level default S3 client
+func (v *vfs) resolveBackend(ctx context.Context, sbID uuid.UUID) (*s3.Client, string, error) {
 	storage, err := v.storageOp.GetBySuperblock(ctx, sbID)
 	if err != nil {
 		return nil, "", err
 	}
-	if storage == nil {
-		storage = v.defaultStorage
+	if storage != nil {
+		api, bucket, err := v.buildClient(ctx, storage)
+		if err != nil {
+			return nil, "", err
+		}
+		return api, bucket, nil
 	}
-	if storage == nil {
-		// No per-drive config and no default — fall back to
-		// SDK default credential chain (IRSA / env).
-		return nil, "", nil
-	}
-	client, err := s3.BuildClient(ctx, storage.Region(), storage.AccessKey(), storage.SecretKey(), strDeref(storage.Endpoint()), storage.UsePathStyle())
-	if err != nil {
-		return nil, "", err
-	}
-	return client, storage.Bucket(), nil
+	return v.defaultS3, "", nil
 }
 
 // Download returns a presigned GET URL for an object-kind node.
@@ -59,22 +132,31 @@ func (v *vfs) Download(ctx context.Context, dentry *fs.Dentry, expiry time.Durat
 	if err != nil {
 		return "", err
 	}
-	return s3.PresignDownload(ctx, client, bucket, oc.Key, expiry)
+	req, err := s3.NewPresignClient(client).PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: awss3.String(bucket),
+		Key:    awss3.String(oc.Key),
+	}, s3.WithPresignExpires(expiry))
+	if err != nil {
+		return "", err
+	}
+	return req.URL, nil
 }
 
-// Upload returns a presigned PUT URL for a new object at
-// parent/name. The caller PUTs to URL and then calls
-// Service.Complete with the returned Key to finalize the node.
+// Upload returns a presigned PUT URL for a new object.
 func (v *vfs) Upload(ctx context.Context, parent *fs.Dentry, key, contentType string, expiry time.Duration) (fs.UploadInfo, error) {
 	client, bucket, err := v.resolveBackend(ctx, parent.Node.SuperblockID())
 	if err != nil {
 		return fs.UploadInfo{}, err
 	}
-	info, err := s3.PresignUpload(ctx, client, bucket, key, contentType, expiry)
+	req, err := s3.NewPresignClient(client).PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket:      awss3.String(bucket),
+		Key:         awss3.String(key),
+		ContentType: awss3.String(contentType),
+	}, s3.WithPresignExpires(expiry))
 	if err != nil {
 		return fs.UploadInfo{}, err
 	}
-	return fs.UploadInfo{URL: info.URL, Key: info.Key}, nil
+	return fs.UploadInfo{URL: req.URL, Key: key}, nil
 }
 
 // Verify returns the backend-reported metadata for an
@@ -91,28 +173,53 @@ func (v *vfs) Verify(ctx context.Context, dentry *fs.Dentry) (fs.ObjectMetadata,
 	if err != nil {
 		return fs.ObjectMetadata{}, err
 	}
-	return toFsObjectMetadata(s3.HeadObject(ctx, client, bucket, oc.Key))
+	out, err := client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: awss3.String(bucket),
+		Key:    awss3.String(oc.Key),
+	})
+	if err != nil {
+		return fs.ObjectMetadata{}, mapS3Err(err, "head object")
+	}
+	return toFsObjectMetadata(bucket, out)
 }
 
 // VerifyByKey returns backend metadata for a key under a
-// specific superblock. Used by Service.Complete (the node
-// doesn't exist yet).
+// specific superblock. Used by Service.Complete.
 func (v *vfs) VerifyByKey(ctx context.Context, sbID uuid.UUID, key string) (fs.ObjectMetadata, error) {
 	client, bucket, err := v.resolveBackend(ctx, sbID)
 	if err != nil {
 		return fs.ObjectMetadata{}, err
 	}
-	return toFsObjectMetadata(s3.HeadObject(ctx, client, bucket, key))
+	out, err := client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: awss3.String(bucket),
+		Key:    awss3.String(key),
+	})
+	if err != nil {
+		return fs.ObjectMetadata{}, mapS3Err(err, "head object by key")
+	}
+	return toFsObjectMetadata(bucket, out)
 }
 
-func toFsObjectMetadata(m s3.ObjectMetadata, err error) (fs.ObjectMetadata, error) {
-	if err != nil {
-		return fs.ObjectMetadata{}, err
+func toFsObjectMetadata(bucket string, out *s3.HeadObjectOutput) (fs.ObjectMetadata, error) {
+	md := fs.ObjectMetadata{Bucket: bucket}
+	if out.ContentLength != nil {
+		md.Size = *out.ContentLength
 	}
-	return fs.ObjectMetadata{
-		Bucket: m.Bucket,
-		Size:   m.Size,
-		ETag:   m.ETag,
-		MTime:  m.MTime,
-	}, nil
+	if out.ETag != nil {
+		md.ETag = *out.ETag
+	}
+	if out.LastModified != nil {
+		md.MTime = *out.LastModified
+	}
+	return md, nil
+}
+
+// mapS3Err maps an s3 SDK error to an errorx error. Handles
+// NotFound specifically; everything else is wrapped.
+func mapS3Err(err error, msg string) error {
+	var notFound *s3types.NotFound
+	if errors.As(err, &notFound) {
+		return errorx.New(errorx.KindNotFound, "s3: "+msg+" (not found)")
+	}
+	return errorx.Wrap(err, "s3: "+msg)
 }

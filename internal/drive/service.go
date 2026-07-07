@@ -4,11 +4,14 @@ import (
 	"context"
 	"time"
 
+	awss3 "github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
-	"github.com/mandacode-labs/mdrive/internal/provider/s3"
 )
 
 // Service is the public surface for drive lifecycle. Handlers
@@ -86,12 +89,20 @@ func (s *service) Create(ctx context.Context, ownerID string, name string, descr
 // a *Storage ready to persist.
 func (s *service) buildStorageRow(ctx context.Context, driveID string, cfg *StorageConfig) (*Storage, error) {
 	// Validate by connecting to the backend.
-	api, err := s3.BuildClient(ctx, cfg.Region, cfg.AccessKey, cfg.SecretKey, derefStr(cfg.Endpoint), cfg.UsePathStyle)
+	awsCfg, err := driveAWSConfig(ctx, cfg.Region, cfg.AccessKey, cfg.SecretKey)
 	if err != nil {
-		return nil, errorx.Wrap(err, "drive: build s3 client for validation")
+		return nil, errorx.Wrap(err, "drive: build aws config")
 	}
-	if err := s3.PingBucket(ctx, api, cfg.Bucket); err != nil {
-		return nil, errorx.Wrap(err, "drive: validate storage bucket")
+	api := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		if ep := derefStr(cfg.Endpoint); ep != "" {
+			o.BaseEndpoint = awss3.String(ep)
+		}
+		o.UsePathStyle = cfg.UsePathStyle
+	})
+	if _, err := api.HeadBucket(ctx, &s3.HeadBucketInput{
+		Bucket: awss3.String(cfg.Bucket),
+	}); err != nil {
+		return nil, errorx.Wrap(err, "drive: validate storage bucket (ping)")
 	}
 
 	// Encrypt the secret (only if non-empty).
@@ -114,6 +125,34 @@ func (s *service) buildStorageRow(ctx context.Context, driveID string, cfg *Stor
 		cfg.UsePathStyle,
 	), nil
 }
+
+// driveAWSConfig assembles the AWS SDK config from region +
+// credentials. Both empty → SDK default chain (IRSA / env).
+// One set, the other empty → error.
+func driveAWSConfig(ctx context.Context, region, accessKey, secretKey string) (awss3.Config, error) {
+	if region == "" {
+		return awss3.Config{}, errDriveMissing("region is required")
+	}
+	opts := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(region),
+	}
+	hasAK := accessKey != ""
+	hasSK := secretKey != ""
+	if hasAK != hasSK {
+		return awss3.Config{}, errDriveMissing("access_key and secret_key must be both set or both empty")
+	}
+	if hasAK {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
+		))
+	}
+	return awsconfig.LoadDefaultConfig(ctx, opts...)
+}
+
+type driveConfigError struct{ msg string }
+
+func (e *driveConfigError) Error() string { return "drive: " + e.msg }
+func errDriveMissing(msg string) error    { return &driveConfigError{msg: msg} }
 
 func (s *service) Get(ctx context.Context, driveID string) (*Drive, error) {
 	id, err := ulid.Parse(driveID)
