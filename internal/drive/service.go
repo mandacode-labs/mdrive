@@ -6,18 +6,15 @@ import (
 
 	"github.com/oklog/ulid/v2"
 
+	"github.com/mandacode-labs/mdrive/internal/crypto"
 	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/provider/s3"
 )
 
 // Service is the public surface for drive lifecycle. Handlers
-// call into this; vfs does not depend on Service (it uses
-// superblock.Operation for root access).
-//
-// Renamed from Operation to Service — Service is the conventional
-// Go name for a domain layer that orchestrates the data-access
-// layer (Repository) for callers.
+// call into this; vfs does not depend on Service.
 type Service interface {
-	Create(ctx context.Context, ownerID string, name string, description string, storage *Storage) (*Drive, error)
+	Create(ctx context.Context, ownerID string, name string, description string, cfg *StorageConfig) (*Drive, error)
 	Get(ctx context.Context, driveID string) (*Drive, error)
 	GetStorage(ctx context.Context, driveID string) (*Storage, error)
 	Update(ctx context.Context, driveID string, name string, description string) (*Drive, error)
@@ -29,25 +26,26 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo      Repository
+	encryptor crypto.Encryptor
 }
 
 // NewService wires the canonical impl.
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, encryptor crypto.Encryptor) Service {
+	return &service{repo: repo, encryptor: encryptor}
 }
 
 var _ Service = (*service)(nil)
 
-func (s *service) Create(ctx context.Context, ownerID string, name string, description string, storage *Storage) (*Drive, error) {
+func (s *service) Create(ctx context.Context, ownerID string, name string, description string, cfg *StorageConfig) (*Drive, error) {
 	if name == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, "drive: name is required")
 	}
 	if ownerID == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, "drive: owner_id is required")
 	}
-	if storage == nil {
-		return nil, errorx.New(errorx.KindInvalidArgument, "drive: storage is required")
+	if cfg == nil {
+		return nil, errorx.New(errorx.KindInvalidArgument, "drive: storage config is required")
 	}
 	ownerULID, err := ulid.Parse(ownerID)
 	if err != nil {
@@ -67,15 +65,11 @@ func (s *service) Create(ctx context.Context, ownerID string, name string, descr
 		return nil, err
 	}
 
-	storageRow := NewStorage(
-		id.String(),
-		storage.Bucket(),
-		storage.Endpoint(),
-		storage.Region(),
-		storage.AccessKey(),
-		storage.SecretKey(),
-		storage.UsePathStyle(),
-	)
+	// Build storage row with encryption.
+	storageRow, err := s.buildStorageRow(ctx, id.String(), cfg)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.repo.CreateStorage(ctx, storageRow); err != nil {
 		return nil, err
 	}
@@ -85,6 +79,40 @@ func (s *service) Create(ctx context.Context, ownerID string, name string, descr
 		return nil, err
 	}
 	return created, nil
+}
+
+// buildStorageRow validates the storage config against the
+// real S3/MinIO endpoint, encrypts the secret, and returns
+// a *Storage ready to persist.
+func (s *service) buildStorageRow(ctx context.Context, driveID string, cfg *StorageConfig) (*Storage, error) {
+	// Validate by connecting to the backend.
+	api, err := s3.BuildClient(ctx, cfg.Region, cfg.AccessKey, cfg.SecretKey, derefStr(cfg.Endpoint), cfg.UsePathStyle)
+	if err != nil {
+		return nil, errorx.Wrap(err, "drive: build s3 client for validation")
+	}
+	if err := s3.PingBucket(ctx, api, cfg.Bucket); err != nil {
+		return nil, errorx.Wrap(err, "drive: validate storage bucket")
+	}
+
+	// Encrypt the secret (only if non-empty).
+	encryptedSecret := ""
+	if cfg.SecretKey != "" {
+		ct, err := s.encryptor.Encrypt([]byte(cfg.SecretKey))
+		if err != nil {
+			return nil, errorx.Wrap(err, "drive: encrypt storage secret")
+		}
+		encryptedSecret = string(ct)
+	}
+
+	return NewStorage(
+		driveID,
+		cfg.Bucket,
+		cfg.Region,
+		cfg.Endpoint,
+		cfg.AccessKey,
+		encryptedSecret,
+		cfg.UsePathStyle,
+	), nil
 }
 
 func (s *service) Get(ctx context.Context, driveID string) (*Drive, error) {

@@ -178,12 +178,12 @@ func (r *entRepository) ReadStorage(ctx context.Context, driveID string) (*Stora
 	}
 	return NewStorage(
 		e.DriveID,
-		e.Bucket,
-		e.Endpoint,
-		e.Region,
-		e.AccessKey,
-		e.SecretKey,
-		e.UsePathStyle,
+		strDeref(e.Bucket),
+		strDeref(e.Region),
+		&e.Endpoint, // endpoint is required (not Nillable in schema)
+		strDeref(e.AccessKey),
+		strDeref(e.EncryptedSecretKey),
+		boolDeref(e.UsePathStyle),
 	), nil
 }
 
@@ -194,16 +194,35 @@ func (r *entRepository) CreateStorage(ctx context.Context, s *Storage) error {
 		SetBucket(s.Bucket()).
 		SetRegion(s.Region()).
 		SetAccessKey(s.AccessKey()).
-		SetSecretKey(s.SecretKey()).
-		SetUsePathStyle(s.UsePathStyle())
-	if s.Endpoint() != nil {
-		create.SetEndpoint(*s.Endpoint())
-	}
+		SetEncryptedSecretKey(s.EncryptedSecret()).
+		SetUsePathStyle(s.UsePathStyle()).
+		SetEndpoint(derefStr(s.Endpoint()))
 	_, err := create.Save(ctx)
 	if err != nil {
 		return errorx.Wrap(err, "drive: failed to create storage")
 	}
 	return nil
+}
+
+func strDeref(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func boolDeref(p *bool) bool {
+	if p == nil {
+		return false
+	}
+	return *p
+}
+
+func derefStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 // driveFromEnt is a shared loader.
