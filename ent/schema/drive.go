@@ -99,4 +99,3 @@ func (Drive) Edges() []ent.Edge {
 			}),
 	}
 }
-

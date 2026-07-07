@@ -71,4 +71,3 @@ func (Superblock) Edges() []ent.Edge {
 			}),
 	}
 }
-
