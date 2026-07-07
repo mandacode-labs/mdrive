@@ -77,7 +77,7 @@ func (v *vfs) buildClient(ctx context.Context, storage *fs.Storage) (*s3.Client,
 // One set, the other empty → error.
 func buildAWSConfig(ctx context.Context, region, accessKey, secretKey string) (awss3.Config, error) {
 	if region == "" {
-		return awss3.Config{}, errS3Missing("region is required")
+		return awss3.Config{}, errorx.New(errorx.KindInvalidArgument, "s3: region is required")
 	}
 	opts := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(region),
@@ -85,7 +85,7 @@ func buildAWSConfig(ctx context.Context, region, accessKey, secretKey string) (a
 	hasAK := accessKey != ""
 	hasSK := secretKey != ""
 	if hasAK != hasSK {
-		return awss3.Config{}, errS3Missing("access_key and secret_key must be both set or both empty")
+		return awss3.Config{}, errorx.New(errorx.KindInvalidArgument, "s3: access_key and secret_key must be both set or both empty")
 	}
 	if hasAK {
 		opts = append(opts, awsconfig.WithCredentialsProvider(
@@ -94,11 +94,6 @@ func buildAWSConfig(ctx context.Context, region, accessKey, secretKey string) (a
 	}
 	return awsconfig.LoadDefaultConfig(ctx, opts...)
 }
-
-type s3ConfigError struct{ msg string }
-
-func (e *s3ConfigError) Error() string { return "s3: " + e.msg }
-func errS3Missing(msg string) error  { return &s3ConfigError{msg: msg} }
 
 // resolveBackend returns the S3 client + bucket for a given
 // superblock. Lookup order:
