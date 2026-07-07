@@ -40,7 +40,7 @@ func (v *vfs) Walk(ctx context.Context, driveID ulid.ULID, path string, follow b
 	return cur, nil
 }
 
-// walkOne — Linux lookup_one.
+// WalkOne — Linux lookup_one.
 func (v *vfs) WalkOne(ctx context.Context, cur *fs.Dentry, name string) (*fs.Dentry, error) {
 	if name == "" || name == "." {
 		return cur, nil
@@ -72,7 +72,7 @@ func (v *vfs) WalkOne(ctx context.Context, cur *fs.Dentry, name string) (*fs.Den
 	return &fs.Dentry{DriveID: cur.DriveID, Parent: cur, Name: name, Node: child}, nil
 }
 
-// followMount — Linux <fs>_follow_link for mounts.
+// FollowMount — Linux <fs>_follow_link for mounts.
 func (v *vfs) FollowMount(ctx context.Context, parent *fs.Dentry, mount *fs.Node) (*fs.Dentry, error) {
 	var mc fs.MountContent
 	if err := json.Unmarshal(mount.Data(), &mc); err != nil {
@@ -96,7 +96,7 @@ func (v *vfs) FollowMount(ctx context.Context, parent *fs.Dentry, mount *fs.Node
 	return fs.NewMountRootDentry(srcSB.DriveID(), parent, srcRoot), nil
 }
 
-// followSymlink — Linux <fs>_follow_link for symlinks.
+// FollowSymlink — Linux <fs>_follow_link for symlinks.
 func (v *vfs) FollowSymlink(ctx context.Context, cur *fs.Dentry, depth int) (*fs.Dentry, error) {
 	if depth == 0 {
 		return nil, errorx.New(errorx.KindFailedPrecondition, "fs: symlink loop")

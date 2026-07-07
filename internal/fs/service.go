@@ -1,17 +1,3 @@
-// Package fs is mdrive's filesystem layer.
-//
-// Layering mirrors Linux fs/:
-//
-//	SYSCALL_DEFINE*(name)  → Service method
-//	do_*(...)              → fs.doX (private helper)
-//	vfs_*(...)             → fs.vfs.X (vfs subpackage)
-//
-// Service is the syscall surface (path-based, typed content
-// in/out). The vfs subpackage operates on already-resolved
-// *Dentry and never appears in Service signatures.
-//
-// Permission checks live on Service; the vfs subpackage
-// assumes the caller has already authorized.
 package fs
 
 import (
@@ -68,32 +54,19 @@ type RemoveOpts struct {
 	Recursive bool
 }
 
-// ObjectRef is the public S3 metadata envelope for callers
-// that build an ObjectContent without going through
-// CreateObject.
-type ObjectRef struct {
-	Bucket   string
-	Key      string
-	Mime     string
-	Checksum string
-	Size     int64
-}
-
 // fs is the concrete Service. The vfs field carries the
 // inode layer (concrete type lives in the vfs subpackage).
 type fs struct {
 	vfs  VFS
 	perm permission.Authorizer
-	gr   GarbageRecorder
 }
 
 // Config groups the dependencies of New. The caller must
 // construct the VFS (typically vfs.New) and pass it in to
 // keep the parent fs decoupled from the vfs subpackage.
 type Config struct {
-	VFS     VFS
-	Perm    permission.Authorizer
-	Garbage GarbageRecorder
+	VFS  VFS
+	Perm permission.Authorizer
 }
 
 // New wires a Service.
@@ -101,7 +74,6 @@ func New(cfg Config) Service {
 	return &fs{
 		vfs:  cfg.VFS,
 		perm: cfg.Perm,
-		gr:   cfg.Garbage,
 	}
 }
 

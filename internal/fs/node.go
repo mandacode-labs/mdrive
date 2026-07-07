@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,42 +54,7 @@ const (
 	FlagNoAtime        Flags = 0x00000080
 )
 
-func (f *Flags) UInt32() uint32      { return uint32(*f) }
-func (f *Flags) Set(flag Flags)      { *f |= flag }
-func (f *Flags) Clear(flag Flags)    { *f &^= flag }
-func (f *Flags) Has(flag Flags) bool { return (*f & flag) != 0 }
-
-func (f Flags) String() string {
-	var flags []string
-	if f.Has(FlagSecureDeletion) {
-		flags = append(flags, "secure_deletion")
-	}
-	if f.Has(FlagUndelete) {
-		flags = append(flags, "undelete")
-	}
-	if f.Has(FlagCompress) {
-		flags = append(flags, "compress")
-	}
-	if f.Has(FlagSynchronous) {
-		flags = append(flags, "synchronous")
-	}
-	if f.Has(FlagImmutable) {
-		flags = append(flags, "immutable")
-	}
-	if f.Has(FlagAppendOnly) {
-		flags = append(flags, "append_only")
-	}
-	if f.Has(FlagNoDump) {
-		flags = append(flags, "no_dump")
-	}
-	if f.Has(FlagNoAtime) {
-		flags = append(flags, "no_atime")
-	}
-	if len(flags) == 0 {
-		return "none"
-	}
-	return fmt.Sprintf("%v", flags)
-}
+func (f Flags) UInt32() uint32 { return uint32(f) }
 
 // Revision is a ULID-based generation counter for the node.
 type Revision string
@@ -99,18 +63,8 @@ func newRevision() Revision {
 	return Revision(ulid.Make().String())
 }
 
-func (r Revision) String() string             { return string(r) }
-func (r Revision) Equals(other Revision) bool { return r == other }
-func (r Revision) IsEmpty() bool              { return r == "" }
-func (r Revision) Next() Revision             { return newRevision() }
-
-func (r Revision) Time() (time.Time, error) {
-	id, err := ulid.Parse(string(r))
-	if err != nil {
-		return time.Time{}, err
-	}
-	return ulid.Time(id.Time()), nil
-}
+func (r Revision) String() string { return string(r) }
+func (r Revision) Next() Revision { return newRevision() }
 
 // MaxDataSize bounds the inline data of a file-kind node.
 const MaxDataSize = 4096
@@ -119,19 +73,18 @@ const MaxDataSize = 4096
 // the same superblock id; the drive is reached via
 // superblock → drive (one-to-one).
 type Node struct {
-	id       uuid.UUID
-	sb       uuid.UUID
-	kind     NodeKind
-	size     int64
-	nlink    uint32
-	data     []byte
-	atime    time.Time
-	mtime    time.Time
-	ctime    time.Time
-	btime    time.Time
-	flags    Flags
-	rev      Revision
-	staleRev Revision
+	id    uuid.UUID
+	sb    uuid.UUID
+	kind  NodeKind
+	size  int64
+	nlink uint32
+	data  []byte
+	atime time.Time
+	mtime time.Time
+	ctime time.Time
+	btime time.Time
+	flags Flags
+	rev   Revision
 }
 
 func (n *Node) ID() uuid.UUID           { return n.id }
@@ -146,7 +99,6 @@ func (n *Node) CTime() time.Time        { return n.ctime }
 func (n *Node) BTime() time.Time        { return n.btime }
 func (n *Node) Flags() Flags            { return n.flags }
 func (n *Node) Revision() Revision      { return n.rev }
-func (n *Node) StaleRev() Revision      { return n.staleRev }
 
 // NewNode constructs a fresh inode belonging to `sb`.
 func NewNode(id uuid.UUID, sb uuid.UUID, kind NodeKind) *Node {
@@ -173,12 +125,12 @@ func HydrateNode(
 	data []byte,
 	atime, mtime, ctime, btime time.Time,
 	flags Flags,
-	rev, staleRev Revision,
+	rev Revision,
 ) *Node {
 	return &Node{
 		id: id, sb: sb, kind: kind, size: size, nlink: nlink,
 		data: data, atime: atime, mtime: mtime, ctime: ctime, btime: btime,
-		flags: flags, rev: rev, staleRev: staleRev,
+		flags: flags, rev: rev,
 	}
 }
 
@@ -224,12 +176,6 @@ func (n *Node) DecNLink() {
 		n.rev = n.rev.Next()
 	}
 }
-
-func (n *Node) IsDir() bool     { return n.kind == NodeKindDirectory }
-func (n *Node) IsFile() bool    { return n.kind == NodeKindFile }
-func (n *Node) IsSymlink() bool { return n.kind == NodeKindSymlink }
-func (n *Node) IsObject() bool  { return n.kind == NodeKindObject }
-func (n *Node) IsMount() bool   { return n.kind == NodeKindMount }
 
 // NodeOperation is the inode-level callback set. Mirrors
 // Linux inode_operations. Methods that need parent context

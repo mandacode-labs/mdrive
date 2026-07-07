@@ -1,13 +1,3 @@
-// Package fs is mdrive's filesystem layer.
-//
-// Layering mirrors Linux fs/:
-//
-//	SYSCALL_DEFINE*(name) → Service method
-//	do_*(...)             → fs.doX
-//	vfs_*(...)            → fs.vfs.X (vfs subpackage)
-//
-// Permission checks live on Service; the vfs subpackage
-// operates on already-resolved *Dentry.
 package fs
 
 import (
@@ -15,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/oklog/ulid/v2"
-
 )
 
 // VFS is the inode layer (Linux vfs_*). Methods take an
@@ -41,16 +30,4 @@ type VFS interface {
 	Mount(ctx context.Context, parent *Dentry, name string, sourceDriveID ulid.ULID) error
 	Unmount(ctx context.Context, parent *Dentry, name string) error
 	RemoveRecursive(ctx context.Context, dentry *Dentry) error
-}
-
-// GarbageRecorder writes tombstone rows for deleted S3
-// objects.
-type GarbageRecorder interface {
-	RecordGarbage(ctx context.Context, refs []GarbageRef) error
-}
-
-// GarbageRef identifies a tombstoned S3 object.
-type GarbageRef struct {
-	Bucket string
-	Key    string
 }

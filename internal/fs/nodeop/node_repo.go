@@ -108,7 +108,6 @@ func fromEnt(e *ent.Node) (*fs.Node, error) {
 		e.Btime,
 		flags,
 		rev,
-		rev,
 	)
 	return n, nil
 }
