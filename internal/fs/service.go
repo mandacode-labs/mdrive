@@ -2,45 +2,66 @@
 //
 // Layering mirrors Linux fs/:
 //
-//	SYSCALL_DEFINE*(name) → Service method
-//	do_*(...)             → fs.doX
-//	vfs_*(...)            → fs.vfs.X (vfs subpackage)
+//	SYSCALL_DEFINE*(name)  → Service method
+//	do_*(...)              → fs.doX (private helper)
+//	vfs_*(...)             → fs.vfs.X (vfs subpackage)
+//
+// Service is the syscall surface (path-based, typed content
+// in/out). The vfs subpackage operates on already-resolved
+// *Dentry and never appears in Service signatures.
 //
 // Permission checks live on Service; the vfs subpackage
-// operates on already-resolved *Dentry.
+// assumes the caller has already authorized.
 package fs
 
 import (
 	"context"
+	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
 	"github.com/mandacode-labs/mdrive/internal/fs/permission"
 )
 
-// Service is the syscall surface for the fs subsystem.
-// Mirrors fs/open.c and fs/namei.c in the Linux kernel.
-// Result types are narrow: *Dentry is opaque, Stat mirrors
-// POSIX struct stat, DirEntry mirrors getdents64; *Node
-// never escapes.
+// Service is the syscall surface for the fs subsystem. Each
+// method maps to one or more Linux syscalls; the body of the
+// method walks the path, checks permission, dispatches into
+// the vfs layer, and decodes the returned payload into a
+// typed content value.
 type Service interface {
-	Walk(ctx context.Context, driveID, path string) (*Dentry, error)
-	WalkOne(ctx context.Context, parent *Dentry, name string) (*Dentry, error)
-	Create(ctx context.Context, driveID, path string, kind NodeKind) (Stat, error)
+	// === File ops (NodeKindFile) — inline payload up to 4KB ===
+	CreateFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error)
+	ReadFile(ctx context.Context, driveID, path string) (*content.FileContent, error)
+	WriteFile(ctx context.Context, driveID, path string, c *content.FileContent) (Stat, error)
+	Truncate(ctx context.Context, driveID, path string, size int64) error
+
+	// === Object ops (NodeKindObject) — S3-backed ===
+	CreateObject(ctx context.Context, driveID, path string, c *content.ObjectContent) (Stat, error)
+	ReadObject(ctx context.Context, driveID, path string) (*content.ObjectContent, error)
+
+	// === Directory ops (NodeKindDirectory) ===
+	Mkdir(ctx context.Context, driveID, path string) (Stat, error)
+	Getdents(ctx context.Context, driveID, path string) (*DirContent, error)
+
+	// === Symlink ops ===
 	SymlinkAt(ctx context.Context, driveID, target, linkPath string) (Stat, error)
+	ReadlinkAt(ctx context.Context, driveID, path string) (*content.SymlinkContent, error)
+
+	// === Link ops ===
 	LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Stat, error)
-	CreateObject(ctx context.Context, driveID, path string, ref ObjectRef, size int64) (Stat, error)
 	Unlink(ctx context.Context, driveID, path string) error
 	Rmdir(ctx context.Context, driveID, path string) error
-	Remove(ctx context.Context, driveID string, paths []string, opts RemoveOpts) error
+
+	// === Tree ops ===
 	RenameAt(ctx context.Context, driveID, srcPath, dstDriveID, dstPath string) error
-	Read(ctx context.Context, driveID, path string) ([]byte, error)
-	Write(ctx context.Context, driveID, path string, data []byte) error
-	ReadlinkAt(ctx context.Context, driveID, path string) (string, error)
-	Getdents(ctx context.Context, driveID, path string) ([]DirEntry, error)
+	Remove(ctx context.Context, driveID string, paths []string, opts RemoveOpts) error
+
+	// === Metadata ===
+	Stat(ctx context.Context, driveID, path string, follow bool) (Stat, error)
+	SetTimes(ctx context.Context, driveID, path string, atime, mtime time.Time) error
+
+	// === Mount ops ===
 	BindMount(ctx context.Context, driveID, mountPath, sourceDriveID string) error
 	Unmount(ctx context.Context, driveID, mountPath string) error
-	Stat(ctx context.Context, driveID, path string, follow bool) (Stat, error)
 }
 
 // RemoveOpts controls Remove behavior.
@@ -48,33 +69,27 @@ type RemoveOpts struct {
 	Recursive bool
 }
 
-// DirEntry is one entry from Getdents. Also the on-disk shape
-// stored inside a directory node's data field via DirContent.
-type DirEntry struct {
-	NodeID uuid.UUID `json:"id"`
-	Name   string    `json:"name"`
-	Kind   NodeKind  `json:"kind"`
-}
-
-// ObjectRef is the public S3 metadata envelope for
+// ObjectRef is the public S3 metadata envelope for callers
+// that build an ObjectContent without going through
 // CreateObject.
 type ObjectRef struct {
 	Bucket   string
 	Key      string
 	Mime     string
 	Checksum string
+	Size     int64
 }
 
 // fs is the concrete Service. The vfs field carries the
 // inode layer (concrete type lives in the vfs subpackage).
 type fs struct {
-	vfs     VFS
-	perm    permission.Authorizer
-	garbage GarbageRecorder
+	vfs  VFS
+	perm permission.Authorizer
+	gr   GarbageRecorder
 }
 
 // Config groups the dependencies of New. The caller must
-// construct the VFS (typically vvs.New) and pass it in to
+// construct the VFS (typically vfs.New) and pass it in to
 // keep the parent fs decoupled from the vfs subpackage.
 type Config struct {
 	VFS     VFS
@@ -85,9 +100,9 @@ type Config struct {
 // New wires a Service.
 func New(cfg Config) Service {
 	return &fs{
-		vfs:     cfg.VFS,
-		perm:    cfg.Perm,
-		garbage: cfg.Garbage,
+		vfs:  cfg.VFS,
+		perm: cfg.Perm,
+		gr:   cfg.Garbage,
 	}
 }
 

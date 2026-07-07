@@ -195,6 +195,18 @@ func (n *Node) Write(data []byte, size int64) error {
 	return nil
 }
 
+// SetTimes is the user-visible timestamp setter (utimensat).
+// Internal ops use NewNode/Write/IncNLink, which set their
+// own timestamps. Service.SetTimes is the only legitimate
+// caller.
+func (n *Node) SetTimes(atime, mtime, ctime, btime time.Time) {
+	n.atime = atime
+	n.mtime = mtime
+	n.ctime = ctime
+	n.btime = btime
+	n.rev = n.rev.Next()
+}
+
 func (n *Node) IncNLink() {
 	now := time.Now()
 	n.nlink++
@@ -225,8 +237,8 @@ type NodeOperation interface {
 	Get(ctx context.Context, id uuid.UUID) (*Node, error)
 	Lookup(ctx context.Context, parent *Dentry, name string) (*Dentry, error)
 	Create(ctx context.Context, parent *Node, child *Node, name string) error
+	Persist(ctx context.Context, n *Node) error
 	Link(ctx context.Context, dentry *Dentry, linkDir *Dentry, linkName string) error
-	Symlink(ctx context.Context, symlink *Node, target *Dentry) error
 	Unlink(ctx context.Context, dentry *Dentry) error
 	Rmdir(ctx context.Context, dentry *Dentry) error
 	Rename(ctx context.Context, old *Dentry, newParent *Dentry, newName string) error

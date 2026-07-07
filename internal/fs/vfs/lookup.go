@@ -12,8 +12,10 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
-// lookup — Linux link_path_walk.
-func (v *vfs) Lookup(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*fs.Dentry, error) {
+// Walk — Linux link_path_walk. Resolves a path string into
+// a Dentry, following mount points and (optionally) trailing
+// symlinks.
+func (v *vfs) Walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*fs.Dentry, error) {
 	sb, err := v.superop.GetByDriveID(ctx, driveID)
 	if err != nil {
 		return nil, errorx.Wrap(err, "fs: superblock", errorx.KindInternal)

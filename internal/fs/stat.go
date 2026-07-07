@@ -51,7 +51,7 @@ func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat,
 	if err != nil {
 		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
 	}
-	dentry, err := f.vfs.Lookup(ctx, id, path, follow)
+	dentry, err := f.vfs.Walk(ctx, id, path, follow)
 	if err != nil {
 		return Stat{}, err
 	}
@@ -59,4 +59,23 @@ func (f *fs) Stat(ctx context.Context, driveID, path string, follow bool) (Stat,
 		return Stat{}, err
 	}
 	return f.vfs.Getattr(ctx, dentry)
+}
+
+// SetTimes updates atime/mtime on the resolved node.
+// Mirrors utimensat(2). ActionEdit on the resolved drive.
+// Ctime is bumped by the storage layer; not user-settable.
+func (f *fs) SetTimes(ctx context.Context, driveID, path string, atime, mtime time.Time) error {
+	id, err := ulid.Parse(driveID)
+	if err != nil {
+		return errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
+	}
+	dentry, err := f.vfs.Walk(ctx, id, path, true)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, dentry.DriveID); err != nil {
+		return err
+	}
+	dentry.Node.SetTimes(atime, mtime, time.Now(), dentry.Node.BTime())
+	return f.vfs.SetTimes(ctx, dentry)
 }

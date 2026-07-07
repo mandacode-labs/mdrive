@@ -1,15 +1,15 @@
 package fs
 
-import "context"
+import (
+	"context"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
+)
 
 // LinkAt creates a hard link. Mirrors linkat(2). Refuses
 // directories. ActionEdit on both source and destination
 // parents.
 func (f *fs) LinkAt(ctx context.Context, driveID, srcPath, linkPath string) (Stat, error) {
-	return f.doLink(ctx, driveID, srcPath, linkPath)
-}
-
-func (f *fs) doLink(ctx context.Context, driveID, srcPath, linkPath string) (Stat, error) {
 	srcParent, srcName, err := f.doPathParent(ctx, driveID, srcPath)
 	if err != nil {
 		return Stat{}, err
@@ -28,54 +28,98 @@ func (f *fs) doLink(ctx context.Context, driveID, srcPath, linkPath string) (Sta
 	if err != nil {
 		return Stat{}, err
 	}
+	if srcDentry.Node.Kind() == NodeKindDirectory {
+		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: cannot hardlink a directory")
+	}
 	if err := f.vfs.Link(ctx, srcDentry, linkParent, linkName); err != nil {
 		return Stat{}, err
 	}
 	return NodeToStat(srcDentry.Node), nil
 }
 
-// SymlinkAt creates a symbolic link. Mirrors symlinkat(2).
-// `target` is resolved to its node id (graph-based content).
-// ActionEdit on the link's parent drive.
-func (f *fs) SymlinkAt(ctx context.Context, driveID, target, linkPath string) (Stat, error) {
-	return f.doSymlink(ctx, driveID, target, linkPath)
-}
-
-func (f *fs) doSymlink(ctx context.Context, driveID, target, linkPath string) (Stat, error) {
-	linkParent, linkName, err := f.doPathParent(ctx, driveID, linkPath)
-	if err != nil {
-		return Stat{}, err
-	}
-	if err := f.requireEdit(ctx, linkParent.DriveID); err != nil {
-		return Stat{}, err
-	}
-	targetDentry, err := f.vfs.Lookup(ctx, linkParent.DriveID, target, true)
-	if err != nil {
-		return Stat{}, err
-	}
-	if err := f.requireView(ctx, targetDentry.DriveID); err != nil {
-		return Stat{}, err
-	}
-	link, err := f.vfs.Symlink(ctx, linkParent, linkName, targetDentry.Node.ID())
-	if err != nil {
-		return Stat{}, err
-	}
-	return NodeToStat(link), nil
-}
-
 // Unlink removes a non-directory entry. Mirrors unlink(2).
 // ActionEdit on the parent drive.
 func (f *fs) Unlink(ctx context.Context, driveID, path string) error {
-	return f.doUnlink(ctx, driveID, path)
-}
-
-func (f *fs) doUnlink(ctx context.Context, driveID, path string) error {
 	parent, name, err := f.doPathParent(ctx, driveID, path)
 	if err != nil {
 		return err
 	}
 	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
 		return err
+	}
+	return f.vfs.Unlink(ctx, parent, name)
+}
+
+// Rmdir removes an empty directory. Mirrors rmdir(2).
+// ActionEdit on the parent drive.
+func (f *fs) Rmdir(ctx context.Context, driveID, path string) error {
+	parent, name, err := f.doPathParent(ctx, driveID, path)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+		return err
+	}
+	return f.vfs.Rmdir(ctx, parent, name)
+}
+
+// RenameAt moves a single entry. Mirrors renameat(2).
+// Cross-drive rename is rejected (parents must share a
+// superblock, like Linux vfs_rename). ActionEdit on both
+// parent drives.
+func (f *fs) RenameAt(ctx context.Context, driveID, srcPath, dstDriveID, dstPath string) error {
+	srcParent, srcName, err := f.doPathParent(ctx, driveID, srcPath)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, srcParent.DriveID); err != nil {
+		return err
+	}
+	dstParent, dstName, err := f.doPathParent(ctx, dstDriveID, dstPath)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, dstParent.DriveID); err != nil {
+		return err
+	}
+	return f.vfs.Rename(ctx, srcParent, srcName, dstParent, dstName)
+}
+
+// Remove is mdrive's `rm -rf` equivalent. Cascades
+// vfs.RemoveRecursive for non-empty trees. ActionEdit on
+// the parent drive.
+func (f *fs) Remove(ctx context.Context, driveID string, paths []string, opts RemoveOpts) error {
+	for _, p := range paths {
+		if err := f.doRemove(ctx, driveID, p, opts); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *fs) doRemove(ctx context.Context, driveID, path string, opts RemoveOpts) error {
+	parent, name, err := f.doPathParent(ctx, driveID, path)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+		return err
+	}
+	dentry, err := f.vfs.WalkOne(ctx, parent, name)
+	if err != nil {
+		return err
+	}
+	if !opts.Recursive {
+		if dentry.Node.Kind() == NodeKindDirectory {
+			return f.vfs.Rmdir(ctx, parent, name)
+		}
+		return f.vfs.Unlink(ctx, parent, name)
+	}
+	if err := f.vfs.RemoveRecursive(ctx, dentry); err != nil {
+		return err
+	}
+	if dentry.Node.Kind() == NodeKindDirectory {
+		return f.vfs.Rmdir(ctx, parent, name)
 	}
 	return f.vfs.Unlink(ctx, parent, name)
 }

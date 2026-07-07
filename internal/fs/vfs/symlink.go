@@ -10,7 +10,13 @@ import (
 	"github.com/mandacode-labs/mdrive/internal/fs/content"
 )
 
-// symlink — Linux vfs_symlink.
+// Symlink — Linux vfs_symlink.
+//
+// Builds the symlink node in-memory (with the target id
+// encoded as content) and delegates dir-entry creation +
+// persistence to nodeOp.Create. We do NOT call nodeOp.Symlink
+// separately — that would re-marshal and re-write the body
+// we just set.
 func (v *vfs) Symlink(ctx context.Context, linkParent *fs.Dentry, linkName string, targetID uuid.UUID) (*fs.Node, error) {
 	if linkParent == nil || linkName == "" {
 		return nil, errorx.New(errorx.KindInvalidArgument, "fs: symlink requires parent and name")
@@ -28,14 +34,6 @@ func (v *vfs) Symlink(ctx context.Context, linkParent *fs.Dentry, linkName strin
 		return nil, err
 	}
 	if err := v.nodeOp.Create(ctx, linkParent.Node, link, linkName); err != nil {
-		return nil, err
-	}
-	if err := v.nodeOp.Symlink(ctx, link, &fs.Dentry{
-		DriveID: linkParent.DriveID,
-		Parent:  linkParent,
-		Name:    linkName,
-		Node:    link,
-	}); err != nil {
 		return nil, err
 	}
 	return link, nil

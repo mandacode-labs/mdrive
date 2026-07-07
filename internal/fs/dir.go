@@ -3,12 +3,22 @@ package fs
 import (
 	"encoding/json"
 
+	"github.com/google/uuid"
+
 	"github.com/mandacode-labs/mdrive/internal/errorx"
 )
 
-// DirContent is the JSON-serialized listing of a directory node.
-// Stored inline in the node's data field; uses fs.DirEntry as
-// its row shape so callers don't need a converter.
+// DirEntry is a single directory listing row. Same shape on
+// disk (via DirContent) and over the wire (Service.Getdents
+// returns *DirContent whose Entries are []DirEntry).
+type DirEntry struct {
+	NodeID uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Kind   NodeKind  `json:"kind"`
+}
+
+// DirContent is the JSON-serialized listing of a directory
+// node. Stored inline in the node's data field.
 type DirContent struct {
 	Entries []DirEntry `json:"entries"`
 }

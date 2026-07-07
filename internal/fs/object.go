@@ -1,10 +1,56 @@
 package fs
 
-import "context"
+import (
+	"context"
+	"encoding/json"
 
-// CreateObject registers an S3 object metadata as a
-// file-like node. Payload lives in S3; node carries
-// metadata. ActionEdit on the parent drive.
-func (f *fs) CreateObject(ctx context.Context, driveID, path string, ref ObjectRef, size int64) (Stat, error) {
-	return f.doCreate(ctx, driveID, path, NodeKindObject, ref, size)
+	"github.com/google/uuid"
+
+	"github.com/mandacode-labs/mdrive/internal/errorx"
+	"github.com/mandacode-labs/mdrive/internal/fs/content"
+)
+
+// CreateObject registers an S3 object as a file-like node.
+// Payload lives in S3; the node carries only metadata.
+// ActionEdit on the parent drive.
+func (f *fs) CreateObject(ctx context.Context, driveID, path string, c *content.ObjectContent) (Stat, error) {
+	if c == nil {
+		return Stat{}, errorx.New(errorx.KindInvalidArgument, "fs: CreateObject requires content")
+	}
+	parent, name, err := f.doPathParent(ctx, driveID, path)
+	if err != nil {
+		return Stat{}, err
+	}
+	if err := f.requireEdit(ctx, parent.DriveID); err != nil {
+		return Stat{}, err
+	}
+	data, err := c.Marshal()
+	if err != nil {
+		return Stat{}, errorx.Wrap(err, "fs: marshal object content", errorx.KindInternal)
+	}
+	node := NewNode(uuid.New(), parent.Node.SuperblockID(), NodeKindObject)
+	if err := node.Write(data, c.Size); err != nil {
+		return Stat{}, err
+	}
+	if err := f.vfs.Create(ctx, parent, node, name); err != nil {
+		return Stat{}, err
+	}
+	return NodeToStat(node), nil
+}
+
+// ReadObject returns the S3 metadata of an object-kind node.
+// ActionView on the resolved drive.
+func (f *fs) ReadObject(ctx context.Context, driveID, path string) (*content.ObjectContent, error) {
+	dentry, err := f.walkForKind(ctx, driveID, path, NodeKindObject)
+	if err != nil {
+		return nil, err
+	}
+	if err := f.requireView(ctx, dentry.DriveID); err != nil {
+		return nil, err
+	}
+	var oc content.ObjectContent
+	if err := json.Unmarshal(dentry.Node.Data(), &oc); err != nil {
+		return nil, errorx.Wrap(err, "fs: object content", errorx.KindInternal)
+	}
+	return &oc, nil
 }

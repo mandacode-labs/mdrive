@@ -51,7 +51,7 @@ func (f *fs) doPathParent(ctx context.Context, driveID, path string) (*Dentry, s
 	if parentPath == "" {
 		parentPath = "/"
 	}
-	parent, err := f.vfs.Lookup(ctx, driveULID, parentPath, true)
+	parent, err := f.vfs.Walk(ctx, driveULID, parentPath, true)
 	if err != nil {
 		return nil, "", err
 	}
@@ -74,4 +74,29 @@ func splitParent(p string) (parent, name string) {
 		return "/", p[1:]
 	}
 	return p[:i], p[i+1:]
+}
+
+// walkResolve resolves a path string into a Dentry with
+// follow=true. Used by Service methods that target an
+// existing leaf (ReadFile, Stat, etc.).
+func (f *fs) walkResolve(ctx context.Context, driveID, path string) (*Dentry, error) {
+	id, err := ulid.Parse(driveID)
+	if err != nil {
+		return nil, errorx.New(errorx.KindInvalidArgument, "fs: invalid drive id")
+	}
+	return f.vfs.Walk(ctx, id, path, true)
+}
+
+// walkForKind resolves a path and checks that the leaf is
+// of the expected kind. Used by kind-specific reads/writes
+// (ReadFile expects NodeKindFile, etc.).
+func (f *fs) walkForKind(ctx context.Context, driveID, path string, kind NodeKind) (*Dentry, error) {
+	dentry, err := f.walkResolve(ctx, driveID, path)
+	if err != nil {
+		return nil, err
+	}
+	if dentry.Node.Kind() != kind {
+		return nil, errorx.New(errorx.KindInvalidArgument, "fs: wrong node kind")
+	}
+	return dentry, nil
 }

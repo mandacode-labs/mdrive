@@ -45,8 +45,12 @@ func (f *fs) Unmount(ctx context.Context, driveID, mountPath string) error {
 }
 
 func (f *fs) doUnmount(ctx context.Context, driveID, mountPath string) error {
-	_ = ctx
-	_ = driveID
-	_ = mountPath
-	return nil
+	mountParent, mountName, err := f.doPathParent(ctx, driveID, mountPath)
+	if err != nil {
+		return err
+	}
+	if err := f.requireEdit(ctx, mountParent.DriveID); err != nil {
+		return err
+	}
+	return f.vfs.Unmount(ctx, mountParent, mountName)
 }

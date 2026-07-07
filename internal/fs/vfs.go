@@ -20,7 +20,7 @@ import (
 // VFS is the inode layer (Linux vfs_*). Methods take an
 // already-resolved *Dentry. Permission is the caller's job.
 type VFS interface {
-	Lookup(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, error)
+	Walk(ctx context.Context, driveID ulid.ULID, path string, follow bool) (*Dentry, error)
 	WalkOne(ctx context.Context, parent *Dentry, name string) (*Dentry, error)
 	FollowMount(ctx context.Context, parent *Dentry, mount *Node) (*Dentry, error)
 	FollowSymlink(ctx context.Context, cur *Dentry, depth int) (*Dentry, error)
@@ -35,8 +35,10 @@ type VFS interface {
 	Write(ctx context.Context, dentry *Dentry, data []byte) error
 	Readlink(ctx context.Context, dentry *Dentry) (uuid.UUID, error)
 	Getattr(ctx context.Context, dentry *Dentry) (Stat, error)
+	SetTimes(ctx context.Context, dentry *Dentry) error
 	Iterate(ctx context.Context, parent *Dentry) ([]DirEntry, error)
 	Mount(ctx context.Context, parent *Dentry, name string, sourceDriveID ulid.ULID) error
+	Unmount(ctx context.Context, parent *Dentry, name string) error
 	RemoveRecursive(ctx context.Context, dentry *Dentry) error
 }
 
